@@ -100,9 +100,13 @@ mod property_tests {
             prop_assert!(response.quality_report.metrics.satd_count > 0);
         }
 
-        /// Test that advisory mode always accepts code regardless of quality
+        /// Advisory mode reports the verdict it measured and hands the content
+        /// back untouched: Accepted iff the gate passed, Rejected otherwise,
+        /// the content returned either way, and nothing written (CRUX-10,
+        /// #1151 — before it, advisory mode returned Accepted for every input,
+        /// which made the tool's grade unfalsifiable from the client's side).
         #[test]
-        fn test_advisory_mode_always_accepts(
+        fn test_advisory_mode_reports_the_verdict_and_returns_the_content(
             code in arb_rust_code(),
             file_path in "[a-z]+\\.rs",
             config in arb_quality_config(),
@@ -113,7 +117,7 @@ mod property_tests {
             let request = ProxyRequest {
                 operation: ProxyOperation::Write,
                 file_path,
-                content: Some(code),
+                content: Some(code.clone()),
                 old_content: None,
                 new_content: None,
                 mode: ProxyMode::Advisory,
@@ -121,7 +125,13 @@ mod property_tests {
             };
 
             let response = rt.block_on(service.proxy_operation(request)).unwrap();
-            prop_assert!(matches!(response.status, ProxyStatus::Accepted));
+            if response.quality_report.passed {
+                prop_assert!(matches!(response.status, ProxyStatus::Accepted));
+            } else {
+                prop_assert!(matches!(response.status, ProxyStatus::Rejected));
+            }
+            prop_assert_eq!(response.final_content, code);
+            prop_assert!(!response.written, "the proxy never writes");
         }
 
         /// Test that high-quality code is always accepted in strict mode
@@ -366,6 +376,9 @@ pub fn {}({}: i32) -> i32 {{
         ) {
             let rt = tokio::runtime::Runtime::new().unwrap();
             let service = QualityProxyService::new();
+            let advisory = matches!(request.mode, ProxyMode::Advisory);
+            let is_write = matches!(request.operation, ProxyOperation::Write);
+            let submitted = request.content.clone().unwrap_or_default();
 
             let response = rt.block_on(service.proxy_operation(request)).unwrap();
 
@@ -383,10 +396,22 @@ pub fn {}({}: i32) -> i32 {{
                 prop_assert!(!has_errors);
             }
 
-            // Check that final content is empty for rejected status
+            // A rejection withholds the content in strict / auto-fix mode and
+            // returns it verbatim in advisory mode (CRUX-10, #1151): the
+            // client, not the proxy, decides what to do with a graded draft.
+            // (Edit/Append return the spliced result, which
+            // `test_operation_content_extraction` pins exactly; here only the
+            // Write case is compared byte-for-byte.)
             if matches!(response.status, ProxyStatus::Rejected) {
-                prop_assert_eq!(response.final_content, "");
+                if advisory && is_write {
+                    prop_assert_eq!(response.final_content, submitted);
+                } else if advisory {
+                    prop_assert!(!response.final_content.is_empty());
+                } else {
+                    prop_assert_eq!(response.final_content, "");
+                }
             }
+            prop_assert!(!response.written, "the proxy never writes");
         }
     }
 

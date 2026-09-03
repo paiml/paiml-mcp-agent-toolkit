@@ -360,6 +360,23 @@ pub enum AnalyzeCommands {
         /// Exit non-zero when any tracked file is unreachable
         #[arg(long)]
         fail_on_orphan: bool,
+
+        /// Write docs/status/orphan-files-ledger.md: one row per unreachable
+        /// file with a reason from a closed set the checker refutes. Carries
+        /// forward the reasons already committed (CRUX-12, #1152).
+        #[arg(long)]
+        write_ledger: bool,
+
+        /// With --write-ledger, write even when the git tree has uncommitted
+        /// changes to tracked files. Default is to refuse: a ledger written
+        /// from a dirty tree records a tree no clean checkout reproduces.
+        #[arg(long, requires = "write_ledger")]
+        allow_dirty: bool,
+
+        /// Exit non-zero when the committed ledger has drifted from the tree:
+        /// a file newly unreachable, a stale row, or a reason the tree refutes
+        #[arg(long)]
+        check_ledger: bool,
     },
 
     /// Find machine-specific absolute paths baked into source

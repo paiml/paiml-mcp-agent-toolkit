@@ -4,11 +4,8 @@ impl ToolHandler for QualityProxyTool {
         let schema = json!({
             "type": "object",
             "properties": {
-                "operation":  { "type": "string", "enum": ["write", "edit", "append"], "description": "File operation to proxy" },
-                "file_path":  { "type": "string", "description": "Target file path" },
-                "content":     { "type": "string", "description": "New content for `write`/`append`" },
-                "old_content": { "type": "string", "description": "Old string for `edit` operations" },
-                "new_content": { "type": "string", "description": "New string for `edit` operations" },
+                "file_path":  { "type": "string", "description": "Path the content is destined for (decides the language and the project's pmat.toml)" },
+                "content":     { "type": "string", "description": "The proposed file content to grade" },
                 "mode":        { "type": "string", "enum": ["strict", "advisory", "auto_fix", "auto-fix"], "description": "Proxy enforcement mode" },
                 "quality_config": {
                     "type": "object",
@@ -20,11 +17,11 @@ impl ToolHandler for QualityProxyTool {
                     }
                 }
             },
-            "required": ["operation", "file_path"]
+            "required": ["file_path", "content"]
         });
         Some(build_tool_info(
-            "quality_proxy",
-            "Proxy a file operation (write/edit/append) through the quality gate, optionally auto-fixing violations.",
+            QUALITY_CHECK_CONTENT,
+            QUALITY_CHECK_DESCRIPTION,
             schema,
         ))
     }
@@ -36,20 +33,13 @@ impl ToolHandler for QualityProxyTool {
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         info!("Processing quality proxy request for {}", input.file_path);
-        debug!("Proxy mode: {}, Operation: {}", input.mode, input.operation);
+        debug!("Proxy mode: {}", input.mode);
 
         // Convert input to ProxyRequest
-        let operation = match input.operation.as_str() {
-            "write" => ProxyOperation::Write,
-            "edit" => ProxyOperation::Edit,
-            "append" => ProxyOperation::Append,
-            _ => {
-                return Err(Error::validation(format!(
-                    "Invalid operation: {}",
-                    input.operation
-                )))
-            }
-        };
+        // Internally the service still models a "write" of the whole content —
+        // that is the only shape a content check needs, and the enum is kept
+        // for the service's own callers.
+        let operation = ProxyOperation::Write;
 
         let mode = match input.mode.as_str() {
             "strict" => ProxyMode::Strict,
@@ -68,9 +58,9 @@ impl ToolHandler for QualityProxyTool {
         let request = ProxyRequest {
             operation,
             file_path: input.file_path.clone(),
-            content: input.content,
-            old_content: input.old_content,
-            new_content: input.new_content,
+            content: Some(input.content),
+            old_content: None,
+            new_content: None,
             mode,
             quality_config,
         };
@@ -88,5 +78,21 @@ impl ToolHandler for QualityProxyTool {
 
         info!("Quality proxy request completed");
         Ok(result)
+    }
+}
+
+#[async_trait]
+impl ToolHandler for QualityProxyAliasTool {
+    fn metadata(&self) -> Option<ToolInfo> {
+        // Identical to the live tool except the name, so a client that still
+        // calls `quality_proxy` sees the same schema and the same description
+        // (which no longer claims a write).
+        let mut info = QualityProxyTool.metadata()?;
+        info.name = QUALITY_PROXY_ALIAS.to_string();
+        Some(info)
+    }
+
+    async fn handle(&self, args: Value, extra: RequestHandlerExtra) -> Result<Value> {
+        QualityProxyTool.handle(args, extra).await
     }
 }

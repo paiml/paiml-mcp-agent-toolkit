@@ -90,9 +90,16 @@ async fn test_quality_proxy_advisory_mode() {
 
     let response = service.proxy_operation(request).await.unwrap();
 
-    // Advisory mode should accept but report violations
-    assert!(matches!(response.status, ProxyStatus::Accepted));
+    // Advisory returns the content for the caller to decide, but a failing
+    // verdict is not laundered as `accepted` (CRUX-10 B1, #1151).
+    assert!(!response.quality_report.passed);
+    assert!(matches!(response.status, ProxyStatus::Rejected));
+    assert!(
+        !response.final_content.is_empty(),
+        "advisory still hands the content back"
+    );
     assert!(!response.quality_report.violations.is_empty());
+    assert!(!response.written, "this tool never writes");
 }
 
 #[tokio::test]

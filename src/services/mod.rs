@@ -234,6 +234,7 @@ pub mod quality_proxy;
 pub mod ranking;
 pub mod ranking_utils;
 pub mod reachability;
+pub mod reachability_ledger; // CRUX-12: the committed record of unreachable files, and its gate
 pub mod readme_compressor;
 pub mod recommendation_engine;
 pub mod refactor_engine;

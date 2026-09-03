@@ -3734,11 +3734,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-01: pmat verify withdraws its verdict over a declined stage (ok tri-state, not_measured[]) and strict SATD sees every marker quality-gate blocks on (#1146)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-02T17:31:11Z
-  updated: 2026-09-02T17:34:25Z
+  updated: 2026-09-02T20:49:56Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3773,6 +3773,39 @@ roadmap:
   updated: 2026-09-02T17:49:52Z
   spec: null
   acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-640
+  github_issue: null
+  item_type: task
+  title: 'CRUX-10: quality_proxy → quality_check_content — never writes and says so (written:false), advisory does not launder a failing verdict, client quality_config only tightens, satd_count == violations[] (#1151)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T20:49:56Z
+  updated: 2026-09-02T20:49:56Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-641
+  github_issue: null
+  item_type: task
+  title: 'CRUX-10 acceptance script: B0-B2 send operation=write, so the rename branch it prefers can never pass its own B0 while R1 passes'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-02T21:34:43Z
+  updated: 2026-09-02T21:34:43Z
+  spec: null
+  acceptance_criteria:
+  - 'spec 8.10 script: req() always emits operation:"write"; on the rename branch that key is refused with -32602 (R1 requires it), so B0 (has(written)) fails on the same request. The rename branch was never run (script says DEFERRED at HEAD). Fix: branch-aware req() after selector S; R1 uses an explicit stale-key request; selector prefers quality_check_content. Linked: PMAT-640 / #1151.'
   phases: []
   subtasks: []
   estimated_effort: null
