@@ -333,16 +333,20 @@ mod validation_tests {
     }
 
     #[test]
-    fn schema_has_nine_sections_including_custom() {
+    fn schema_has_ten_sections_including_hooks_and_custom() {
         let s = schema();
-        assert_eq!(s.len(), 9, "{:?}", s.keys().collect::<Vec<_>>());
+        assert_eq!(s.len(), 10, "{:?}", s.keys().collect::<Vec<_>>());
         for want in [
             "system", "quality", "analysis", "performance", "mcp", "roadmap", "telemetry",
-            "semantic", "custom",
+            "semantic", "hooks", "custom",
         ] {
             assert!(s.contains_key(want), "schema lacks [{want}]");
         }
         assert!(s["quality"].contains("max_complexity"));
+        // AD-03: `[hooks]` is a section pmat honours, so `config --validate`
+        // must know it — otherwise `strict = true` would be "inapplicable".
+        assert!(s["hooks"].contains("strict"), "{:?}", s["hooks"]);
+        assert!(s["hooks"].contains("ticket_pattern"));
         assert!(s["roadmap"].contains("git"), "nested table is a key of its parent");
     }
 
