@@ -3998,3 +3998,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-653
+  github_issue: null
+  item_type: task
+  title: 'the_cargo_engine_attributes_the_decision_to_rustc hits the analyzer''s 600 s dead-code timeout on a coverage-instrumented shared runner (red ci/coverage on docs-only #1173; green on master minutes apart)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T21:01:33Z
+  updated: 2026-09-03T21:01:33Z
+  spec: null
+  acceptance_criteria:
+  - 'src/cli/handlers/dead_code_library_disclosure_tests.rs:231 — the test runs the real cargo dead-code analyzer (cargo check on a fixture) with the library default 600 s budget. Under llvm-cov instrumentation on a runner shared with 16 other jobs it exceeded 600 s once (run 33796915546); same test passed on 627fb6a85 and c1c2dd1ad. The test asserts a decision attribution, not a wall-clock bound: give it its own explicit budget (or a pre-warmed fixture) so a slow runner cannot turn it red. Not a rerun: the PR was re-measured on a new head after a cascade merge.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

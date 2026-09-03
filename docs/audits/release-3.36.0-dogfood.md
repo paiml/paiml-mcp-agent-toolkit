@@ -10,6 +10,6 @@
 | **post-publish dog-food of the bytes crates.io serves** | `cargo install pmat --version 3.36.0 --locked` into a throwaway root → `pmat 3.36.0` · `scripts/dogfood-use.sh` against the INSTALLED binary: **13 checks, 0 failure(s)** |
 | installed `--version` | `commit: unknown`, `worktree: unknown` — the crates.io build has no git metadata (CRUX-21, spec §8.21, still open); the receipt therefore pins the artifact by the registry's size/created stamp above, not by a commit line |
 | AD-01 release-check on master | RED on the merge push at 19:01Z (before the tag): opened #1172 · GREEN on the dispatch after tag + release + crate existed (run 33796369689) · local `scripts/release-check.sh` on master: `release-check: 3.36.0 is tagged, released and on crates.io` |
-| docs.rs | doc_status= at receipt time (a false/empty value here means the build had not finished; re-check with `curl https://docs.rs/crate/pmat/3.36.0/status.json`) |
+| docs.rs | `doc_status=true` for 3.36.0 (built within ~25 min of publish; HTTP 200) |
 
 Not checked: the Docker channel (#1122 — publishes from a different version; not part of this release's gates). The post-publish steps were run by hand from `/mnt/nvme-raid0/agent-wt/pmat-release/publish-3.36.0.sh`; AD-02 (`scripts/dogfood-published.sh`) is the next item and turns this receipt into a script's output.
