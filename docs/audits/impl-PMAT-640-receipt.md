@@ -71,4 +71,4 @@ Restored: `2 passed; 0 failed`. (A first attempt planted the mutant in the Stric
 
 ## Verdict
 
-All phase and DoD gates hold; PR #1163 open (draft while gate-artifact ran, then ready) with auto-merge armed. **DONE** the moment #1163 merges green on the required checks without a rerun (recorded in the final receipt commit).
+All phase and DoD gates hold. **DONE** — #1163 merged at 3a5b162d4 with 41 checks green and no rerun (verified with `gh api repos/paiml/paiml-mcp-agent-toolkit/pulls/1163` → merged=true, merge_commit_sha 3a5b162d4; head 0cef504b9 check-runs: success=41, skipped=4, 0 failure, 0 cancelled).
