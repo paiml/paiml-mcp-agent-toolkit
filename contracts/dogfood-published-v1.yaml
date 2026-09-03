@@ -1,0 +1,50 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-03"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/agentic-delivery-pmat.md section 3.6 / 9.2 (AD-02)"
+    - "docs/audits/release-3.36.0-dogfood.md — the release-chain receipt, written by hand; it links to the script output release-3.36.0-dogfood-published.md"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    Nothing ships without dog-fooding the bytes crates.io serves. The
+    pre-publish probe reads the packaged tarball and the release gate reads a
+    local build; neither touches what a consumer obtains with cargo install.
+    scripts/dogfood-published.sh installs the published version from the
+    registry into a throwaway root, requires the binary to report that version
+    and answer --help, runs scripts/dogfood-use.sh against it, and writes
+    docs/audits/release-<v>-dogfood.md pinned by the registry's size and stamp.
+  contract: dogfood-published
+  status: draft
+
+equations:
+  the_installed_bytes_are_the_measured_bytes:
+    formula: "for version v: registry(v) present and not yanked => cargo install --version v --locked succeeds => installed --version starts with '<crate> v' => dogfood-use.sh(BIN=installed) exits 0 => receipt names registry size and created stamp"
+    domain: "any version string matching ^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    codomain: bool
+    invariants:
+      - "a version the registry does not carry fails at the registry leg with exit 1 (the control)"
+      - "a non-version argument is refused before any network call"
+      - "the receipt records the installed binary's own --version line, not the local tree's"
+    preconditions: []
+
+falsification:
+  - condition: "the script exits 0 for a version crates.io does not serve, or for an installed binary that reports another version (AD-02)"
+    severity: P0
+    action: reject_push
+  - condition: "the receipt is written when the release gate failed against the installed binary"
+    severity: P0
+    action: reject_push
+
+falsification_tests:
+  - id: control_fabricated_version
+    rule: "9.9.9 fails at the registry leg, exit 1, no receipt"
+    prediction: "FAIL: dogfood-published: pmat 9.9.9 is not on crates.io"
+    test: "bash scripts/dogfood-published.sh 9.9.9; test $? = 1"
+    if_fails: "the script can pass on a version that does not exist"
+  - id: real_run_published_version
+    rule: "the published 3.36.0 installs, reports itself, passes the release gate, and the receipt names the registry size and stamp"
+    prediction: "GO: pmat 3.36.0 — 13 checks, 0 failure(s); receipt docs/audits/release-3.36.0-dogfood-published.md"
+    test: "bash scripts/dogfood-published.sh 3.36.0"
+    if_fails: "the release announcement is not backed by the bytes consumers receive"
