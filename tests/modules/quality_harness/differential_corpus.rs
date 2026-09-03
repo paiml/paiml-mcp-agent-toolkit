@@ -529,6 +529,7 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "quality-gate",
         "results.not_applicable[].len",
         "disclosure list: 0 for any corpus that is a cargo crate; it moves only for a path with no Cargo.toml, which neither corpus is",
+    ),
     // ── CRUX-04 (PMAT-648): `analyze dead-code`'s cache disclosure ──
     //
     // `cache.hit` says whether THIS run replayed an entry keyed on this exact
