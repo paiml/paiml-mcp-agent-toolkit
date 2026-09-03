@@ -69,6 +69,7 @@
             include: vec![],
             exclude: vec![],
             max_depth: 8,
+            no_cache: false,
         };
         let result = CommandDispatcher::execute_analyze_command(analyze_cmd).await;
         assert!(result.is_ok() || result.is_err());

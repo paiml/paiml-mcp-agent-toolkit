@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4434 tracked `.rs` files: 3945 reachable from 137 target root(s), 407 orphaned (126933 lines, 6292 `#[test]` fns), 82 quarantined (35856 lines, 2021 `#[test]` fns).
+4434 tracked `.rs` files: 3945 reachable from 137 target root(s), 407 orphaned (126935 lines, 6292 `#[test]` fns), 82 quarantined (35865 lines, 2021 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -69,9 +69,9 @@ same change; do not edit counts by hand.
 | `src/cli/command_dispatcher/tests_metric_and_demo.rs` | quarantined-#1023 | 14 | 183 |
 | `src/cli/command_dispatcher/tests_report_and_metrics.rs` | quarantined-#1023 | 15 | 237 |
 | `src/cli/command_dispatcher/tests_scaffold_quality_gate.rs` | quarantined-#1023 | 14 | 255 |
-| `src/cli/command_dispatcher/tests_spec_and_work.rs` | quarantined-#1023 | 24 | 437 |
+| `src/cli/command_dispatcher/tests_spec_and_work.rs` | quarantined-#1023 | 24 | 438 |
 | `src/cli/handlers/complexity_handlers_tests.rs` | pending-#1017 | 0 | 16 |
-| `src/cli/handlers/complexity_tests_coverage.rs` | pending-#1017 | 41 | 647 |
+| `src/cli/handlers/complexity_tests_coverage.rs` | pending-#1017 | 41 | 649 |
 | `src/cli/handlers/complexity_tests_dead_code.rs` | pending-#1017 | 6 | 311 |
 | `src/cli/handlers/complexity_tests_edge.rs` | pending-#1017 | 11 | 302 |
 | `src/cli/handlers/complexity_tests_property.rs` | pending-#1017 | 5 | 99 |
@@ -119,7 +119,7 @@ same change; do not edit counts by hand.
 | `src/cli/stubs_refactor_patch.rs` | pending-#1017 | 0 | 65 |
 | `src/cli/symbol_table_helpers/tests_boundary.rs` | pending-#1017 | 5 | 96 |
 | `src/cli/symbol_table_helpers/tests_context.rs` | pending-#1017 | 13 | 454 |
-| `src/contracts/adapter_coverage_tests.rs` | quarantined-#1023 | 55 | 1064 |
+| `src/contracts/adapter_coverage_tests.rs` | quarantined-#1023 | 55 | 1071 |
 | `src/contracts/comprehensive_tests.rs` | pending-#1017 | 12 | 470 |
 | `src/contracts/http_impl/error.rs` | pending-#1017 | 0 | 49 |
 | `src/contracts/mcp_mapping_tests.rs` | pending-#1017 | 0 | 8 |
@@ -456,7 +456,7 @@ same change; do not edit counts by hand.
 | `src/tests/unified_wasm_analyzer_tests.rs` | pending-#1017 | 10 | 331 |
 | `src/tests/winnowing_location_block_tests.inc.rs` | pending-#1017 | 21 | 280 |
 | `src/unified_protocol/adapters/cli_tests.rs` | quarantined-#1023 | 0 | 6 |
-| `src/unified_protocol/adapters/cli_tests/part1.rs` | quarantined-#1023 | 20 | 450 |
+| `src/unified_protocol/adapters/cli_tests/part1.rs` | quarantined-#1023 | 20 | 451 |
 | `src/unified_protocol/adapters/cli_tests/part2.rs` | quarantined-#1023 | 21 | 430 |
 | `src/unified_protocol/adapters/cli_tests/part3.rs` | quarantined-#1023 | 19 | 450 |
 | `src/unified_protocol/adapters/cli_tests/part4.rs` | quarantined-#1023 | 26 | 431 |

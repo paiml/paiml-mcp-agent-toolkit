@@ -67,6 +67,7 @@
             include: vec![],
             exclude: vec![],
             max_depth: 8,
+            no_cache: false,
         };
 
         if let AnalyzeCommands::DeadCode {
@@ -89,6 +90,7 @@
             project_path: PathBuf::from("."),
             output: None,
             max_depth: Some(5),
+            no_cache: false,
             target_nodes: None,
             filter_external: false,
             show_complexity: false,
