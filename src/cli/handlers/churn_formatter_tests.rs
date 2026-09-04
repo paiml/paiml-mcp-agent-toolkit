@@ -9,7 +9,6 @@ mod coverage_tests {
     use super::*;
     use crate::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
     use chrono::Utc;
-    use std::collections::HashMap;
     use std::path::PathBuf;
 
     // ============================================================================
@@ -22,7 +21,7 @@ mod coverage_tests {
             total_files_changed: 0,
             hotspot_files: vec![],
             stable_files: vec![],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.0,
             variance_churn_score: 0.0,
             stddev_churn_score: 0.0,
@@ -30,7 +29,7 @@ mod coverage_tests {
     }
 
     fn create_populated_summary() -> ChurnSummary {
-        let mut author_contributions = HashMap::new();
+        let mut author_contributions = std::collections::BTreeMap::new();
         author_contributions.insert("alice".to_string(), 50);
         author_contributions.insert("bob".to_string(), 30);
         author_contributions.insert("charlie".to_string(), 20);

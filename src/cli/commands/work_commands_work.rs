@@ -27,6 +27,12 @@ pub enum WorkCommands {
         /// Also create GitHub issue
         #[arg(long)]
         github: bool,
+
+        /// Verification-ladder claim for this ticket (L0..L5). Recorded as a
+        /// `level:<L>` label until `work start` writes the contract; without it the
+        /// claim follows the evidence: L1 unbound, L2 when bound with --implements.
+        #[arg(long)]
+        level: Option<String>,
     },
 
     /// List all work tickets (READ)
@@ -78,6 +84,18 @@ pub enum WorkCommands {
         /// Project path (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
+
+        /// Set the verification-ladder claim on the ticket's contract (L0..L5).
+        /// Allowed while the ticket is in progress — the honest way down or up
+        /// (#1186); the completion gate still refuses a claim the evidence does not support.
+        #[arg(long)]
+        level: Option<String>,
+
+        /// Bind the ticket to a provable-contracts equation after it was started.
+        /// Format `<contract>/<equation>`; repeatable. Lifts an unbound ticket's
+        /// claim to L2 unless --level says otherwise.
+        #[arg(long)]
+        implements: Vec<String>,
     },
 
     /// Delete a work ticket (DELETE)
@@ -161,6 +179,10 @@ pub enum WorkCommands {
         /// Repeatable for cross-kernel work items.
         #[arg(long, value_name = "CONTRACT/EQUATION")]
         implements: Vec<String>,
+
+        /// Verification-ladder claim (L0..L5); default follows the evidence (L1 unbound, L2 bound)
+        #[arg(long)]
+        level: Option<String>,
     },
 
     /// Continue work on existing issue/ticket

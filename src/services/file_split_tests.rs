@@ -175,6 +175,7 @@ mod tests {
                 tdg_scale: TDG_SCALE.to_string(),
                 file_checksums: HashMap::new(),
                 last_incremental_changes: 0,
+                run_counter: 0,
             },
             functions: entries,
             name_index,

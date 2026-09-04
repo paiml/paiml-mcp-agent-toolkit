@@ -155,8 +155,37 @@ impl ContractBinding {
     }
 }
 
+/// The claim a ticket makes when nothing says otherwise. An unbound ticket can
+/// evidence at most L1 (`src/quality/ladder_evidence.rs`), so L1 is the only
+/// default the completion gate can honour; the shipped L3 made every ticket
+/// created through `add → start → complete` uncompletable without a hand edit
+/// (#1186). A ticket bound with `--implements` is created at L2; `--level` sets
+/// the claim explicitly on `add`, `start` and `edit`.
 fn default_verification_level() -> crate::cli::handlers::work_verification_level::VerificationLevel {
-    crate::cli::handlers::work_verification_level::VerificationLevel::L3
+    crate::cli::handlers::work_verification_level::VerificationLevel::L1
+}
+
+/// The claim a freshly created contract makes: the explicit `--level` when
+/// given, else L2 when it is bound to at least one equation, else L1.
+pub fn initial_verification_level(
+    explicit: Option<crate::cli::handlers::work_verification_level::VerificationLevel>,
+    bound: bool,
+) -> crate::cli::handlers::work_verification_level::VerificationLevel {
+    use crate::cli::handlers::work_verification_level::VerificationLevel;
+    explicit.unwrap_or(if bound {
+        VerificationLevel::L2
+    } else {
+        VerificationLevel::L1
+    })
+}
+
+/// Parse a `--level` argument strictly (`L0`..`L5`); anything else is refused
+/// with the accepted spellings, never silently mapped.
+pub fn parse_level_arg(
+    raw: &str,
+) -> anyhow::Result<crate::cli::handlers::work_verification_level::VerificationLevel> {
+    crate::cli::handlers::work_verification_level::VerificationLevel::parse_strict(raw.trim())
+        .ok_or_else(|| anyhow::anyhow!("invalid --level '{raw}': expected one of L0, L1, L2, L3, L4, L5"))
 }
 
 /// Migrating deserializer for `WorkContract::verification_level` (MACS-004).
@@ -628,5 +657,36 @@ impl WorkContract {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn exists(project_path: &Path, work_item_id: &str) -> bool {
         Self::contract_path(project_path, work_item_id).exists()
+    }
+}
+
+#[cfg(test)]
+mod ladder_claim_tests {
+    //! #1186: the claim a ticket makes follows its evidence.
+    use super::{initial_verification_level, parse_level_arg, WorkContract};
+    use crate::cli::handlers::work_verification_level::VerificationLevel;
+
+    #[test]
+    fn an_unbound_contract_claims_l1_by_default() {
+        let c = WorkContract::new("T-1".to_string(), "deadbeef".to_string());
+        assert_eq!(c.verification_level, VerificationLevel::L1, "the shipped default was L3, which no unbound ticket can evidence");
+        assert!(c.implements.is_empty());
+    }
+
+    #[test]
+    fn the_initial_claim_follows_the_bindings_unless_told_otherwise() {
+        assert_eq!(initial_verification_level(None, false), VerificationLevel::L1);
+        assert_eq!(initial_verification_level(None, true), VerificationLevel::L2);
+        assert_eq!(initial_verification_level(Some(VerificationLevel::L3), false), VerificationLevel::L3);
+        assert_eq!(initial_verification_level(Some(VerificationLevel::L1), true), VerificationLevel::L1);
+    }
+
+    #[test]
+    fn a_level_argument_is_parsed_strictly() {
+        assert_eq!(parse_level_arg("L2").expect("L2"), VerificationLevel::L2);
+        assert_eq!(parse_level_arg(" L4 ").expect("trimmed"), VerificationLevel::L4);
+        let err = parse_level_arg("L9").expect_err("L9 is not a level");
+        assert!(err.to_string().contains("L9") && err.to_string().contains("L0, L1"), "{err}");
+        assert!(parse_level_arg("high").is_err());
     }
 }

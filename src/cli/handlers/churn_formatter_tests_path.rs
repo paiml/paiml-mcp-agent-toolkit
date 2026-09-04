@@ -6,7 +6,6 @@ mod path_detection_tests {
     use super::*;
     use crate::models::churn::{CodeChurnAnalysis, FileChurnMetrics};
     use chrono::Utc;
-    use std::collections::HashMap;
     use std::path::PathBuf;
 
     // Shared fixtures (duplicated minimally for include!() isolation)
@@ -17,7 +16,7 @@ mod path_detection_tests {
             total_files_changed: 0,
             hotspot_files: vec![],
             stable_files: vec![],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.0,
             variance_churn_score: 0.0,
             stddev_churn_score: 0.0,
@@ -314,7 +313,7 @@ mod path_detection_tests {
         #[test]
         fn test_empty_author_contributions_skips_section() {
             let mut analysis = create_test_analysis(vec![]);
-            analysis.summary.author_contributions = HashMap::new();
+            analysis.summary.author_contributions = std::collections::BTreeMap::new();
 
             let result = format_churn_markdown(&analysis).unwrap();
 
@@ -323,7 +322,7 @@ mod path_detection_tests {
 
         #[test]
         fn test_sorts_authors_by_contribution() {
-            let mut contributions = HashMap::new();
+            let mut contributions = std::collections::BTreeMap::new();
             contributions.insert("low_contributor".to_string(), 5);
             contributions.insert("high_contributor".to_string(), 100);
             contributions.insert("mid_contributor".to_string(), 50);
@@ -349,7 +348,7 @@ mod path_detection_tests {
 
         #[test]
         fn test_limits_author_list_to_15() {
-            let mut contributions = HashMap::new();
+            let mut contributions = std::collections::BTreeMap::new();
             for i in 0..20 {
                 contributions.insert(format!("author_{:02}", i), 100 - i);
             }

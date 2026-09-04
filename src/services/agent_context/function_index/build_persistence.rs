@@ -25,6 +25,86 @@ fn enrich_contract_metadata(conn: &rusqlite::Connection, functions: &mut [Functi
     }
 }
 
+/// Serialize a manifest to `<index_path>/manifest.json` atomically.
+///
+/// Writes `manifest.json.tmp` beside the target and renames it over the
+/// destination. The temp file is created (not just opened), so a directory
+/// that cannot be written fails HERE rather than silently truncating an
+/// existing manifest in place — which is how a failed incremental save used to
+/// look like a successful one.
+fn write_manifest_atomically(index_path: &Path, manifest: &IndexManifest) -> Result<(), String> {
+    let manifest_json = serde_json::to_string_pretty(manifest)
+        .map_err(|e| format!("Failed to serialize manifest: {e}"))?;
+    let tmp = index_path.join("manifest.json.tmp");
+    fs::write(&tmp, manifest_json).map_err(|e| format!("Failed to write manifest: {e}"))?;
+    fs::rename(&tmp, index_path.join("manifest.json")).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        format!("Failed to replace manifest: {e}")
+    })?;
+    Ok(())
+}
+
+/// Reject an index whose `manifest.json` is present but not parseable.
+///
+/// The SQLite fast path reads its metadata from `context.db` and never opens
+/// `manifest.json`, so a manifest torn by a crash mid-save was invisible: the
+/// index kept serving rows from a database whose companion record of what was
+/// indexed no longer said anything. Half a manifest is not a manifest — the
+/// pair is treated as corrupt and the caller rebuilds.
+fn check_manifest_integrity(index_path: &Path) -> Result<(), String> {
+    let manifest_file = index_path.join("manifest.json");
+    if !manifest_file.exists() {
+        return Ok(());
+    }
+    let raw = fs::read_to_string(&manifest_file)
+        .map_err(|e| format!("manifest.json at {} is unreadable: {e}", index_path.display()))?;
+    serde_json::from_str::<IndexManifest>(&raw).map(|_| ()).map_err(|e| {
+        format!(
+            "manifest.json at {} is torn or corrupt ({e})",
+            index_path.display()
+        )
+    })
+}
+
+/// Refuse a pair whose `context.db` was written AFTER its `manifest.json`.
+///
+/// [`AgentContextIndex::save`] writes the database first and renames the
+/// manifest over the old one last, so in a pair produced by one save the
+/// manifest's mtime is never older than the database's. A database that is
+/// newer therefore had a writer the manifest knows nothing about: a save that
+/// died between the two writes, a `.db` restored from a backup beside an
+/// untouched manifest, a second process. The manifest still describes the
+/// previous contents, and the SQLite fast path would serve rows from the newer
+/// database under it.
+///
+/// The two FILE mtimes are compared, not `built_at` against the db's mtime:
+/// `built_at` is the moment the build STARTED, which necessarily predates
+/// writing either artifact, so a clean pair would fail that comparison every
+/// time. Comparing the two writes to each other is the only form of the
+/// question that a clean save answers "no".
+///
+/// A missing artifact is not this function's problem (the blob path and the
+/// scale guard report those), and a metadata error is treated as no evidence.
+fn check_manifest_not_older_than_db(index_path: &Path) -> Result<(), String> {
+    let manifest_file = index_path.join("manifest.json");
+    let db_file = index_path.with_extension("db");
+    let (Ok(manifest_meta), Ok(db_meta)) = (fs::metadata(&manifest_file), fs::metadata(&db_file))
+    else {
+        return Ok(());
+    };
+    let (Ok(manifest_mtime), Ok(db_mtime)) = (manifest_meta.modified(), db_meta.modified()) else {
+        return Ok(());
+    };
+    if db_mtime > manifest_mtime {
+        return Err(format!(
+            "the index is stale: {} was written after {}, so the manifest does not describe the database",
+            db_file.display(),
+            manifest_file.display()
+        ));
+    }
+    Ok(())
+}
+
 impl AgentContextIndex {
     /// Save index to directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -32,14 +112,14 @@ impl AgentContextIndex {
         fs::create_dir_all(index_path)
             .map_err(|e| format!("Failed to create index directory: {e}"))?;
 
-        // Save manifest
-        let manifest_json = serde_json::to_string_pretty(&self.manifest)
-            .map_err(|e| format!("Failed to serialize manifest: {e}"))?;
-        fs::write(index_path.join("manifest.json"), manifest_json)
-            .map_err(|e| format!("Failed to write manifest: {e}"))?;
-
         // Phase 3 (#159): Write only SQLite + FTS5 index (no more LZ4 blob)
-        // context.db lives alongside context.idx directory
+        // context.db lives alongside context.idx directory.
+        //
+        // The DATABASE goes first and the manifest last, because that is what
+        // makes "the db is newer than the manifest" a detectable fault rather
+        // than the normal case (see `check_manifest_not_older_than_db`). A save
+        // interrupted between the two leaves a manifest older than its db, and
+        // the next `load()` rebuilds instead of serving one under the other.
         let db_path = index_path.with_extension("db");
         super::sqlite_backend::save_to_sqlite(
             &db_path,
@@ -49,6 +129,14 @@ impl AgentContextIndex {
             &self.manifest,
             &self.coverage_off_files,
         )?;
+
+        // Save manifest ATOMICALLY: temp file in the same directory, then
+        // rename. `fs::write` truncates first, so a crash (or a full disk)
+        // between truncate and write left a half-written manifest next to a
+        // complete database — the torn pair `load()` now has to detect. rename(2)
+        // within a directory is atomic, so a reader sees either the old
+        // manifest or the new one, never half of either.
+        write_manifest_atomically(index_path, &self.manifest)?;
 
         Ok(())
     }
@@ -75,6 +163,24 @@ impl AgentContextIndex {
         // `-32603 … rebuild required` on every default call, forever. With the
         // whole stale index removed, the next `load()` sees no index at all and
         // every caller (CLI, MCP, comply) takes its ordinary build path.
+        // A torn manifest invalidates the whole pair, whichever backend is
+        // about to answer. Checked before the scale guard so the message names
+        // the real problem rather than "no scale marker".
+        if let Err(reason) = check_manifest_integrity(index_path) {
+            eprintln!("  {reason} — discarding the index and rebuilding.");
+            super::scale_guard::discard_stale_index(index_path);
+            return Err(reason);
+        }
+
+        // A manifest that predates its database is the same class of fault as a
+        // torn one — the two artifacts no longer describe one save — so it is
+        // judged in the same place, before either backend answers.
+        if let Err(reason) = check_manifest_not_older_than_db(index_path) {
+            eprintln!("  {reason} — discarding the index and rebuilding.");
+            super::scale_guard::discard_stale_index(index_path);
+            return Err(reason);
+        }
+
         if let Err(reason) = super::scale_guard::verify_index_scale(index_path) {
             eprintln!(
                 "  Index at {} is stale: {reason} (scores are now 0-100, higher is better).",

@@ -1,0 +1,83 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-04"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/pmat-architecture-crux-audit.md section 8.7 (CRUX-07)"
+    - "scripts/index-faithful-audit.sh — the acceptance, five legs with controls"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    The index CLAUDE.md mandates over grep is a faithful, reproducible view
+    of the tree. (a) The incremental fast path may skip re-hashing a file
+    only when its mtime, its length and (on unix) its ctime all predate
+    built_at, so a rewrite with a backdated mtime is re-read and the stale
+    checksum is not carried forward — while a quiescent tree is still skipped
+    by mtime. (b) The two walks that define persisted order are sorted and
+    the ranker breaks ties on (file_path, start_line), so tied results come
+    back the same on every filesystem. (c) analyze churn serialises
+    author_contributions as a BTreeMap and ranks ties by author, so its raw
+    JSON is byte-stable. (d) manifest.json is written atomically and a torn
+    or unparsable manifest is named and rebuilt, never served. (e) A failed
+    index save is reported as a failure; success is announced only after it.
+  contract: index-faithful
+  status: draft
+
+equations:
+  backdated_rewrite_is_seen:
+    formula: "content(f) changed and mtime(f) < built_at => (len(f) != recorded_len or ctime(f) >= built_at) => f is re-hashed; query returns the new symbols and not the deleted ones"
+    domain: "the incremental index update (function_index build_helpers)"
+    codomain: bool
+    invariants:
+      - "a file whose mtime, length and ctime all predate built_at is skipped: `Incremental update: N mtime-skipped, ..., 0 re-parsed` on a quiescent tree (the fast-path-survival control)"
+      - "old manifests without the len/ctime fields load and re-hash once"
+    preconditions: []
+
+  order_is_the_sorted_sequence:
+    formula: "query --limit N --format json over N tied one-function files returns all N, and the emitted (file_path, start_line) sequence equals its sorted form"
+    domain: "the persisted walk order and the ranker tie-break"
+    codomain: bool
+    invariants:
+      - "no result is truncated at the limit"
+    preconditions: []
+
+  churn_json_is_byte_stable:
+    formula: "over 12 runs, sha256(raw JSON minus generated_at, key order preserved) has one value (c1) and sha256(key-sorted JSON) has one value (c2)"
+    domain: "analyze churn --format json"
+    codomain: bool
+    invariants:
+      - "author_contributions names exactly the git shortlog -sn authors; the counts differ today and are reported, not judged, by the acceptance (a separate finding)"
+      - "c2 alone is not a gate (it normalised the defect); c1 alone misses an added timestamp field"
+    preconditions: []
+
+  manifest_is_atomic_and_torn_is_named:
+    formula: "a manifest truncated mid-object after a good db write is reported with one of torn|corrupt|invalid|unreadable|rebuild and the index rebuilds; a clean pair prints none of those words"
+    domain: "index load"
+    codomain: bool
+    invariants: []
+    preconditions: []
+
+  failed_save_is_reported:
+    formula: "index directory read-only => the incremental save prints a failure line naming the path; index directory writable => no failure line"
+    domain: "query_handler indexing"
+    codomain: bool
+    invariants:
+      - "persist_score returns Result and its caller warns; the FTS DELETE in sqlite_docs propagates with ?"
+    preconditions: []
+
+falsification_tests:
+  - id: F1
+    rule: "the released binary fails five legs and passes every control"
+    prediction: "on pmat 3.36.0: a (both assertions), b, c1, d, e are red; the fast-path, c2, author-set, clean-pair and writable controls are green"
+    test: "PMAT=<pmat 3.36.0> bash scripts/index-faithful-audit.sh"
+    if_fails: "a leg is already green on the old binary: its defect was never reproduced and the leg is vacuous — re-establish RED before trusting GREEN"
+  - id: F2
+    rule: "this tree passes every leg and every control"
+    prediction: "eleven ✓, GREEN, exit 0"
+    test: "PMAT=$(cargo build --bin pmat --message-format json | ...executable) bash scripts/index-faithful-audit.sh"
+    if_fails: "the red leg names which rule regressed; a red control means the fix deleted the optimisation or the disclosure it was meant to keep"
+  - id: F3
+    rule: "the fast path was kept, not deleted (named mutation)"
+    prediction: "making check_mtime_reuse always re-hash turns the fast-path control RED (0 mtime-skipped) while leg a stays green"
+    test: "mutate build_helpers.rs to always return None from the fast path, rebuild, run --only a, revert and REBUILD"
+    if_fails: "the control does not discriminate deletion of the optimisation; also confirm the binary was rebuilt after the revert"

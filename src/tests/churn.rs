@@ -36,7 +36,7 @@ mod tests {
             },
         ];
 
-        let mut author_contributions = HashMap::new();
+        let mut author_contributions = std::collections::BTreeMap::new();
         author_contributions.insert("alice".to_string(), 2);
         author_contributions.insert("bob".to_string(), 1);
 

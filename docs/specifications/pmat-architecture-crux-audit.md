@@ -2513,6 +2513,18 @@ CHANGELOG work walked past all three: 3.32.0 fixed an "Index source-wipe" and a 
 
 ---
 
+*Implementation note (PMAT-665, 2026-09-04).* Acceptance `scripts/index-faithful-audit.sh` (five legs, each with
+a control; RED on 3.36.0 on a, b, c1, d, e with every control green). (a) `build_helpers.rs`: the fast path skips
+a file only when mtime, length and (unix) ctime all predate `built_at`; the manifest's per-file record carries
+`len`/`ctime` with serde defaults so old manifests re-hash once. (b) both persisted walks use
+`sort_by_file_path` and the ranker breaks ties on `(file_path, start_line)`. (c) `author_contributions` is a
+`BTreeMap`; the markdown ranking tie-breaks on author. (d) `manifest.json` is written temp-then-rename and a
+torn or unparsable manifest is named and rebuilt. (e) `indexing.rs` matches the save result and prints the
+failure; `persist_score` returns `Result`; the FTS `DELETE` propagates. The author COUNTS in
+`author_contributions` differ from `git shortlog -sn` on the fixture (2/1/1 vs 2/2/2) — reported by the
+acceptance, not judged, and tracked as PMAT-667. Contract `contracts/index-faithful-v1.yaml`; receipt
+`docs/audits/impl-PMAT-665-receipt.md`.
+
 ### 8.8 CRUX-08 — the two MCP transports have different JSON-RPC error contracts
 
 **Problem.** stdio and streamable-HTTP share `build_server`, but response shaping does not:

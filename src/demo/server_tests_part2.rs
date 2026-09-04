@@ -143,7 +143,7 @@ pub(crate) mod demo_feature_tests {
                 hotspot_files: vec![PathBuf::from("server.rs")],
                 stable_files: vec![],
                 author_contributions: {
-                    let mut map = std::collections::HashMap::new();
+                    let mut map = std::collections::BTreeMap::new();
                     map.insert("dev1".to_string(), 30);
                     map.insert("dev2".to_string(), 20);
                     map
