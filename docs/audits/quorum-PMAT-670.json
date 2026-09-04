@@ -1,34 +1,59 @@
 {
  "ticket": "PMAT-670",
  "base": "origin/master",
- "head": "3ea70e75625274783c418c7af37be88c895e2f86",
- "diff_sha256": "8baf368ddc2eab800fb82fde734323caeb20f8dffdc52f92e420779ba6564c70",
+ "head": "1e091f0c2b5260bce4abc42bf9acea947287f41e",
+ "diff_sha256": "c595fa6ec6e9cf2c5e07d4487c5baff2ddcf5d887ad8a38f3709020f86458291",
  "width": 3,
  "executor": "agy",
  "prompt_mode": "inline",
- "prompt_bytes": 48573,
+ "prompt_bytes": 49124,
  "agreed": true,
  "lanes": [
   {
    "lane": 1,
    "verdict": "PASS",
-   "summary": "The diff perfectly implements ticket PMAT-670 and strictly adheres to the provided receipt. It correctly parses and handles `--level` and `--implements` across `add`, `start`, and `edit` commands, updating the verification level claim accordingly (lifting to `L2` if bound unless overridden, and defaulting to `L1` when unbound instead of `L3`). The ladder validation was appropriately relocated to run before the quality check in `handle_work_complete`. Furthermore, `require_equation` was correctly implemented to enforce that bindings map to declared equations in the contract YAML, rejecting invalid claims. No existing tests or gates are weakened or skipped.",
+   "summary": "The diff perfectly implements the requirements outlined in ticket PMAT-670 and strictly adheres to the receipt.\n\n- `initial_verification_level` and `default_verification_level` have been correctly updated to default to `L1` for unbound tickets and `L2` for bound tickets, eliminating the unjustified `L3` default.\n- `--level` support has been accurately wired into `work add`, `work start`, and `work edit`, using `parse_strict` for validation.\n- `--implements` support has been successfully added to `work edit`. The `rebind_contract` function executes on saved contracts and accurately registers modifications, updating the claim to `L2` if new bindings are introduced and no explicit `--level` is provided. \n- The \"No changes specified\" early return has been correctly relocated to evaluate *after* checking for `level` or `implements` changes.\n- The `require_equation` validation logic rigorously parses the contract's YAML and confirms the equation is declared within the `equations` mapping. This ensures that arbitrary bindings are rejected.\n- `check_ladder_shortfall` has been successfully shifted up to execute before `run_quality_check`, fulfilling the requirement to evaluate ladder validity before surfacing potentially obscuring gate output. No test or gate has been weakened or bypassed.",
    "findings": [],
-   "raw_bytes": 3080
+   "raw_bytes": 3669
   },
   {
    "lane": 2,
    "verdict": "PASS",
-   "summary": "The diff perfectly implements ticket PMAT-670 and conforms entirely to the receipt. \n\n- `--level` is successfully supported in `add`, `start`, and `edit`, correctly modifying the stored ticket label before a contract is generated, or updating the contract itself once it is in-progress.\n- `--implements` is fully supported in `edit`, allowing in-progress tickets to be bound, lifting unbound claims to L2 as described.\n- The `handle_work_complete` routine correctly shifts the ladder verification before the quality check (`run_quality_check`), fulfilling the requirement that ladder shortfalls manifest rapidly without unrelated gate outputs masking them.\n- `require_equation` has been effectively implemented to parse the contract YAML and rigorously guarantee that bindings address a declared equation. The tests have been properly updated to pass.\n- No tests assert the opposite of the ticket, nor are any gates weakened. Default verification behaves correctly as `L1` instead of `L3`.",
+   "summary": "The diff flawlessly implements ticket PMAT-670 according to the receipt. It successfully introduces the `--level` flag to `add`, `start`, and `edit` commands, and `--implements` to `edit`. It correctly derives default verification claims (L1 for unbound, L2 for bound), and enforces strict validation of equation bindings against the contract YAML. The re-ordering of `check_ladder_shortfall` before the quality gates correctly ensures rapid feedback for over-claims without masking them with unrelated gate output. All changes align perfectly with the invariants in the specification and the described verification legs.",
    "findings": [],
-   "raw_bytes": 4098
+   "raw_bytes": 2281
   },
   {
    "lane": 3,
    "verdict": "PASS",
-   "summary": "The implementation perfectly matches the ticket requirements and the receipt claims. The `--level` and `--implements` flags were correctly added and wired into `add`, `start`, and `edit`. The default claim correctly follows the evidence (L2 if bound, L1 otherwise). The ladder check was properly moved before the quality gates, and binding an equation correctly verifies that the equation actually exists in the target contract.",
-   "findings": [],
-   "raw_bytes": 2379
+   "summary": "The diff cleanly and perfectly implements the requirements laid out in PMAT-670 (issue #1186) and aligns fully with the provided receipt. `work edit` and `work add` successfully process `--level`, with `work edit` dynamically lifting claims via `--implements`. The ladder validation correctly pre-empts quality gate execution, giving faster feedback for overclaims. Equation declarations are strictly enforced. I could find no gaps, weakened gates, or contradicting logic. Everything is correctly wired up.",
+   "findings": [
+    {
+     "claim": "The initial claim calculation correctly defaults to L1 when unbound, L2 when bound, unless an explicit level is provided.",
+     "file": "src/cli/handlers/work_contract_core.rs",
+     "grounding": "cited",
+     "line": 166
+    },
+    {
+     "claim": "The `--level` argument is successfully added to `work add`, `work start`, and `work edit`, alongside `--implements` for `work edit`.",
+     "file": "src/cli/commands/work_commands_work.rs",
+     "grounding": "cited",
+     "line": 88
+    },
+    {
+     "claim": "The ladder validation (`check_ladder_shortfall`) has been appropriately relocated to execute before `run_quality_check` during `work complete`, ensuring failures aren't buried behind unrelated quality gates.",
+     "file": "src/cli/handlers/work_handlers/core_handlers/handlers.rs",
+     "grounding": "cited",
+     "line": 628
+    },
+    {
+     "claim": "The `require_equation` implementation strictly validates that a requested binding exists in the provided contract YAML's `equations` block.",
+     "file": "src/cli/handlers/work_contract_binding.rs",
+     "grounding": "cited",
+     "line": 49
+    }
+   ],
+   "raw_bytes": 4077
   }
  ]
 }
