@@ -202,10 +202,10 @@ pub(crate) fn check_ticket_trailers(project_path: &Path) -> ComplianceCheck {
     if git_stdout(project_path, &["rev-parse", "--git-dir"]).is_none() {
         return trailer_check_nothing_to_judge("not a git repository");
     }
-    let branch = match git_stdout(project_path, &["symbolic-ref", "--short", "HEAD"]) {
-        Some(b) => b,
-        None => return trailer_check_nothing_to_judge("detached HEAD"),
-    };
+    // A detached HEAD is the normal shape of a CI checkout (actions/checkout on a
+    // pull request); it is judged like any branch — the first cut passed it as
+    // "nothing to judge", a gate that could not fire in CI (AD-04 quorum).
+    let branch = git_stdout(project_path, &["symbolic-ref", "--short", "HEAD"]);
     let default = match default_branch(project_path) {
         Some(d) => d,
         None => {
@@ -217,9 +217,14 @@ pub(crate) fn check_ticket_trailers(project_path: &Path) -> ComplianceCheck {
             };
         }
     };
-    if branch == default || default.strip_prefix("origin/") == Some(branch.as_str()) {
+    let on_default_by_name = branch
+        .as_deref()
+        .is_some_and(|b| b == default || default.strip_prefix("origin/") == Some(b));
+    let on_default_by_tip = git_stdout(project_path, &["rev-parse", "HEAD"])
+        == git_stdout(project_path, &["rev-parse", &default]);
+    if on_default_by_name || on_default_by_tip {
         return trailer_check_nothing_to_judge(format!(
-            "on the default branch ({default}); its history is judged before merge"
+            "at the default branch ({default}); its history is judged before merge"
         )
         .as_str());
     }
@@ -486,6 +491,39 @@ mod quorum_findings_tests {
         assert!(defect.contains("PMAT-2") && defect.contains("not in progress"), "{defect}");
         let clean = TrailerCommit { sha: "abcdef1234567890".into(), tickets: vec!["PMAT-1".into()] };
         assert!(commit_defect(&clean, &roadmap).is_none(), "the control: one live ticket passes");
+    }
+
+    #[test]
+    fn a_detached_head_is_judged_like_a_branch() {
+        let repo = tempfile::tempdir().expect("tempdir");
+        let d = repo.path();
+        run(d, &["init", "-q", "--template=", "-b", "master"]);
+        run(d, &["config", "user.email", "t@t"]);
+        run(d, &["config", "user.name", "t"]);
+        std::fs::create_dir_all(d.join("docs/roadmaps")).expect("mkdir");
+        std::fs::write(
+            d.join("docs/roadmaps/roadmap.yaml"),
+            "roadmap_version: '1.0'\ngithub_enabled: false\ngithub_repo: fx/fx\nroadmap: []\n",
+        )
+        .expect("write");
+        std::fs::write(d.join("a.txt"), "a\n").expect("write");
+        run(d, &["add", "."]);
+        run(d, &["commit", "-q", "-m", "init"]);
+        run(d, &["switch", "-q", "-c", "feature"]);
+        std::fs::write(d.join("a.txt"), "b\n").expect("write");
+        run(d, &["commit", "-q", "-am", "no trailer"]);
+        let sha = run(d, &["rev-parse", "HEAD"]);
+        run(d, &["checkout", "-q", "--detach", &sha]); // the CI shape: actions/checkout leaves HEAD detached
+        assert!(git_stdout(d, &["symbolic-ref", "--short", "HEAD"]).is_none(), "the control: HEAD is detached");
+        let check = check_ticket_trailers(d);
+        assert!(
+            matches!(check.status, CheckStatus::Fail),
+            "a detached checkout of an untrailered commit must FAIL, not read as nothing to judge: {}",
+            check.message
+        );
+        run(d, &["checkout", "-q", "--detach", "master"]);
+        let at_default = check_ticket_trailers(d);
+        assert!(matches!(at_default.status, CheckStatus::Pass), "detached AT the default tip is nothing to judge: {}", at_default.message);
     }
 
     #[test]
