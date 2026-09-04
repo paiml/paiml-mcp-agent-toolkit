@@ -1,0 +1,32 @@
+{
+ "ticket": "PMAT-664",
+ "base": "origin/master",
+ "head": "02ee34a48b16f33fe69dbfae16eecb6caa177b3f",
+ "diff_sha256": "a554979c6090e0150bdf289b5120306e5983fb9c4f6abde492c331271cd5c9cd",
+ "width": 3,
+ "executor": "agy",
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff accurately implements the acceptance criteria for PMAT-664 on the pmat side. The roadmap correctly lists the ticket as `in_progress` (justified by the commit hooks checking the status), the spec note correctly documents the bundle's implementation (matching the AC's requirements for sandbox checks, dry-run controls, and mode specifics), and the receipt faithfully records the self-test verifications and quorum reviews. All claims in the receipt and spec note align perfectly with the ticket's Acceptance Criteria, and no gates are weakened.",
+   "findings": [],
+   "raw_bytes": 3477
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff accurately implements the PMAT side of PMAT-664 (AD-10: the four lane modes) with no refuting evidence. It adds the roadmap entry (correctly marked as 'in_progress' pending merge), the detailed implementation receipt, and the required implementation note in section 9.10 of the agentic-delivery-pmat.md specification. All changes strictly follow the acceptance criteria (\"pmat side: spec note and receipt\"), correctly delegating the bundle execution aspects to paiml-implement#10 as documented. No unrelated changes or regressions were introduced.",
+   "findings": [],
+   "raw_bytes": 2157
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff successfully implements the 'pmat side' requirements of PMAT-664 by adding the implementation receipt, the spec note to `agentic-delivery-pmat.md` (\u00a79.10), and adding the ticket to the roadmap. The receipt's claims are perfectly backed by the diff (specifically the correction to 'fourteen checks' in the spec note), and the decision to keep the roadmap status as `in_progress` prior to merge to avoid a CB-1340 check failure is explicitly justified. No contradictions or forbidden changes were found.",
+   "findings": [],
+   "raw_bytes": 2055
+  }
+ ]
+}
