@@ -20,11 +20,12 @@ metadata:
 
 equations:
   auto_merge_requires_agreement:
-    formula: "auto and not exists(a in docs/audits/quorum-*.json : a.agreed and a.head == pr.head) => pmat-merge exits 1 naming docs/audits/quorum-<ticket>.json and never calls gh pr merge"
+    formula: "auto and not exists(a in docs/audits/quorum-*.json : a.agreed and (a.head == pr.head or (a.head == parent(pr.head) and files(pr.head) subset docs/audits/quorum-*.json))) => pmat-merge exits 1 naming docs/audits/quorum-<ticket>.json and never calls gh pr merge"
     domain: "any invocation of pmat-merge <pr> --auto in a repository checkout"
     codomain: bool
     invariants:
       - "an agreeing artifact for another head does not count (a rebase invalidates the verdict)"
+      - "the one exception is the verdict commit itself: the artifact is committed on the branch it judged, so an agreeing artifact for the head's first parent counts when the head commit touches nothing but docs/audits/quorum-*.json (paiml-implement#6); a verdict commit that also changes code is refused"
       - "an artifact for this head with agreed = false does not count"
       - "an agreeing artifact for this head hands the call to gh pr merge unchanged, --auto included"
       - "pmat-merge <pr> without --auto is passed through whatever docs/audits holds"
@@ -58,12 +59,12 @@ falsification_tests:
   - id: F2
     name: offline legs
     command: "bash scripts/quorum-review-audit.sh"
-    expect: "GREEN, exit 0: refused without artifact, refused on other head / agreed=false, gh pr merge --auto called on agreement, non-auto passthrough"
+    expect: "GREEN, exit 0: refused without artifact, refused on other head / agreed=false, gh pr merge --auto called on agreement, non-auto passthrough, the docs-only verdict commit accepted for its parent, a verdict commit that also changes code refused"
   - id: F3
     name: mutation M1 (helper ignores agreed) and M2 (helper ignores head)
     command: "QUORUM_SKILL_DIR=<mutant dir> bash scripts/quorum-review-audit.sh"
     expect: "RED on the other-head / agreed=false leg for both"
   - id: F4
     name: live lanes
-    command: "bash scripts/quorum-review-audit.sh --clean docs/audits/quorum-PMAT-655.json --planted <planted artifact>"
+    command: "bash scripts/quorum-review-audit.sh --clean docs/audits/quorum-PMAT-655-after-fix.json --planted docs/audits/quorum-PMAT-655-planted-control.json"
     expect: "clean: width PASS agreed; planted: >= 1 FAIL naming commit_enforcement_tests, not agreed"

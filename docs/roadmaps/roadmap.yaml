@@ -4044,23 +4044,6 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-655
-  github_issue: null
-  item_type: task
-  title: 'AD-03: commit enforcement — the generated hook''s SATD and task-ID checks block under strict mode, and a commit-msg hook requires a Pmat-Ticket trailer'
-  status: planned
-  priority: high
-  assigned_to: null
-  created: 2026-09-03T22:07:13Z
-  updated: 2026-09-03T22:07:13Z
-  spec: null
-  acceptance_criteria:
-  - 'agentic-delivery-pmat.md section 4.7 / 9.3; fixes #1126. pmat hooks install --strict (and [hooks] strict = true in pmat.toml) makes the pre-commit SATD and task-ID checks exit 1 instead of warning; a generated commit-msg hook refuses a message without ''Pmat-Ticket: PMAT-NNN'' (or ''#NNN'' where pmat work is absent). Controls: a commit without the trailer is refused (exit 1, message names the trailer); with it, accepted. The paiml-implement bundle turns strict on.'
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
 - id: PMAT-656
   github_issue: null
   item_type: task
