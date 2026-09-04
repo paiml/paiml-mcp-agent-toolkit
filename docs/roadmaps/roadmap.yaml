@@ -4151,3 +4151,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-670
+  github_issue: null
+  item_type: task
+  title: 'pmat work: a ticket claims the ladder level its bindings evidence; --level on add and edit, --implements on edit, ladder check before the quality gates (#1186)'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-09-04T06:57:46Z
+  updated: 2026-09-04T06:57:46Z
+  spec: null
+  acceptance_criteria:
+  - 'GitHub issue #1186. Fix and ship in the next release.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

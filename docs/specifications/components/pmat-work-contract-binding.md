@@ -70,12 +70,18 @@ pmat work start PMAT-530 \
   --implements softmax-v2/softmax
 ```
 
+Since #1186 (PMAT-670) the same flag is accepted on `pmat work edit`, so a
+ticket that is already InProgress can be bound without restarting it; a bound
+ticket's verification claim is lifted from L1 to L2 unless `--level` says
+otherwise. Resolution now also enforces CB-1607: the named equation must be
+declared under `equations:` in the YAML, and the refusal lists the declared ones.
+
 Behavior at start:
 
 1. **Resolve.** Locate `contracts/rope-kernel-v1.yaml`. Search order:
    project root, `provable-contracts/contracts/` sibling, then
    `$PMAT_CONTRACTS_PATH`. Fail-fast if missing.
-2. **Parse.** Extract `equations.rope`.
+2. **Parse.** Extract `equations.rope` — refused if absent (CB-1607, #1186).
 3. **Inherit.** For each `preconditions[i]`, emit a `require` clause with
    `source: ClauseSource::InheritedFromPv { binding }`. Same for
    `postconditions` → `ensure`, `invariants` → `invariant`.

@@ -141,10 +141,15 @@ pub async fn handle_work_start(
     iteration: u32,
     implements: Vec<String>,
     agent: crate::cli::handlers::work_ledger::DeclaredAgent,
+    level: Option<String>,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
+    let explicit_level = level
+        .as_deref()
+        .map(crate::cli::handlers::work_contract::parse_level_arg)
+        .transpose()?;
 
     println!(
         "{}",
@@ -206,6 +211,17 @@ pub async fn handle_work_start(
         ))
     );
 
+    // `pmat work add --level` records the claim as a `level:<L>` label until the
+    // contract exists; an explicit --level on start wins over it.
+    let claimed_level = match explicit_level {
+        Some(l) => Some(l),
+        None => item
+            .labels
+            .iter()
+            .find_map(|l| l.strip_prefix("level:"))
+            .map(crate::cli::handlers::work_contract::parse_level_arg)
+            .transpose()?,
+    };
     create_work_contract(
         &project_path,
         &item.id,
@@ -214,6 +230,7 @@ pub async fn handle_work_start(
         iteration,
         &implements,
         crate::cli::handlers::work_ledger::resolve_agent_provenance(&agent),
+        claimed_level,
     )
     .await?;
 
@@ -590,15 +607,8 @@ pub async fn handle_work_complete(
         );
     }
 
-    run_quality_check(&project_path, skip_quality).await?;
-
-    // DbC §4.3: Final invariant check before postcondition evaluation
-    run_final_invariant_check(&project_path, &item.id)?;
-
-    // MACS E5: unacknowledged refusal events block completion. Runs before
-    // the fresh-receipt fast path below so it can never be bypassed.
-    check_unacked_refusals(&project_path, &item.id)?;
-
+    // #1186: the ladder comparison needs no build; it runs before the quality
+    // gates so an over-claim is refused in milliseconds, not after ~100 s.
     // MACS F2: a ticket cannot close above its evidenced ladder level.
     // Also before the fresh-receipt fast path — the claim is checked on
     // every completion attempt. Fail CLOSED: a contract that exists but
@@ -617,6 +627,15 @@ pub async fn handle_work_complete(
                 })?;
         crate::quality::ladder_evidence::check_ladder_shortfall(&project_path, &contract)?;
     }
+
+    run_quality_check(&project_path, skip_quality).await?;
+
+    // DbC §4.3: Final invariant check before postcondition evaluation
+    run_final_invariant_check(&project_path, &item.id)?;
+
+    // MACS E5: unacknowledged refusal events block completion. Runs before
+    // the fresh-receipt fast path below so it can never be bypassed.
+    check_unacked_refusals(&project_path, &item.id)?;
 
     // O(1) freshness check: skip re-running falsification if a fresh receipt exists
     let ledger = FalsificationLedger::new(&project_path);
