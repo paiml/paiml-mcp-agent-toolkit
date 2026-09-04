@@ -9,7 +9,6 @@ pub const ROADMAP_VERSION: &str = "1.0";
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Roadmap {
     /// Schema version
-    #[serde(default = "default_roadmap_version")]
     pub roadmap_version: String,
 
     /// GitHub integration enabled
@@ -23,7 +22,7 @@ pub struct Roadmap {
     pub github_repo: Option<String>,
 
     /// List of roadmap items (tickets)
-    #[serde(default, alias = "items")]
+    #[serde(default)]
     pub roadmap: Vec<RoadmapItem>,
 }
 
@@ -31,9 +30,6 @@ fn default_github_enabled() -> bool {
     true
 }
 
-fn default_roadmap_version() -> String {
-    ROADMAP_VERSION.to_string()
-}
 
 /// Lenient boolean deserializer: accepts both native YAML booleans and quoted strings "true"/"false"
 fn deserialize_bool_lenient<'de, D>(deserializer: D) -> Result<bool, D::Error>

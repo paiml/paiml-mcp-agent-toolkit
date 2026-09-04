@@ -13,10 +13,10 @@ trap cleanup EXIT
 mk_repo(){ # $1 dir: a git repository on master with a roadmap holding PMAT-1 (in progress) and PMAT-2 (completed)
   mkdir -p "$1/docs/roadmaps"; ( cd "$1" && git init -q --template= -b master && git config user.email t@t && git config user.name t && git config core.hooksPath /dev/null )
   cat > "$1/docs/roadmaps/roadmap.yaml" <<'Y'
-metadata:
-  version: "1.0.0"
-  project: fx
-items:
+roadmap_version: '1.0'
+github_enabled: false
+github_repo: fx/fx
+roadmap:
 - id: PMAT-1
   github_issue: null
   item_type: task
@@ -62,11 +62,10 @@ M
 cb(){ ( cd "$1" && "$PMAT" comply check --format json 2>/dev/null || true ) | python3 -c '
 import json,sys
 d=json.load(sys.stdin)
-checks=d.get("checks") or d.get("results") or []
-for c in checks:
-    cid=str(c.get("id") or c.get("check_id") or "").lower()
-    if cid=="cb-1340":
-        print(("pass" if (c.get("passed") or c.get("status") in ("pass","passed","ok")) else "fail")+" "+str(c.get("message") or c.get("details") or "")[:160]); sys.exit(0)
+for c in d.get("checks") or []:
+    if "cb-1340" in str(c.get("name","")).lower():
+        st=str(c.get("status","")).lower()
+        print(("pass" if st in ("pass","passed","ok") else "fail")+" "+str(c.get("message") or "")[:160]); sys.exit(0)
 print("absent"); sys.exit(0)'; }
 # ---- 1: every commit trailered → CB-1340 passes
 R="$T/ok"; mk_repo "$R"; trailer_commit "$R" "one" PMAT-1; trailer_commit "$R" "two" PMAT-1
