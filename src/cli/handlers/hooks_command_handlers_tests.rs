@@ -19,6 +19,8 @@ mod tests {
             force: false,
             backup: true,
             tdg_enforcement: false,
+
+            strict: false,
             stack: false,
             update: false,
         };
@@ -323,7 +325,7 @@ mod coverage_tests {
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
-        let result = cmd.install(false, false, false).await.unwrap();
+        let result = cmd.install(false, false, false, false).await.unwrap();
 
         assert!(result.success);
         assert!(result.hook_created);
@@ -345,7 +347,7 @@ mod coverage_tests {
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
-        let result = cmd.install(false, false, false).await.unwrap();
+        let result = cmd.install(false, false, false, false).await.unwrap();
 
         assert!(!result.success);
         assert!(!result.hook_created);
@@ -367,7 +369,7 @@ mod coverage_tests {
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
-        let result = cmd.install(true, false, false).await.unwrap();
+        let result = cmd.install(true, false, false, false).await.unwrap();
 
         assert!(result.success);
         assert!(result.hook_created);
@@ -388,7 +390,7 @@ mod coverage_tests {
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
-        let result = cmd.install(false, true, false).await.unwrap();
+        let result = cmd.install(false, true, false, false).await.unwrap();
 
         assert!(result.success);
         assert!(result.backup_created);
@@ -415,7 +417,7 @@ mod coverage_tests {
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
-        let result = cmd.install(false, true, false).await.unwrap();
+        let result = cmd.install(false, true, false, false).await.unwrap();
 
         assert!(result.success);
         assert!(!result.backup_created); // Backup already existed
@@ -1091,6 +1093,8 @@ mod coverage_tests {
             force: false,
             backup: false,
             tdg_enforcement: false,
+
+            strict: false,
         };
         // This may fail depending on environment, but shouldn't panic
         let _ = handle_hooks_command(&cmd).await;
@@ -1314,7 +1318,7 @@ mod coverage_tests {
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
-        let result = cmd.install(false, false, false).await.unwrap();
+        let result = cmd.install(false, false, false, false).await.unwrap();
 
         // Should succeed because it's already PMAT-managed
         assert!(result.success);
@@ -1332,7 +1336,7 @@ mod coverage_tests {
 
         // First install
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path.clone());
-        let _ = cmd.install(false, false, false).await.unwrap();
+        let _ = cmd.install(false, false, false, false).await.unwrap();
 
         // Then verify
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
@@ -1353,7 +1357,7 @@ mod coverage_tests {
 
         // Install fresh
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path.clone());
-        let _ = cmd.install(false, false, false).await.unwrap();
+        let _ = cmd.install(false, false, false, false).await.unwrap();
 
         // Refresh immediately - content should be "the same" (except timestamp)
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);

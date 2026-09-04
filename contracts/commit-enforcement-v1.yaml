@@ -1,0 +1,60 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-04"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/agentic-delivery-pmat.md section 4.7 / 9.3 (AD-03)"
+    - "issue 1126 — the generated hook's SATD and task-ID checks warn and exit 0"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    The hooks pmat installs must be able to refuse a commit. Under [hooks]
+    strict = true (or pmat hooks install --strict) the pre-commit SATD check
+    exits 1 over the threshold, and a generated commit-msg hook refuses a
+    message that carries neither a Pmat-Ticket trailer nor a ticket or issue
+    reference matching [hooks] ticket_pattern. Non-strict keeps warning so an
+    upgrade cannot lock a repository out. The trailer is the machine-readable
+    link between a commit and its work: git log --format=%(trailers:key=Pmat-Ticket,valueonly).
+  contract: commit-enforcement
+  status: draft
+
+equations:
+  strict_refuses_unlinked_commits:
+    formula: "strict and not (has_trailer(msg) or matches(msg, ticket_pattern)) => commit-msg exits 1 naming Pmat-Ticket and no commit is created"
+    domain: "any git commit through a repository where pmat hooks install --strict ran"
+    codomain: bool
+    invariants:
+      - "a message with the trailer is accepted and git reads the trailer back"
+      - "a message with an issue reference (#NNN) is accepted"
+      - "non-strict warns (stderr names Pmat-Ticket) and accepts"
+      - "a pre-commit hook receives no message, so the ticket check lives in commit-msg only"
+      - "hooks verify --fix, hooks update and the comply auto-install re-generate the hook with the strictness it was installed with (installed_strict reads PMAT_HOOKS_STRICT=1 back)"
+    preconditions: []
+
+  strict_satd_is_a_refusal:
+    formula: "strict and satd_count > PMAT_MAX_SATD_COMMENTS => pre-commit exits 1 before the success banner"
+    domain: "the generated pre-commit hook"
+    codomain: bool
+    invariants:
+      - "PMAT_HOOKS_STRICT is exported into the pre-commit hook from --strict OR [hooks] strict, resolved once for both hooks; the ticket pattern lives in the commit-msg hook only (the pre-commit export was dead — nothing read it)"
+    preconditions: []
+
+falsification:
+  - condition: "under strict, a commit without a trailer or ticket reference is created (AD-03)"
+    severity: P0
+    action: reject_push
+  - condition: "non-strict refuses a commit, or strict refuses a commit that carries the trailer"
+    severity: P0
+    action: reject_push
+
+falsification_tests:
+  - id: strict_refuses_unlinked_commits
+    rule: "legs 1-4 of scripts/commit-enforcement-audit.sh; of the commit_enforcement_tests, four drive git commit in a temp repository and the rest assert the generated hook text, the strict plumbing and the --strict/--stack refusal"
+    prediction: "pre-fix binary: FAIL at leg 1 (no --strict, no commit-msg hook); fixed binary: PASS"
+    test: "PMAT=<binary> bash scripts/commit-enforcement-audit.sh"
+    if_fails: "ticket linking stays a habit and #1126's warning-that-passes returns"
+  - id: strict_satd_is_a_refusal
+    rule: "the generated hook text carries the strict SATD refusal branch"
+    prediction: "the_pre_commit_satd_block_exits_1_under_strict passes"
+    test: "cargo test --lib the_pre_commit_satd_block_exits_1_under_strict"
+    if_fails: "SATD over the threshold commits under a green banner"

@@ -44,9 +44,33 @@ pub struct PmatConfig {
     #[serde(default)]
     pub semantic: SemanticConfig,
 
+    /// Git hook enforcement (AD-03, `docs/specifications/agentic-delivery-pmat.md` §4.7)
+    #[serde(default)]
+    pub hooks: HooksConfig,
     /// Custom user configurations
     #[serde(default)]
     pub custom: HashMap<String, serde_json::Value>,
+}
+
+/// Git hook enforcement — `[hooks]` in `pmat.toml`.
+///
+/// The generated pre-commit hook used to WARN on SATD over the threshold and
+/// on a missing task id and then print "All quality gates passed" (#1126) —
+/// a gate that cannot fail. `strict` turns those two branches into refusals
+/// and makes the generated `commit-msg` hook refuse a message without a
+/// `Pmat-Ticket:` trailer (or an issue reference). `pmat hooks install
+/// --strict` sets the same switch for one installation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HooksConfig {
+    /// Refuse instead of warn: SATD over the threshold and a commit message
+    /// without a ticket both exit 1.
+    pub strict: bool,
+    /// The regex a commit message must match somewhere (trailer value or
+    /// body) to count as linked to work. Default accepts `PMAT-NNN` and
+    /// `#NNN`; the shipped pattern used to be `PMAT-[0-9]{4}`, which no
+    /// real ticket id has matched since PMAT-1000 was never reached.
+    pub ticket_pattern: String,
 }
 
 /// System-wide configuration settings
