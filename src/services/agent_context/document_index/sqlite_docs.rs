@@ -94,8 +94,13 @@ pub(crate) fn insert_document_chunks(
 
             let rowid = tx.last_insert_rowid();
 
-            // Delete any existing FTS entry for this rowid before inserting
-            let _ = tx.execute("DELETE FROM documents_fts WHERE rowid = ?1", params![rowid]);
+            // Delete any existing FTS entry for this rowid before inserting.
+            // Propagated, not discarded: a DELETE that fails here leaves the
+            // old text in the FTS table beside the new row, so search answers
+            // from content the document no longer has — the same failure the
+            // INSERT below refuses to swallow.
+            tx.execute("DELETE FROM documents_fts WHERE rowid = ?1", params![rowid])
+                .map_err(|e| format!("Failed to clear stale FTS entry: {e}"))?;
 
             fts_stmt
                 .execute(params![

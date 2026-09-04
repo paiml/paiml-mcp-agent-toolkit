@@ -327,11 +327,20 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         .get("file_count")
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
+    // Absent (pre-PMAT-665 database) reads as 0, which is slice 0 — the next
+    // incremental run takes slice 1 and the sweep starts rotating from there.
+    let run_counter: u64 = rows
+        .get("run_counter")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
     let checksums_json = rows
         .get("file_checksums")
         .cloned()
         .unwrap_or_else(|| "{}".to_string());
-    let file_checksums: HashMap<String, String> =
+    // Per-file records; pre-CRUX-07 databases hold bare checksum strings and
+    // deserialise with unknown stats (see `FileRecord`). A whole-map parse
+    // failure means no fast path, never a wrong fast path.
+    let file_checksums: HashMap<String, FileRecord> =
         serde_json::from_str(&checksums_json).unwrap_or_default();
 
     // If critical metadata was missing, try to self-heal by inserting defaults
@@ -353,5 +362,6 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         tdg_scale,
         file_checksums,
         last_incremental_changes: 0,
+        run_counter,
     })
 }

@@ -155,7 +155,7 @@ fn make_churn_analysis() -> CodeChurnAnalysis {
             total_files_changed: 15,
             hotspot_files: vec![PathBuf::from("src/lib.rs")],
             stable_files: vec![PathBuf::from("src/config.rs")],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.45,
             variance_churn_score: 0.12,
             stddev_churn_score: 0.35,
