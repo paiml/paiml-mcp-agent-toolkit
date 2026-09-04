@@ -212,6 +212,7 @@ mod tests {
                 iteration: 1,
                 implements: Vec::new(),
                 agent: Default::default(),
+                level: None,
             },
         };
 

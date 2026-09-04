@@ -135,7 +135,7 @@ impl Default for crate::models::churn::CodeChurnAnalysis {
                 total_files_changed: 0,
                 hotspot_files: vec![],
                 stable_files: vec![],
-                author_contributions: std::collections::HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 mean_churn_score: 0.0,
                 variance_churn_score: 0.0,
                 stddev_churn_score: 0.0,

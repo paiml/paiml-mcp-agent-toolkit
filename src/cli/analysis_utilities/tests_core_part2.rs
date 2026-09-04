@@ -100,16 +100,11 @@ fn test_is_excluded_directory() {
     assert!(!is_excluded_directory("./server/src/cli"));
 }
 
-/// Test check_single_file_complexity with high complexity function
-#[tokio::test]
-async fn test_check_single_file_complexity_violations() -> anyhow::Result<()> {
-    let temp_dir = TempDir::new()?;
-
-    // Create Rust file with high complexity function
-    let rust_file = temp_dir.path().join("complex.rs");
-    tokio::fs::write(
-        &rust_file,
-        r#"
+/// A function five `if`s deep: the fixture `test_check_single_file_complexity_violations`
+/// writes. Hoisted out of the test body because the complexity analyzer counts the nesting
+/// inside a string literal as the enclosing function's own (cognitive 26 for a test with no
+/// branches of its own).
+const HIGH_COMPLEXITY_FIXTURE: &str = r#"
 fn high_complexity_function(x: i32) -> i32 {
     if x > 10 {
         if x > 20 {
@@ -133,7 +128,18 @@ fn high_complexity_function(x: i32) -> i32 {
         50
     }
 }
-"#,
+"#;
+
+/// Test check_single_file_complexity with high complexity function
+#[tokio::test]
+async fn test_check_single_file_complexity_violations() -> anyhow::Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    // Create Rust file with high complexity function
+    let rust_file = temp_dir.path().join("complex.rs");
+    tokio::fs::write(
+        &rust_file,
+        HIGH_COMPLEXITY_FIXTURE,
     )
     .await?;
 
@@ -215,7 +221,7 @@ fn test_write_markdown_summary_table() -> anyhow::Result<()> {
         hotspot_files: vec!["file1.rs".into(), "file2.rs".into()],
         stable_files: vec!["lib.rs".into()],
         author_contributions: {
-            let mut map = HashMap::new();
+            let mut map = std::collections::BTreeMap::new();
             map.insert("alice".to_string(), 5);
             map.insert("bob".to_string(), 3);
             map
@@ -252,7 +258,7 @@ fn test_write_markdown_summary_table_empty() -> anyhow::Result<()> {
         total_files_changed: 0,
         hotspot_files: vec![],
         stable_files: vec![],
-        author_contributions: HashMap::new(),
+        author_contributions: std::collections::BTreeMap::new(),
         mean_churn_score: 0.0,
         variance_churn_score: 0.0,
         stddev_churn_score: 0.0,
@@ -281,7 +287,7 @@ fn test_write_markdown_summary_table_format() -> anyhow::Result<()> {
         hotspot_files: vec!["test.rs".into()],
         stable_files: vec!["mod.rs".into()],
         author_contributions: {
-            let mut map = HashMap::new();
+            let mut map = std::collections::BTreeMap::new();
             map.insert("dev".to_string(), 1);
             map
         },

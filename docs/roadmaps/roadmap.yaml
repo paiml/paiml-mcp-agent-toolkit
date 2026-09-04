@@ -4134,6 +4134,74 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-665
+  github_issue: null
+  item_type: task
+  title: 'CRUX-07: the index is a faithful, reproducible view of the tree'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-09-04T02:51:57Z
+  updated: 2026-09-04T05:04:52Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat-architecture-crux-audit.md section 8.7. (a) the incremental index fast path compares len and ctime (unix) besides mtime, plus a rotating 1/64 verify slice with a persisted run counter, so a content change with a backdated mtime is seen; (b) every walk that defines persisted order is sorted and the ranker (query/engine_query.rs) tie-breaks on (file_path, start_line); (c) analyze churn serialises author_contributions as a BTreeMap and the markdown path tie-breaks on author; (d) manifest.json is written atomically, a torn or unparsable manifest is named and rebuilt, and a manifest-older-than-db detector fires on a seeded stale pair; (e) a failed index save is reported as a failure and the success message printed only after a successful save; persist_score returns Result; the FTS DELETE propagates. Includes the refactor of the nine touched functions over pmat verify''s cognitive ceiling (build, get_file_metrics, compute_pv_lint, compute_pipeline_depth, compute_contract_drift, cross_validate, handle_score, compute_evoscore, one test whose raw-string fixture the analyzer counts as nesting) that the complexity gate on changed files requires. Controls: leg (a) fast-path survival (mtime-skipped > 0, 0 re-parsed on a quiescent tree); leg (c) c1 raw order-preserving hash stable AND c2 sorted hash stable AND author set equals git shortlog (counts: PMAT-667); leg (d) not firing on a clean pair; leg (e) silent with .pmat writable.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-669
+  github_issue: null
+  item_type: task
+  title: 'ci: container jobs restore the runner''s ownership of the _work tree so a poisoned runner cannot fail the next job (#1185)'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-09-04T06:57:45Z
+  updated: 2026-09-04T06:57:45Z
+  spec: null
+  acceptance_criteria:
+  - 'GitHub issue #1185. Fix and ship in the next release.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-670
+  github_issue: null
+  item_type: task
+  title: 'pmat work: a ticket claims the ladder level its bindings evidence; --level on add and edit, --implements on edit, ladder check before the quality gates (#1186)'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-09-04T06:57:46Z
+  updated: 2026-09-04T06:57:46Z
+  spec: null
+  acceptance_criteria:
+  - 'GitHub issue #1186. Fix and ship in the next release.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-671
+  github_issue: null
+  item_type: task
+  title: 'release 3.37.0: cut, publish and dog-food the two urgent fixes (#1185, #1186) with CRUX-07 and AD-01..AD-10'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-09-04T09:33:49Z
+  updated: 2026-09-04T09:33:49Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes:
+  - 'The AD-02 dog-food runs against the crate crates.io serves, so its receipt (docs/audits/release-3.37.0-dogfood.md) lands in the post-publish PR, as for 3.36.0 (#1173) — not in this cut.'
 - id: PMAT-662
   github_issue: null
   item_type: task

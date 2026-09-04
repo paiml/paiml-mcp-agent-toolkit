@@ -145,7 +145,7 @@ mod comprehensive_coverage_tests {
                 total_files_changed: 1,
                 hotspot_files: vec![PathBuf::from("src/lib.rs")],
                 stable_files: vec![],
-                author_contributions: HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 mean_churn_score: 0.75,
                 variance_churn_score: 0.1,
                 stddev_churn_score: 0.32,

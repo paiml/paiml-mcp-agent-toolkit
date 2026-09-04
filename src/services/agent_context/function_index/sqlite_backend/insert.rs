@@ -206,6 +206,17 @@ pub(crate) fn insert_metadata(conn: &Connection, manifest: &IndexManifest) -> Re
     )
     .map_err(|e| format!("Failed to insert file_count: {e}"))?;
 
+    // The rotating verification slice only rotates if the counter survives a
+    // save. The SQLite path is the one every query takes, and `load_metadata`
+    // is where the manifest it works from comes from — a counter written only
+    // to manifest.json would read back as 0 on every run and re-verify the
+    // same 64th of the tree forever.
+    conn.execute(
+        "INSERT OR REPLACE INTO metadata (key, value) VALUES ('run_counter', ?1)",
+        params![manifest.run_counter.to_string()],
+    )
+    .map_err(|e| format!("Failed to insert run_counter: {e}"))?;
+
     let checksums_json = serde_json::to_string(&manifest.file_checksums).unwrap_or_default();
     conn.execute(
         "INSERT OR REPLACE INTO metadata (key, value) VALUES ('file_checksums', ?1)",
