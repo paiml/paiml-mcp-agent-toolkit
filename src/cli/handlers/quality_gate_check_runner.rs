@@ -148,7 +148,14 @@ async fn run_individual_checks(
             violations,
             results,
             config.perf,
-            crate::cli::analysis_utilities::QualityThresholds::default(),
+            // Resolved from the project (pmat.toml [quality] over the shipped
+            // defaults) exactly as `run_all_checks` and the CLI do — the AD-04
+            // quorum caught this route passing the bare defaults.
+            crate::cli::analysis_utilities::QualityThresholds::resolve(
+                config.project_path,
+                None,
+                None,
+            ),
         )
         .await?;
 

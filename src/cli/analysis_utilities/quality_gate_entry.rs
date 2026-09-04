@@ -85,6 +85,9 @@ pub async fn handle_quality_gate(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    // "This, at the project's thresholds": pmat.toml [quality] over the
+    // shipped defaults, resolved the same way on every route.
+    let thresholds = QualityThresholds::resolve(&project_path, None, None);
     handle_quality_gate_with_thresholds(QualityGateRequest {
         project_path,
         file,
@@ -97,7 +100,7 @@ pub async fn handle_quality_gate(
         include_provability,
         output,
         perf,
-        thresholds: QualityThresholds::default(),
+        thresholds,
     })
     .await
 }
@@ -128,8 +131,8 @@ pub struct QualityGateRequest {
 /// A sibling rather than two more parameters on the function above: that
 /// signature is called from four test modules and two dispatch routes, and
 /// growing it would have made a threshold-carrying call indistinguishable from
-/// a defaulted one at every one of them. `handle_quality_gate` is now exactly
-/// "this, at the shipped defaults".
+/// a flag-less one at every one of them. `handle_quality_gate` is now exactly
+/// "this, at the project's thresholds" (pmat.toml over the shipped defaults).
 ///
 /// # Errors
 /// As [`handle_quality_gate`].
