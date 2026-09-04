@@ -1,0 +1,78 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-04"
+  author: PAIML Engineering
+  references:
+    - "issue 1186 — pmat work claims L3 by default; --implements only on start; ladder check ran after the quality gate"
+    - "docs/specifications/agentic-delivery-pmat.md section 5 (sub-agent level compliance)"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    A ticket's verification claim is what the work can honestly show. A ticket
+    started without a contract binding claims L1; one started with --implements
+    claims L2 and carries the binding; --level states the claim explicitly on
+    add, start and edit. --implements on edit binds a ticket that is already in
+    progress, so the normal flow can reach L2 without restarting. A binding must
+    name an equation the contract declares. On complete, the ladder is judged
+    before the quality gate, so an over-claim is refused as LadderShortfall
+    rather than surfacing behind unrelated gate output.
+  contract: work-ladder-claim
+  status: draft
+equations:
+  initial_claim:
+    formula: "claim(start) = explicit_level if given else (L2 if bound(implements) else L1)"
+    domain: "pmat work start, pmat work add --level"
+    codomain: VerificationLevel
+    invariants:
+      - "an unbound start claims L1, never L3"
+      - "a start with --implements claims L2 and the contract carries the binding"
+      - "--level on add is stored on the ticket and becomes the claim at start"
+      - "a --level that is not a ladder level (L0..L5) is refused before anything is written"
+    preconditions: []
+  edit_rebinds:
+    formula: "edit --level L | edit --implements c/e => contract.level = L | contract.implements += (c, e, sha)"
+    domain: "pmat work edit on a ticket whose contract exists (started)"
+    codomain: bool
+    invariants:
+      - "edit --implements on an InProgress ticket binds and lifts an L1 claim to L2"
+      - "a binding naming an equation the contract does not declare is refused, naming the declared ones"
+      - "edit --level alone is a change: it must not exit 0 as 'No changes specified'"
+      - "edit on a ticket with no contract yet names `pmat work start` as the prerequisite"
+    preconditions: []
+  ladder_before_gate:
+    formula: "complete: ladder_shortfall(claim, evidence) is judged before run_quality_check"
+    domain: "pmat work complete"
+    codomain: bool
+    invariants:
+      - "an over-claim is refused with LadderShortfall and no quality-gate output precedes it"
+      - "an honestly-claimed L1 ticket is not refused by the ladder"
+    preconditions: []
+falsification:
+  - condition: "an unbound ticket claims above L1 at start, or a bound one claims below L2"
+    severity: P0
+    action: reject_push
+  - condition: "edit --level or edit --implements exits 0 without changing the contract"
+    severity: P0
+    action: reject_push
+  - condition: "a binding to an undeclared equation is accepted"
+    severity: P1
+    action: reject_push
+  - condition: "quality-gate output precedes a LadderShortfall refusal on complete"
+    severity: P1
+    action: reject_push
+falsification_tests:
+  - id: initial_claim
+    rule: "legs 1, 2, 3a and control 3c of scripts/work-ladder-claim-audit.sh"
+    prediction: "3.36.0 binary: legs 1, 2, 3a red (L3 default; add has no --level); fixed binary: green"
+    if_fails: "the claim is not derived from the binding; the ladder gate judges a number nobody chose"
+    test: "PMAT=<binary> bash scripts/work-ladder-claim-audit.sh"
+  - id: edit_rebinds
+    rule: "legs 3b, 4 and controls 3c, 4b of scripts/work-ladder-claim-audit.sh; unit test resolve_refuses_an_equation_the_contract_does_not_declare"
+    prediction: "3.36.0 binary: edit has neither flag (clap refuses); fixed binary: both flags act on the contract and 4b refuses"
+    if_fails: "an in-progress ticket can never reach L2 legitimately, or binds to nothing"
+    test: "PMAT=<binary> bash scripts/work-ladder-claim-audit.sh"
+  - id: ladder_before_gate
+    rule: "legs 5a, 5b and control 6 of scripts/work-ladder-claim-audit.sh"
+    prediction: "3.36.0 binary: 5b red (quality output first); fixed binary: LadderShortfall is the first refusal"
+    if_fails: "an over-claim hides behind gate noise and the operator reaches for --override-claims"
+    test: "PMAT=<binary> bash scripts/work-ladder-claim-audit.sh"

@@ -9,7 +9,12 @@ pub async fn handle_work_add(
     tags: Option<String>,
     path: Option<PathBuf>,
     create_github: bool,
+    level: Option<String>,
 ) -> Result<()> {
+    let claimed = level
+        .as_deref()
+        .map(crate::cli::handlers::work_contract::parse_level_arg)
+        .transpose()?;
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -55,6 +60,13 @@ pub async fn handle_work_add(
         links: Vec::new(),
     };
 
+    // #1186: `--level` is recorded as a `level:<L>` label until `work start`
+    // writes the contract, which reads it back.
+    let mut item = item;
+    if let Some(lv) = claimed {
+        item.labels.retain(|l| !l.starts_with("level:"));
+        item.labels.push(format!("level:{lv}"));
+    }
     // Save to roadmap
     service.upsert_item(item)?;
 
@@ -196,6 +208,8 @@ pub async fn handle_work_edit(
     status: Option<String>,
     tags: Option<String>,
     path: Option<PathBuf>,
+    level: Option<String>,
+    implements: Vec<String>,
 ) -> Result<()> {
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
@@ -250,8 +264,13 @@ pub async fn handle_work_edit(
         changes.push(format!("labels: {}", t));
     }
 
+    // #1186: the claim and the bindings live on the contract, which exists once the
+    // ticket was started; both may change while InProgress — start is one-shot.
+    if level.is_some() || !implements.is_empty() {
+        changes.extend(rebind_contract(&project_path, &item.id, level.as_deref(), &implements)?);
+    }
     if changes.is_empty() {
-        println!("{}", c::warn("No changes specified. Use --title, --description, --priority, --status, or --tags."));
+        println!("{}", c::warn("No changes specified. Use --title, --description, --priority, --status, --tags, --level, or --implements."));
         return Ok(());
     }
 
@@ -369,4 +388,51 @@ mod status_filter_tests {
     fn no_status_means_no_filter() {
         assert_eq!(parse_status_filter(None).expect("no filter"), None);
     }
+}
+
+/// Apply `--level` / `--implements` from `work edit` to the ticket's contract.
+/// Returns the change lines to print. Refuses when no contract exists (the
+/// ticket was never started), an unknown equation, or a malformed level.
+fn rebind_contract(
+    project_path: &Path,
+    id: &str,
+    level: Option<&str>,
+    implements: &[String],
+) -> Result<Vec<String>> {
+    use crate::cli::handlers::work_contract::{parse_level_arg, WorkContract};
+    use crate::cli::handlers::work_verification_level::VerificationLevel;
+    if !WorkContract::exists(project_path, id) {
+        anyhow::bail!(
+            "'{id}' has no contract yet: run `pmat work start {id}` first (--level and --implements act on the contract)"
+        );
+    }
+    let mut contract = WorkContract::load(project_path, id)?;
+    let mut changes = Vec::new();
+    if !implements.is_empty() {
+        let new = crate::cli::handlers::work_contract_binding::resolve_all(project_path, implements)?;
+        let mut added = 0usize;
+        for b in new {
+            if contract.implements.iter().any(|e| e.key() == b.key()) {
+                continue;
+            }
+            changes.push(format!(
+                "bound: {} (sha: {}...)",
+                b.key(),
+                &b.sha[..b.sha.len().min(12)]
+            ));
+            contract.implements.push(b);
+            added += 1;
+        }
+        if added > 0 && level.is_none() && contract.verification_level < VerificationLevel::L2 {
+            contract.verification_level = VerificationLevel::L2;
+            changes.push("verification_level: L2 (bound)".to_string());
+        }
+    }
+    if let Some(raw) = level {
+        let lv = parse_level_arg(raw)?;
+        contract.verification_level = lv;
+        changes.push(format!("verification_level: {lv}"));
+    }
+    contract.save(project_path)?;
+    Ok(changes)
 }

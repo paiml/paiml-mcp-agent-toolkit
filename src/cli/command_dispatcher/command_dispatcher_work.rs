@@ -34,6 +34,7 @@ impl CommandDispatcher {
                 without,
                 iteration,
                 implements,
+                level,
             } => {
                 work_handlers::handle_work_start(
                     id.clone(),
@@ -46,6 +47,7 @@ impl CommandDispatcher {
                     *iteration,
                     implements.clone(),
                     agent.to_declared(),
+                    level.clone(),
                 )
                 .await
             }
@@ -170,6 +172,7 @@ impl CommandDispatcher {
                 tags,
                 path,
                 github,
+                level,
             } => {
                 work_handlers::handle_work_add(
                     title.clone(),
@@ -178,6 +181,7 @@ impl CommandDispatcher {
                     tags.clone(),
                     path.clone(),
                     *github,
+                    level.clone(),
                 )
                 .await
             }
@@ -198,6 +202,8 @@ impl CommandDispatcher {
                 status,
                 tags,
                 path,
+                level,
+                implements,
             } => {
                 work_handlers::handle_work_edit(
                     id.clone(),
@@ -207,6 +213,8 @@ impl CommandDispatcher {
                     status.clone(),
                     tags.clone(),
                     path.clone(),
+                    level.clone(),
+                    implements.clone(),
                 )
                 .await
             }

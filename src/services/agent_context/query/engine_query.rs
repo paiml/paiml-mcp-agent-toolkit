@@ -156,10 +156,34 @@ impl AgentContextIndex {
         combined
     }
 
+    /// Total order for a ranked `(index, score)` pair: score DESCENDING, then
+    /// `(file_path, start_line)` ASCENDING.
+    ///
+    /// `sort_by` with only `partial_cmp` on the score is a partial order: every
+    /// tied group comes back in whatever order the candidates were collected,
+    /// which is the order the index was built in, which is the order the
+    /// filesystem walk produced. Two checkouts of the same commit then answer
+    /// the same query in different orders, and `--limit N` silently returns
+    /// different functions. Breaking the tie on a key the tree itself defines
+    /// makes the order a property of the code, not of the disk it is on.
+    pub(super) fn rank_order(&self, a: &(usize, f32), b: &(usize, f32)) -> std::cmp::Ordering {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| self.tie_break_key(a.0).cmp(&self.tie_break_key(b.0)))
+    }
+
+    /// The tie-break key: where the function is, which is unique per function
+    /// and identical on every machine holding this commit.
+    pub(super) fn tie_break_key(&self, idx: usize) -> (&str, usize) {
+        self.functions
+            .get(idx)
+            .map_or(("", 0), |f| (f.file_path.as_str(), f.start_line))
+    }
+
     fn sort_ranked(&self, ranked: &mut Vec<(usize, f32)>, options: &QueryOptions) {
         match options.rank_by {
             super::types::RankBy::Relevance | super::types::RankBy::Impact => {
-                ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                ranked.sort_by(|a, b| self.rank_order(a, b));
             }
             super::types::RankBy::PageRank => {
                 ranked.sort_by(|a, b| {
@@ -167,7 +191,7 @@ impl AgentContextIndex {
                     let pr_b = self.graph_metrics.get(b.0).map_or(0.0, |m| m.pagerank);
                     pr_b.partial_cmp(&pr_a)
                         .unwrap_or(std::cmp::Ordering::Equal)
-                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .then_with(|| self.rank_order(a, b))
                 });
             }
             super::types::RankBy::Centrality => {
@@ -176,7 +200,7 @@ impl AgentContextIndex {
                     let c_b = self.graph_metrics.get(b.0).map_or(0.0, |m| m.centrality);
                     c_b.partial_cmp(&c_a)
                         .unwrap_or(std::cmp::Ordering::Equal)
-                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .then_with(|| self.rank_order(a, b))
                 });
             }
             super::types::RankBy::InDegree => {
@@ -184,7 +208,7 @@ impl AgentContextIndex {
                     let in_a = self.graph_metrics.get(a.0).map_or(0, |m| m.in_degree);
                     let in_b = self.graph_metrics.get(b.0).map_or(0, |m| m.in_degree);
                     in_b.cmp(&in_a)
-                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .then_with(|| self.rank_order(a, b))
                 });
             }
             super::types::RankBy::CrossProject => {
@@ -196,7 +220,7 @@ impl AgentContextIndex {
                     score_b
                         .partial_cmp(&score_a)
                         .unwrap_or(std::cmp::Ordering::Equal)
-                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .then_with(|| self.rank_order(a, b))
                 });
             }
             super::types::RankBy::Priority => {
@@ -215,7 +239,7 @@ impl AgentContextIndex {
                     priority_b
                         .partial_cmp(&priority_a)
                         .unwrap_or(std::cmp::Ordering::Equal)
-                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .then_with(|| self.rank_order(a, b))
                 });
             }
         }
@@ -230,7 +254,7 @@ impl AgentContextIndex {
             .filter(|(i, _)| self.passes_filters(*i, options))
             .map(|(i, m)| (i, m.pagerank))
             .collect();
-        indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        indexed.sort_by(|a, b| self.rank_order(a, b));
         indexed
             .into_iter()
             .take(limit)
@@ -290,7 +314,7 @@ impl AgentContextIndex {
             .filter(|(idx, _)| *idx != ref_idx) // Exclude self
             .collect();
 
-        ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        ranked.sort_by(|a, b| self.rank_order(a, b));
 
         let results: Vec<QueryResult> = ranked
             .into_iter()

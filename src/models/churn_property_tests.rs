@@ -131,7 +131,7 @@ proptest! {
         author_count in 0usize..10,
         contribution in 1usize..100
     ) {
-        let mut contributions = HashMap::new();
+        let mut contributions = std::collections::BTreeMap::new();
         for i in 0..author_count {
             contributions.insert(format!("author_{}", i), contribution + i);
         }
@@ -171,7 +171,7 @@ proptest! {
             total_files_changed: 50,
             hotspot_files: vec![],
             stable_files: vec![],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: mean,
             variance_churn_score: variance,
             stddev_churn_score: variance.sqrt(),

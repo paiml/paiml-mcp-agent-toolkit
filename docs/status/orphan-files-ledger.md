@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4437 tracked `.rs` files: 3948 reachable from 137 target root(s), 407 orphaned (126935 lines, 6292 `#[test]` fns), 82 quarantined (35885 lines, 2021 `#[test]` fns).
+4435 tracked `.rs` files: 3946 reachable from 137 target root(s), 407 orphaned (126935 lines, 6292 `#[test]` fns), 82 quarantined (35891 lines, 2021 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -55,7 +55,7 @@ same change; do not edit counts by hand.
 | `src/cli/analysis_utilities/tests.rs` | quarantined-#1023 | 0 | 9 |
 | `src/cli/analysis_utilities/tests_core.rs` | quarantined-#1023 | 0 | 15 |
 | `src/cli/analysis_utilities/tests_core_part1.rs` | quarantined-#1023 | 10 | 520 |
-| `src/cli/analysis_utilities/tests_core_part2.rs` | quarantined-#1023 | 17 | 477 |
+| `src/cli/analysis_utilities/tests_core_part2.rs` | quarantined-#1023 | 17 | 483 |
 | `src/cli/analysis_utilities/tests_core_part3.rs` | quarantined-#1023 | 16 | 491 |
 | `src/cli/analysis_utilities/tests_core_part4.rs` | quarantined-#1023 | 15 | 509 |
 | `src/cli/analysis_utilities/tests_coverage.rs` | quarantined-#1023 | 64 | 494 |
