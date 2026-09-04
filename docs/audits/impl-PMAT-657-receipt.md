@@ -21,8 +21,8 @@ analysis utilities, configuration); trigger Q1 not fired (no quorum lane; the AD
 | named mutation: file-size compares against `max_lines * 2` (line 138 of the checks file) | — | RED: the 502-line leg and the `--max-file-lines 400` leg both read rc=0 (`✗`), the other five stay green; mutant reverted, tree clean of it |
 | ratchet literals | `allow_attributes_src` 498 > 497 (reported, not fixed — forbidden) | back to 497: the twelve-argument sibling became `handle_quality_gate_with_thresholds(QualityGateRequest)`, no new allowance; `panic!(` 783 → 781 (two test panics became `unreachable!`); `.unwrap()` 20336 = baseline |
 | unrun-tests ledger | drift reported, not fixed (forbidden) | regenerated last, with the reachability ledger |
-| `pmat verify` | `ok:false`, 5 stages measured, tests red on 6 (4 pre-existing worktree `git_context` failures, since fixed on master by #1174; 2 the worker's — ratchet and ledger) | re-run on the final tree after merging master: see the PR body |
-| complexity on the changed files, direct | verify's complexity stage green | re-measured directly after the refactor: see the PR body |
+| `pmat verify` | `ok:false`, 5 stages measured, tests red on 6 (4 pre-existing worktree `git_context` failures, since fixed on master by #1174; 2 the worker's — ratchet and ledger) | on d3eaeb88a (after merging master at 5f719651a, ledgers regenerated last): exit 0 — format, satd, clippy, tests all ok; complexity withdrawn on a clean tree |
+| complexity on the changed files, direct | verify's complexity stage green | `analyze complexity --max-cyclomatic 30 --max-cognitive 25 --fail-on-violation --files <25 changed files>` exit 0; a 3/2 control exit 1 |
 | pv contract | — | `contracts/quality-gate-thresholds-v1.yaml`, lint PASS |
 | 22 new lib tests | listed in the receipt | names re-read from the tree; they run in the verify tests stage |
 
@@ -36,4 +36,4 @@ analysis utilities, configuration); trigger Q1 not fired (no quorum lane; the AD
 - The worker's first verify surfaced pre-existing debt in `configuration_handlers_validation.rs` (`report_settings_provenance`, cognitive 40); it backed its assertion out of that file rather than refactor under this ticket. The AD-03 branch (#1175) refactors that function.
 - Four files outside even the widened scope were compile-forced by the three new `QualityGateResults` fields and edited mechanically (`examples/quality_gate_violations.rs`, `quality_checks_part3_tests.rs`, `quality_gate_formatter_tests.rs`, `tool_functions_gate_parity_tests.rs` — whose stale "no pmat gate has a lint check" message was reworded).
 
-Verdict: **DONE** once #<PR> merges green; every row above re-measured by the orchestrator.
+Verdict: **DONE** once the PR merges green; every row above re-measured by the orchestrator.
