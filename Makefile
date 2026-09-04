@@ -1623,6 +1623,10 @@ release-dry:
 	@cargo release patch --dry-run
 
 # Verify release was successful
+dogfood-published: ## AD-02: install VERSION from crates.io and run the release gate against it (make dogfood-published VERSION=3.36.0)
+	@[ -n "$(VERSION)" ] || (echo "usage: make dogfood-published VERSION=x.y.z" && exit 2)
+	@bash scripts/dogfood-published.sh "$(VERSION)"
+
 release-check: ## AD-01: the version Cargo.toml declares must be tagged, released and on crates.io (exit 1 names the first missing channel)
 	@bash scripts/release-check.sh
 

@@ -383,12 +383,20 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
+    /// The repository root that contains the crate under test.
+    ///
+    /// `.git` is a directory in the main checkout and a FILE (`gitdir: …`) in
+    /// a linked `git worktree`. This walk used to require `.git/HEAD`, so in
+    /// any worktree it fell through to the manifest's parent — not a
+    /// repository — and four tests below failed there (PMAT-654).
     fn get_repo_root() -> PathBuf {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let mut current = manifest_dir.clone();
         loop {
             let git_dir = current.join(".git");
-            if git_dir.exists() && git_dir.join("HEAD").exists() {
+            let is_main_checkout = git_dir.join("HEAD").exists();
+            let is_linked_worktree = git_dir.is_file();
+            if is_main_checkout || is_linked_worktree {
                 return current;
             }
             if !current.pop() {
