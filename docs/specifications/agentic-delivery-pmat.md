@@ -268,6 +268,18 @@ Each item ships as one ticket and one PR under the paiml-implement discipline (R
 ### 9.2 AD-02 — post-publish dog-food (S)
 **Problem.** Nothing exercises the bytes crates.io serves. **Proposal.** `scripts/dogfood-published.sh <version>` + `make dogfood-published VERSION=` + a step in the release process; the receipt is committed as `docs/audits/release-<v>-dogfood.md`. **Acceptance.** §3.6. **Risk.** `cargo install` needs network and ~5 min; run it once per release, not in CI on every push.
 
+*Implementation note (PMAT-652, 2026-09-03).* `scripts/dogfood-published.sh <version>` +
+`make dogfood-published VERSION=`; contract `contracts/dogfood-published-v1.yaml`. Legs in the order
+they are cheapest to fail: registry entry present and un-yanked (P7) → `cargo install --locked` into a
+throwaway root (P5) → the installed binary reports the version and answers `--help` → the release gate
+`scripts/dogfood-use.sh` runs with `BIN=` that binary → receipt `docs/audits/release-<v>-dogfood-published.md`
+(the release-chain receipt `release-<v>-dogfood.md` links to it, so the hand-written chain and the
+script output do not collide) pinned by the registry's `crate_size` and `created_at` (the crates.io build reports `commit: unknown`,
+CRUX-21, so a commit line cannot be the pin). Controls measured: `9.9.9` → `FAIL … is not on
+crates.io`, exit 1, no receipt; `v3` → refused before any network call. Real run on the published
+3.36.0: see the receipt. The 3.36.0 release itself was dog-fooded by hand with the same legs before
+this script existed; that chain receipt stays, and links to this script's output.
+
 ### 9.3 AD-03 — commit enforcement (S)
 **Problem.** #1126: the generated hook's SATD and task-ID checks warn and exit 0; no commit-msg hook exists. **Proposal.** `pmat hooks install --strict` (and `[hooks] strict = true` in `pmat.toml`) makes both blocking, emits a `commit-msg` hook requiring `Pmat-Ticket: PMAT-\d+` (or `#\d+` for repositories without pmat work), and the bundle's `settings.fragment.json` turns strict on. **Acceptance.** §4.7 first three legs. **Control.** the shipped hook fails the test today (warn + exit 0). **Related.** #1126.
 
