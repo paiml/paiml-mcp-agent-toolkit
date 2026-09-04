@@ -208,3 +208,18 @@ jobs:
           name: mutation-diff-report
           path: mutants.out/
           if-no-files-found: ignore
+
+      - name: Restore the runner's ownership of its _work tree (#1185)
+        # This job runs as root inside the container and writes into the runner's shared
+        # _work tree; a following job on the same runner (any repo) then dies at "Set up
+        # runner" on root-owned files. Runs whatever the outcome; prints the residue it
+        # found so the log carries the evidence, and the count after must be 0.
+        if: always()
+        run: |
+          owner=$(stat -c %u:%g "$GITHUB_WORKSPACE/..")
+          uid=${owner%%:*}
+          before=$(find "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" ! -user "$uid" 2>/dev/null | wc -l)
+          chown -R "$owner" "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" 2>/dev/null || true
+          after=$(find "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" ! -user "$uid" 2>/dev/null | wc -l)
+          echo "runner ownership: $before path(s) not owned by $owner before, $after after"
+          [ "$after" = 0 ] || { echo "::error::$after path(s) under the runner's _work tree are still not owned by $owner"; exit 1; }

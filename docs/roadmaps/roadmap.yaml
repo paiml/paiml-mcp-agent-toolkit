@@ -4117,3 +4117,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-669
+  github_issue: null
+  item_type: task
+  title: 'ci: container jobs restore the runner''s ownership of the _work tree so a poisoned runner cannot fail the next job (#1185)'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-09-04T06:57:45Z
+  updated: 2026-09-04T06:57:45Z
+  spec: null
+  acceptance_criteria:
+  - 'GitHub issue #1185. Fix and ship in the next release.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
