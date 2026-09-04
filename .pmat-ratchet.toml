@@ -460,7 +460,8 @@ PMAT-INTEGRATION.md; no benchmark comparison reads it.
 """
 
 [metric.oversized_source_files_src]
-baseline = 261
+baseline = 262
+justification = "first baseline on the tree this metric merges into: #1175 (AD-03) grew hooks_command.rs from 472 to 572 lines before the metric existed, so the 261 measured on the pre-cascade branch became 262 after the master merge; PMAT-666 splits that file and the count comes back down"
 unit = "count"
 band = 20
 includes_test_files = false
