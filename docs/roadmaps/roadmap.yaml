@@ -4100,6 +4100,23 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-664
+  github_issue: null
+  item_type: task
+  title: 'AD-10: the four lane modes — goal, teamwork, grill-me, plan — as one calling form'
+  status: in_progress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-04T02:30:46Z
+  updated: 2026-09-04T02:30:46Z
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 6 / 9.10. Bundle: scripts/agy-lane.sh --mode goal|teamwork|grillme|plan composes the agy call per mode (teamwork prefixes /teamwork-preview and refuses under 20m; plan passes --mode plan; goal and grillme are prompt templates with agy/goal-schema.json and agy/grillme-schema.json until agy ships them, AIS-006); lanes sandboxed unless --writes; --self-test; the delegate names the mode in its receipt. pmat side: spec note and receipt. Controls: unknown mode refused; each mode''s dry run prints its calling form.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
 - id: PMAT-665
   github_issue: null
   item_type: task
