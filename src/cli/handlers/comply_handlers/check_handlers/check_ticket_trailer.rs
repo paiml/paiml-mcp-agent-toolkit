@@ -26,21 +26,31 @@ fn git_stdout(project_path: &Path, args: &[&str]) -> Option<String> {
 
 /// The repository's default branch: `origin/HEAD` when it is set, else the
 /// first of `master` / `main` that exists locally.
+/// The ref to judge against, as a revision git can resolve HERE: `origin/HEAD`'s
+/// target when the remote is known, else `origin/master` / `origin/main`, else a
+/// local `master` / `main`. A CI checkout usually has the remote-tracking ref and
+/// no local default branch — the first cut returned the bare name and the
+/// merge-base lookup failed, which read as "nothing to judge" (the AD-04 quorum
+/// caught it).
 fn default_branch(project_path: &Path) -> Option<String> {
+    let resolves = |rev: &str| {
+        git_stdout(project_path, &["rev-parse", "--verify", "--quiet", rev]).is_some()
+    };
     if let Some(sym) = git_stdout(project_path, &["symbolic-ref", "refs/remotes/origin/HEAD"]) {
         if let Some(name) = sym.rsplit('/').next() {
             if !name.is_empty() {
-                return Some(name.to_string());
+                let remote = format!("origin/{name}");
+                if resolves(&remote) {
+                    return Some(remote);
+                }
+                if resolves(name) {
+                    return Some(name.to_string());
+                }
             }
         }
     }
-    for candidate in ["master", "main"] {
-        if git_stdout(
-            project_path,
-            &["rev-parse", "--verify", "--quiet", candidate],
-        )
-        .is_some()
-        {
+    for candidate in ["origin/master", "origin/main", "master", "main"] {
+        if resolves(candidate) {
             return Some(candidate.to_string());
         }
     }
@@ -121,14 +131,19 @@ fn commit_defect(
     if commit.tickets.is_empty() {
         return Some(format!("{} (no Pmat-Ticket trailer)", commit.short()));
     }
-    let mut reasons = Vec::new();
-    for ticket in &commit.tickets {
-        // `?` here is the acceptance, not the failure: one trailer naming an
-        // in-progress ticket clears the commit, so a `None` defect returns
-        // `None` for the whole commit.
-        reasons.push(ticket_defect(ticket, roadmap)?);
+    // Every ticket the commit names must be in progress: a commit that names
+    // one live ticket and one unknown or completed one is still mislinked (the
+    // AD-04 quorum caught the first cut accepting it on the live one alone).
+    let reasons: Vec<String> = commit
+        .tickets
+        .iter()
+        .filter_map(|ticket| ticket_defect(ticket, roadmap))
+        .collect();
+    if reasons.is_empty() {
+        None
+    } else {
+        Some(format!("{} ({})", commit.short(), reasons.join("; ")))
     }
-    Some(format!("{} ({})", commit.short(), reasons.join("; ")))
 }
 
 /// The verdict over a whole branch, given the commits and the roadmap.
@@ -193,9 +208,16 @@ pub(crate) fn check_ticket_trailers(project_path: &Path) -> ComplianceCheck {
     };
     let default = match default_branch(project_path) {
         Some(d) => d,
-        None => return trailer_check_nothing_to_judge("no default branch (master/main) found"),
+        None => {
+            return ComplianceCheck {
+                name: "CB-1340: Ticket Trailer".into(),
+                status: CheckStatus::Warn,
+                message: "Cannot judge: no default branch ref resolves (origin/HEAD, origin/master, origin/main, master, main) — fetch the default branch so the merge base can be found".into(),
+                severity: Severity::Warning,
+            };
+        }
     };
-    if branch == default {
+    if branch == default || default.strip_prefix("origin/") == Some(branch.as_str()) {
         return trailer_check_nothing_to_judge(format!(
             "on the default branch ({default}); its history is judged before merge"
         )
@@ -252,7 +274,7 @@ mod ticket_trailer_tests {
     use super::*;
     use crate::models::roadmap::{ItemStatus, Roadmap, RoadmapItem};
 
-    fn roadmap_with(statuses: &[(&str, ItemStatus)]) -> Roadmap {
+    pub(super) fn roadmap_with(statuses: &[(&str, ItemStatus)]) -> Roadmap {
         let items = statuses
             .iter()
             .map(|(id, status)| {
@@ -436,3 +458,72 @@ mod ticket_trailer_tests {
         assert!(check.message.contains("not a git repository"), "{}", check.message);
     }
 }
+
+#[cfg(test)]
+mod quorum_findings_tests {
+    //! Two findings of the AD-04 quorum on the PR that introduced CB-1340.
+    use super::*;
+    use crate::models::roadmap::ItemStatus;
+
+    fn run(dir: &Path, args: &[&str]) -> String {
+        let out = std::process::Command::new("git")
+            .current_dir(dir)
+            .args(args)
+            .output()
+            .expect("git");
+        assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    #[test]
+    fn a_commit_naming_a_live_and_a_completed_ticket_is_still_mislinked() {
+        let roadmap = super::ticket_trailer_tests::roadmap_with(&[("PMAT-1", ItemStatus::InProgress), ("PMAT-2", ItemStatus::Completed)]);
+        let commit = TrailerCommit {
+            sha: "abcdef1234567890".into(),
+            tickets: vec!["PMAT-1".into(), "PMAT-2".into()],
+        };
+        let defect = commit_defect(&commit, &roadmap).expect("the completed ticket must fail the commit");
+        assert!(defect.contains("PMAT-2") && defect.contains("not in progress"), "{defect}");
+        let clean = TrailerCommit { sha: "abcdef1234567890".into(), tickets: vec!["PMAT-1".into()] };
+        assert!(commit_defect(&clean, &roadmap).is_none(), "the control: one live ticket passes");
+    }
+
+    #[test]
+    fn a_checkout_with_only_remote_refs_is_judged_not_passed() {
+        // origin: master with one commit; clone: only refs/remotes/origin/*, a feature branch, no local master
+        let origin = tempfile::tempdir().expect("tempdir");
+        let o = origin.path();
+        run(o, &["init", "-q", "--template=", "-b", "master"]);
+        run(o, &["config", "user.email", "t@t"]);
+        run(o, &["config", "user.name", "t"]);
+        std::fs::write(o.join("a.txt"), "a\n").expect("write");
+        run(o, &["add", "."]);
+        run(o, &["commit", "-q", "-m", "init"]);
+        let clone = tempfile::tempdir().expect("tempdir");
+        let c = clone.path().join("c");
+        run(o, &["clone", "-q", "--template=", o.to_str().expect("utf-8 path"), c.to_str().expect("utf-8 path")]);
+        run(&c, &["config", "user.email", "t@t"]);
+        run(&c, &["config", "user.name", "t"]);
+        run(&c, &["switch", "-q", "-c", "PMAT-1-work"]);
+        run(&c, &["branch", "-D", "master"]); // the CI shape: the default branch exists only as origin/master
+        assert!(git_stdout(&c, &["rev-parse", "--verify", "--quiet", "master"]).is_none(), "the control: no local master");
+        let d = default_branch(&c).expect("origin/master must resolve");
+        assert_eq!(d, "origin/master");
+        std::fs::write(c.join("a.txt"), "b\n").expect("write");
+        run(&c, &["commit", "-q", "-am", "no trailer"]);
+        std::fs::create_dir_all(c.join("docs/roadmaps")).expect("mkdir");
+        std::fs::write(
+            c.join("docs/roadmaps/roadmap.yaml"),
+            "roadmap_version: '1.0'\ngithub_enabled: false\ngithub_repo: fx/fx\nroadmap: []\n",
+        )
+        .expect("write");
+        let check = check_ticket_trailers(&c);
+        assert!(
+            matches!(check.status, CheckStatus::Fail),
+            "an untrailered commit on a remote-only checkout must FAIL, not read as nothing to judge: {} — {}",
+            check.name,
+            check.message
+        );
+    }
+}
+
