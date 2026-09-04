@@ -25,6 +25,39 @@ fn load_source_from_file(file_path: &str, start_line: usize, end_line: usize) ->
     }
 }
 
+/// How many slices the rotating re-verification sweep is spread over: each
+/// incremental run re-hashes one 64th of the tree the fast path would have
+/// skipped, so every file is re-verified at least once per 64 incremental runs.
+pub(super) const VERIFY_SLICE_DIVISOR: u64 = 64;
+
+/// FNV-1a (64-bit) over the path's bytes.
+///
+/// Written out rather than reached for in `std`: `DefaultHasher` is explicitly
+/// not guaranteed stable across Rust releases, and a hash that changes under
+/// the compiler would reshuffle which files each slice covers on every
+/// toolchain bump — the one property the sweep needs is that a given path
+/// always lands in the same slice.
+pub(super) fn path_slice_hash(relative_path: &str) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in relative_path.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
+}
+
+/// Is this file in the slice this run re-verifies?
+///
+/// The stat fast path believes the index's own recorded checksum. Nothing in
+/// `len` or `ctime` can contradict a digest that was laundered — written into
+/// the manifest for content that is not on disk — so a file whose stats agree
+/// would be served from that digest forever. Re-reading a rotating 1/64 of the
+/// skippable files bounds "forever" at 64 incremental runs, for 1/64 of the
+/// read cost per run.
+pub(super) fn in_verify_slice(relative_path: &str, run_counter: u64) -> bool {
+    path_slice_hash(relative_path) % VERIFY_SLICE_DIVISOR == run_counter % VERIFY_SLICE_DIVISOR
+}
+
 /// Result of a successful mtime-based file reuse check.
 struct MtimeReuseResult {
     functions: Vec<FunctionEntry>,
@@ -97,13 +130,22 @@ pub(super) fn stats_agree(record: &FileRecord, observed: (u64, i64), built_at_na
 /// served from the previous build's checksum forever (CRUX-07 leg a).
 ///
 /// Returns None otherwise, signaling the caller must fall back to
-/// content-based SHA256 comparison.
+/// content-based SHA256 comparison — including for every file in this run's
+/// verification slice (see [`in_verify_slice`]), whose stat evidence is
+/// deliberately not consulted.
 fn check_mtime_reuse(
     path: &Path,
     relative_path: &str,
     index_built_at: &Option<std::time::SystemTime>,
     existing: &AgentContextIndex,
+    run_counter: u64,
 ) -> Option<MtimeReuseResult> {
+    // The rotating slice is checked FIRST: a file the sweep has selected must
+    // be re-read whatever its stats say, because its stats are exactly what a
+    // laundered checksum agrees with.
+    if in_verify_slice(relative_path, run_counter) {
+        return None;
+    }
     let built_at = index_built_at.as_ref()?;
     let mtime = fs::metadata(path).ok()?.modified().ok()?;
     if mtime >= *built_at {

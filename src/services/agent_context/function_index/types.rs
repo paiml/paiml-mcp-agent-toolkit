@@ -219,6 +219,16 @@ pub struct IndexManifest {
     /// Number of files reparsed in last incremental update (0 = no changes)
     #[serde(default)]
     pub last_incremental_changes: usize,
+    /// How many incremental updates have been applied to this index.
+    ///
+    /// Names the rotating verification slice: the incremental build re-hashes
+    /// every file whose path falls in slice `run_counter % 64` even when the
+    /// stat fast path would have skipped it, so a checksum laundered into the
+    /// index (matching len + backdated ctime + a stale recorded digest) is
+    /// caught within 64 incremental runs instead of never. Pre-PMAT-665
+    /// manifests deserialise to 0, which is a valid slice, not a sentinel.
+    #[serde(default)]
+    pub run_counter: u64,
 }
 
 /// Serialized payload for the index (v1.4.0 with cached indices)

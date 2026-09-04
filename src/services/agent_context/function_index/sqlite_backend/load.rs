@@ -327,6 +327,12 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         .get("file_count")
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
+    // Absent (pre-PMAT-665 database) reads as 0, which is slice 0 — the next
+    // incremental run takes slice 1 and the sweep starts rotating from there.
+    let run_counter: u64 = rows
+        .get("run_counter")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
     let checksums_json = rows
         .get("file_checksums")
         .cloned()
@@ -356,5 +362,6 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         tdg_scale,
         file_checksums,
         last_incremental_changes: 0,
+        run_counter,
     })
 }

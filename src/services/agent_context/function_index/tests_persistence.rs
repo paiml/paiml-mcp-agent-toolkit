@@ -725,3 +725,119 @@ fn save_into_a_read_only_index_dir_fails_instead_of_truncating() {
         "the manifest already on disk must survive a failed save intact"
     );
 }
+
+#[test]
+fn test_verify_slice_rehashes_a_file_the_stat_fast_path_would_skip() {
+    // PMAT-665: the stat fast path can only ever confirm the checksum the index
+    // already holds. A digest laundered into the manifest — recorded for content
+    // that is not what is on disk, with a length that still matches and a ctime
+    // that still predates built_at — is therefore served forever. The rotating
+    // 1/64 slice bounds "forever" at 64 incremental runs.
+    let temp_dir = tempfile::TempDir::new().expect("temp dir");
+    let project_path = temp_dir.path();
+    std::fs::create_dir_all(project_path.join("src")).expect("create src");
+    std::fs::write(project_path.join("src/lib.rs"), "fn alpha() { }\n").expect("write lib.rs");
+
+    let original = AgentContextIndex::build(project_path).expect("build");
+    assert_eq!(original.functions[0].function_name, "alpha");
+
+    // Launder: identical byte length, different content, and a built_at an hour
+    // ahead so both mtime and ctime predate it. This is precisely the state
+    // `stats_agree` accepts.
+    std::fs::write(project_path.join("src/lib.rs"), "fn omega() { }\n").expect("relaunder lib.rs");
+    let future = chrono::Utc::now() + chrono::Duration::hours(1);
+
+    let slice = super::build::path_slice_hash("src/lib.rs") % super::build::VERIFY_SLICE_DIVISOR;
+
+    // Control: a run whose slice does NOT cover this file keeps serving the
+    // laundered `alpha`. Without this half the test would pass on a build that
+    // had simply lost the fast path.
+    let mut skipped = original.clone();
+    skipped.manifest.built_at = future.to_rfc3339();
+    skipped.manifest.run_counter = slice.wrapping_add(1);
+    let skipped =
+        AgentContextIndex::build_incremental(project_path, &skipped).expect("incremental (skipped)");
+    assert_eq!(
+        skipped.functions[0].function_name, "alpha",
+        "the stat fast path should have skipped this file, leaving the laundered entry"
+    );
+
+    // Selected: the same file, the same stats, the slice this run sweeps.
+    let mut verified = original.clone();
+    verified.manifest.built_at = future.to_rfc3339();
+    verified.manifest.run_counter = slice.wrapping_sub(1);
+    let verified = AgentContextIndex::build_incremental(project_path, &verified)
+        .expect("incremental (verified)");
+    assert_eq!(
+        verified.functions[0].function_name, "omega",
+        "a file in the verification slice must be re-hashed despite agreeing stats"
+    );
+    assert_eq!(
+        verified.manifest.run_counter, slice,
+        "the swept slice is persisted so the next run takes the next one"
+    );
+}
+
+#[test]
+fn test_verify_slice_covers_every_path_within_64_runs() {
+    // The sweep is only a bound if each path belongs to exactly one slice and
+    // some run selects it.
+    let path = "src/services/agent_context/query/engine_query.rs";
+    let hits = (0..super::build::VERIFY_SLICE_DIVISOR)
+        .filter(|counter| super::build::in_verify_slice(path, *counter))
+        .count();
+    assert_eq!(
+        hits, 1,
+        "exactly one of 64 consecutive runs re-verifies a path"
+    );
+}
+
+#[test]
+fn test_load_rejects_a_manifest_older_than_its_db() {
+    // PMAT-665: `save` writes the database first and the manifest last, so a db
+    // that is NEWER than its manifest had a writer the manifest knows nothing
+    // about. Serving rows from that db under the old manifest is exactly the
+    // unfaithful-index failure the audit is about.
+    let temp_dir = tempfile::TempDir::new().expect("temp dir");
+    let project_path = temp_dir.path();
+    std::fs::create_dir_all(project_path.join("src")).expect("create src");
+    std::fs::write(project_path.join("src/lib.rs"), "fn delta() { }\n").expect("write lib.rs");
+
+    let index = AgentContextIndex::build(project_path).expect("build");
+    let index_path = project_path.join("context.idx");
+    index.save(&index_path).expect("save");
+
+    // Control: the pair one save wrote is not flagged.
+    AgentContextIndex::load(&index_path).expect("a clean manifest/db pair must load");
+
+    let manifest_file = index_path.join("manifest.json");
+    let db_file = index_path.with_extension("db");
+    let newer = std::fs::metadata(&manifest_file)
+        .expect("manifest metadata")
+        .modified()
+        .expect("manifest mtime")
+        + std::time::Duration::from_secs(2);
+    let handle = std::fs::File::options()
+        .write(true)
+        .open(&db_file)
+        .expect("open db");
+    handle
+        .set_times(std::fs::FileTimes::new().set_modified(newer))
+        .expect("backdate manifest relative to db");
+    drop(handle);
+
+    let err = AgentContextIndex::load(&index_path).err().unwrap_or_default();
+    assert!(
+        !err.is_empty(),
+        "a db written after its manifest must not be served"
+    );
+    assert!(err.contains("stale"), "the reason must say stale: {err}");
+    assert!(
+        err.contains("manifest.json"),
+        "the reason must name the manifest: {err}"
+    );
+    assert!(
+        err.contains(&db_file.display().to_string()),
+        "the reason must name the database: {err}"
+    );
+}

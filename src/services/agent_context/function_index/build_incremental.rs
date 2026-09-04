@@ -74,6 +74,10 @@ fn finalize_incremental_index(
     file_checksums: HashMap<String, FileRecord>,
     coverage_off_files: HashSet<String>,
     db_path: Option<PathBuf>,
+    // The slice this run re-verified; persisted so the NEXT run takes the next
+    // slice. A run whose changes fall under the save threshold is not written,
+    // so the counter advances with saves, not with reads.
+    run_counter: u64,
 ) -> AgentContextIndex {
     let indices = build_indices(&functions);
     let (calls, called_by) = build_call_graph(&functions, &indices.name_index);
@@ -102,6 +106,7 @@ fn finalize_incremental_index(
         tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
         file_checksums,
         last_incremental_changes: files_changed,
+        run_counter,
     };
 
     AgentContextIndex {
@@ -131,6 +136,13 @@ impl AgentContextIndex {
     /// Uses a two-tier change detection strategy:
     /// 1. **Mtime fast path**: If file mtime < index built_at, skip read+SHA256 entirely
     /// 2. **SHA256 fallback**: For files with newer mtime, read and compare checksums
+    ///
+    /// Tier 1 is deliberately bypassed for the 1/64 of files in this run's
+    /// verification slice: the fast path can only ever confirm the index's own
+    /// recorded checksum, so without a rotating re-read a laundered digest
+    /// would be served forever. Those files land in tier 2 and, when their
+    /// content really is unchanged, are reported as checksum-reused (not
+    /// re-parsed) and count as no change.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn build_incremental(project_path: &Path, existing: &Self) -> Result<Self, String> {
         let project_root = project_path
@@ -153,6 +165,10 @@ impl AgentContextIndex {
         let mut coverage_off_files = HashSet::new();
 
         let index_built_at = parse_built_at(&existing.manifest.built_at);
+        // This run's verification slice. The counter recorded in the manifest
+        // names the slice already swept, so this run takes the next one and
+        // persists it — 64 consecutive saved runs cover the whole tree.
+        let run_counter = existing.manifest.run_counter.wrapping_add(1);
 
         // Sorted walk: the order files are visited is the order functions are
         // persisted and, on tied scores, the order results come back in. An
@@ -177,7 +193,9 @@ impl AgentContextIndex {
             };
             let relative_path = path.strip_prefix(&project_root).unwrap_or(path).to_string_lossy().to_string();
 
-            if let Some(reuse) = check_mtime_reuse(path, &relative_path, &index_built_at, existing) {
+            if let Some(reuse) =
+                check_mtime_reuse(path, &relative_path, &index_built_at, existing, run_counter)
+            {
                 functions.extend(reuse.functions);
                 file_checksums.insert(relative_path.clone(), reuse.checksum);
                 if reuse.coverage_off {
@@ -247,6 +265,7 @@ impl AgentContextIndex {
             functions, project_root, file_count, files_reparsed + files_stat_refreshed,
             languages_seen, file_checksums, coverage_off_files,
             existing.db_path.clone(),
+            run_counter,
         ))
     }
 }

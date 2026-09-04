@@ -317,6 +317,7 @@ impl AgentContextIndex {
             tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums,
             last_incremental_changes: 0, // Full build, not incremental
+            run_counter: 0,
         };
 
         // Pre-compute lowercase corpus (avoids per-query lowercasing of 42K+ docs)

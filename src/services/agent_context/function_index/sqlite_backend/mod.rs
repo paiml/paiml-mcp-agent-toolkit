@@ -255,6 +255,7 @@ mod tests {
             tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
+            run_counter: 0,
         };
         insert_metadata(&conn, &manifest).unwrap();
 
@@ -326,6 +327,7 @@ mod tests {
             tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
+            run_counter: 0,
         };
 
         save_to_sqlite(
