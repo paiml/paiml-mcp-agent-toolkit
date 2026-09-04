@@ -566,3 +566,61 @@ fn the_three_new_checks_are_selectable_and_two_of_them_are_in_the_suite() {
         "…and the opt-in one must not"
     );
 }
+
+/// Caught by the AD-04 quorum on the AD-05 PR: the MCP suite passed
+/// `QualityThresholds::default()` while the CLI resolved pmat.toml, so a project's
+/// `[quality] max_file_lines` applied over one transport and not the other. The
+/// suite must resolve the same way the CLI does.
+#[test]
+fn the_mcp_suite_resolves_thresholds_from_pmat_toml_like_the_cli() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let d = tmp.path();
+    std::fs::write(
+        d.join("pmat.toml"),
+        "[quality]\nmax_file_lines = 10\nmax_churn_commits_90d = 3\n",
+    )
+    .expect("write");
+    let resolved = QualityThresholds::resolve(d, None, None);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    let mut violations = Vec::new();
+    let mut results = crate::cli::analysis_utilities::QualityGateResults::default();
+    // 20 lines > 10: the resolved thresholds must produce the violation the defaults would not
+    std::fs::create_dir_all(d.join("src")).expect("mkdir");
+    std::fs::write(d.join("src/big.rs"), "// x\n".repeat(20)).expect("write");
+    rt.block_on(super::run_all_project_checks(
+        d,
+        0.1,
+        None,
+        20,
+        &mut violations,
+        &mut results,
+        false,
+        resolved,
+    ))
+    .expect("checks");
+    assert_eq!(
+        resolved.max_file_lines, 10,
+        "pmat.toml must win over the shipped default"
+    );
+    assert!(
+        results.file_size_violations >= 1,
+        "a 20-line file must fail max_file_lines = 10 through the resolved thresholds: {results:?}"
+    );
+    let mut v2 = Vec::new();
+    let mut r2 = crate::cli::analysis_utilities::QualityGateResults::default();
+    rt.block_on(super::run_all_project_checks(
+        d,
+        0.1,
+        None,
+        20,
+        &mut v2,
+        &mut r2,
+        false,
+        QualityThresholds::default(),
+    ))
+    .expect("checks");
+    assert_eq!(
+        r2.file_size_violations, 0,
+        "the control: the shipped default (500) passes the same file"
+    );
+}

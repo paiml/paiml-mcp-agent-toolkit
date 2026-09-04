@@ -177,10 +177,14 @@ async fn run_project_suite(project_path: &Path) -> Result<GateSuite> {
         &mut violations,
         &mut results,
         false,
-        // The MCP gate runs at the SAME thresholds the CLI defaults to, for the
-        // reason `the_suite_thresholds_are_the_cli_defaults` states about the
-        // other two: one name must not mean two numbers.
-        QualityThresholds::default(),
+        // The MCP gate resolves the file-size and churn thresholds exactly as
+        // the CLI does — pmat.toml [quality] over the shipped defaults — for
+        // the reason `the_suite_thresholds_are_the_cli_defaults` states about
+        // the other two: one name must not mean two numbers. (The first cut
+        // passed `QualityThresholds::default()` here, so a project's
+        // `max_file_lines` applied over the CLI and not over MCP; the AD-04
+        // quorum on the PR caught it.)
+        QualityThresholds::resolve(project_path, None, None),
     )
     .await?;
 

@@ -23,6 +23,7 @@ analysis utilities, configuration); trigger Q1 not fired (no quorum lane; the AD
 | unrun-tests ledger | drift reported, not fixed (forbidden) | regenerated last, with the reachability ledger |
 | `pmat verify` | `ok:false`, 5 stages measured, tests red on 6 (4 pre-existing worktree `git_context` failures, since fixed on master by #1174; 2 the worker's — ratchet and ledger) | on d3eaeb88a (after merging master at 5f719651a, ledgers regenerated last): exit 0 — format, satd, clippy, tests all ok; complexity withdrawn on a clean tree |
 | complexity on the changed files, direct | verify's complexity stage green | `analyze complexity --max-cyclomatic 30 --max-cognitive 25 --fail-on-violation --files <25 changed files>` exit 0; a 3/2 control exit 1 |
+| AD-04 quorum on this PR's head b416dbdfe | 1 FAIL, 2 PASS — lane 1 cited `quality_gate_suite.rs`: the MCP suite passed `QualityThresholds::default()` while the CLI resolved pmat.toml, so a project's `max_file_lines` applied over one transport and not the other. Fixed (`resolve(project_path, None, None)`) with a regression test that fails on the defaults and passes on the resolved thresholds |
 | pv contract | — | `contracts/quality-gate-thresholds-v1.yaml`, lint PASS |
 | 22 new lib tests | listed in the receipt | names re-read from the tree; they run in the verify tests stage |
 
