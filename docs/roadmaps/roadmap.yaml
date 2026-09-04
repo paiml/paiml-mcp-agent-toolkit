@@ -4083,3 +4083,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-665
+  github_issue: null
+  item_type: task
+  title: 'CRUX-07: the index is a faithful, reproducible view of the tree'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-09-04T02:51:57Z
+  updated: 2026-09-04T02:51:57Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat-architecture-crux-audit.md section 8.7. (a) the incremental index fast path compares len and ctime (unix) besides mtime, plus a rotating 1/64 verify slice, so a content change with a backdated mtime is seen; (b) every walk that defines persisted order is sorted and the ranker tie-breaks on (file_path, start_line); (c) analyze churn serialises author_contributions as a BTreeMap and the markdown path tie-breaks on author; (d) manifest.json is written atomically and a manifest-older-than-db detector fires on a seeded torn write; (e) a failed index save is reported as a failure, the success message printed only after a successful save. Controls: leg (a) fast-path survival (mtime-skipped > 0, 0 re-parsed on a quiescent tree); leg (c) c1 raw order-preserving hash stable AND c2 sorted hash stable AND keys equal git shortlog; leg (d) not firing on a clean pair; leg (e) silent with .pmat writable.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
