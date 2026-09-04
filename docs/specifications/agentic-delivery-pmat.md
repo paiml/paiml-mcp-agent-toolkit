@@ -331,6 +331,16 @@ withdrawn on a clean tree), so the next bundle revision makes the worker run the
 ### 9.10 AD-10 — Goal and Grill-me as lane templates (S)
 **Problem.** §5.6. **Proposal.** Four named lane templates in the delegate; `goal` and `grillme` emulate through `/teamwork-preview` prompts with `"emulated": true` in the receipt until agy ships the commands; `plan` = `agy --mode plan`. **Acceptance.** §5.6.
 
+*Implementation note (PMAT-664, 2026-09-04).* Bundle paiml-implement#10: `scripts/agy-lane.sh --mode
+goal|teamwork|grillme|plan --prompt "<p>" [--writes] [--dry-run]` composes the agy call per mode — `teamwork`
+prefixes `/teamwork-preview` and refuses a timeout under 20 minutes; `plan` passes `--mode plan`; `goal` and
+`grillme` are prompt templates with their own schemas (`agy/goal-schema.json`: achieved | partial | blocked with
+grounded evidence; `agy/grillme-schema.json`: questions marked answered-by-the-text or not, verdict including
+`do-not-implement-as-written`) until agy ships them natively (AIS-006); lanes are sandboxed unless `--writes`.
+`--self-test` proves the refusals, each mode's calling form and the sandbox rule for every mode (fourteen checks since paiml-implement#12) and the bundle's `verify.sh` runs it;
+the delegate brief gains a `mode` field and names it in its receipt. pmat side: this note and
+`docs/audits/impl-PMAT-664-receipt.md`.
+
 ## 10. Do-not-do
 
 - Do not make AD-01 a **required** PR check: it guards `master` after merge and would block every PR whenever the fleet is offline.
