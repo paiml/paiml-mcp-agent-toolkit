@@ -35,6 +35,7 @@ pub fn resolve_binding(project_path: &Path, token: &str) -> Result<ContractBindi
     let bytes =
         std::fs::read(&file).with_context(|| format!("failed to read {}", file.display()))?;
     let sha = hex_digest(&bytes);
+    require_equation(&file, &bytes, &equation)?;
 
     Ok(ContractBinding {
         contract,
@@ -43,6 +44,36 @@ pub fn resolve_binding(project_path: &Path, token: &str) -> Result<ContractBindi
         sha,
         bound_at: chrono::Utc::now(),
     })
+}
+
+/// A binding names an equation, so the equation has to exist in the contract it
+/// names (#1186). Before this check `--implements fx-v1/no_such_equation` bound
+/// happily: the sha was of the file, and nothing ever looked inside it.
+fn require_equation(file: &Path, bytes: &[u8], equation: &str) -> Result<()> {
+    let doc: serde_yaml_ng::Value = serde_yaml_ng::from_slice(bytes)
+        .with_context(|| format!("{} is not valid YAML", file.display()))?;
+    let equations = doc
+        .get("equations")
+        .and_then(|e| e.as_mapping())
+        .ok_or_else(|| anyhow!("{} declares no `equations:` mapping", file.display()))?;
+    if equations.contains_key(serde_yaml_ng::Value::String(equation.to_string())) {
+        return Ok(());
+    }
+    let mut known: Vec<String> = equations
+        .keys()
+        .filter_map(|k| k.as_str().map(str::to_string))
+        .collect();
+    known.sort();
+    Err(anyhow!(
+        "equation '{}' is not declared in {} (declared: {})",
+        equation,
+        file.display(),
+        if known.is_empty() {
+            "none".to_string()
+        } else {
+            known.join(", ")
+        }
+    ))
 }
 
 fn locate_contract_file(project_path: &Path, contract: &str) -> Result<PathBuf> {
@@ -159,7 +190,7 @@ mod tests {
     #[test]
     fn resolve_computes_stable_sha() {
         let temp = tempdir().unwrap();
-        write_yaml(temp.path(), "k", "body: 1\n");
+        write_yaml(temp.path(), "k", "equations:\n  eq: {body: 1}\n");
         let a = resolve_binding(temp.path(), "k/eq").unwrap();
         let b = resolve_binding(temp.path(), "k/eq").unwrap();
         assert_eq!(a.sha, b.sha);
@@ -168,9 +199,9 @@ mod tests {
     #[test]
     fn resolve_sha_changes_when_bytes_change() {
         let temp = tempdir().unwrap();
-        write_yaml(temp.path(), "k", "body: 1\n");
+        write_yaml(temp.path(), "k", "equations:\n  eq: {body: 1}\n");
         let a = resolve_binding(temp.path(), "k/eq").unwrap();
-        write_yaml(temp.path(), "k", "body: 2\n");
+        write_yaml(temp.path(), "k", "equations:\n  eq: {body: 2}\n");
         let b = resolve_binding(temp.path(), "k/eq").unwrap();
         assert_ne!(a.sha, b.sha, "SHA must reflect file content changes");
     }
@@ -195,6 +226,19 @@ mod tests {
     }
 
     #[test]
+    fn resolve_refuses_an_equation_the_contract_does_not_declare() {
+        let temp = tempdir().expect("tempdir");
+        write_yaml(temp.path(), "fx-v1", "equations:\n  one_is_one: {}\n");
+        let err = resolve_binding(temp.path(), "fx-v1/no_such_equation").unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains("no_such_equation") && msg.contains("one_is_one"),
+            "{msg}"
+        );
+        assert!(resolve_binding(temp.path(), "fx-v1/one_is_one").is_ok());
+    }
+
+    #[test]
     fn resolve_all_empty_is_ok() {
         let temp = tempdir().unwrap();
         let out = resolve_all(temp.path(), &[]).unwrap();
@@ -204,7 +248,7 @@ mod tests {
     #[test]
     fn resolve_all_detects_duplicates() {
         let temp = tempdir().unwrap();
-        write_yaml(temp.path(), "k", "equations: {}\n");
+        write_yaml(temp.path(), "k", "equations:\n  eq: {}\n");
         let err = resolve_all(temp.path(), &["k/eq".to_string(), "k/eq".to_string()]).unwrap_err();
         assert!(format!("{:#}", err).contains("duplicate"));
     }
@@ -224,7 +268,7 @@ mod tests {
         let temp = tempdir().unwrap();
         let ext_dir = tempdir().unwrap();
         let yaml_path = ext_dir.path().join("external.yaml");
-        std::fs::write(&yaml_path, "equations: {}\n").unwrap();
+        std::fs::write(&yaml_path, "equations:\n  eq: {}\n").unwrap();
 
         // Set env var to point at ext_dir
         // SAFETY: test runs serially for env modification
