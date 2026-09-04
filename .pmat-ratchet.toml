@@ -458,3 +458,20 @@ justification = """
 Performance-regression allowance. Occurs outside .pmat-metrics.toml only in
 PMAT-INTEGRATION.md; no benchmark comparison reads it.
 """
+
+[metric.oversized_source_files_src]
+baseline = 261
+unit = "count"
+band = 20
+includes_test_files = false
+command = '''git ls-files 'src/*.rs' | grep -vE '(^|/)(tests?|test_data|testdata|fixtures|examples|benches)/|(_|^|/)(tests?|test_[a-z0-9_]+)\.rs$' | xargs wc -l | awk '$1>500 && $2!="total"' | wc -l'''
+description = """
+Tracked non-test .rs files under src/ longer than 500 lines — the `[quality]
+max_file_lines` default that `pmat quality-gate --checks file-size` enforces
+(AD-05, PMAT-657). The gate itself reports 231 oversized files across every
+source it walks; this predicate is the shell-only approximation the ratchet
+can run without a pmat binary, restricted to src/*.rs and the same test-path
+heuristics, so its baseline is its own count. It may only go down: a CI leg
+that fails on file-size today would fail every merge, so the cap is enforced
+as a ratchet until the count reaches zero.
+"""

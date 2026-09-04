@@ -59,14 +59,17 @@ equations:
 
 falsification_tests:
   - id: F1
-    name: released binary
-    command: "PMAT=<pmat 3.36.0> bash scripts/quality-gate-thresholds-audit.sh"
-    expect: "seven legs rc=2 (the checks and flags do not parse), RED, exit 1"
+    rule: "the released binary cannot run the three checks"
+    prediction: "on pmat 3.36.0 all seven legs read rc=2 (the check names and the two flags do not parse), RED, exit 1"
+    test: "PMAT=<pmat 3.36.0> bash scripts/quality-gate-thresholds-audit.sh"
+    if_fails: "an older binary accepted the flags: the RED side of this contract was never measured, re-establish it before trusting GREEN"
   - id: F2
-    name: this tree
-    command: "PMAT=$(cargo build --bin pmat --message-format json | ...executable) bash scripts/quality-gate-thresholds-audit.sh"
-    expect: "seven ✓, GREEN, exit 0"
+    rule: "this tree enforces all three thresholds with controls"
+    prediction: "seven legs green: a 502-line file fails and a 499-line one passes at the default 500, --max-file-lines 400 fails the 499-line file; seven commits fail --max-churn-commits 5 and pass 10; one clippy warning fails lint and a clean crate passes"
+    test: "PMAT=$(cargo build --bin pmat --message-format json | ...executable) bash scripts/quality-gate-thresholds-audit.sh"
+    if_fails: "a threshold is not compared, not resolved, or resolved from the wrong source; the red leg names which"
   - id: F3
-    name: named mutation
-    command: "flip the file-size comparison to >= (or drop the churn threshold compare) and re-run F2"
-    expect: "the control leg for that check goes red"
+    rule: "the file-size comparison can be broken (named mutation)"
+    prediction: "comparing lines against max_lines * 2 turns the 502-line leg and the --max-file-lines 400 leg RED while the other five stay green"
+    test: "sed the comparison in quality_checks_part1_thresholds.rs to max_lines * 2, rebuild, run F2, revert and REBUILD"
+    if_fails: "the audit no longer discriminates the file-size rule; also check the binary under test was rebuilt after the revert — a stale mutant binary reads as a broken check"

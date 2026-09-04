@@ -209,12 +209,10 @@ pub async fn run_all_project_checks(
 /// there is no git history to read — through the macro that row would render as
 /// `churn_violations: 1`, an unmeasured check reported as a breached one.
 ///
-/// The row itself is then DROPPED from the suite's findings, which is the
-/// convention `run_all_project_checks` already follows for the security check's
-/// identical scope row: `--checks security` pushes
-/// `security_scope_disclosure` and this suite does not. `--checks churn` keeps
-/// the disclosure for the same reason. That asymmetry is inherited, not
-/// invented here — see the receipt's open question.
+/// The row itself is KEPT in the findings (severity info): a check that could
+/// not be answered is disclosed, never counted as passed — AD-05's rule. The
+/// security check's identical scope row is still dropped by this suite; PMAT-658
+/// tracks giving it the same treatment.
 async fn run_churn_check_counted(
     project_path: &Path,
     thresholds: QualityThresholds,
@@ -228,9 +226,10 @@ async fn run_churn_check_counted(
         eprint!("  \u{1f50d} Checking churn...");
     }
     let start = if perf { Some(Instant::now()) } else { None };
-    let mut found = check_churn(project_path, thresholds.max_churn_commits_90d).await?;
-    found.retain(|v| v.check_type == "churn");
-    results.churn_violations = found.len();
+    let found = check_churn(project_path, thresholds.max_churn_commits_90d).await?;
+    // Count only the breaches; the advisory `scope` row (no git history to read)
+    // is disclosed in the findings but is not a breached threshold.
+    results.churn_violations = found.iter().filter(|v| v.check_type == "churn").count();
     violations.extend(found);
     if let Some(s) = start {
         crate::status_eprintln!(

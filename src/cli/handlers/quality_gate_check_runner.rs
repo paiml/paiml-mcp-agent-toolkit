@@ -105,9 +105,11 @@ async fn run_all_checks(
         violations,
         results,
         perf,
-        // This runner has no CLI flags of its own to resolve from, so it asks
-        // for the shipped defaults by name rather than restating 500/20.
-        crate::cli::analysis_utilities::QualityThresholds::default(),
+        // This runner has no CLI flags of its own, but it has the project: resolve
+        // pmat.toml [quality] over the shipped defaults exactly as the CLI does,
+        // so a project's max_file_lines means the same number on every route
+        // (the AD-04 quorum on the PR caught this passing the bare defaults).
+        crate::cli::analysis_utilities::QualityThresholds::resolve(project_path, None, None),
     )
     .await
 }

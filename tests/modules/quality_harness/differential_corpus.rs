@@ -525,6 +525,17 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "results.not_measured[].len",
         "disclosure list: varies with the run environment (compiler, coverage report, detector availability), not with the corpus; 1 by design while block-level duplicates are a separate item",
     ),
+    // ── AD-05 (PMAT-657): two threshold counters the corpora cannot move ──
+    (
+        "quality-gate",
+        "results.churn_violations",
+        "churn counts commits per file in the last 90 days against max_churn_commits_90d (20); the largest corpus has 12 commits in total, so no file can exceed the cap and the leaf is 0 for every corpus by construction of the corpora, not of the check. It moves under scripts/quality-gate-thresholds-audit.sh (seven commits to one file fail --max-churn-commits 5 and pass 10).",
+    ),
+    (
+        "quality-gate",
+        "results.lint_violations",
+        "lint is opt-in (--checks lint): it compiles the analysed tree with clippy, so `--checks all`, which this harness runs, does not run it and the counter stays 0. It moves under scripts/quality-gate-thresholds-audit.sh (one clippy warning fails, a clean crate passes).",
+    ),
     (
         "quality-gate",
         "results.not_applicable[].len",

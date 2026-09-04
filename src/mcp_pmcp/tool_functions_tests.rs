@@ -367,8 +367,21 @@ mod coverage_tests {
             "clean project should pass standard quality gate (score={score}, grade={grade})"
         );
         // The original repro: passing grade reported with zero violations
-        // yet passed:false. Pin that violations stay consistent too.
-        assert!(result["violations"].as_array().unwrap().is_empty());
+        // yet passed:false. Pin that violations stay consistent too: a passing
+        // project carries no blocking (error) finding. Advisory `scope` rows —
+        // AD-05's churn disclosure when there is no git history — are allowed;
+        // they are disclosure, not breach.
+        assert!(
+            result["violations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(
+                    |v| v["severity"].as_str().map(str::to_ascii_lowercase) != Some("error".into())
+                ),
+            "a passing project must carry no blocking finding: {}",
+            result["violations"]
+        );
     }
 
     #[tokio::test]

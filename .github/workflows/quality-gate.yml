@@ -334,3 +334,25 @@ jobs:
           body="$(printf 'AD-01 (docs/specifications/agentic-delivery-pmat.md section 3.5).\n\n```\n%s\n```\n\nRun: %s/%s/actions/runs/%s' "$(cat release-check.out)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
           n=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
           if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
+
+  thresholds:
+    name: quality-gate thresholds (churn, lint)
+    # AD-05 (PMAT-657): the two thresholds the tree meets today, enforced on the
+    # merge commit. file-size is enforced as a ratchet (.pmat-ratchet.toml
+    # oversized_source_files_src) because the tree carries hundreds of
+    # oversized files and a leg that is red on day one blocks every merge.
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build pmat from this tree
+        run: cargo install --path . --locked
+      - name: churn and lint on the merge commit
+        env:
+          RUST_MIN_STACK: 8388608
+        run: pmat quality-gate --checks churn,lint --format summary
