@@ -1,0 +1,32 @@
+{
+ "ticket": "PMAT-657",
+ "base": "origin/master",
+ "head": "19ff0ee3cc7208f5ca498ef9d54d7c94e27d1cf5",
+ "diff_sha256": "940de793f645883d5645efcb15ab345fdc7e25fe54ecfb0522dc4731e92cae2d",
+ "width": 3,
+ "executor": "agy",
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "I have carefully reviewed the provided diff against the ticket PMAT-657 (AD-05). \n\n- The new checks `file-size`, `churn`, and `lint` are correctly introduced in `pmat quality-gate`.\n- `max_file_lines` and `max_churn_commits` are wired up to CLI flags and fallback to `pmat.toml [quality] max_file_lines` (500) and `max_churn_commits_90d` (20, with alias `max_churn_commits`).\n- All execution paths (CLI `handle_quality_gate_with_thresholds`, hook runner `run_all_checks`/`run_individual_checks`, and the MCP suite `run_project_suite`) resolve the thresholds identically (`QualityThresholds::resolve(project_path, None, None)` for the latter two).\n- `file-size` and `churn` have successfully been added to `default_checks()` and thus the MCP suite, while `lint` is correctly kept opt-in.\n- Churn and lint gracefully emit an advisory scope row (never counted as passed) when they lack git history or a `Cargo.toml`. `run_churn_check_counted` specifically counts only violations and keeps the scope disclosure, avoiding inflating violations on unmeasured trees.\n- The workflow `quality-gate.yml` now has a `thresholds` job testing churn and lint.\n- The `oversized_source_files_src` ratchet correctly enforces `file-size` due to current oversized files in the tree, with a baseline of 262. \n- Differential corpus exclusions are explicitly added for the new findings.\n- The falsification shell script implements all named controls as stated in the acceptance criteria.\n\nThe diff is pristine and fulfills every point without weakening any existing gate. Everything is in order.",
+   "findings": [],
+   "raw_bytes": 4228
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "I have reviewed the diff against the requirements of PMAT-657 (AD-05). I found that all requirements have been met and no forbidden changes were introduced.\n\nThe diff correctly implements:\n1. `file-size`, `churn`, and `lint` checks within the quality gate.\n2. Resolution of thresholds (`max-file-lines` and `max-churn-commits`) prioritizing CLI flags over `pmat.toml` over shipped defaults, across all routing paths (CLI, hook runner, MCP suite).\n3. `file-size` and `churn` are correctly added to `default_checks()` while `lint` remains explicitly opt-in (`--checks lint`).\n4. Checks that cannot be answered (e.g., `churn` outside a git repo, `lint` without `Cargo.toml`) emit advisory `scope` rows rather than passing silently.\n5. `file-size` is enforced through `.pmat-ratchet.toml` with the `oversized_source_files_src` metric to prevent immediate CI blockage on existing oversized files.\n6. A CI leg explicitly runs `churn` and `lint` on merge commits.\n7. Acceptance controls correctly assert the boundaries (e.g., a 499-line file passes, while a 501-line file fails under the default 500 threshold).\n\nThe architecture of extracting and forwarding the thresholds via `QualityGateRequest` without growing existing large signatures is clean and prevents argument order bugs.\n\nNo regressions or contradictions to the ticket were found.",
+   "findings": [],
+   "raw_bytes": 5168
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff perfectly implements PMAT-657. It adds the `file-size`, `churn`, and `lint` checks, correctly parses threshold overrides from the CLI, `pmat.toml`, and the defaults. The file-size check properly handles line counting, churn relies on `.git` directory presence and `git log` paths gracefully, and the lint check successfully wraps `cargo clippy` without retaining parent environments. All tests correctly validate boundaries, and all receipt claims are backed by the provided diff.",
+   "findings": [],
+   "raw_bytes": 2039
+  }
+ ]
+}
