@@ -1,5 +1,12 @@
 # impl receipt — PMAT-671: release 3.37.0
 
+> **Scope of the PR that adds this file:** docs only — this receipt, the AD-02 dog-food receipt
+> (`docs/audits/release-3.37.0-dogfood-published.md`) and three roadmap rows flipped to completed.
+> The code, the version bump and the quorum artifact it cites are already on master:
+> `git show 9beccfbd1` (merge of #1189), `5cfa31439` (cut), `2edf6c5a4`, `ac2b6a874`,
+> `e5734f499` (verdict commit; `docs/audits/quorum-PMAT-671.json` on master). Nothing here is
+> asserted about this diff; every claim below names the commit or artifact on master that carries it.
+
 ## Identity
 
 | field | value |
