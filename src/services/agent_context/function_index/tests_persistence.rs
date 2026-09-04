@@ -714,6 +714,18 @@ fn save_into_a_read_only_index_dir_fails_instead_of_truncating() {
 
     std::fs::set_permissions(&idx_path, std::fs::Permissions::from_mode(0o555))
         .expect("chmod must succeed");
+    // Root ignores directory modes (CI runs this suite as root inside the
+    // container), so a 0o555 directory is not read-only for it and the test
+    // cannot judge the save. Probe first; when the probe succeeds the premise
+    // does not hold here and the test says so instead of asserting on it.
+    let probe = idx_path.join(".write-probe");
+    if std::fs::write(&probe, b"").is_ok() {
+        let _ = std::fs::remove_file(&probe);
+        std::fs::set_permissions(&idx_path, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod must succeed");
+        eprintln!("skipped: this user can write into a 0o555 directory (root), so a read-only index dir cannot be expressed here");
+        return;
+    }
     let result = index.save(&idx_path);
     std::fs::set_permissions(&idx_path, std::fs::Permissions::from_mode(0o755))
         .expect("chmod must succeed");
