@@ -299,7 +299,7 @@ once after acceptance and reports `gate {cmd, ok, stages_measured, not_measured}
 when the claim disagrees with the orchestrator's rerun on `ok`, `stages_measured` or `not_measured`; its
 `--self-test` proves both directions, and the bundle's `verify.sh` runs it. SKILL.md Phase 2 step 3 now
 re-runs the gate as well as `A_i`. The first receipt held to the rule is the PMAT-657 worker's
-(`docs/audits/worker-receipt-PMAT-657.json`): complete, `gate.ok=false` with every red test named, and
+(`docs/audits/worker-receipt-PMAT-657.json`): complete, `gate.ok=false`, the first failing test named and the other five characterised in its note, and
 the orchestrator's rerun on the same tree recorded in `docs/audits/impl-PMAT-660-receipt.md` — a finding: the worker
 measured five stages on its dirty tree, the rerun four on the committed one (verify's complexity stage is
 withdrawn on a clean tree), so the next bundle revision makes the worker run the gate on the tree it commits.
