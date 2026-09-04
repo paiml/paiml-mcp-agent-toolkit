@@ -1,0 +1,83 @@
+{
+ "ticket": "PMAT-655",
+ "base": "origin/master",
+ "head": "e668cf180616f6474185342e5ffa82a1aea6b474",
+ "width": 3,
+ "executor": "agy",
+ "agreed": false,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "FAIL",
+   "summary": "The diff fails because it ignores the CLI `--strict` flag for the pre-commit SATD check (reading only from the config file), includes a vacuous test for that behavior, and sneaks in an unrelated fix for PMAT-654.",
+   "findings": [
+    {
+     "claim": "pmat hooks install --strict ... makes the pre-commit SATD and task-ID checks exit 1 instead of warning",
+     "file": "src/cli/handlers/hooks_command_handlers/hook_generation.rs",
+     "fix": "Pass the `strict` flag down to `generate_quality_checks()` so it uses the effective strict value rather than unconditionally reading from the configuration file.",
+     "grounding": "cited",
+     "line": 90
+    },
+    {
+     "claim": "the_pre_commit_satd_block_exits_1_under_strict passes",
+     "file": "src/cli/handlers/hooks_command_handlers/commit_enforcement_tests.rs",
+     "fix": "Change the test to evaluate the actual behavior of the generated hook (or at least check that `PMAT_HOOKS_STRICT=1` is injected), rather than vacuously asserting the presence of a static string that exists in the template regardless of configuration.",
+     "grounding": "cited",
+     "line": 144
+    },
+    {
+     "claim": "when the change does something the ticket does not ask for",
+     "file": "src/models/git_context.rs",
+     "fix": "Revert the changes to `src/models/git_context.rs` and `docs/roadmaps/roadmap.yaml` (PMAT-654) so this PR only addresses PMAT-655.",
+     "grounding": "cited",
+     "line": 391
+    }
+   ],
+   "raw_bytes": 3703
+  },
+  {
+   "lane": 2,
+   "verdict": "FAIL",
+   "summary": "The diff fails because it includes unrequested code for another ticket (PMAT-654) and introduces a bug where automated hook installations (via `comply` or `verify --fix`) ignore the `strict` config for the `commit-msg` hook.",
+   "findings": [
+    {
+     "claim": "The diff includes unrequested changes for another ticket (PMAT-654) which are not part of PMAT-655.",
+     "file": "src/models/git_context.rs",
+     "fix": "Remove the changes to `src/models/git_context.rs` and `docs/roadmaps/roadmap.yaml` that belong to PMAT-654.",
+     "grounding": "cited",
+     "line": 389
+    },
+    {
+     "claim": "Internal calls to `hooks_cmd.install()` pass `false` for `strict`, overriding `[hooks] strict = true` for the `commit-msg` hook during auto-updates. This creates an inconsistency because `pre-commit` hook generation correctly reads the config globally.",
+     "file": "src/cli/handlers/comply_handlers/check_handlers/types.rs",
+     "fix": "Read the strict value from configuration directly in `HooksCommand::install` or `install_commit_msg_hook`, similar to how `generate_quality_checks` does it, instead of passing `false` from internal callers.",
+     "grounding": "cited",
+     "line": 690
+    }
+   ],
+   "raw_bytes": 3256
+  },
+  {
+   "lane": 3,
+   "verdict": "FAIL",
+   "summary": "The diff FAILS review. It introduces unrequested changes by bundling a fix for PMAT-654 (git worktree handling) which was not asked for in the PMAT-655 ticket. Additionally, the implementation fails the acceptance criteria for `--strict` enforcement: while the `commit-msg` hook correctly respects the CLI flag, the `pre-commit` hook generator (`generate_quality_checks`) ignores it and strictly relies on the configuration file, meaning `pmat hooks install --strict` will not actually enforce SATD limits unless configured in `pmat.toml`.",
+   "findings": [
+    {
+     "claim": "The diff includes a fix for an unrelated ticket (PMAT-654) regarding git worktrees. The instructions state to default to FAIL when the change does something the ticket does not ask for.",
+     "file": "src/models/git_context.rs",
+     "fix": "Remove the changes to `src/models/git_context.rs` and the PMAT-654 entry in `docs/roadmaps/roadmap.yaml` so the diff strictly implements PMAT-655.",
+     "grounding": "cited",
+     "line": 383
+    },
+    {
+     "claim": "The `--strict` CLI flag is not honored by the pre-commit hook generator. While `install()` passes the resolved `strict` flag to `install_commit_msg_hook`, the pre-commit hook generation hardcodes `u8::from(config.hooks.strict)` instead of using the override. Therefore, `pmat hooks install --strict` leaves the SATD check in warning mode if the config file lacks the strict setting, failing the ticket's explicit acceptance criteria.",
+     "file": "src/cli/handlers/hooks_command_handlers/hook_generation.rs",
+     "fix": "Pass the resolved `strict` boolean down to `generate_quality_checks()` (or update the config struct in-memory before generation) so the pre-commit hook enforces strict mode when the CLI flag is provided.",
+     "grounding": "cited",
+     "line": 77
+    }
+   ],
+   "raw_bytes": 4490
+  }
+ ]
+}
