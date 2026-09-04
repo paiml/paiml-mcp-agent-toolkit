@@ -1,0 +1,71 @@
+{
+ "ticket": "PMAT-656",
+ "base": "origin/master",
+ "head": "445dbacb518d692ebe25b92f8c93688233048e01",
+ "width": 3,
+ "executor": "agy",
+ "agreed": false,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "FAIL",
+   "summary": "The diff FAILS review. While the implementation of the Quorum Review Skill (AD-04) and its audit script are logically sound and properly tested, the diff violates the strict refutation doctrine by doing something the ticket does not ask for. Specifically, it includes unrequested roadmap additions for two other tickets (PMAT-654 and PMAT-655). As demonstrated by the project's own prior reviews (e.g., the refuted PMAT-655 run), bundling unrelated ticket changes into a PR is grounds for refusal.",
+   "findings": [
+    {
+     "claim": "The diff includes unrequested roadmap entries for tickets PMAT-654 and PMAT-655, which are outside the scope of PMAT-656. The instructions strictly dictate to default to FAIL when the change does something the ticket does not ask for.",
+     "file": "docs/roadmaps/roadmap.yaml",
+     "fix": "Remove the entries for PMAT-654 and PMAT-655 from docs/roadmaps/roadmap.yaml so the diff strictly implements only PMAT-656.",
+     "grounding": "cited",
+     "line": 4030
+    }
+   ],
+   "raw_bytes": 2964
+  },
+  {
+   "lane": 2,
+   "verdict": "FAIL",
+   "summary": "The diff fails because it includes unrequested changes (adding PMAT-654 and PMAT-655 to the roadmap), and the audit script tests an exception for the parent commit that directly contradicts the contract's strict requirement that the artifact head matches the PR head. Additionally, the contract's falsification command points to a misnamed file.",
+   "findings": [
+    {
+     "claim": "The diff includes roadmap additions for tickets PMAT-654 and PMAT-655. Ticket PMAT-656 does not ask for this, violating the rule to not include unrequested changes.",
+     "file": "docs/roadmaps/roadmap.yaml",
+     "grounding": "cited",
+     "line": 4030
+    },
+    {
+     "claim": "Leg 4c of the test script explicitly tests that the helper accepts an artifact whose head is the parent commit ($JUDGED != $VHEAD). This asserts the opposite of the contract (lines 23 and 27) which mandates a strict `a.head == pr.head` formula and states `an agreeing artifact for another head does not count`. This undocumented exception in the script weakens the gate.",
+     "file": "scripts/quorum-review-audit.sh",
+     "grounding": "cited",
+     "line": 65
+    },
+    {
+     "claim": "The falsification test F4 command references `--clean docs/audits/quorum-PMAT-655.json`, but the artifact was actually committed as `docs/audits/quorum-PMAT-655-after-fix.json`. The command as written will fail to find the file.",
+     "file": "contracts/quorum-review-v1.yaml",
+     "grounding": "cited",
+     "line": 68
+    }
+   ],
+   "raw_bytes": 3784
+  },
+  {
+   "lane": 3,
+   "verdict": "FAIL",
+   "summary": "The diff FAILS review. The implementation introduces an undocumented and unspecced relaxation of the gate (accepting an artifact for the parent commit when adding the verdict file), and the test script explicitly asserts this behavior (leg 4c), which directly contradicts the formal contract formula (`a.head == pr.head`). Additionally, the diff includes unrequested additions to the roadmap for unrelated tickets (PMAT-654 and PMAT-655).",
+   "findings": [
+    {
+     "claim": "The audit script relaxes the enforcement gate by testing and asserting that an artifact for the parent commit is accepted (leg 4c), directly contradicting the contract formula which requires `a.head == pr.head` and the specification which requires agreement for the PR's current head.",
+     "file": "scripts/quorum-review-audit.sh",
+     "grounding": "cited",
+     "line": 59
+    },
+    {
+     "claim": "The diff adds unrequested roadmap entries for PMAT-654 and PMAT-655, doing something the ticket PMAT-656 does not ask for.",
+     "file": "docs/roadmaps/roadmap.yaml",
+     "grounding": "cited",
+     "line": 4030
+    }
+   ],
+   "raw_bytes": 3091
+  }
+ ]
+}
