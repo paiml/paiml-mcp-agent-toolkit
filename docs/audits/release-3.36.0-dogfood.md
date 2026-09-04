@@ -12,4 +12,6 @@
 | AD-01 release-check on master | RED on the merge push at 19:01Z (before the tag): opened #1172 · GREEN on the dispatch after tag + release + crate existed (run 33796369689) · local `scripts/release-check.sh` on master: `release-check: 3.36.0 is tagged, released and on crates.io` |
 | docs.rs | `doc_status=true` for 3.36.0 (built within ~25 min of publish; HTTP 200) |
 
+The post-publish dog-food above was run by hand; the scripted form (AD-02, `scripts/dogfood-published.sh 3.36.0`) wrote [`release-3.36.0-dogfood-published.md`](release-3.36.0-dogfood-published.md) with the same result (13 checks, 0 failures) and pins the artifact by the registry's size and stamp.
+
 Not checked: the Docker channel (#1122 — publishes from a different version; not part of this release's gates). The post-publish steps were run by hand from `/mnt/nvme-raid0/agent-wt/pmat-release/publish-3.36.0.sh`; AD-02 (`scripts/dogfood-published.sh`) is the next item and turns this receipt into a script's output.
