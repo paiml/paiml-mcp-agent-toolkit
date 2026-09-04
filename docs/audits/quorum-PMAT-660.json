@@ -1,0 +1,31 @@
+{
+ "ticket": "PMAT-660",
+ "base": "origin/master",
+ "head": "8abdbac74abbe81df6d42ec69ab8b321260eb4f7",
+ "width": 3,
+ "executor": "agy",
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff correctly implements the pmat side of the ticket PMAT-660. The `roadmap.yaml` is updated correctly with proper YAML escaping. The spec note in `docs/specifications/agentic-delivery-pmat.md` is updated precisely as requested and accurately reflects the json format and findings. The PMAT-657 worker's real receipt is correctly provided as `docs/audits/worker-receipt-PMAT-657.json`, and the orchestrator receipt `docs/audits/impl-PMAT-660-receipt.md` clearly documents the claims, verification, and findings. No contradictions or forbidden changes were found.",
+   "findings": [],
+   "raw_bytes": 2168
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff cleanly implements the 'pmat side' of PMAT-660 by adding the spec note to `agentic-delivery-pmat.md`, the PMAT-660 receipt `impl-PMAT-660-receipt.md`, the PMAT-657 worker's real receipt `worker-receipt-PMAT-657.json`, and updating the roadmap with the ticket. All claims in the receipt match the diff exactly, and there are no regressions or extraneous changes. The linting and bundle-side requirements were accurately documented as completed in a separate PR.",
+   "findings": [],
+   "raw_bytes": 1978
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff correctly implements the requested changes for the pmat side of PMAT-660. The roadmap row is correctly added, the worker receipt for PMAT-657 is properly introduced with the required `gate` fields, and the implementation note accurately documents the findings and the application of the lint. The diff precisely matches the claims made in the receipt.",
+   "findings": [],
+   "raw_bytes": 1756
+  }
+ ]
+}
