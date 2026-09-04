@@ -128,7 +128,7 @@ fn gh301_exposes_exclude_dirs_escape_hatch() {
         .build()
         .expect("tokio runtime");
     let hook: String = runtime
-        .block_on(async { cmd.generate_hook_content().await })
+        .block_on(async { cmd.generate_hook_content(false).await })
         .expect("hook content");
 
     assert!(

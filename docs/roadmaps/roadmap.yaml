@@ -4010,6 +4010,11 @@ roadmap:
   spec: null
   acceptance_criteria:
   - 'src/models/git_context.rs tests: repo_path() walks up from CARGO_MANIFEST_DIR looking for .git/HEAD; in a linked worktree .git is a file (''gitdir: …''), so the walk falls through to manifest_dir.parent() (not a repo) and four tests fail: test_is_git_repo_returns_true_for_git_repo, test_from_current_dir_extracts_commit_sha, test_from_current_dir_extracts_author_info, test_git_context_serialization. Seen by the aprender session on #1166 and by pmat verify on the AD-02 worktree (PMAT-652). Fix: accept a .git file (or ask git rev-parse --show-toplevel). Linked: PMAT-652.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
 - id: PMAT-653
   github_issue: null
   item_type: task
@@ -4022,6 +4027,57 @@ roadmap:
   spec: null
   acceptance_criteria:
   - 'src/cli/handlers/dead_code_library_disclosure_tests.rs:231 — the test runs the real cargo dead-code analyzer (cargo check on a fixture) with the library default 600 s budget. Under llvm-cov instrumentation on a runner shared with 16 other jobs it exceeded 600 s once (run 33796915546); same test passed on 627fb6a85 and c1c2dd1ad. The test asserts a decision attribution, not a wall-clock bound: give it its own explicit budget (or a pre-warmed fixture) so a slow runner cannot turn it red. Not a rerun: the PR was re-measured on a new head after a cascade merge.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-654
+  github_issue: null
+  item_type: task
+  title: 'git_context tests fail in any git worktree: the repo-path helper requires .git/HEAD, but a worktree''s .git is a file'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T21:34:43Z
+  updated: 2026-09-03T21:34:43Z
+  spec: null
+  acceptance_criteria:
+  - 'src/models/git_context.rs tests: repo_path() walks up from CARGO_MANIFEST_DIR looking for .git/HEAD; in a linked worktree .git is a file (''gitdir: …''), so the walk falls through to manifest_dir.parent() (not a repo) and four tests fail: test_is_git_repo_returns_true_for_git_repo, test_from_current_dir_extracts_commit_sha, test_from_current_dir_extracts_author_info, test_git_context_serialization. Seen by the aprender session on #1166 and by pmat verify on the AD-02 worktree (PMAT-652). Fix: accept a .git file (or ask git rev-parse --show-toplevel). Linked: PMAT-652.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-655
+  github_issue: null
+  item_type: task
+  title: 'AD-03: commit enforcement — the generated hook''s SATD and task-ID checks block under strict mode, and a commit-msg hook requires a Pmat-Ticket trailer'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T22:07:13Z
+  updated: 2026-09-04T00:41:54Z
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 4.7 / 9.3. [hooks] strict = true / pmat hooks install --strict make the pre-commit SATD check exit 1 and install a commit-msg hook that requires a Pmat-Ticket trailer (or the ticket pattern); non-strict keeps warning. Includes: strict resolved once for both hooks and kept across automatic rewrites (found by the AD-04 quorum); --strict with --stack refused rather than dropped (PMAT-659 closes the gap); and the refactor of two touched functions over pmat verify''s cognitive ceiling (handle_run, report_settings_provenance) that the complexity gate on changed files requires.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-659
+  github_issue: null
+  item_type: task
+  title: 'hooks install --stack has no strict mode: the stack installer writes its own lightweight pre-commit hook and no commit-msg hook'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-04T00:41:54Z
+  updated: 2026-09-04T00:41:54Z
+  spec: null
+  acceptance_criteria:
+  - 'AD-03 (PMAT-655) made --strict --stack an explicit refusal instead of a silent drop. Close the gap: the stack installer should generate the same strict pre-commit hook and the commit-msg hook in every stack repository, honouring [hooks] strict per repository. Control: pmat hooks install --stack --strict in a fixture stack of two repositories refuses an untrailered commit in both.'
   phases: []
   subtasks: []
   estimated_effort: null
