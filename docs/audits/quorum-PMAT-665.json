@@ -1,0 +1,70 @@
+{
+ "ticket": "PMAT-665",
+ "base": "origin/master",
+ "head": "6ed9b9716625682498e7947de758dfd1ac776996",
+ "diff_sha256": "c290a7a7da007341fc18da0b8c751d7f24ac4e867f34f6d0fddd1a6c14130fe1",
+ "width": 3,
+ "executor": "agy",
+ "prompt_mode": "file",
+ "prompt_bytes": 186023,
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "All requirements from ticket PMAT-665 (CRUX-07) are fully implemented and backed by the diff. The 5 legs (a-e) address index reproducibility, atomic manifest saves, tied rank orders, and fast path robustness exactly as requested, and the test/acceptance harness properly verifies these behaviors along with their controls. The requested complexity refactors are also present. No refuting evidence found.",
+   "findings": [
+    {
+     "claim": "Fast path compares len and ctime besides mtime, plus a rotating 1/64 verify slice with a persisted run counter.",
+     "file": "src/services/agent_context/function_index/build_helpers.rs",
+     "fix": "",
+     "grounding": "cited",
+     "line": 2315
+    },
+    {
+     "claim": "Every walk defining persisted order is sorted, and the ranker tie-breaks on (file_path, start_line).",
+     "file": "src/services/agent_context/query/engine_query.rs",
+     "fix": "",
+     "grounding": "cited",
+     "line": 3328
+    },
+    {
+     "claim": "Analyze churn serialises author_contributions as a BTreeMap and the markdown path tie-breaks on author.",
+     "file": "src/cli/analysis_utilities/churn.rs",
+     "fix": "",
+     "grounding": "cited",
+     "line": 359
+    },
+    {
+     "claim": "manifest.json is written atomically, a torn or unparsable manifest is named and rebuilt, and a manifest-older-than-db detector fires.",
+     "file": "src/services/agent_context/function_index/build_persistence.rs",
+     "fix": "",
+     "grounding": "cited",
+     "line": 2623
+    },
+    {
+     "claim": "Failed index save is reported, success printed only after success, persist_score returns Result, and FTS DELETE propagates.",
+     "file": "src/cli/handlers/query_handler/indexing.rs",
+     "fix": "",
+     "grounding": "cited",
+     "line": 221
+    }
+   ],
+   "raw_bytes": 4217
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "I have reviewed the entire diff and all files provided in the review brief. The implementation correctly implements all requirements laid out in PMAT-665 without any unrequested changes or weakened gates.\n- Leg (a): `file_stat_fields` checks `len` and `ctime`; `in_verify_slice` uses `VERIFY_SLICE_DIVISOR = 64` and a persisted `run_counter` to force re-hashing a 1/64 slice, correctly backdating mtime evasion.\n- Leg (b): `sort_by_file_path` defines the order of the walks, and `engine_query.rs` correctly tie-breaks ranked results using `rank_order` with `(file_path, start_line)`.\n- Leg (c): `author_contributions` is migrated to a `BTreeMap` for stable serialization, and markdown correctly tie-breaks by author name.\n- Leg (d): `write_manifest_atomically` writes to a `.tmp` file before renaming, `check_manifest_integrity` catches torn manifests, and `check_manifest_not_older_than_db` acts as the stale pair detector.\n- Leg (e): `index.save()` results are matched explicitly so failures are logged and successes are accurately reported; `persist_score` returns a `Result` that is checked in `handle_score`; FTS `DELETE` correctly propagates its result.\n- The 9 complex functions listed have been properly refactored to conform to cognitive complexity limits, and the raw-string fixture was successfully hoisted.\n\nVerdict is PASS.",
+   "findings": [],
+   "raw_bytes": 3732
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The provided diff fully implements all requirements specified in the PMAT-665 ticket without introducing any unrequested or forbidden behavior.\n\n1. **Incremental index fast path (a):** `build_helpers.rs` now extracts and compares `len` and `ctime` (with fallback to 0 on non-unix) alongside `mtime`. `run_counter` is persisted in the SQLite metadata, and `in_verify_slice` conditionally hashes 1/64 of the files (checked via modulo arithmetic) to ensure stability against backdated rewrite spoofing.\n2. **Stable walk sorting (b):** `sort_ranked` and `browse_all` in `engine_query.rs` have been updated to use `rank_order`, which enforces sorting by a `tie_break_key` mapped to `(file_path, start_line)`.\n3. **Churn serialization (c):** `author_contributions` type has been changed to `std::collections::BTreeMap` across `churn.rs` and models. Its display order `take(15)` tie-breaks equal counts using the author name.\n4. **Manifest operations (d):** `manifest.json` is written to a `tmp` file followed by an atomic `fs::rename`. The checks `check_manifest_not_older_than_db` and `check_manifest_integrity` have been implemented and properly invoke a rebuild on detecting stale or torn pairs.\n5. **Robust save and error reporting (e):** `indexing.rs` now safely matches on `index.save` using `Ok(())` (delaying the success message) or `Err(e)` (capturing the failure correctly). `persist_score` correctly bubbles up a `Result` instead of discarding errors. FTS index `DELETE` propagates errors via `?`.\n6. **Complexity refactors:** All nine specified functions over the cognitive ceiling (`build`, `get_file_metrics`, `compute_pv_lint`, `compute_pipeline_depth`, `compute_contract_drift`, `cross_validate`, `handle_score`, `compute_evoscore`, and the one test raw-string fixture `HIGH_COMPLEXITY_FIXTURE`) were successfully extracted/refactored.\n\nI could not find any evidence in the diff that refutes the implementation receipt. All features requested have been added exactly as stated.",
+   "findings": [],
+   "raw_bytes": 5045
+  }
+ ]
+}
