@@ -29,8 +29,9 @@ analysis utilities, configuration); trigger Q1 not fired (no quorum lane; the AD
 | spec §9.5's CI leg and constants | `quality-gate thresholds (churn, lint)` job on the merge commit (green today: churn 0, clippy clean); file-size enforced as the ratchet `oversized_source_files_src` (baseline 261 non-test `src/*.rs` over 500 lines by a shell predicate; the gate itself counts 231 over every source it walks) because a red-on-day-one leg would block every merge |
 | a false alarm, worth recording | after the mutation run reverted the SOURCE but not the BINARY, `./target/debug/pmat` still compared against `max_lines * 2`; an hour of "the check misses 385 files" was the stale mutant. Rebuilt: the fixture flags, the repo reads 231. The named-mutation contract now says "revert and REBUILD" |
 | AD-04 quorum on head 014c606ec | 1 PASS, 2 FAIL, cited: the hook runner's individual-check path (`run_individual_checks`) and the eleven-argument `handle_quality_gate` still passed the bare defaults — both now resolve from the project; no production call site passes `QualityThresholds::default()` any more |
+| AD-04 quorum on head 04aa804a8 | 2 PASS, 1 FAIL, cited: this receipt still said 22 new tests (the file holds 23); PMAT-658's description still said churn mirrors the security check's dropped row (churn now keeps its row — description corrected, the ticket now covers the security check alone) |
 | pv contract | — | `contracts/quality-gate-thresholds-v1.yaml`, `pv validate` and `pv lint` PASS |
-| 22 new lib tests | listed in the receipt | names re-read from the tree; they run in the verify tests stage |
+| new lib tests in `quality_checks_thresholds_tests.rs` | 22 listed in the worker's receipt | 23 in the file now (the worker's 22 plus the MCP-suite regression test the quorum forced); they run in the verify tests stage |
 
 ## Decisions recorded as the orchestrator's ([A], conservative), never as the user's
 - `[quality] max_churn_commits_90d` (the spec's name) with `#[serde(alias = "max_churn_commits")]`; flags `--max-file-lines`, `--max-churn-commits`.

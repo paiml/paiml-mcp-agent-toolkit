@@ -4010,6 +4010,11 @@ roadmap:
   spec: null
   acceptance_criteria:
   - 'src/models/git_context.rs tests: repo_path() walks up from CARGO_MANIFEST_DIR looking for .git/HEAD; in a linked worktree .git is a file (''gitdir: …''), so the walk falls through to manifest_dir.parent() (not a repo) and four tests fail: test_is_git_repo_returns_true_for_git_repo, test_from_current_dir_extracts_commit_sha, test_from_current_dir_extracts_author_info, test_git_context_serialization. Seen by the aprender session on #1166 and by pmat verify on the AD-02 worktree (PMAT-652). Fix: accept a .git file (or ask git rev-parse --show-toplevel). Linked: PMAT-652.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
 - id: PMAT-653
   github_issue: null
   item_type: task
@@ -4031,7 +4036,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-05: quality-gate --checks lint,churn,file-size — three thresholds the diagram names that no gate enforces'
-  status: in_progress
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-03T23:10:24Z
@@ -4052,10 +4057,10 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-04T00:36:57Z
-  updated: 2026-09-04T00:36:57Z
+  updated: 2026-09-04T02:14:20Z
   spec: null
   acceptance_criteria:
-  - 'Inherited by AD-05 (PMAT-657): run_all_project_checks drops the security check''s scope row, and churn now mirrors that, so --checks all reads a tree without git history as clean while --checks churn discloses it. Closing it for both means test_check_quality_gates_project_verdict_not_inverted (src/mcp_pmcp/tool_functions_tests.rs) must assert blocking_violations == 0 rather than violations.is_empty(). Control: --checks all on a non-repository must show the churn and security scope rows; a clean repository must still pass.'
+  - 'Inherited: run_all_project_checks drops the security check''s advisory scope row (security_scope_disclosure), so --checks all reads a tree the security check could not answer as clean while --checks security discloses it. AD-05 (PMAT-657) fixed the same asymmetry for churn (its row is kept under --checks all, counted as nothing); do the same for security. Control: --checks all on a tree the security check cannot answer must show its scope row; a clean repository must still pass.'
   phases: []
   subtasks: []
   estimated_effort: null
