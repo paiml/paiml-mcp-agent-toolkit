@@ -1,7 +1,7 @@
 {
  "ticket": "PMAT-656",
  "base": "origin/master",
- "head": "fad4c5c16b03ae3fd25dc4189c46177a1a99a5ee",
+ "head": "d3d4bb8e4783f7e0f33f8244dc8ff72688ee508b",
  "width": 3,
  "executor": "agy",
  "agreed": true,
@@ -9,23 +9,23 @@
   {
    "lane": 1,
    "verdict": "PASS",
-   "summary": "I reviewed the diff against ticket PMAT-656 and its implementation receipt. The diff successfully implements the Quorum Review Skill (AD-04) requirements and provides robust acceptance tests without any unrequested changes.\n\nThe audit script (`scripts/quorum-review-audit.sh`) rigorously tests all offline legs for the `pmat-merge` helper, properly verifying that it refuses auto-merges without an agreeing artifact for the correct head. The exception for the verdict commit itself\u2014where an artifact matching the parent commit is accepted only if the commit touches nothing but the `docs/audits` JSON\u2014is clearly documented in the contract (`contracts/quorum-review-v1.yaml`) and correctly enforced by the test controls (leg 4c). \n\nThe issues identified in the previous refuted run for PMAT-656 have been fully resolved:\n1. The unrequested roadmap additions for PMAT-654 and PMAT-655 were successfully removed.\n2. The falsification test command F4 in the contract now references the correct artifact file (`quorum-PMAT-655-after-fix.json`).\n\nAll receipt claims are backed by the diff, no gates are weakened, and no tests assert the opposite of the ticket. The JSON artifacts for the live controls correctly document the strict enforcement of the skill.",
+   "summary": "The diff successfully implements the Quorum Review Skill (AD-04) requirements and resolves all issues raised in the previous refuted review. The parent-commit exception is now correctly codified in the contract (`contracts/quorum-review-v1.yaml`), the falsification test F4 command points to the correct artifact filename, and the unrequested roadmap additions for PMAT-654 and PMAT-655 have been removed. The acceptance script thoroughly tests both the normal and parent-commit rules for auto-merging, and all receipt claims are backed by the diff. No vacuous tests, unrequested changes, or weakened gates were found.",
    "findings": [],
-   "raw_bytes": 4911
+   "raw_bytes": 2269
   },
   {
    "lane": 2,
    "verdict": "PASS",
-   "summary": "The diff successfully implements the Quorum Review Skill (AD-04) exactly as specified. The issues flagged in the previous refuted review have been addressed: the unrelated roadmap additions for PMAT-654 and PMAT-655 have been removed, and the parent-commit exception is now formally codified in `contracts/quorum-review-v1.yaml` (formula explicitly permits `a.head == parent(pr.head) and files(pr.head) subset docs/audits/quorum-*.json`). The test script (leg 4c) perfectly mirrors this contract logic. All deliverables (audit script, contract, receipt) are present, and the live lane controls correctly validate the clean vs. planted contradiction behavior. No regressions, vacuous tests, or scope creep were found.",
+   "summary": "I have reviewed the diff against ticket PMAT-656 and its implementation receipt. The diff successfully implements the Quorum Review Skill requirements in the pmat repository. \n\nThe previous review failures (lane 2 & 3 refutations) have been fully addressed:\n1. Unrequested roadmap entries for other tickets (PMAT-654 and PMAT-655) were removed, keeping the diff strictly scoped to the ticket.\n2. The falsification test command (F4) in the contract was corrected to point to the correct artifact file (`quorum-PMAT-655-after-fix.json`).\n3. The parent-commit exception for the verdict commit itself is now explicitly and correctly modeled in the contract formula (`a.head == parent(pr.head) and files(pr.head) subset docs/audits/quorum-*.json`) and tested in the audit script (leg 4c).\n\nThe audit script comprehensively validates the skill's logic through offline legs (refusal of auto-merges without an agreeing artifact, passthrough of non-auto merges) and live lane artifacts (ensuring planted contradictions are caught). No regressions, weakened gates, or unrequested changes were found. Everything functions as specified.",
    "findings": [],
-   "raw_bytes": 2461
+   "raw_bytes": 3317
   },
   {
    "lane": 3,
    "verdict": "PASS",
-   "summary": "I have reviewed the diff for ticket PMAT-656. The diff successfully implements the acceptance criteria without overstepping its scope.\n\n1. The test script `scripts/quorum-review-audit.sh` comprehensively validates the `pmat-merge` helper's behavior through both offline stubs and live lane JSON artifact checks. It correctly tests the required behavior that auto-merges are refused without a unanimous PASS verdict for the correct commit.\n2. The previous refutation regarding the undocumented parent-commit exception has been resolved: `contracts/quorum-review-v1.yaml` now explicitly includes `(a.head == parent(pr.head) and files(pr.head) subset docs/audits/quorum-*.json)` in its formula, formalizing the exception for verdict commits.\n3. The previous refutation regarding out-of-scope roadmap additions has been resolved: `docs/roadmaps/roadmap.yaml` now only includes the entry for PMAT-656.\n4. The falsification test command F4 in the contract correctly points to `docs/audits/quorum-PMAT-655-after-fix.json`, resolving the file naming error.\n5. All receipt claims align with the actual file contents in the diff.\n\nI found nothing that refutes the implementation. It is a clean diff.",
+   "summary": "I reviewed the diff against ticket PMAT-656 and its implementation receipt. The diff successfully implements the Quorum Review Skill (AD-04) acceptance checks and strictly adheres to the requested scope.\n\nThe previous refutations have been fully resolved:\n1. The unrequested roadmap additions for PMAT-654 and PMAT-655 have been completely removed.\n2. The falsification test command F4 in the contract now correctly references `--clean docs/audits/quorum-PMAT-655-after-fix.json`, resolving the file naming error.\n3. The parent-commit exception used in the audit script has been formally documented in `contracts/quorum-review-v1.yaml` with the formula explicitly incorporating `(a.head == parent(pr.head) and files(pr.head) subset docs/audits/quorum-*.json)`, fully resolving the contradiction.\n\nAll receipt claims are backed by the diff, no gates are weakened, and no tests assert the opposite of the ticket. The `scripts/quorum-review-audit.sh` test accurately applies the planted contradiction controls and the live lane controls exactly as specified. I found nothing that refutes the implementation.",
    "findings": [],
-   "raw_bytes": 4698
+   "raw_bytes": 3262
   }
  ]
 }
