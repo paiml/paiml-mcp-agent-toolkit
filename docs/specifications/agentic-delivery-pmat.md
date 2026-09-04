@@ -292,6 +292,18 @@ this script existed; that chain receipt stays, and links to this script's output
 ### 9.6 AD-06 — worker receipt carries the gate (S)
 **Problem.** §4.2. **Proposal.** `agents/paiml-impl-worker.md` §receipt gains `gate: {cmd, ok, stages_measured, not_measured}` from `pmat verify --format json`; `SKILL.md` §6.2 treats its absence as `partial=true`; `verify.sh` checks the agent file contains the field. **Acceptance.** §4.2.
 
+*Implementation note (PMAT-660, 2026-09-04).* Bundle paiml-implement#7: worker rule 4b runs `gate_cmd`
+once after acceptance and reports `gate {cmd, ok, stages_measured, not_measured}` (the fields
+`pmat verify --format json` emits); a receipt without `gate` is `partial=true`.
+`scripts/receipt-lint.sh <receipt> [--rerun <verify.json>]` marks a missing `gate` partial and exits 1
+when the claim disagrees with the orchestrator's rerun on `ok`, `stages_measured` or `not_measured`; its
+`--self-test` proves both directions, and the bundle's `verify.sh` runs it. SKILL.md Phase 2 step 3 now
+re-runs the gate as well as `A_i`. The first receipt held to the rule is the PMAT-657 worker's
+(`docs/audits/worker-receipt-PMAT-657.json`): complete, `gate.ok=false` with every red test named, and
+the orchestrator's rerun on the same tree recorded in `docs/audits/impl-PMAT-660-receipt.md` — a finding: the worker
+measured five stages on its dirty tree, the rerun four on the committed one (verify's complexity stage is
+withdrawn on a clean tree), so the next bundle revision makes the worker run the gate on the tree it commits.
+
 ### 9.7 AD-07 — `pmat work link` + comply trailer check (M)
 **Problem.** §4.7, §8. **Proposal.** `pmat work link <ticket> --commit <sha> | --pr <n>` records on the ticket; `pmat work annotate` shows the links; comply check `CB-TRACE` walks `git log <base>..HEAD` and fails on a commit without a trailer or with a trailer naming a ticket not in progress. **Acceptance.** §4.7 last two legs.
 
