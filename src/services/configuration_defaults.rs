@@ -137,6 +137,7 @@ impl Default for PmatConfig {
             mcp: McpConfig::default(),
             roadmap: RoadmapConfig::default(),
             telemetry: TelemetryConfig::default(),
+            hooks: HooksConfig::default(),
             // Deliberately NOT `SemanticConfig::default()`: that derive gives
             // `enable_mcp_tools: false` and `enable_cache: false`, while the
             // shipped default has both on. Keep the literal so the value
@@ -176,5 +177,14 @@ impl ConfigurationService {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn default_config() -> PmatConfig {
         PmatConfig::default()
+    }
+}
+
+impl Default for HooksConfig {
+    fn default() -> Self {
+        Self {
+            strict: false,
+            ticket_pattern: "PMAT-[0-9]+|#[0-9]+".to_string(),
+        }
     }
 }
