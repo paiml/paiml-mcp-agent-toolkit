@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.37.0] - 2026-09-04
+
+Agentic delivery (spec: `docs/specifications/agentic-delivery-pmat.md`) and two
+urgent `pmat work` / CI fixes reported by users of 3.36.0.
+
+### Fixed
+
+- **`pmat work` claimed L3 by default and the normal flow could never reach L2 (#1186).**
+  A ticket started without `--implements` now claims **L1**; one started with
+  `--implements` claims **L2** and carries the binding. `--level <L1..L5>` is accepted
+  on `work add`, `work start` and `work edit`; `--implements` is accepted on
+  `work edit`, so an in-progress ticket can be bound without restarting it. The
+  ladder check on `work complete` now runs **before** the quality gate, so an
+  over-claim is refused as `LadderShortfall` instead of surfacing behind unrelated
+  gate output. Acceptance: `scripts/work-ladder-claim-audit.sh` (RED on 3.36.0).
+- **Container CI jobs left root-owned files in the shared runner `_work` tree (#1185).**
+  The `mutants` (ci.yml) and `mutation-diff` jobs now restore the runner's ownership
+  of `_work` and `RUNNER_TEMP` under `if: always()` and fail if any path is still
+  foreign, so a poisoned runner is visible in the run that poisoned it.
+- **Function index (CRUX-07, #1183):** the persisted index is judged faithful before it
+  is trusted (a read-only index dir fails the save instead of truncating; the
+  reproducibility slice, ranker tie-break and stale detector are covered) — see
+  `scripts/index-faithful-audit.sh`.
+
+### Added (agentic delivery, AD-01…AD-10)
+
+- **AD-01** `scripts/release-check.sh` + daily job on master: a merged release PR
+  must have become a tag, a GitHub release and a crates.io version (the 3.35.0 incident).
+- **AD-02** `scripts/dogfood-published.sh <version>`: installs the published crate
+  into a temp root and dog-foods **those** bytes; receipt in `docs/audits/`.
+- **AD-03** commit enforcement: under `[hooks] strict = true` the generated hooks
+  block on SATD and require a `Pmat-Ticket: PMAT-NNN` trailer.
+- **AD-04** quorum review: three independent review lanes must agree before
+  `pmat-merge` arms auto-merge; the verdict is a committed artifact tied to the diff.
+- **AD-06** worker receipts carry the `pmat verify --format json` gate block; the
+  orchestrator re-runs and diffs it.
+- **AD-10** lane modes (goal / teamwork / grill-me / plan) with a schema per mode.
+- **PMAT-642** `quality-gate` reports `not_measured` instead of passing on a stage it
+  could not run.
+- **CRUX-03** `config validate` certifies the fallback it actually used.
+
 ## [3.36.0] - 2026-09-03
 
 **3.35.0 was never published.** Its release PR (#1108) merged on 2026-09-02 but
