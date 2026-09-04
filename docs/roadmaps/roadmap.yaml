@@ -4155,7 +4155,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'ci: container jobs restore the runner''s ownership of the _work tree so a poisoned runner cannot fail the next job (#1185)'
-  status: in_progress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-04T06:57:45Z
@@ -4172,7 +4172,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'pmat work: a ticket claims the ladder level its bindings evidence; --level on add and edit, --implements on edit, ladder check before the quality gates (#1186)'
-  status: in_progress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-04T06:57:46Z
@@ -4189,7 +4189,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'release 3.37.0: cut, publish and dog-food the two urgent fixes (#1185, #1186) with CRUX-07 and AD-01..AD-10'
-  status: in_progress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-04T09:33:49Z
