@@ -1,12 +1,12 @@
 {
  "ticket": "PMAT-669",
  "base": "origin/master",
- "head": "26f0906c889c12bc5055e6ea4ee3c3726b37ab6c",
- "diff_sha256": "f19c8d598634255c68c23ad16fa895114c3a5c8276eadec912b33731652ba7f7",
+ "head": "f365c16c42ce2874a5e5e171e2ef410bf3c5e77a",
+ "diff_sha256": "e46b7ba9f67c0f62ad3547ba575ae65fcaf3cd0964d5d4f3f0572e249f193c2f",
  "width": 3,
  "executor": "agy",
  "prompt_mode": "inline",
- "prompt_bytes": 11376,
+ "prompt_bytes": 11142,
  "agreed": true,
  "lanes": [
   {
@@ -15,56 +15,7 @@
    "summary": "The diff correctly implements the claims in the receipt for ticket PMAT-669. Both `ci.yml` and `mutation-diff.yml` have a step appended that runs unconditionally (`if: always()`), accurately retrieves the ownership of `$GITHUB_WORKSPACE/..`, performs the `chown -R`, and uses `find` to assert that zero unowned files remain, failing loudly if any are found. The implementation exactly matches the described logic.",
    "findings": [
     {
-     "claim": "a final `if: always()` step in both container jobs restores `stat -c %u:%g \"$GITHUB_WORKSPACE/..\"` over the workspace parent and `$RUNNER_TEMP`",
-     "file": ".github/workflows/ci.yml",
-     "grounding": "cited",
-     "line": 247
-    },
-    {
-     "claim": "prints the residue count before and after, and fails the step if anything is still foreign-owned after",
-     "file": ".github/workflows/ci.yml",
-     "grounding": "cited",
-     "line": 252
-    },
-    {
-     "claim": "the step sits inside each container job's step list (`mutation-diff.yml` job `mutation-diff`)",
-     "file": ".github/workflows/mutation-diff.yml",
-     "grounding": "cited",
-     "line": 216
-    }
-   ],
-   "raw_bytes": 3082
-  },
-  {
-   "lane": 2,
-   "verdict": "PASS",
-   "summary": "The diff implements exactly what is requested in PMAT-669 and the receipt. Both `ci.yml` and `mutation-diff.yml` receive a step with `if: always()` that correctly identifies the runner's UID/GID using `stat`, sweeps `$GITHUB_WORKSPACE/..` and `$RUNNER_TEMP` for foreign-owned files, recursively changes ownership back to the runner, and verifies the final count is 0 (failing with a clear error message otherwise). The YAML syntax is correct, and no extraneous changes were introduced.",
-   "findings": [
-    {
-     "claim": "a final `if: always()` step in both container jobs restores ownership over workspace parent and RUNNER_TEMP",
-     "file": ".github/workflows/ci.yml",
-     "grounding": "cited"
-    },
-    {
-     "claim": "prints the residue count before and after, and fails the step if anything is still foreign-owned after",
-     "file": ".github/workflows/ci.yml",
-     "grounding": "cited"
-    },
-    {
-     "claim": "the same step sits inside mutation-diff.yml",
-     "file": ".github/workflows/mutation-diff.yml",
-     "grounding": "cited"
-    }
-   ],
-   "raw_bytes": 2982
-  },
-  {
-   "lane": 3,
-   "verdict": "PASS",
-   "summary": "The diff implements the receipt perfectly and fulfills the ticket PMAT-669. It adds the ownership restoration step with `if: always()` at the end of both `ci.yml` and `mutation-diff.yml` workflows. It uses `stat` to correctly grab the runner's UID and GID, changes the ownership for both the workspace and temp directory, outputs a count of the residue, and fails the step if unowned files still remain. No extraneous changes or regressions were introduced.",
-   "findings": [
-    {
-     "claim": "a final `if: always()` step in both container jobs restores `stat -c %u:%g \"$GITHUB_WORKSPACE/..\"` over the workspace parent and `$RUNNER_TEMP`",
+     "claim": "a final `if: always()` step in both container jobs restores `stat -c %u:%g \\\"$GITHUB_WORKSPACE/..\\\"` over the workspace parent and `$RUNNER_TEMP`",
      "file": ".github/workflows/ci.yml",
      "grounding": "cited",
      "line": 246
@@ -76,13 +27,65 @@
      "line": 253
     },
     {
-     "claim": "the step sits inside each container job's step list",
+     "claim": "the step sits inside each container job's step list (`mutation-diff.yml` job `mutation-diff`)",
+     "file": ".github/workflows/mutation-diff.yml",
+     "grounding": "cited",
+     "line": 216
+    }
+   ],
+   "raw_bytes": 3081
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff accurately implements the receipt's requirements for PMAT-669. A final `if: always()` step is added to both container jobs (`ci.yml` and `mutation-diff.yml`). It correctly retrieves the runner's UID/GID using `stat`, performs a recursive `chown` over `$GITHUB_WORKSPACE/..` and `$RUNNER_TEMP`, and uses `find` to assert that zero foreign-owned paths remain. Any residue causes the step to fail loudly with an error annotation. The YAML syntax parses cleanly, and no forbidden changes were introduced.",
+   "findings": [
+    {
+     "claim": "a final `if: always()` step in both container jobs restores `stat -c %u:%g \"$GITHUB_WORKSPACE/..\"` over the workspace parent and `$RUNNER_TEMP`",
+     "file": ".github/workflows/ci.yml",
+     "grounding": "cited",
+     "line": 247
+    },
+    {
+     "claim": "fails the step if anything is still foreign-owned after",
+     "file": ".github/workflows/ci.yml",
+     "grounding": "cited",
+     "line": 255
+    },
+    {
+     "claim": "the step sits inside each container job's step list (`mutation-diff.yml` job `mutation-diff`)",
+     "file": ".github/workflows/mutation-diff.yml",
+     "grounding": "cited",
+     "line": 212
+    }
+   ],
+   "raw_bytes": 3206
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff correctly implements the requested changes outlined in the receipt for ticket PMAT-669. An unconditional step (`if: always()`) is added to both container jobs (`ci.yml` and `mutation-diff.yml`), correctly gathering the runner's UID/GID using `stat`, changing ownership on `$GITHUB_WORKSPACE/..` and `$RUNNER_TEMP`, displaying the count of remaining unowned files, and raising a hard error (`exit 1`) if the recount indicates that any file is still foreign-owned. The workflow YAML is valid and does not include unrelated or unexpected modifications.",
+   "findings": [
+    {
+     "claim": "a final `if: always()` step in both container jobs restores `stat -c %u:%g \"$GITHUB_WORKSPACE/..\"` over the workspace parent and `$RUNNER_TEMP`",
+     "file": ".github/workflows/ci.yml",
+     "grounding": "cited",
+     "line": 246
+    },
+    {
+     "claim": "prints the residue count before and after, and fails the step if anything is still foreign-owned after",
+     "file": ".github/workflows/ci.yml",
+     "grounding": "cited",
+     "line": 255
+    },
+    {
+     "claim": "the step sits inside each container job's step list (`mutation-diff.yml` job `mutation-diff`)",
      "file": ".github/workflows/mutation-diff.yml",
      "grounding": "cited",
      "line": 215
     }
    ],
-   "raw_bytes": 3090
+   "raw_bytes": 3369
   }
  ]
 }
