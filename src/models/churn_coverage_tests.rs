@@ -187,7 +187,7 @@ mod churn_summary_tests {
             total_files_changed: 0,
             hotspot_files: vec![],
             stable_files: vec![],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.0,
             variance_churn_score: 0.0,
             stddev_churn_score: 0.0,
@@ -209,7 +209,7 @@ mod churn_summary_tests {
                 PathBuf::from("src/core.rs"),
             ],
             stable_files: vec![PathBuf::from("src/utils.rs")],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.65,
             variance_churn_score: 0.04,
             stddev_churn_score: 0.2,
@@ -222,7 +222,7 @@ mod churn_summary_tests {
 
     #[test]
     fn test_churn_summary_author_contributions() {
-        let mut contributions = HashMap::new();
+        let mut contributions = std::collections::BTreeMap::new();
         contributions.insert("lead_dev".to_string(), 100);
         contributions.insert("junior_dev".to_string(), 25);
         contributions.insert("reviewer".to_string(), 10);
@@ -250,7 +250,7 @@ mod churn_summary_tests {
             total_files_changed: 100,
             hotspot_files: vec![],
             stable_files: vec![],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.45,
             variance_churn_score: 0.0225, // 0.15^2
             stddev_churn_score: 0.15,
@@ -263,7 +263,7 @@ mod churn_summary_tests {
 
     #[test]
     fn test_churn_summary_serialization() {
-        let mut contributions = HashMap::new();
+        let mut contributions = std::collections::BTreeMap::new();
         contributions.insert("dev".to_string(), 50);
 
         let summary = ChurnSummary {
