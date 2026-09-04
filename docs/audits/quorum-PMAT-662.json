@@ -1,0 +1,44 @@
+{
+ "ticket": "PMAT-662",
+ "base": "origin/master",
+ "head": "881dd443793e34935f91d115bfa57c5c0073dc51",
+ "width": 3,
+ "executor": "agy",
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff perfectly matches the acceptance criteria for PMAT-662 on the 'pmat side'. It adds the required implementation note to `agentic-delivery-pmat.md` section 9.8, provides the implementation receipt in `docs/audits/impl-PMAT-662-receipt.md`, and accurately reflects the expected controls and testing claims for the bundle side (which resides in `paiml-implement#8`). No claims in the receipt contradict the diff, and the diff makes no unasked-for changes.",
+   "findings": [],
+   "raw_bytes": 1964
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff successfully implements the pmat side of PMAT-662. It adds the required receipt documenting the bundle-side implementation, adds the spec implementation note to section 9.8, and adds the ticket to the roadmap. No criteria from the ticket were missed or contradicted on the pmat side.",
+   "findings": [
+    {
+     "claim": "Implementation note added to section 9.8 as required by the ticket's 'pmat side: spec note' criteria.",
+     "file": "docs/specifications/agentic-delivery-pmat.md",
+     "grounding": "cited",
+     "line": 301
+    },
+    {
+     "claim": "Implementation receipt created as required by the ticket's 'pmat side: receipt' criteria.",
+     "file": "docs/audits/impl-PMAT-662-receipt.md",
+     "grounding": "cited",
+     "line": 1
+    }
+   ],
+   "raw_bytes": 2408
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff fulfills the ticket's requirements for the pmat repository. It adds the implementation receipt, updates the roadmap, and adds the specified implementation note to `agentic-delivery-pmat.md` section 9.8. The bundle-side script changes are correctly documented as belonging to `paiml/paiml-implement#8`. No contradictions, unbacked claims, or weakened gates were found.",
+   "findings": [],
+   "raw_bytes": 1811
+  }
+ ]
+}
