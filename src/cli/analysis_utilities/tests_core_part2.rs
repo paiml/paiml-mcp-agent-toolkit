@@ -221,7 +221,7 @@ fn test_write_markdown_summary_table() -> anyhow::Result<()> {
         hotspot_files: vec!["file1.rs".into(), "file2.rs".into()],
         stable_files: vec!["lib.rs".into()],
         author_contributions: {
-            let mut map = HashMap::new();
+            let mut map = std::collections::BTreeMap::new();
             map.insert("alice".to_string(), 5);
             map.insert("bob".to_string(), 3);
             map
@@ -287,7 +287,7 @@ fn test_write_markdown_summary_table_format() -> anyhow::Result<()> {
         hotspot_files: vec!["test.rs".into()],
         stable_files: vec!["mod.rs".into()],
         author_contributions: {
-            let mut map = HashMap::new();
+            let mut map = std::collections::BTreeMap::new();
             map.insert("dev".to_string(), 1);
             map
         },
