@@ -1319,6 +1319,8 @@ include!("check_commit_enforcement_p7.rs");
 include!("check_commit_enforcement_p8.rs");
 include!("check_commit_enforcement_p9.rs");
 include!("check_commit_enforcement_p10.rs");
+// CB-1340 (AD-07): Pmat-Ticket trailer on every branch commit
+include!("check_ticket_trailer.rs");
 
 // Split into submodule files for file_health (CB-040) compliance
 include!("check_builders_foundation.rs");

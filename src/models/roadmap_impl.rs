@@ -135,6 +135,7 @@ impl RoadmapItem {
             estimated_effort: None,
             labels: Vec::new(),
             notes: None,
+            links: Vec::new(),
         }
     }
 

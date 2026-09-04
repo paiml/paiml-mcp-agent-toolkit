@@ -31,6 +31,7 @@ mod work_ledger_delegate_tests {
             estimated_effort: None,
             labels: vec![],
             notes: None,
+            links: Vec::new(),
         }
     }
 

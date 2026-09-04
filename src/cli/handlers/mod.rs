@@ -142,6 +142,7 @@ pub mod work_contract_binding; // Component 27: provable-contracts binding resol
 pub mod work_falsification; // PMAT Work Contract: Falsification executor
 pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow // GH-102: Toyota Way QA validation
 pub mod work_ledger; // Falsification ledger: append-only receipt tracking
+pub mod work_link_handler; // AD-07: `pmat work link` records commits/PRs on a ticket
 pub mod work_quality_handlers; // Quality gates and falsification extracted for file health (CB-040) // RAG-powered spec falsification handler
 pub mod work_verification_level; // Component 28: typed verification ladder (VerificationLevel enum)
 

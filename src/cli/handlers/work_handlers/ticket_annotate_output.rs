@@ -113,6 +113,25 @@ fn print_annotations_text(ann: &TicketAnnotations) {
     print_text_tdg_section(ann);
     print_text_churn_section(ann);
     print_text_fault_coverage_section(ann);
+    print_text_links_section(ann);
+}
+
+/// AD-07: the commits and pull requests `pmat work link` recorded on the ticket.
+fn print_text_links_section(ann: &TicketAnnotations) {
+    use crate::cli::colors as c;
+    println!(
+        "{} LINKS ({})",
+        c::subheader("🔗"),
+        c::number(&ann.links.len().to_string())
+    );
+    if ann.links.is_empty() {
+        println!("   {}", c::dim("No commits or PRs linked (pmat work link)"));
+    } else {
+        for link in &ann.links {
+            println!("   • {}", c::path(&link.display()));
+        }
+    }
+    println!();
 }
 
 fn print_annotations_json(ann: &TicketAnnotations) -> Result<()> {
@@ -158,6 +177,13 @@ fn print_annotations_markdown(ann: &TicketAnnotations) {
     );
 
     // Per-file TDG breakdown
+    if !ann.links.is_empty() {
+        println!("\n## Links");
+        for link in &ann.links {
+            println!("- {}", link.display());
+        }
+    }
+
     if !ann.file_tdg_scores.is_empty() {
         println!("\n## TDG Per-File Breakdown");
         println!("| File | Score | Severity |");

@@ -52,6 +52,7 @@ pub async fn handle_work_add(
             .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
             .unwrap_or_default(),
         notes: None,
+        links: Vec::new(),
     };
 
     // Save to roadmap

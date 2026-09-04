@@ -39,6 +39,7 @@ pub async fn handle_work_annotate(
         churn_hotspots: vec![],
         coverage_percent: None,
         repeated_fixes: vec![],
+        links: item.links.clone(),
     };
 
     // Get spec score if spec exists
@@ -121,6 +122,8 @@ struct TicketAnnotations {
     churn_hotspots: Vec<String>,
     coverage_percent: Option<f64>,
     repeated_fixes: Vec<RepeatedFix>,
+    /// Commits and PRs recorded by `pmat work link` (AD-07)
+    links: Vec<crate::models::roadmap::WorkLink>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

@@ -147,12 +147,56 @@ impl CheckSummary {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub(crate) struct ComplianceCheck {
     pub name: String,
     pub status: CheckStatus,
     pub message: String,
     pub severity: Severity,
+}
+
+/// The clause id a check's name declares (`CB-1340: Ticket Trailer` →
+/// `CB-1340`), else a slug of the name. Same derivation SARIF uses for its
+/// rule ids, so `-f json` and `-f sarif` name a finding identically.
+pub(crate) fn check_clause_id(name: &str) -> String {
+    for token in name.split(|c: char| !(c.is_ascii_alphanumeric() || c == '-')) {
+        let upper = token.to_ascii_uppercase();
+        if upper.starts_with("CB-") && upper[3..].chars().all(|c| c.is_ascii_digit()) {
+            return upper;
+        }
+    }
+    let slug: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    format!("pmat/{}", slug.trim_matches('-'))
+}
+
+/// Serialized by hand so every check in `comply check --format json` carries an
+/// `id`. The derived form emitted only `name`, so a consumer could not address
+/// a single check without string-matching a human title — the report named its
+/// findings in prose and nowhere in a key.
+impl Serialize for ComplianceCheck {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("ComplianceCheck", 6)?;
+        state.serialize_field("id", &check_clause_id(&self.name))?;
+        // Strict: only Pass is a pass. Warn and Skip are not verdicts of
+        // success, and a consumer that reads this boolean must not be told a
+        // check that never ran did.
+        state.serialize_field("passed", &(self.status == CheckStatus::Pass))?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("status", &self.status)?;
+        state.serialize_field("message", &self.message)?;
+        state.serialize_field("severity", &self.severity)?;
+        state.end()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]

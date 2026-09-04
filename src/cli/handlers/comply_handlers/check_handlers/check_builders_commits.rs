@@ -3,6 +3,14 @@ fn build_commit_enforcement_checks(
     comply_config: &crate::models::comply_config::ComplyConfig,
 ) -> Vec<ComplianceCheck> {
     vec![
+        // AD-07: listed first among the cb-13xx entries so a consumer keying on
+        // the clause id reaches the trailer verdict; see the note on
+        // check_enforcement_penetration below, which carries the same number.
+        filter_check_by_config(
+            check_ticket_trailers(project_path),
+            "cb-1340",
+            comply_config,
+        ),
         filter_check_by_config(check_readme_layout(project_path), "cb-1320", comply_config),
         filter_check_by_config(
             check_dockerfile_contract(project_path),

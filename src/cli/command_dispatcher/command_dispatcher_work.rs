@@ -213,6 +213,20 @@ impl CommandDispatcher {
             WorkCommands::Delete { id, force, path } => {
                 work_handlers::handle_work_delete(id.clone(), *force, path.clone()).await
             }
+            WorkCommands::Link {
+                id,
+                commit,
+                pr,
+                path,
+            } => {
+                crate::cli::handlers::work_link_handler::handle_work_link(
+                    id.clone(),
+                    commit.clone(),
+                    *pr,
+                    path.clone(),
+                )
+                .await
+            }
             WorkCommands::Annotate {
                 id,
                 path,

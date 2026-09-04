@@ -9,6 +9,7 @@ pub const ROADMAP_VERSION: &str = "1.0";
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Roadmap {
     /// Schema version
+    #[serde(default = "default_roadmap_version")]
     pub roadmap_version: String,
 
     /// GitHub integration enabled
@@ -22,12 +23,16 @@ pub struct Roadmap {
     pub github_repo: Option<String>,
 
     /// List of roadmap items (tickets)
-    #[serde(default)]
+    #[serde(default, alias = "items")]
     pub roadmap: Vec<RoadmapItem>,
 }
 
 fn default_github_enabled() -> bool {
     true
+}
+
+fn default_roadmap_version() -> String {
+    ROADMAP_VERSION.to_string()
 }
 
 /// Lenient boolean deserializer: accepts both native YAML booleans and quoted strings "true"/"false"
@@ -133,6 +138,62 @@ pub struct RoadmapItem {
     /// Additional notes/documentation (markdown)
     #[serde(default)]
     pub notes: Option<String>,
+
+    /// Commits and pull requests linked to this ticket by `pmat work link`
+    /// (AD-07). Skipped when empty so roadmaps written before this field
+    /// existed round-trip byte-identically.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub links: Vec<WorkLink>,
+}
+
+/// What a [`WorkLink`] points at. Serialized as the single key `commit:` or
+/// `pr:` so a roadmap reads as prose (`- commit: <sha>` / `- pr: 42`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum WorkLinkTarget {
+    /// A git commit, stored as the full 40-character sha.
+    Commit(String),
+    /// A pull request number.
+    Pr(u64),
+}
+
+/// One commit or pull request recorded on a ticket by `pmat work link` (AD-07).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct WorkLink {
+    /// The commit or PR this link points at.
+    #[serde(flatten)]
+    pub target: WorkLinkTarget,
+    /// When the link was recorded (RFC 3339).
+    pub recorded: String,
+}
+
+impl WorkLink {
+    /// A commit link.
+    pub fn commit(sha: impl Into<String>, recorded: impl Into<String>) -> Self {
+        Self {
+            target: WorkLinkTarget::Commit(sha.into()),
+            recorded: recorded.into(),
+        }
+    }
+
+    /// A pull-request link.
+    pub fn pr(number: u64, recorded: impl Into<String>) -> Self {
+        Self {
+            target: WorkLinkTarget::Pr(number),
+            recorded: recorded.into(),
+        }
+    }
+
+    /// Render for humans: a short sha for a commit, `#n` for a PR.
+    pub fn display(&self) -> String {
+        match &self.target {
+            WorkLinkTarget::Commit(sha) => {
+                let short: String = sha.chars().take(12).collect();
+                format!("commit {short}")
+            }
+            WorkLinkTarget::Pr(n) => format!("PR #{n}"),
+        }
+    }
 }
 
 fn default_item_type() -> ItemType {

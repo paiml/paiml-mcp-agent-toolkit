@@ -95,6 +95,24 @@ pub enum WorkCommands {
         path: Option<PathBuf>,
     },
 
+    /// Record a commit or a pull request on a ticket (AD-07)
+    Link {
+        /// Ticket ID to link to
+        id: String,
+
+        /// Commit sha to record (resolved with `git rev-parse --verify`)
+        #[arg(long)]
+        commit: Option<String>,
+
+        /// Pull request number to record
+        #[arg(long)]
+        pr: Option<u64>,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
     /// Show unified quality annotations for a ticket
     #[command(visible_aliases = &["ann", "quality", "metrics"])]
     Annotate {
