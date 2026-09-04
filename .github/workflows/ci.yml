@@ -247,7 +247,9 @@ jobs:
           owner=$(stat -c %u:%g "$GITHUB_WORKSPACE/..")
           uid=${owner%%:*}
           before=$(find "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" ! -user "$uid" 2>/dev/null | wc -l)
-          chown -R "$owner" "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" 2>/dev/null || true
+          if ! chown -R "$owner" "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" 2>/dev/null; then
+            echo "chown reported errors; the recount below decides"
+          fi
           after=$(find "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" ! -user "$uid" 2>/dev/null | wc -l)
           echo "runner ownership: $before path(s) not owned by $owner before, $after after"
           [ "$after" = 0 ] || { echo "::error::$after path(s) under the runner's _work tree are still not owned by $owner"; exit 1; }
