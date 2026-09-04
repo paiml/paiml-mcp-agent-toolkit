@@ -1,0 +1,32 @@
+{
+ "ticket": "PMAT-661",
+ "base": "origin/master",
+ "head": "6e7d1b188e58d6e8a2e6e4820d580a3206ca4c54",
+ "diff_sha256": "58047849af1f57287563be88ca3be1202d63f397790d880faf4ac9882fde9151",
+ "width": 3,
+ "executor": "agy",
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "I have reviewed the diff against the receipt, the ticket (PMAT-661), and the spec (AD-07).\n\nAll claims made in the receipt are fully backed by the provided diff:\n- The check `CB-1340` uses `git log` with `%(trailers)` to read the Pmat-Ticket trailer natively, bypassing regex matching on subjects.\n- The default branch resolution correctly falls back to `origin/HEAD`, checking remote and local refs, solving the CI edge cases raised in the AD-04 quorum.\n- Detached HEAD checkouts are correctly judged as branches rather than silently passed as \"nothing to judge\" (resolving another AD-04 quorum finding).\n- Commits naming both a live and a completed ticket correctly trigger a failure, matching the receipt's regression test fix.\n- `pmat work link` stores the commit/PR in the `links` field on the ticket idempotently, and `pmat work annotate` includes this section in its output.\n- The targeted test count (`16` tests) perfectly adds up from the modules (`8` in `ticket_trailer_tests`, `3` in `quorum_findings_tests`, `4` in `work_link_handler.rs`, and the preexisting `1` in `commit_enforcement_tests`).\n- The ledger and orphan file metrics accurately reflect the scope of the diff.\n\nThe implementation is robust, all edge cases mentioned in the quorum have been addressed, and nothing violates the specified constraints.",
+   "findings": [],
+   "raw_bytes": 5142
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff implements `pmat work link` and the CB-1340 trailer check exactly as requested in PMAT-661 and the receipt. \n\n- The `work link` command correctly maps commits and PRs using `serde(flatten)` to create the `- commit: <sha>` YAML syntax, preserving backward compatibility through `skip_serializing_if`.\n- The trailer check uses git's native trailer parsing (`git log --format=...%(trailers...)`) as explicitly mandated by the spec, completely avoiding regexes over commit messages.\n- The `default_branch` lookup logic successfully checks remote tracking branches to correctly handle detached CI environments.\n- 15 new tests were correctly added (8 for trailers, 3 for quorum findings, 4 for the link handler), which flawlessly matches the +15 diff in the unrun-tests-ledger (23718 -> 23733). The 16th test claimed by the filter is an existing one.\n- The early-return bug on mixed-trailer status and the detached HEAD check bypass were properly regression tested and fixed. \n\nNo regressions or skipped requirements found. The implementation perfectly matches the ticket and the detailed receipt ledger.",
+   "findings": [],
+   "raw_bytes": 3319
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "I have reviewed the diff against the PMAT-661 ticket requirements, the acceptance criteria, and the receipt claims.\n\n1. **Ticket implementation**: The diff correctly implements `pmat work link` to record commits and PRs on the roadmap item's new `links` field, and `pmat work annotate` shows them. It implements the `CB-1340` comply check which asserts that every non-merge commit since the merge base with the default branch carries a `Pmat-Ticket` trailer naming an in-progress ticket.\n2. **Receipt claims**: All claims in the receipt (tests matching the count, status evaluation defects resolved, detached HEAD checkout correctly judged, and default branch resolution with fallback) are perfectly backed by the diff. \n3. **No extraneous changes**: The diff does nothing the ticket forbids. All changes are scoped strictly to the implementation of `work link`, `annotate` presentation, the CB-1340 check, updating the roadmap schema (with `skip_serializing_if = \"Vec::is_empty\"` ensuring idempotency for existing YAMLs), and testing.\n4. **Gates**: No existing gates were weakened. All tests are properly accounted for.\n\nI found nothing that refutes the claims or the diff's correctness. The implementation accurately reflects the specification.",
+   "findings": [],
+   "raw_bytes": 3569
+  }
+ ]
+}
