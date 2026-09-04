@@ -4087,7 +4087,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-06: the worker receipt carries the gate verdict and the orchestrator re-runs and diffs it'
-  status: in_progress
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-04T00:46:54Z
@@ -4104,14 +4104,14 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'hooks_command.rs is 572 lines: split the commit-msg hook generation out so the file is under the 500-line cap'
-  status: in_progress
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-09-04T03:09:03Z
-  updated: 2026-09-04T03:09:03Z
+  updated: 2026-09-04T06:10:08Z
   spec: null
   acceptance_criteria:
-  - 'AD-03 (PMAT-655) grew src/cli/handlers/hooks_command_handlers/hooks_command.rs from 472 to 572 lines before the oversized_source_files_src ratchet existed (AD-05, PMAT-657 set its baseline at 262 for that reason). Move generate_commit_msg_hook / install_commit_msg_hook / remove_commit_msg_hook / installed_strict into commit_msg_hook.rs. Control: the ratchet count drops by one and the commit-enforcement tests still pass.'
+  - 'AD-03 (PMAT-655) grew src/cli/handlers/hooks_command_handlers/hooks_command.rs from 472 to 572 lines before the oversized_source_files_src ratchet existed (AD-05, PMAT-657 set its baseline on that tree). Move the commit-msg hook and the strictness helpers — configured_strict, installed_strict, install_commit_msg_hook, generate_commit_msg_hook, remove_commit_msg_hook — into commit_msg_hook.rs as a second impl HooksCommand block. Control: the shell predicate the ratchet runs counts one fewer oversized file than master measured with the same command, and the commit-enforcement tests still pass.'
   phases: []
   subtasks: []
   estimated_effort: null
