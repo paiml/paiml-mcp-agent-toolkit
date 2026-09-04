@@ -18,7 +18,7 @@ mod code_churn_analysis_tests {
                 total_files_changed: 0,
                 hotspot_files: vec![],
                 stable_files: vec![],
-                author_contributions: HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 mean_churn_score: 0.0,
                 variance_churn_score: 0.0,
                 stddev_churn_score: 0.0,
@@ -79,7 +79,7 @@ mod code_churn_analysis_tests {
                 total_files_changed: 2,
                 hotspot_files: vec![PathBuf::from("src/main.rs")],
                 stable_files: vec![],
-                author_contributions: HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 mean_churn_score: 0.55,
                 variance_churn_score: 0.0225,
                 stddev_churn_score: 0.15,
@@ -93,7 +93,7 @@ mod code_churn_analysis_tests {
     #[test]
     fn test_code_churn_analysis_serialization() {
         let now = Utc::now();
-        let mut contributions = HashMap::new();
+        let mut contributions = std::collections::BTreeMap::new();
         contributions.insert("alice".to_string(), 30);
 
         let analysis = CodeChurnAnalysis {

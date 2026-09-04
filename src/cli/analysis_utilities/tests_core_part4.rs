@@ -379,7 +379,7 @@
             summary: ChurnSummary {
                 total_commits: 30,
                 total_files_changed: 3,
-                author_contributions: HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 hotspot_files: vec![],
                 stable_files: vec![],
                 mean_churn_score: 0.0,
@@ -415,7 +415,7 @@
             summary: ChurnSummary {
                 total_commits: 0,
                 total_files_changed: 0,
-                author_contributions: HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 hotspot_files: vec![],
                 stable_files: vec![],
                 mean_churn_score: 0.0,

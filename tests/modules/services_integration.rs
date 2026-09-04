@@ -308,7 +308,7 @@ enum TestEnum {
                 total_commits: 10,
                 hotspot_files: vec![PathBuf::from("test.rs")],
                 stable_files: vec![PathBuf::from("README.md")],
-                author_contributions: std::collections::HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 mean_churn_score: 0.0,
                 variance_churn_score: 0.0,
                 stddev_churn_score: 0.0,

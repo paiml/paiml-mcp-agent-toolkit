@@ -1,0 +1,65 @@
+{
+ "ticket": "PMAT-665",
+ "base": "origin/master",
+ "head": "c7d292189343657d1f5b6e3138791dd837efcc9f",
+ "diff_sha256": "08d57242834e4f838c02176ef9aabe014efaa8123da604ce54376c60069240f2",
+ "width": 3,
+ "executor": "agy",
+ "prompt_mode": "file",
+ "prompt_bytes": 193540,
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff faithfully implements all requirements of PMAT-665. The fast path now correctly checks length and ctime alongside mtime, and uses a rotating 1/64 verification slice. Persisted walks are sorted and the ranker correctly tie-breaks on `(file_path, start_line)`. `author_contributions` uses `BTreeMap` and tie-breaks by author. `manifest.json` is written atomically, and corrupt/stale manifests are robustly detected. Failed saves are accurately reported, `persist_score` returns a `Result`, and FTS DELETE propagates errors. Finally, the nine functions over the cognitive ceiling were successfully refactored. No unrequested changes or weakened gates were found.",
+   "findings": [],
+   "raw_bytes": 2371
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff correctly and faithfully implements all requirements of PMAT-665 without any weakened gates or unrequested changes. The fast path compares length and ctime alongside mtime, and integrates a 1/64 verification slice based on a persisted run_counter. It correctly tie-breaks walks by sorting and using (file_path, start_line) for rankings, uses a BTreeMap for author_contributions with deterministic markdown ranking, handles manifest atomicity and staleness gracefully, propagates FTS DELETE failures, properly handles save reporting, and extracts all 9 overly complex functions cleanly.",
+   "findings": [
+    {
+     "claim": "The incremental fast path compares len and ctime besides mtime, plus a rotating 1/64 verify slice with a persisted run counter",
+     "file": "src/services/agent_context/function_index/build_helpers.rs",
+     "grounding": "cited"
+    },
+    {
+     "claim": "Every walk that defines persisted order is sorted and the ranker tie-breaks on (file_path, start_line)",
+     "file": "src/services/agent_context/query/engine_query.rs",
+     "grounding": "cited"
+    },
+    {
+     "claim": "analyze churn serializes author_contributions as a BTreeMap and the markdown path tie-breaks on author",
+     "file": "src/cli/analysis_utilities/churn.rs",
+     "grounding": "cited"
+    },
+    {
+     "claim": "manifest.json is written atomically and a torn/stale manifest is detected and named",
+     "file": "src/services/agent_context/function_index/build_persistence.rs",
+     "grounding": "cited"
+    },
+    {
+     "claim": "A failed index save is correctly reported and persist_score returns Result",
+     "file": "src/cli/handlers/query_handler/indexing.rs",
+     "grounding": "cited"
+    },
+    {
+     "claim": "Nine over-ceiling functions were refactored and extracted appropriately",
+     "file": "src/cli/handlers/score_handler_compute.rs",
+     "grounding": "asserted"
+    }
+   ],
+   "raw_bytes": 4519
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff accurately implements all requirements specified in PMAT-665 without any unrequested changes or weakened gates. The incremental index fast path correctly relies on length and ctime alongside mtime, and a 1/64 rotating slice is introduced using run_counter. Tie-breaking in index walks and churn serialization (BTreeMap and author-sorted fallback) ensures reproducible ordering. The index serialization fixes atomic .tmp creation, explicitly checks for a torn/unparseable manifest or a stale pair, and robustly handles reporting of failed vs successful saves. The FTS index DELETE is properly propagated, and persist_score correctly bubbles up results. The nine cognitive complexity refactors are all executed appropriately without altering observable behaviour. I find no refuting evidence. Verdict is PASS.",
+   "findings": [],
+   "raw_bytes": 2666
+  }
+ ]
+}
