@@ -27,7 +27,7 @@ equations:
       - "an unbound start claims L1, never L3"
       - "a start with --implements claims L2 and the contract carries the binding"
       - "--level on add is stored on the ticket and becomes the claim at start"
-      - "--level outside L1..L5 is refused before anything is written"
+      - "a --level that is not a ladder level (L0..L5) is refused before anything is written"
     preconditions: []
   edit_rebinds:
     formula: "edit --level L | edit --implements c/e => contract.level = L | contract.implements += (c, e, sha)"

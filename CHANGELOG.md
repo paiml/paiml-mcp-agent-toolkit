@@ -16,7 +16,7 @@ urgent `pmat work` / CI fixes reported by users of 3.36.0.
 
 - **`pmat work` claimed L3 by default and the normal flow could never reach L2 (#1186).**
   A ticket started without `--implements` now claims **L1**; one started with
-  `--implements` claims **L2** and carries the binding. `--level <L1..L5>` is accepted
+  `--implements` claims **L2** and carries the binding. `--level <L0..L5>` is accepted
   on `work add`, `work start` and `work edit`; `--implements` is accepted on
   `work edit`, so an in-progress ticket can be bound without restarting it. The
   ladder check on `work complete` now runs **before** the quality gate, so an

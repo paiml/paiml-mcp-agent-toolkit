@@ -56,7 +56,7 @@ fn require_equation(file: &Path, bytes: &[u8], equation: &str) -> Result<()> {
         .get("equations")
         .and_then(|e| e.as_mapping())
         .ok_or_else(|| anyhow!("{} declares no `equations:` mapping", file.display()))?;
-    if equations.contains_key(serde_yaml_ng::Value::String(equation.to_string())) {
+    if equations.contains_key(equation) {
         return Ok(());
     }
     let mut known: Vec<String> = equations
