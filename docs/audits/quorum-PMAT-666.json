@@ -1,0 +1,34 @@
+{
+ "ticket": "PMAT-666",
+ "base": "origin/master",
+ "head": "8518cebfe2af6867f28022153a18c321b62cb2c4",
+ "diff_sha256": "8a9db1702e95849e427605767b4c4b30dba301a0cd3e718ed85e16e133920084",
+ "width": 3,
+ "executor": "agy",
+ "prompt_mode": "inline",
+ "prompt_bytes": 16170,
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff correctly performs the mechanical move of the 5 specified commit-msg functions (`configured_strict`, `installed_strict`, `install_commit_msg_hook`, `generate_commit_msg_hook`, `remove_commit_msg_hook`) into a new file `commit_msg_hook.rs` as a second `impl HooksCommand` block. This reduces `hooks_command.rs` by 93 lines (putting it under the 500-line cap) exactly as outlined in PMAT-666. The roadmap entry is correctly appended with `status: in_progress`, addressing the previous quorum failure. All claims in the receipt align with the diff.",
+   "findings": [],
+   "raw_bytes": 2145
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff precisely implements the mechanical code move requested in PMAT-666 without any unauthorized changes. The 5 specified functions were moved to a new commit_msg_hook.rs file, the file size metrics match the receipt claims exactly, and the roadmap.yaml was properly updated with the correct spelling. No gates were weakened and no contradictory logic was introduced.",
+   "findings": [],
+   "raw_bytes": 2843
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff exactly implements the mechanical move requested by PMAT-666. The 5 listed functions were moved verbatim to commit_msg_hook.rs, reducing hooks_command.rs from 572 to 479 lines (under the 500-line cap) and creating a new 103-line file. The math (93 lines removed) and the resulting counts align perfectly with the receipt claims. The roadmap yaml is updated with the new ticket in the \"in_progress\" status, completely matching the receipt's instructions.",
+   "findings": [],
+   "raw_bytes": 1971
+  }
+ ]
+}
