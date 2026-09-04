@@ -1,0 +1,62 @@
+{
+ "ticket": "PMAT-655",
+ "base": "origin/PMAT-652-dogfood-published",
+ "head": "a7484a1cf4942800c88eb8068e45605029584d7e",
+ "width": 3,
+ "executor": "agy",
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff accurately implements the strict mode for git hooks as requested in PMAT-655 (AD-03). The implementation successfully enforces SATD thresholds in the pre-commit hook and introduces a new `commit-msg` hook to mandate ticket linking (`Pmat-Ticket` trailers or issue references). The Jidoka decision to migrate the task-ID check from `pre-commit` (where `$1` is always empty) to `commit-msg` is technically correct and explicitly documented. Automatic hook updates via `verify --fix` and `update` preserve the `strict` flag securely. All receipt deliverables and regression tests are present and correct.",
+   "findings": [],
+   "raw_bytes": 2249
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "I reviewed the diff against ticket PMAT-655 and its implementation receipt. The diff successfully implements strict commit enforcement as requested. The SATD check correctly exits 1 under strict mode. The task ID block was properly migrated into a new `commit-msg` hook that parses the `Pmat-Ticket:` trailer using `git interpret-trailers`, with fallbacks to regex patterns. All CLI wiring (`hooks install --strict`, `hooks init --strict`) and config reading (`[hooks] strict`) have been added, and state is preserved across automatic hook rewrites. The tests fully validate the behavior, including running a throwaway git repo to assert that the commit is genuinely blocked. No regressions or omitted deliverables were found.",
+   "findings": [],
+   "raw_bytes": 3273
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff accurately implements ticket PMAT-655 and robustly addresses the 4 failures flagged during the AD-04 quorum review. \n\nThe `--strict` mode is fully enforced: the pre-commit hook now exports `PMAT_HOOKS_STRICT` causing SATD over the threshold to exit 1, and the newly generated `commit-msg` hook successfully refuses unticketed commits under strict mode. The `installed_strict()` helper correctly ensures that automatic rewrites (like `verify --fix` and `update`) preserve an existing strict installation. The dead `PMAT_TASK_ID_PATTERN` check has been removed as requested, and the test suite has been appropriately expanded to prevent regressions. No contradicting logic or omitted deliverables were found.",
+   "findings": [
+    {
+     "claim": "The --strict flag is now correctly passed down to the pre-commit hook generation, exporting PMAT_HOOKS_STRICT, which resolves the first quorum review failure.",
+     "file": "src/cli/handlers/hooks_command_handlers/hook_generation.rs",
+     "grounding": "cited",
+     "line": 38
+    },
+    {
+     "claim": "The installed_strict() helper is implemented to read the existing hook's strictness, preventing 'verify --fix' and 'update' from silently downgrading a strict install to non-strict (resolving the second quorum review failure).",
+     "file": "src/cli/handlers/hooks_command_handlers/hooks_command.rs",
+     "grounding": "cited",
+     "line": 22
+    },
+    {
+     "claim": "The generated commit-msg hook uses 'git interpret-trailers' to reliably parse trailers, correctly exiting 1 when strict mode is on and the commit lacks both a trailer and a valid ticket reference.",
+     "file": "src/cli/handlers/hooks_command_handlers/hooks_command.rs",
+     "grounding": "cited",
+     "line": 80
+    },
+    {
+     "claim": "The dead task-ID block in the pre-commit hook was successfully removed, and the pre-commit SATD check now exits 1 when PMAT_HOOKS_STRICT=1.",
+     "file": "src/cli/handlers/hooks_command_handlers/hook_generation.rs",
+     "grounding": "cited",
+     "line": 72
+    },
+    {
+     "claim": "The audit script reliably drives 'git commit' to test the generated commit-msg hook, accurately differentiating a non-strict warning from a strict refusal.",
+     "file": "scripts/commit-enforcement-audit.sh",
+     "grounding": "cited",
+     "line": 26
+    }
+   ],
+   "raw_bytes": 5345
+  }
+ ]
+}

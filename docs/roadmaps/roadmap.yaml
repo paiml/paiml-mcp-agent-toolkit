@@ -4117,23 +4117,6 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-670
-  github_issue: null
-  item_type: task
-  title: 'pmat work: a ticket claims the ladder level its bindings evidence; --level on add and edit, --implements on edit, ladder check before the quality gates (#1186)'
-  status: in_progress
-  priority: high
-  assigned_to: null
-  created: 2026-09-04T06:57:46Z
-  updated: 2026-09-04T06:57:46Z
-  spec: null
-  acceptance_criteria:
-  - 'GitHub issue #1186. Fix and ship in the next release.'
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
 - id: PMAT-656
   github_issue: null
   item_type: task
@@ -4146,6 +4129,23 @@ roadmap:
   spec: null
   acceptance_criteria:
   - 'agentic-delivery-pmat.md section 3.1 / 5.2 / 9.4. Skill in the paiml-implement bundle: quorum-review.sh builds the prompt from git diff base...HEAD plus the ticket and receipt, runs three agy lanes under agy/quorum-schema.json, writes docs/audits/quorum-<ticket>.json and posts it as a PR comment; pmat-merge --auto refuses without three PASS. Controls: a planted contradiction gets at least one FAIL naming file:line; a clean diff gets three PASS; the helper refuses without the artifact.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-670
+  github_issue: null
+  item_type: task
+  title: 'pmat work: a ticket claims the ladder level its bindings evidence; --level on add and edit, --implements on edit, ladder check before the quality gates (#1186)'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-09-04T06:57:46Z
+  updated: 2026-09-04T06:57:46Z
+  spec: null
+  acceptance_criteria:
+  - 'GitHub issue #1186. Fix and ship in the next release.'
   phases: []
   subtasks: []
   estimated_effort: null
