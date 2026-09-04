@@ -40,3 +40,6 @@ mod tests;
 #[cfg(test)]
 #[path = "../hooks_tests_gh301_makefile_scan.rs"]
 mod gh301_makefile_scan_tests;
+
+#[cfg(test)]
+mod commit_enforcement_tests;
