@@ -298,8 +298,9 @@ entry point needs no `too_many_arguments` allowance and the `allow_attributes_sr
 baseline. `file-size` and `churn` join `default_checks()` and therefore the MCP `quality_gate` suite; `lint`
 (clippy `--all-targets -D warnings`, the same invocation as `pmat verify`'s stage) is opt-in because it
 compiles the tree. A check that cannot be answered — churn outside a git repository, lint without a
-`Cargo.toml` — is disclosed as a scope row under `--checks <that check>`; under `--checks all` that row is
-dropped, exactly as the security check's has always been (PMAT-658 tracks closing both). Acceptance
+`Cargo.toml` — is disclosed as a scope row, under `--checks <that check>` and under `--checks all` alike,
+counted as nothing (the security check's own scope row is still dropped under `all`; PMAT-658 gives it the
+same treatment). Acceptance
 `scripts/quality-gate-thresholds-audit.sh` (seven legs with controls; RED on 3.36.0: nothing parses),
 contract `contracts/quality-gate-thresholds-v1.yaml`, receipt `docs/audits/impl-PMAT-657-receipt.md`.
 

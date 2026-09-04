@@ -30,6 +30,7 @@ analysis utilities, configuration); trigger Q1 not fired (no quorum lane; the AD
 | a false alarm, worth recording | after the mutation run reverted the SOURCE but not the BINARY, `./target/debug/pmat` still compared against `max_lines * 2`; an hour of "the check misses 385 files" was the stale mutant. Rebuilt: the fixture flags, the repo reads 231. The named-mutation contract now says "revert and REBUILD" |
 | AD-04 quorum on head 014c606ec | 1 PASS, 2 FAIL, cited: the hook runner's individual-check path (`run_individual_checks`) and the eleven-argument `handle_quality_gate` still passed the bare defaults — both now resolve from the project; no production call site passes `QualityThresholds::default()` any more |
 | AD-04 quorum on head 04aa804a8 | 2 PASS, 1 FAIL, cited: this receipt still said 22 new tests (the file holds 23); PMAT-658's description still said churn mirrors the security check's dropped row (churn now keeps its row — description corrected, the ticket now covers the security check alone) |
+| AD-04 quorum on head 2d71714b1 | 2 PASS, 1 FAIL, cited: the spec §9.5 note still said churn's row is dropped under `--checks all` (it is kept since 014c606ec) — corrected |
 | pv contract | — | `contracts/quality-gate-thresholds-v1.yaml`, `pv validate` and `pv lint` PASS |
 | new lib tests in `quality_checks_thresholds_tests.rs` | 22 listed in the worker's receipt | 23 in the file now (the worker's 22 plus the MCP-suite regression test the quorum forced); they run in the verify tests stage |
 
