@@ -4032,52 +4032,35 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-654
+- id: PMAT-663
   github_issue: null
   item_type: task
-  title: 'git_context tests fail in any git worktree: the repo-path helper requires .git/HEAD, but a worktree''s .git is a file'
-  status: planned
+  title: 'AD-09: one orchestrator per repository per host'
+  status: inprogress
   priority: medium
   assigned_to: null
-  created: 2026-09-03T21:34:43Z
-  updated: 2026-09-03T21:34:43Z
+  created: 2026-09-04T02:20:10Z
+  updated: 2026-09-04T02:20:10Z
   spec: null
   acceptance_criteria:
-  - 'src/models/git_context.rs tests: repo_path() walks up from CARGO_MANIFEST_DIR looking for .git/HEAD; in a linked worktree .git is a file (''gitdir: …''), so the walk falls through to manifest_dir.parent() (not a repo) and four tests fail: test_is_git_repo_returns_true_for_git_repo, test_from_current_dir_extracts_commit_sha, test_from_current_dir_extracts_author_info, test_git_context_serialization. Seen by the aprender session on #1166 and by pmat verify on the AD-02 worktree (PMAT-652). Fix: accept a .git file (or ask git rev-parse --show-toplevel). Linked: PMAT-652.'
+  - 'agentic-delivery-pmat.md section 6 / 9.9. Bundle: discover.sh takes an orchestrator lock per repository in the runtime dir; the hook refuses a second session''s first Agent spawn in the same repository naming the holder; stale locks (session gone, or older than 12h) are taken over; hooks/orchestrator-lock-selftest.sh drives the real hook. The xhigh assertion is not machine-checkable from a hook and stays [U]. pmat side: spec note and receipt. Controls: second orchestrator refused naming the first; holder may spawn; stale lock taken over.'
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-655
+- id: PMAT-664
   github_issue: null
   item_type: task
-  title: 'AD-03: commit enforcement — the generated hook''s SATD and task-ID checks block under strict mode, and a commit-msg hook requires a Pmat-Ticket trailer'
-  status: planned
-  priority: high
-  assigned_to: null
-  created: 2026-09-03T22:07:13Z
-  updated: 2026-09-04T00:41:54Z
-  spec: null
-  acceptance_criteria:
-  - 'agentic-delivery-pmat.md section 4.7 / 9.3. [hooks] strict = true / pmat hooks install --strict make the pre-commit SATD check exit 1 and install a commit-msg hook that requires a Pmat-Ticket trailer (or the ticket pattern); non-strict keeps warning. Includes: strict resolved once for both hooks and kept across automatic rewrites (found by the AD-04 quorum); --strict with --stack refused rather than dropped (PMAT-659 closes the gap); and the refactor of two touched functions over pmat verify''s cognitive ceiling (handle_run, report_settings_provenance) that the complexity gate on changed files requires.'
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: PMAT-659
-  github_issue: null
-  item_type: task
-  title: 'hooks install --stack has no strict mode: the stack installer writes its own lightweight pre-commit hook and no commit-msg hook'
-  status: planned
+  title: 'AD-10: the four lane modes — goal, teamwork, grill-me, plan — as one calling form'
+  status: in_progress
   priority: medium
   assigned_to: null
-  created: 2026-09-04T00:41:54Z
-  updated: 2026-09-04T00:41:54Z
+  created: 2026-09-04T02:30:46Z
+  updated: 2026-09-04T02:30:46Z
   spec: null
   acceptance_criteria:
-  - 'AD-03 (PMAT-655) made --strict --stack an explicit refusal instead of a silent drop. Close the gap: the stack installer should generate the same strict pre-commit hook and the commit-msg hook in every stack repository, honouring [hooks] strict per repository. Control: pmat hooks install --stack --strict in a fixture stack of two repositories refuses an untrailered commit in both.'
+  - 'agentic-delivery-pmat.md section 6 / 9.10. Bundle: scripts/agy-lane.sh --mode goal|teamwork|grillme|plan composes the agy call per mode (teamwork prefixes /teamwork-preview and refuses under 20m; plan passes --mode plan; goal and grillme are prompt templates with agy/goal-schema.json and agy/grillme-schema.json until agy ships them, AIS-006); lanes sandboxed unless --writes; --self-test; the delegate names the mode in its receipt. pmat side: spec note and receipt. Controls: unknown mode refused; each mode''s dry run prints its calling form.'
   phases: []
   subtasks: []
   estimated_effort: null
