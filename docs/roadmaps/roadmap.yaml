@@ -4121,7 +4121,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'hooks_command.rs is 572 lines: split the commit-msg hook generation out so the file is under the 500-line cap'
-  status: inprogress
+  status: in_progress
   priority: medium
   assigned_to: null
   created: 2026-09-04T03:09:03Z
