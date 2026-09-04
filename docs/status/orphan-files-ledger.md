@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4435 tracked `.rs` files: 3946 reachable from 137 target root(s), 407 orphaned (126935 lines, 6292 `#[test]` fns), 82 quarantined (35891 lines, 2021 `#[test]` fns).
+4437 tracked `.rs` files: 3948 reachable from 137 target root(s), 407 orphaned (126947 lines, 6292 `#[test]` fns), 82 quarantined (35891 lines, 2021 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -314,7 +314,7 @@ same change; do not edit counts by hand.
 | `src/tests/coverage_boost_check_handlers_types.rs` | pending-#1017 | 18 | 266 |
 | `src/tests/coverage_boost_chunker.rs` | pending-#1017 | 116 | 1259 |
 | `src/tests/coverage_boost_churn.rs` | pending-#1017 | 23 | 353 |
-| `src/tests/coverage_boost_cli_enums.rs` | pending-#1017 | 38 | 472 |
+| `src/tests/coverage_boost_cli_enums.rs` | pending-#1017 | 38 | 484 |
 | `src/tests/coverage_boost_complexity.rs` | pending-#1017 | 70 | 1079 |
 | `src/tests/coverage_boost_complexity_handlers.rs` | pending-#1017 | 58 | 1155 |
 | `src/tests/coverage_boost_comply_cb_detect.rs` | pending-#1017 | 110 | 1321 |
