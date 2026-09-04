@@ -1,0 +1,74 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-04"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/agentic-delivery-pmat.md section 3.1 / 5.2 / 9.4 (AD-04)"
+    - "paiml-implement bundle: skills/quorum-review/{SKILL.md,quorum-review.sh,pmat-merge}, agy/quorum-schema.json"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    Nothing merges without a quorum verdict. quorum-review.sh sends the same
+    prompt (git diff base...HEAD, the ticket, the receipt, the refutation
+    doctrine) to N independent agy lanes under agy/quorum-schema.json and
+    writes docs/audits/quorum-<ticket>.json with agreed = every lane PASS and
+    the HEAD it judged. pmat-merge, the gh pr merge wrapper, refuses --auto
+    unless an artifact agrees for the PR's current head; a non-auto merge is
+    passed through. A concurrency cap is not a vote: this is the vote.
+  contract: quorum-review
+  status: draft
+
+equations:
+  auto_merge_requires_agreement:
+    formula: "auto and not exists(a in docs/audits/quorum-*.json : a.agreed and (a.head == pr.head or (a.head == parent(pr.head) and files(pr.head) subset docs/audits/quorum-*.json))) => pmat-merge exits 1 naming docs/audits/quorum-<ticket>.json and never calls gh pr merge"
+    domain: "any invocation of pmat-merge <pr> --auto in a repository checkout"
+    codomain: bool
+    invariants:
+      - "an agreeing artifact for another head does not count (a rebase invalidates the verdict)"
+      - "the one exception is the verdict commit itself: the artifact is committed on the branch it judged, so an agreeing artifact for the head's first parent counts when the head commit touches nothing but docs/audits/quorum-*.json (paiml-implement#6); a verdict commit that also changes code is refused"
+      - "an artifact for this head with agreed = false does not count"
+      - "an agreeing artifact for this head hands the call to gh pr merge unchanged, --auto included"
+      - "pmat-merge <pr> without --auto is passed through whatever docs/audits holds"
+    preconditions: []
+
+  agreement_is_unanimous:
+    formula: "agreed == (len(lanes) == width and all(lane.verdict == PASS))"
+    domain: "the artifact quorum-review.sh writes"
+    codomain: bool
+    invariants:
+      - "a lane whose output carries no verdict in the schema enum is recorded as NO-VERDICT and blocks"
+      - "the schema object echoed back by the executor is never mistaken for a verdict (verdict must be an enum string and findings a list)"
+      - "raw lane outputs are kept beside the artifact under <artifact>.lanes/ for audit"
+    preconditions:
+      - "width in 1..10"
+      - "ticket matches ^[A-Z]+-[0-9]+$"
+
+  lanes_refute:
+    formula: "a diff containing a test that asserts the opposite of the ticket draws >= 1 FAIL whose finding names that file; a diff that does what the ticket says draws width PASS"
+    domain: "the two live controls in docs/audits/impl-PMAT-656-receipt.md"
+    codomain: bool
+    invariants:
+      - "findings carry file, claim and grounding in {cited, measured, asserted}; asserted findings are reported, not counted as refutation on their own"
+    preconditions: []
+
+falsification_tests:
+  - id: F1
+    rule: "the merge helper exists in the installed skill"
+    prediction: "with QUORUM_SKILL_DIR pointing at a directory without pmat-merge the audit exits 1 and its first leg reads helper present (missing ...) — the 3.36.0 state"
+    test: "QUORUM_SKILL_DIR=/nonexistent bash scripts/quorum-review-audit.sh"
+    if_fails: "the audit passed without a helper: its first leg no longer checks presence, or a helper leaked onto the path"
+  - id: F2
+    rule: "the seven offline legs through a stub gh"
+    prediction: "GREEN, exit 0: refused without an artifact naming the file; refused for another head and for agreed=false; gh pr merge --auto called on agreement; non-auto passthrough; the docs-only verdict commit accepted for its parent; a verdict commit that also changes code refused"
+    test: "bash scripts/quorum-review-audit.sh"
+    if_fails: "pmat-merge changed its refusal or acceptance rule; read which leg is red and compare with auto_merge_requires_agreement"
+  - id: F3
+    rule: "the helper can be broken (named mutations M1, M2, M3)"
+    prediction: "a helper that ignores agreed, one that ignores head, and one that accepts the parent unconditionally each turn the corresponding leg RED"
+    test: "QUORUM_SKILL_DIR=<mutant dir> bash scripts/quorum-review-audit.sh"
+    if_fails: "a mutant passed: the audit no longer discriminates that rule and is vacuous for it"
+  - id: F4
+    rule: "the live lanes refute and agree"
+    prediction: "the planted-contradiction artifact carries at least one FAIL naming commit_enforcement_tests and agreed=false; the after-fix artifact carries width PASS and agreed=true"
+    test: "bash scripts/quorum-review-audit.sh --clean docs/audits/quorum-PMAT-655-after-fix.json --planted docs/audits/quorum-PMAT-655-planted-control.json"
+    if_fails: "the lanes no longer refute a planted contradiction, or the parser mistook something other than an enum-string verdict for a verdict"

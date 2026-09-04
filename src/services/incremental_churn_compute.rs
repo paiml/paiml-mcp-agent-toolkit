@@ -173,7 +173,7 @@ impl IncrementalChurnAnalyzer {
 
     /// Generate summary from file metrics
     fn generate_summary(&self, files: &[FileChurnMetrics]) -> ChurnSummary {
-        let mut author_contributions: HashMap<String, usize> = HashMap::new();
+        let mut author_contributions: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
         let mut total_commits = 0;
 
         for file in files {

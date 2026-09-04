@@ -132,7 +132,7 @@
                 total_files_changed: 25,
                 hotspot_files: vec![PathBuf::from("src/hot.rs")],
                 stable_files: vec![PathBuf::from("src/stable.rs")],
-                author_contributions: HashMap::from([
+                author_contributions: std::collections::BTreeMap::from([
                     ("alice".to_string(), 30),
                     ("bob".to_string(), 20),
                 ]),
@@ -184,7 +184,7 @@
                 total_files_changed: 0,
                 hotspot_files: vec![],
                 stable_files: vec![],
-                author_contributions: HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 mean_churn_score: 0.0,
                 variance_churn_score: 0.0,
                 stddev_churn_score: 0.0,
@@ -253,7 +253,7 @@
                 total_files_changed: 0,
                 hotspot_files: vec![],
                 stable_files: vec![],
-                author_contributions: HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 mean_churn_score: 0.0,
                 variance_churn_score: 0.0,
                 stddev_churn_score: 0.0,

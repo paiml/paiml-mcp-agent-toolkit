@@ -130,7 +130,6 @@ mod churn_tests {
         ChurnOutputFormat, ChurnSummary, CodeChurnAnalysis, FileChurnMetrics,
     };
     use chrono::Utc;
-    use std::collections::HashMap;
 
     fn empty_summary() -> ChurnSummary {
         ChurnSummary {
@@ -138,7 +137,7 @@ mod churn_tests {
             total_files_changed: 0,
             hotspot_files: Vec::new(),
             stable_files: Vec::new(),
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.0,
             variance_churn_score: 0.0,
             stddev_churn_score: 0.0,
@@ -267,7 +266,7 @@ mod churn_tests {
     fn test_format_churn_as_summary_emits_top_contributors_section() {
         let mut a = empty_analysis();
         a.summary.author_contributions =
-            HashMap::from([("alice".to_string(), 10), ("bob".to_string(), 3)]);
+            std::collections::BTreeMap::from([("alice".to_string(), 10), ("bob".to_string(), 3)]);
         let s = format_churn_as_summary(&a).unwrap();
         assert!(s.contains("Top Contributors"));
         assert!(s.contains("alice"));
@@ -313,6 +312,25 @@ mod churn_tests {
         assert!(!md.contains("## File Churn Details"));
         assert!(!md.contains("## Author Contributions"));
         assert!(md.contains("## Recommendations"));
+    }
+
+    /// CRUX-07 leg c: authors with equal counts rank by name, so the printed
+    /// table (and the `take(15)` cut it feeds) is the same on every run.
+    #[test]
+    fn test_markdown_author_ranking_breaks_ties_on_the_author_name() {
+        let mut a = empty_analysis();
+        a.summary.author_contributions = std::collections::BTreeMap::from([
+            ("zoe".to_string(), 3),
+            ("ann".to_string(), 3),
+            ("mel".to_string(), 9),
+        ]);
+        let md = format_churn_as_markdown(&a).expect("markdown rendering must succeed");
+        let pos = |name: &str| md.find(name).expect("every author must be listed");
+        assert!(pos("mel") < pos("ann"), "a higher count still ranks first");
+        assert!(
+            pos("ann") < pos("zoe"),
+            "equal counts rank by author name, not by hash order"
+        );
     }
 
     // --- format_churn_content dispatcher ---

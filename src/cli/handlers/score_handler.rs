@@ -155,8 +155,11 @@ pub async fn handle_score(
         score.composite
     );
 
-    // Persist to .pmat-metrics/
-    persist_score(path, &score);
+    // Persist to .pmat-metrics/. A failure is a warning, not a fatal error —
+    // the score is still printed — but it is never silent.
+    if let Err(e) = persist_score(path, &score) {
+        eprintln!("Warning: {e}");
+    }
 
     // Format output
     let output_text = render_score(&score, format)?;
@@ -174,64 +177,87 @@ pub async fn handle_score(
     }
 
     // Cross-validation (CB-146)
-    let violations = cross_validate(&score);
-    if !violations.is_empty() {
-        eprintln!(
-            "\nCross-validation ({}/{} invariants violated):",
-            violations.len(),
-            CROSS_VALIDATION_INVARIANTS
-        );
-        for v in &violations {
-            eprintln!("  {} {}", v.id, v.message);
-        }
-        if violations.len() >= 3 {
-            eprintln!("WARNING: 3+ invariants violated — systemic inconsistency");
-        }
-    }
+    report_cross_validation(&score);
 
     // Regression check (CB-145)
     if regression_check {
-        if let Some(delta) = check_regression(path, &score) {
-            if delta < -5.0 {
-                eprintln!(
-                    "REGRESSION: composite dropped {:.1} pts (threshold: -5.0)",
-                    delta
-                );
-                std::process::exit(1);
-            }
-        }
+        check_regression_and_maybe_exit(path, &score);
     }
 
     // Gate check (CB-147)
     if let Some(threshold) = gate {
-        // An unmeasured dimension is *excluded* from the composite, which can
-        // only push the mean up. Disclose the coverage of the number the gate
-        // is about to accept, so "we never measured it" cannot read as a pass.
-        if !score.not_measured.is_empty() {
-            eprintln!(
-                "GATE SCOPE: composite covers {}/{} dimensions; not measured: {}",
-                score.dimensions_measured,
-                score.dimensions_total,
-                score.not_measured_summary()
-            );
-        }
-        match score.composite {
-            Some(composite) if composite >= threshold => {}
-            Some(composite) => {
-                eprintln!("FAIL: composite {composite:.1} < gate {threshold:.1}");
-                std::process::exit(1);
-            }
-            None => {
-                eprintln!(
-                    "FAIL: composite is not measured (0/{} dimensions), so gate {:.1} cannot pass",
-                    score.dimensions_total, threshold
-                );
-                std::process::exit(1);
-            }
-        }
+        apply_gate_and_maybe_exit(&score, threshold);
     }
 
     Ok(())
+}
+
+/// CB-146: print cross-validation invariant violations, if any. Extracted
+/// from `handle_score`; behaviour (which lines are printed, and when the
+/// "systemic inconsistency" warning fires) is unchanged.
+fn report_cross_validation(score: &CompositeScore) {
+    let violations = cross_validate(score);
+    if violations.is_empty() {
+        return;
+    }
+    eprintln!(
+        "\nCross-validation ({}/{} invariants violated):",
+        violations.len(),
+        CROSS_VALIDATION_INVARIANTS
+    );
+    for v in &violations {
+        eprintln!("  {} {}", v.id, v.message);
+    }
+    if violations.len() >= 3 {
+        eprintln!("WARNING: 3+ invariants violated — systemic inconsistency");
+    }
+}
+
+/// CB-145: exit 1 if composite dropped more than 5.0 pts since the last run.
+/// Extracted from `handle_score`; same threshold, same message, same exit code.
+fn check_regression_and_maybe_exit(path: &Path, score: &CompositeScore) {
+    let Some(delta) = check_regression(path, score) else {
+        return;
+    };
+    if delta < -5.0 {
+        eprintln!(
+            "REGRESSION: composite dropped {:.1} pts (threshold: -5.0)",
+            delta
+        );
+        std::process::exit(1);
+    }
+}
+
+/// CB-147: apply the `--gate` threshold, exiting 1 on failure or an
+/// unmeasured composite. Extracted from `handle_score`; every branch's
+/// message and exit code are unchanged.
+///
+/// An unmeasured dimension is *excluded* from the composite, which can only
+/// push the mean up. Disclose the coverage of the number the gate is about
+/// to accept, so "we never measured it" cannot read as a pass.
+fn apply_gate_and_maybe_exit(score: &CompositeScore, threshold: f64) {
+    if !score.not_measured.is_empty() {
+        eprintln!(
+            "GATE SCOPE: composite covers {}/{} dimensions; not measured: {}",
+            score.dimensions_measured,
+            score.dimensions_total,
+            score.not_measured_summary()
+        );
+    }
+    match score.composite {
+        Some(composite) if composite >= threshold => {}
+        Some(composite) => {
+            eprintln!("FAIL: composite {composite:.1} < gate {threshold:.1}");
+            std::process::exit(1);
+        }
+        None => {
+            eprintln!(
+                "FAIL: composite is not measured (0/{} dimensions), so gate {:.1} cannot pass",
+                score.dimensions_total, threshold
+            );
+            std::process::exit(1);
+        }
+    }
 }
 
 impl CompositeScore {
@@ -694,26 +720,7 @@ fn compute_evoscore(path: &Path) -> Dimension {
     let mut test_records: Vec<(String, String, u64, u64)> = Vec::new(); // (file, sha, pass, total)
 
     if let Ok(entries) = std::fs::read_dir(&metrics_dir) {
-        for entry in entries.flatten() {
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy();
-            if name_str.starts_with("commit-") && name_str.ends_with("-tests.json") {
-                if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                        let pass = val.get("pass").and_then(|v| v.as_u64()).unwrap_or(0);
-                        let total = val.get("total").and_then(|v| v.as_u64()).unwrap_or(pass);
-                        let sha = val
-                            .get("commit")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string();
-                        if total > 0 {
-                            test_records.push((name_str.to_string(), sha, pass, total));
-                        }
-                    }
-                }
-            }
-        }
+        test_records.extend(entries.flatten().filter_map(|e| read_test_record(&e)));
     }
 
     if test_records.is_empty() {
@@ -734,6 +741,26 @@ fn compute_evoscore(path: &Path) -> Dimension {
         .expect("test_records is non-empty");
     let rate = *pass as f64 / *total as f64;
     Ok((rate * 100.0).clamp(0.0, 100.0))
+}
+
+/// One `commit-<sha>-tests.json` record as `(file name, sha, pass, total)`;
+/// `None` for any other file, an unreadable one, or a record with no tests.
+fn read_test_record(entry: &std::fs::DirEntry) -> Option<(String, String, u64, u64)> {
+    let name = entry.file_name();
+    let name_str = name.to_string_lossy();
+    if !(name_str.starts_with("commit-") && name_str.ends_with("-tests.json")) {
+        return None;
+    }
+    let content = std::fs::read_to_string(entry.path()).ok()?;
+    let val = serde_json::from_str::<serde_json::Value>(&content).ok()?;
+    let pass = val.get("pass").and_then(|v| v.as_u64()).unwrap_or(0);
+    let total = val.get("total").and_then(|v| v.as_u64()).unwrap_or(pass);
+    let sha = val
+        .get("commit")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    (total > 0).then(|| (name_str.to_string(), sha, pass, total))
 }
 
 // Computation functions (PV lint, coverage, DBC, etc.) extracted for CB-040
@@ -1430,7 +1457,7 @@ mod tests {
     fn test_persist_score_writes_json_in_pmat_metrics() {
         let tmp = TempDir::new().unwrap();
         let score = dummy_score(zero_subs(), 50.0, 0);
-        persist_score(tmp.path(), &score);
+        persist_score(tmp.path(), &score).expect("persisting a score to a temp dir must succeed");
         let out = tmp
             .path()
             .join(".pmat-metrics")

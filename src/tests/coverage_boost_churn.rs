@@ -50,7 +50,7 @@ fn create_test_analysis() -> CodeChurnAnalysis {
             hotspot_files: vec![PathBuf::from("src/main.rs")],
             stable_files: vec![PathBuf::from("src/lib.rs")],
             author_contributions: {
-                let mut map = HashMap::new();
+                let mut map = std::collections::BTreeMap::new();
                 map.insert("dev1".to_string(), 15);
                 map.insert("dev2".to_string(), 8);
                 map
@@ -73,7 +73,7 @@ fn create_empty_analysis() -> CodeChurnAnalysis {
             total_files_changed: 0,
             hotspot_files: vec![],
             stable_files: vec![],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.0,
             variance_churn_score: 0.0,
             stddev_churn_score: 0.0,

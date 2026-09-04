@@ -220,11 +220,31 @@ fn maybe_save_incremental(index: &mut AgentContextIndex, index_path: &PathBuf, q
     };
     if changes > 50 || pct > 0.05 {
         if !quiet {
+            // Announced as an ATTEMPT, before the attempt. The failure below is
+            // what says whether it happened — this line never claims it did.
             eprintln!("Saving index ({} changes)...", changes);
         }
         // Must run before save(): it reads the old DB this save overwrites.
         index.load_all_source();
-        let _ = index.save(index_path);
+        // The success line is printed HERE, from the Ok arm, and nowhere else.
+        // "Saving index (N changes)..." above is an attempt; a run that ends
+        // with only the attempt line has told the reader nothing about whether
+        // the bytes landed, and a success line printed beside the call would
+        // claim they did whatever `save` returned.
+        match index.save(index_path) {
+            Ok(()) => {
+                if !quiet {
+                    eprintln!("  Index saved ({changes} changes)");
+                }
+            }
+            // A discarded error here meant a read-only or full `.pmat/` produced
+            // a "Saving index (N changes)..." line and nothing else, and the
+            // next run recomputed the same N changes forever, silently.
+            Err(e) => eprintln!(
+                "  Failed to save index to {}: {e} (the index on disk is unchanged)",
+                index_path.display()
+            ),
+        }
     } else if !quiet {
         eprintln!("Skipping save ({} minor changes)", changes);
     }

@@ -5,7 +5,6 @@ mod property_tests {
     use crate::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
     use chrono::Utc;
     use proptest::prelude::*;
-    use std::collections::HashMap;
     use std::path::PathBuf;
 
     proptest! {
@@ -58,7 +57,7 @@ mod property_tests {
                 total_files_changed: 0,
                 hotspot_files: vec![],
                 stable_files: vec![],
-                author_contributions: HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 mean_churn_score: 0.0,
                 variance_churn_score: 0.0,
                 stddev_churn_score: 0.0,
@@ -91,7 +90,7 @@ mod property_tests {
             stable in 0usize..50,
             authors in 0usize..100
         ) {
-            let mut author_contributions = HashMap::new();
+            let mut author_contributions = std::collections::BTreeMap::new();
             for i in 0..authors {
                 author_contributions.insert(format!("author_{}", i), 10);
             }
@@ -161,7 +160,7 @@ mod property_tests {
                 total_files_changed: 1,
                 hotspot_files: vec![],
                 stable_files: vec![],
-                author_contributions: HashMap::new(),
+                author_contributions: std::collections::BTreeMap::new(),
                 mean_churn_score: 0.5,
                 variance_churn_score: 0.0,
                 stddev_churn_score: 0.0,

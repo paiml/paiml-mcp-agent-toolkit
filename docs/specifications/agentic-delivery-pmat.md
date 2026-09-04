@@ -299,6 +299,8 @@ passes on this tree; named mutation: the strict branch exiting 0 fails
 ### 9.4 AD-04 — Quorum Review Skill (M)
 **Problem.** §3.1/§5.2. **Proposal.** `~/.claude/skills/quorum-review`: three lanes review `git diff <base>...HEAD` against the ticket text and the receipt under `agy/quorum-schema.json`; lanes are agy by default, Claude models one at a time when agy is absent (the user's one-subagent rule); "must agree" = three PASS; the verdict file is posted as a PR comment and `pmat-merge --auto` (a thin wrapper the bundle installs) refuses without it. **Acceptance.** §3.1. **Risk.** Lane grounding (§5.3): every `file:line` a lane cites is re-read by the skill before the verdict counts.
 
+*Implementation note (PMAT-656, 2026-09-04).* The skill lives in the paiml-implement bundle, not in pmat: `skills/quorum-review/quorum-review.sh` builds one prompt (the diff, `pmat work show <ticket>`, the receipt, the refutation doctrine) and runs it through `--width` agy lanes (`--sandbox`, `agy/quorum-schema.json`), then writes `docs/audits/quorum-<ticket>.json` with `agreed`, the judged `head`, every lane's verdict and findings, and keeps the raw lane outputs under `<artifact>.lanes/`. A lane's answer is recognised only when `verdict` is one of the enum strings and `findings` is a list — the first run mistook the schema object agy echoes back for a verdict. `skills/quorum-review/pmat-merge <pr> --auto …` refuses (exit 1, naming `docs/audits/quorum-<ticket>.json`) unless an artifact agrees for the PR's current head; a non-auto merge passes through. pmat carries the acceptance (`scripts/quorum-review-audit.sh`: five offline legs through a stub `gh`, plus `--clean`/`--planted` for the two live lane artifacts), the contract `contracts/quorum-review-v1.yaml` and the receipt `docs/audits/impl-PMAT-656-receipt.md`. Without `agy` the script stops and says to run the lanes as sequential Claude reviews; it never spawns Claude subagents itself.
+
 ### 9.5 AD-05 — `quality-gate --checks lint,churn,file-size` and a CI leg (M)
 **Problem.** §4.4–4.6 and §3.3. **Proposal.** Three new checks in `src/cli/analysis_utilities/quality_gate_execute.rs` / `quality_gate_part2a.rs`, routed through `quality_gate_suite.rs` so MCP `quality_gate` gains them; thresholds from `pmat.toml [quality]` (`max_file_lines` — the key `work_contract_profile.rs` already reads, default 500; `max_churn_commits_90d`, default 20; lint = clippy `-D warnings` reusing the verify stage's runner); `checks_run`, `not_measured` and the differential gate's `ALLOWED_CONSTANTS` updated with reasons. A CI leg `pmat quality-gate --checks all` on the merge commit. **Acceptance.** §4.4–4.6 with their controls. **Risk.** clippy inside the gate costs a compile; `lint` is opt-in for `--checks all` on non-Rust trees (`not_applicable`).
 
@@ -343,6 +345,16 @@ withdrawn on a clean tree), so the next bundle revision makes the worker run the
 
 ### 9.10 AD-10 — Goal and Grill-me as lane templates (S)
 **Problem.** §5.6. **Proposal.** Four named lane templates in the delegate; `goal` and `grillme` emulate through `/teamwork-preview` prompts with `"emulated": true` in the receipt until agy ships the commands; `plan` = `agy --mode plan`. **Acceptance.** §5.6.
+
+*Implementation note (PMAT-664, 2026-09-04).* Bundle paiml-implement#10: `scripts/agy-lane.sh --mode
+goal|teamwork|grillme|plan --prompt "<p>" [--writes] [--dry-run]` composes the agy call per mode — `teamwork`
+prefixes `/teamwork-preview` and refuses a timeout under 20 minutes; `plan` passes `--mode plan`; `goal` and
+`grillme` are prompt templates with their own schemas (`agy/goal-schema.json`: achieved | partial | blocked with
+grounded evidence; `agy/grillme-schema.json`: questions marked answered-by-the-text or not, verdict including
+`do-not-implement-as-written`) until agy ships them natively (AIS-006); lanes are sandboxed unless `--writes`.
+`--self-test` proves the refusals, each mode's calling form and the sandbox rule for every mode (fourteen checks since paiml-implement#12) and the bundle's `verify.sh` runs it;
+the delegate brief gains a `mode` field and names it in its receipt. pmat side: this note and
+`docs/audits/impl-PMAT-664-receipt.md`.
 
 ## 10. Do-not-do
 

@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +35,13 @@ pub struct ChurnSummary {
     pub total_files_changed: usize,
     pub hotspot_files: Vec<PathBuf>,
     pub stable_files: Vec<PathBuf>,
-    pub author_contributions: HashMap<String, usize>,
+    /// Files touched per author, in author-name order.
+    ///
+    /// A `BTreeMap`, not a `HashMap`: this map is serialised straight into
+    /// `analyze churn --format json`, and a HashMap's iteration order is
+    /// randomised per process, so two runs over an unchanged repository
+    /// produced byte-different documents. Key order is part of the artifact.
+    pub author_contributions: BTreeMap<String, usize>,
     /// Mean of churn scores across all files
     pub mean_churn_score: f64,
     /// Variance of churn scores (population variance)
