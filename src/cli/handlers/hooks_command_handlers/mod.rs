@@ -8,6 +8,7 @@
 
 mod cache_handlers;
 mod command_dispatch;
+mod commit_msg_hook;
 mod hook_generation;
 mod hooks_command;
 mod interactive_setup;
