@@ -53,6 +53,12 @@ pub enum HooksCommands {
         /// Enable TDG quality enforcement hooks
         #[arg(long)]
         tdg_enforcement: bool,
+
+        /// Refuse, do not warn: SATD over the threshold and a commit message
+        /// without a `Pmat-Ticket:` trailer (or ticket/issue reference) exit 1.
+        /// Same as `[hooks] strict = true` in pmat.toml (AD-03, #1126).
+        #[arg(long)]
+        strict: bool,
     },
 
     /// Install or update pre-commit hooks
@@ -72,6 +78,12 @@ pub enum HooksCommands {
         /// Enable TDG quality enforcement hooks
         #[arg(long)]
         tdg_enforcement: bool,
+
+        /// Refuse, do not warn: SATD over the threshold and a commit message
+        /// without a `Pmat-Ticket:` trailer (or ticket/issue reference) exit 1.
+        /// Same as `[hooks] strict = true` in pmat.toml (AD-03, #1126).
+        #[arg(long)]
+        strict: bool,
 
         /// Install hooks across all sovereign AI stack repos
         #[arg(long)]

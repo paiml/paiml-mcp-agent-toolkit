@@ -283,6 +283,19 @@ this script existed; that chain receipt stays, and links to this script's output
 ### 9.3 AD-03 — commit enforcement (S)
 **Problem.** #1126: the generated hook's SATD and task-ID checks warn and exit 0; no commit-msg hook exists. **Proposal.** `pmat hooks install --strict` (and `[hooks] strict = true` in `pmat.toml`) makes both blocking, emits a `commit-msg` hook requiring `Pmat-Ticket: PMAT-\d+` (or `#\d+` for repositories without pmat work), and the bundle's `settings.fragment.json` turns strict on. **Acceptance.** §4.7 first three legs. **Control.** the shipped hook fails the test today (warn + exit 0). **Related.** #1126.
 
+*Implementation note (PMAT-655, 2026-09-04).* `[hooks] strict = true` / `pmat hooks install --strict`
+(also on `hooks init`); `[hooks] ticket_pattern` (default `PMAT-[0-9]+|#[0-9]+` — the shipped
+`PMAT-[0-9]{4}` matched no real ticket id). The pre-commit hook exports `PMAT_HOOKS_STRICT` (`--strict` OR
+`[hooks] strict`, resolved once for both hooks; automatic rewrites keep it); its SATD branch exits 1 under strict; its task-ID block is gone — a pre-commit hook receives
+no message, so that check had read an empty `$1` since it was written. A generated `commit-msg` hook
+(`.git/hooks/commit-msg`, auto-managed) reads the trailer with `git interpret-trailers --parse`,
+falls back to the pattern over non-comment lines, refuses under strict naming `Pmat-Ticket:`, warns
+otherwise; `hooks uninstall` removes it. Measured both ways: `scripts/commit-enforcement-audit.sh`
+(four legs driven through `git commit`) fails at leg 1 on the 3.36.0 binary (no `--strict`) and
+passes on this tree; named mutation: the strict branch exiting 0 fails
+`a_commit_without_a_ticket_trailer_is_refused_in_strict_mode`. The paiml-implement bundle runs
+`pmat hooks install --strict` at Phase 1 (bundle PR).
+
 ### 9.4 AD-04 — Quorum Review Skill (M)
 **Problem.** §3.1/§5.2. **Proposal.** `~/.claude/skills/quorum-review`: three lanes review `git diff <base>...HEAD` against the ticket text and the receipt under `agy/quorum-schema.json`; lanes are agy by default, Claude models one at a time when agy is absent (the user's one-subagent rule); "must agree" = three PASS; the verdict file is posted as a PR comment and `pmat-merge --auto` (a thin wrapper the bundle installs) refuses without it. **Acceptance.** §3.1. **Risk.** Lane grounding (§5.3): every `file:line` a lane cites is re-read by the skill before the verdict counts.
 
