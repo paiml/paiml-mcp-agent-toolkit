@@ -4083,6 +4083,23 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-660
+  github_issue: null
+  item_type: task
+  title: 'AD-06: the worker receipt carries the gate verdict and the orchestrator re-runs and diffs it'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-09-04T00:46:54Z
+  updated: 2026-09-04T00:46:54Z
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 5.3 / 9.6. Bundle: the worker runs gate_cmd once and reports gate {cmd, ok, stages_measured, not_measured}; a receipt without gate is partial=true; scripts/receipt-lint.sh compares the claim with the orchestrator''s rerun and exits 1 on disagreement (self-test proves both directions). pmat side: spec note, receipt, and the lint applied to the PMAT-657 worker''s real receipt.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
 - id: PMAT-657
   github_issue: null
   item_type: task
