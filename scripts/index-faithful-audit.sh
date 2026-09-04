@@ -5,6 +5,10 @@
 # Exit 0 = every leg green; 1 = a leg red.
 set -uo pipefail
 PMAT=${PMAT:-pmat}; ONLY=${2:-a,b,c,d,e}; [ "${1:-}" = "--only" ] && ONLY=$2
+# The binary under test must be the one named: an empty PMAT (a failed build) would silently fall back to
+# whatever `pmat` is on PATH and measure the wrong thing — the bare-binary trap, refused here.
+if [ -z "${PMAT}" ] || ! command -v "$PMAT" >/dev/null 2>&1; then echo "index-faithful-audit: PMAT='${PMAT}' is not an executable — refusing to measure a PATH binary by accident" >&2; exit 2; fi
+case "$PMAT" in */*) ;; *) echo "index-faithful-audit: PMAT must be a path to the binary under test, not a bare name ('$PMAT')" >&2; exit 2;; esac
 red=0; leg(){ if [ "$2" = 0 ]; then echo "  ✓ $1"; else echo "  ✗ $1"; red=1; fi; }
 want(){ case ",$ONLY," in *",$1,"*) return 0;; *) return 1;; esac; }
 echo "index-faithful-audit (CRUX-07) — $($PMAT --version 2>/dev/null | head -1)"
