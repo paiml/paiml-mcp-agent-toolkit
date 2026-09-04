@@ -298,6 +298,14 @@ this script existed; that chain receipt stays, and links to this script's output
 ### 9.8 AD-08 — swappable executor, width 2–20 (S)
 **Problem.** §5.4, §5.5. **Proposal.** `PAIML_EXECUTOR` (`agy` default) in the delegate, executor-specific calling forms in one table, width cap 20 behind the token budget guard. **Acceptance.** §5.4, §5.5.
 
+*Implementation note (PMAT-662, 2026-09-04).* Bundle paiml-implement#8: `quorum-review.sh --executor agy|claude|kimi`
+(`PAIML_EXECUTOR`, default `agy`) — unknown is refused (exit 2); `kimi` runs the same lanes through the kimi CLI;
+`claude` means sequential Claude reviews by the orchestrator, the script never spawns Claude subagents. `--width`
+is bounded by `PAIML_MAX_WIDTH` (default 20, was a constant 10); over the cap is refused naming the credit cost;
+`--dry-run` validates without spawning; `--self-test` proves the five refusals and acceptances and the bundle's
+`verify.sh` runs it. The delegate brief carries the same executor and cap. pmat side: this note and
+`docs/audits/impl-PMAT-662-receipt.md`.
+
 ### 9.9 AD-09 — single-orchestrator lock + effort assertion (S)
 **Problem.** §5.1. **Proposal.** `subagent-lock.sh` takes a host-level lock keyed by `repo_root` at Phase 0 (`SessionStart`), released at `SessionEnd`; Phase 0 prints the effort setting and refuses below `xhigh` unless `--effort-override` is named in the receipt. **Acceptance.** §5.1.
 

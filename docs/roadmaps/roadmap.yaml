@@ -4027,3 +4027,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-662
+  github_issue: null
+  item_type: task
+  title: 'AD-08: swappable executor and a width bounded by a budget for the review lanes'
+  status: in_progress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-04T02:12:32Z
+  updated: 2026-09-04T02:12:32Z
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 6 / 9.8. Bundle: quorum-review.sh --executor agy|claude|kimi (PAIML_EXECUTOR), --width bounded by PAIML_MAX_WIDTH (default 20, was a constant 10), --dry-run, --self-test; the delegate brief carries the same. pmat side: spec note and receipt. Controls: an unknown executor is refused (exit 2); width 21 refused, width 20 accepted; PAIML_MAX_WIDTH=5 refuses 6.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
