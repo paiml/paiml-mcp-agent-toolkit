@@ -4,6 +4,13 @@
 #   PMAT=<path to the binary under test> scripts/work-ladder-claim-audit.sh
 # Exit 0 = every leg green; 1 = a leg red; 2 = harness failure.
 set -uo pipefail
+# --self-test: the audit must be able to fail. Run it against a pmat that does nothing and
+# require RED; a checker that passes on a no-op binary checks nothing.
+if [ "${1:-}" = "--self-test" ]; then
+  S=$(mktemp -d); printf '#!/bin/sh\nexit 0\n' > "$S/pmat"; chmod +x "$S/pmat"
+  if PMAT="$S/pmat" bash "$0" >/dev/null 2>&1; then echo "self-test FAILED: the audit passed against a pmat that does nothing"; rm -rf "$S"; exit 1; fi
+  rm -rf "$S"; echo "self-test OK: the audit is RED against a pmat that does nothing"; exit 0
+fi
 PMAT=${PMAT:-}
 if [ -z "$PMAT" ] || ! command -v "$PMAT" >/dev/null 2>&1; then echo "PMAT='$PMAT' is not an executable" >&2; exit 2; fi
 case "$PMAT" in */*) ;; *) echo "PMAT must be a path, not a bare name" >&2; exit 2;; esac
@@ -42,8 +49,10 @@ falsification_tests:
 Y
 ( cd "$R" && git init -q --template= && git config user.email t@t && git config user.name t && git config core.hooksPath /dev/null && git add . && git commit -qm init )
 w(){ ( cd "$R" && timeout 300 "$PMAT" work "$@" 2>&1 ); }
-level(){ python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("verification_level"))' "$R/.pmat-work/$1/contract.json" 2>/dev/null; }
-binds(){ python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(",".join(b.get("equation","?") for b in d.get("implements",[])))' "$R/.pmat-work/$1/contract.json" 2>/dev/null; }
+# contract.json is pretty-printed, one key per line: plain grep/sed, no runtime beyond the shell.
+level(){ grep -oE '"verification_level": *"[^"]*"' "$R/.pmat-work/$1/contract.json" 2>/dev/null | head -1 | sed -E 's/.*"([^"]*)"$/\1/'; }
+binds(){ grep -oE '"equation": *"[^"]*"' "$R/.pmat-work/$1/contract.json" 2>/dev/null | sed -E 's/.*"([^"]*)"$/\1/' | paste -sd, -; }
+setlevel(){ sed -i -E "s/(\"verification_level\": *)\"[^\"]*\"/\\1\"$2\"/" "$R/.pmat-work/$1/contract.json"; }
 newid(){ w add "$1" 2>&1 | grep -oE 'PMAT-[0-9]+' | head -1; }
 # ---- 1: an unbound ticket claims L1, not L3
 A=$(newid "unbound"); w start "$A" >/dev/null; [ "$(level "$A")" = L1 ] && leg "1: an unbound ticket started plainly claims L1 (got $(level "$A"))" 0 || leg "1: an unbound ticket claims L1 (got $(level "$A"), the shipped default is L3)" 1
@@ -66,13 +75,13 @@ else
 fi
 w edit "$D" --implements fx-v1/no_such_equation >/dev/null 2>&1 && leg "4b control: an unknown equation is refused" 1 || leg "4b control: an unknown equation is refused" 0
 # ---- 5: complete checks the ladder before the quality gates
-E=$(newid "overclaim"); w start "$E" >/dev/null; python3 -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p)); d["verification_level"]="L3"; json.dump(d,open(p,"w"),indent=2)' "$R/.pmat-work/$E/contract.json"
+E=$(newid "overclaim"); w start "$E" >/dev/null; setlevel "$E" L3
 echo "receipt" > "$R/docs/audits/impl-$E-receipt.md"; out=$(w complete "$E"); rc=$?
 echo "$out" | grep -q 'LadderShortfall' && leg "5a: an over-claimed ticket is refused with LadderShortfall" 0 || leg "5a: over-claim refused (no LadderShortfall in: $(echo "$out" | tail -2 | tr '\n' ' ' | cut -c1-80))" 1
 ql=$(echo "$out" | grep -nE -i 'quality|invariant|falsif' | head -1 | cut -d: -f1); ll=$(echo "$out" | grep -n 'LadderShortfall' | head -1 | cut -d: -f1)
 if [ -n "$ll" ] && { [ -z "$ql" ] || [ "$ll" -lt "$ql" ]; }; then leg "5b: the ladder refusal comes before any quality-gate output" 0; else leg "5b: ladder refusal before the quality gates (ladder at line ${ll:-none}, quality output at line ${ql:-none})" 1; fi
 # ---- 6 control: an honestly-claimed L1 ticket completes with a receipt
-F=$(newid "honest"); w start "$F" >/dev/null; python3 -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p)); d["verification_level"]="L1"; json.dump(d,open(p,"w"),indent=2)' "$R/.pmat-work/$F/contract.json"; echo "receipt" > "$R/docs/audits/impl-$F-receipt.md"
+F=$(newid "honest"); w start "$F" >/dev/null; setlevel "$F" L1; echo "receipt" > "$R/docs/audits/impl-$F-receipt.md"
 out=$(w complete "$F"); rc=$?
 if echo "$out" | grep -q 'LadderShortfall'; then
   leg "6 control: an honestly-claimed L1 ticket is not refused by the ladder" 1
