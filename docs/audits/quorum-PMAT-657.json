@@ -1,0 +1,31 @@
+{
+ "ticket": "PMAT-657",
+ "base": "origin/master",
+ "head": "fc4324ccd380d7cf88a7f433283d0fb8817c34de",
+ "width": 3,
+ "executor": "agy",
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff implements the PMAT-657 acceptance criteria precisely. Threshold limits dynamically resolve via `QualityThresholds::resolve`, matching `pmat.toml [quality]` against CLI flags accurately. The `file-size` and `churn` checks are correctly attached to `default_checks()`, while `lint` behaves properly as an opt-in check. Unmeasured capabilities reliably default to an advisory `scope` row without artificially altering verification state. CI legs, ratchet logic, and differential corpus constants operate exactly as mandated by the ticket and receipt. No contradicting implementation or weakened gates were identified.",
+   "findings": [],
+   "raw_bytes": 4434
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff strictly adheres to PMAT-657 and the implementation receipt. All three threshold checks (file-size, churn, lint) are implemented correctly, properly integrated into the routing logic, and tested rigorously. The CLI resolution explicitly cascades from CLI args to config files to defaults. The test suite correctly applies these constraints, leaving lint as opt-in for performance reasons, matching the AD-04 quorum decisions. No constraints were violated and no gates were weakened.",
+   "findings": [],
+   "raw_bytes": 4957
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff implements the requirements of PMAT-657 perfectly. It correctly adds the `file-size`, `churn`, and `lint` checks with threshold parsing that correctly resolves from CLI down to configuration files to defaults. \n\nThe implementations exactly follow the constraints laid out in the ticket:\n- `lint` is kept strictly opt-in and does not pollute `default_checks()` (which is what runs on `--checks all` and MCP routes), preventing accidental compilations.\n- `churn` and `file-size` have been added to the default suite.\n- Unmeasured states (no git repository, no Cargo.toml) are correctly disclosed as advisory `scope` rows rather than false positives or silent bypasses.\n- The dispatchers resolve thresholds properly before passing them to the implementation.\n- All controls from the acceptance scripts pass. \n- Tests correctly pin all invariants, including `--checks all` correctly capturing churn but not lint, and scope disclosures being emitted.\n\nNo gates were weakened, no undocumented behaviors were added, and all tests precisely cover the requested behaviors.",
+   "findings": [],
+   "raw_bytes": 4375
+  }
+ ]
+}
