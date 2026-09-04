@@ -110,6 +110,82 @@ pub struct FunctionEntry {
     pub linked_definition: Option<String>,
 }
 
+/// What the index recorded about a source file the last time it read it.
+///
+/// The checksum alone cannot decide whether a file changed without reading it:
+/// the mtime fast path skips the read entirely, and mtime is writable by any
+/// process (`touch -d`, `os.utime`, a tarball restore), so a rewrite can carry
+/// an mtime that predates the index and be silently served from a stale
+/// checksum. `len` and (on unix) `ctime` are the two stat fields a rewrite
+/// cannot hold still: truncating and writing advances ctime, and content of a
+/// different size changes len. Both are compared before the read is skipped.
+///
+/// `len == 0 && ctime == 0` means UNKNOWN, not "an empty file created at the
+/// epoch" — that is what every manifest written before this record existed
+/// deserialises to (see the `Deserialize` impl below), and unknown stats must
+/// force a re-hash rather than authorise a skip.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
+pub struct FileRecord {
+    /// SHA256 of the file contents as of the last read
+    pub checksum: String,
+    /// File length in bytes as of the last read (0 = unknown)
+    pub len: u64,
+    /// Unix ctime (inode change time), NANOSECONDS since the epoch, as of the
+    /// last read (0 = unknown). See `file_stat_fields` for why not seconds.
+    pub ctime: i64,
+}
+
+impl FileRecord {
+    /// A record carrying only a checksum — stats unknown, so no skip is allowed.
+    pub fn from_checksum(checksum: String) -> Self {
+        Self {
+            checksum,
+            len: 0,
+            ctime: 0,
+        }
+    }
+
+    /// True when this record carries stat evidence a skip decision may rest on.
+    pub fn has_stats(&self) -> bool {
+        self.len != 0 || self.ctime != 0
+    }
+}
+
+impl<'de> Deserialize<'de> for FileRecord {
+    /// Accepts both the current object form and the bare-checksum string every
+    /// pre-CRUX-07 manifest holds. A legacy entry loads with unknown stats, so
+    /// the file is re-hashed once and rewritten with stats on the next save.
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Repr {
+            Legacy(String),
+            Full {
+                checksum: String,
+                #[serde(default)]
+                len: u64,
+                #[serde(default)]
+                ctime: i64,
+            },
+        }
+        Ok(match Repr::deserialize(deserializer)? {
+            Repr::Legacy(checksum) => Self::from_checksum(checksum),
+            Repr::Full {
+                checksum,
+                len,
+                ctime,
+            } => Self {
+                checksum,
+                len,
+                ctime,
+            },
+        })
+    }
+}
+
 /// Index manifest with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexManifest {
@@ -134,9 +210,12 @@ pub struct IndexManifest {
     /// than be read on today's scale. See [`TDG_SCALE`].
     #[serde(default)]
     pub tdg_scale: String,
-    /// SHA256 checksums for each source file (for incremental updates)
+    /// Per-file record (checksum + stat evidence) for incremental updates.
+    ///
+    /// Values written before CRUX-07 were bare checksum strings; they still
+    /// load, with unknown stats. See [`FileRecord`].
     #[serde(default)]
-    pub file_checksums: HashMap<String, String>,
+    pub file_checksums: HashMap<String, FileRecord>,
     /// Number of files reparsed in last incremental update (0 = no changes)
     #[serde(default)]
     pub last_incremental_changes: usize,

@@ -66,9 +66,12 @@ fn finalize_incremental_index(
     functions: Vec<FunctionEntry>,
     project_root: PathBuf,
     file_count: usize,
-    files_reparsed: usize,
+    // Files that must be persisted: re-parsed plus stat-refreshed. Named for
+    // the decision it drives (`last_incremental_changes` gates the save), not
+    // for one of its two sources.
+    files_changed: usize,
     mut languages_seen: HashMap<String, usize>,
-    file_checksums: HashMap<String, String>,
+    file_checksums: HashMap<String, FileRecord>,
     coverage_off_files: HashSet<String>,
     db_path: Option<PathBuf>,
 ) -> AgentContextIndex {
@@ -98,7 +101,7 @@ fn finalize_incremental_index(
         avg_tdg_score: avg_tdg,
         tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
         file_checksums,
-        last_incremental_changes: files_reparsed,
+        last_incremental_changes: files_changed,
     };
 
     AgentContextIndex {
@@ -137,19 +140,30 @@ impl AgentContextIndex {
         let mut functions = Vec::new();
         let mut file_count = 0;
         let mut languages_seen: HashMap<String, usize> = HashMap::new();
-        let mut file_checksums: HashMap<String, String> = HashMap::new();
+        let mut file_checksums: HashMap<String, FileRecord> = HashMap::new();
         let mut files_reused = 0usize;
+        // Files whose content is unchanged but whose recorded stat evidence
+        // (len/ctime) has drifted — a `touch`, a chmod, a restore. They cost a
+        // read today and will cost one on every future run until the refreshed
+        // record is persisted, so they count as changes for the save decision
+        // (see `maybe_save_incremental`) while remaining 0 re-parsed.
+        let mut files_stat_refreshed = 0usize;
         let mut files_reparsed = 0usize;
         let mut files_mtime_skipped = 0usize;
         let mut coverage_off_files = HashSet::new();
 
         let index_built_at = parse_built_at(&existing.manifest.built_at);
 
+        // Sorted walk: the order files are visited is the order functions are
+        // persisted and, on tied scores, the order results come back in. An
+        // unsorted `ignore` walk is directory-order, which differs between two
+        // checkouts of the same commit.
         for entry in WalkBuilder::new(&project_root)
             .hidden(true)
             .git_ignore(true)
             .git_global(true)
             .filter_entry(|e| !is_ignored_dir(e.path()))
+            .sort_by_file_path(std::path::Path::cmp)
             .build()
             .filter_map(|e| e.ok())
         {
@@ -187,17 +201,31 @@ impl AgentContextIndex {
             }
 
             let checksum = compute_file_sha256(&content);
-            file_checksums.insert(relative_path.clone(), checksum.clone());
+            let record = file_record(path, checksum.clone());
+            let stats_drifted = existing
+                .manifest
+                .file_checksums
+                .get(&relative_path)
+                .is_none_or(|old| old.len != record.len || old.ctime != record.ctime);
+            file_checksums.insert(relative_path.clone(), record);
 
             if has_coverage_off(&content) {
                 coverage_off_files.insert(relative_path.clone());
             }
 
-            let unchanged = existing.manifest.file_checksums.get(&relative_path).map(|old| old == &checksum).unwrap_or(false);
+            let unchanged = existing
+                .manifest
+                .file_checksums
+                .get(&relative_path)
+                .map(|old| old.checksum == checksum)
+                .unwrap_or(false);
 
             if unchanged {
                 reuse_existing_functions(existing, &relative_path, &mut functions);
                 files_reused += 1;
+                if stats_drifted {
+                    files_stat_refreshed += 1;
+                }
             } else {
                 process_changed_file(&content, &relative_path, language, &mut functions, &mut languages_seen);
                 files_reparsed += 1;
@@ -206,13 +234,17 @@ impl AgentContextIndex {
             file_count += 1;
         }
 
+        let stat_note = if files_stat_refreshed > 0 {
+            format!(" ({files_stat_refreshed} stat-refreshed)")
+        } else {
+            String::new()
+        };
         eprintln!(
-            "Incremental update: {} mtime-skipped, {} checksum-reused, {} re-parsed",
-            files_mtime_skipped, files_reused, files_reparsed
+            "Incremental update: {files_mtime_skipped} mtime-skipped, {files_reused} checksum-reused, {files_reparsed} re-parsed{stat_note}"
         );
 
         Ok(finalize_incremental_index(
-            functions, project_root, file_count, files_reparsed,
+            functions, project_root, file_count, files_reparsed + files_stat_refreshed,
             languages_seen, file_checksums, coverage_off_files,
             existing.db_path.clone(),
         ))

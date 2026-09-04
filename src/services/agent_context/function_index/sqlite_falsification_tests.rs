@@ -1012,15 +1012,19 @@ mod tests {
     fn f056_metadata_checksums() {
         let conn = db();
         let mut m = manifest(10, 2);
-        m.file_checksums
-            .insert("src/a.rs".to_string(), "sha256:aaa".to_string());
-        m.file_checksums
-            .insert("src/b.rs".to_string(), "sha256:bbb".to_string());
+        m.file_checksums.insert(
+            "src/a.rs".to_string(),
+            FileRecord::from_checksum("sha256:aaa".to_string()),
+        );
+        m.file_checksums.insert(
+            "src/b.rs".to_string(),
+            FileRecord::from_checksum("sha256:bbb".to_string()),
+        );
         insert_metadata(&conn, &m).unwrap();
         let loaded = load_metadata(&conn).unwrap();
         assert_eq!(loaded.file_checksums.len(), 2);
-        assert_eq!(loaded.file_checksums["src/a.rs"], "sha256:aaa");
-        assert_eq!(loaded.file_checksums["src/b.rs"], "sha256:bbb");
+        assert_eq!(loaded.file_checksums["src/a.rs"].checksum, "sha256:aaa");
+        assert_eq!(loaded.file_checksums["src/b.rs"].checksum, "sha256:bbb");
     }
 
     /// F-057: Metadata INSERT OR REPLACE updates existing keys

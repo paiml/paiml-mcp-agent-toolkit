@@ -331,7 +331,10 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         .get("file_checksums")
         .cloned()
         .unwrap_or_else(|| "{}".to_string());
-    let file_checksums: HashMap<String, String> =
+    // Per-file records; pre-CRUX-07 databases hold bare checksum strings and
+    // deserialise with unknown stats (see `FileRecord`). A whole-map parse
+    // failure means no fast path, never a wrong fast path.
+    let file_checksums: HashMap<String, FileRecord> =
         serde_json::from_str(&checksums_json).unwrap_or_default();
 
     // If critical metadata was missing, try to self-heal by inserting defaults

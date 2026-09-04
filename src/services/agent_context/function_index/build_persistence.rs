@@ -25,6 +25,47 @@ fn enrich_contract_metadata(conn: &rusqlite::Connection, functions: &mut [Functi
     }
 }
 
+/// Serialize a manifest to `<index_path>/manifest.json` atomically.
+///
+/// Writes `manifest.json.tmp` beside the target and renames it over the
+/// destination. The temp file is created (not just opened), so a directory
+/// that cannot be written fails HERE rather than silently truncating an
+/// existing manifest in place — which is how a failed incremental save used to
+/// look like a successful one.
+fn write_manifest_atomically(index_path: &Path, manifest: &IndexManifest) -> Result<(), String> {
+    let manifest_json = serde_json::to_string_pretty(manifest)
+        .map_err(|e| format!("Failed to serialize manifest: {e}"))?;
+    let tmp = index_path.join("manifest.json.tmp");
+    fs::write(&tmp, manifest_json).map_err(|e| format!("Failed to write manifest: {e}"))?;
+    fs::rename(&tmp, index_path.join("manifest.json")).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        format!("Failed to replace manifest: {e}")
+    })?;
+    Ok(())
+}
+
+/// Reject an index whose `manifest.json` is present but not parseable.
+///
+/// The SQLite fast path reads its metadata from `context.db` and never opens
+/// `manifest.json`, so a manifest torn by a crash mid-save was invisible: the
+/// index kept serving rows from a database whose companion record of what was
+/// indexed no longer said anything. Half a manifest is not a manifest — the
+/// pair is treated as corrupt and the caller rebuilds.
+fn check_manifest_integrity(index_path: &Path) -> Result<(), String> {
+    let manifest_file = index_path.join("manifest.json");
+    if !manifest_file.exists() {
+        return Ok(());
+    }
+    let raw = fs::read_to_string(&manifest_file)
+        .map_err(|e| format!("manifest.json at {} is unreadable: {e}", index_path.display()))?;
+    serde_json::from_str::<IndexManifest>(&raw).map(|_| ()).map_err(|e| {
+        format!(
+            "manifest.json at {} is torn or corrupt ({e})",
+            index_path.display()
+        )
+    })
+}
+
 impl AgentContextIndex {
     /// Save index to directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -32,11 +73,13 @@ impl AgentContextIndex {
         fs::create_dir_all(index_path)
             .map_err(|e| format!("Failed to create index directory: {e}"))?;
 
-        // Save manifest
-        let manifest_json = serde_json::to_string_pretty(&self.manifest)
-            .map_err(|e| format!("Failed to serialize manifest: {e}"))?;
-        fs::write(index_path.join("manifest.json"), manifest_json)
-            .map_err(|e| format!("Failed to write manifest: {e}"))?;
+        // Save manifest ATOMICALLY: temp file in the same directory, then
+        // rename. `fs::write` truncates first, so a crash (or a full disk)
+        // between truncate and write left a half-written manifest next to a
+        // complete database — the torn pair `load()` now has to detect. rename(2)
+        // within a directory is atomic, so a reader sees either the old
+        // manifest or the new one, never half of either.
+        write_manifest_atomically(index_path, &self.manifest)?;
 
         // Phase 3 (#159): Write only SQLite + FTS5 index (no more LZ4 blob)
         // context.db lives alongside context.idx directory
@@ -75,6 +118,15 @@ impl AgentContextIndex {
         // `-32603 … rebuild required` on every default call, forever. With the
         // whole stale index removed, the next `load()` sees no index at all and
         // every caller (CLI, MCP, comply) takes its ordinary build path.
+        // A torn manifest invalidates the whole pair, whichever backend is
+        // about to answer. Checked before the scale guard so the message names
+        // the real problem rather than "no scale marker".
+        if let Err(reason) = check_manifest_integrity(index_path) {
+            eprintln!("  {reason} — discarding the index and rebuilding.");
+            super::scale_guard::discard_stale_index(index_path);
+            return Err(reason);
+        }
+
         if let Err(reason) = super::scale_guard::verify_index_scale(index_path) {
             eprintln!(
                 "  Index at {} is stale: {reason} (scores are now 0-100, higher is better).",

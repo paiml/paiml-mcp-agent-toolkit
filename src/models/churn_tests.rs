@@ -82,7 +82,7 @@ fn test_code_churn_analysis_creation() {
             total_files_changed: 50,
             hotspot_files: vec![],
             stable_files: vec![],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.0,
             variance_churn_score: 0.0,
             stddev_churn_score: 0.0,
@@ -96,7 +96,7 @@ fn test_code_churn_analysis_creation() {
 
 #[test]
 fn test_churn_summary_with_data() {
-    let mut author_contributions = HashMap::new();
+    let mut author_contributions = std::collections::BTreeMap::new();
     author_contributions.insert("author1".to_string(), 50);
     author_contributions.insert("author2".to_string(), 30);
 
@@ -136,4 +136,28 @@ fn test_serialization() {
 
     assert_eq!(deserialized.commit_count, metrics.commit_count);
     assert_eq!(deserialized.churn_score, metrics.churn_score);
+}
+
+/// CRUX-07 leg c: `author_contributions` reaches the JSON document in author
+/// order, so two runs over an unchanged repository produce the same bytes.
+/// A `HashMap` here randomised key order per process.
+#[test]
+fn author_contributions_serialize_in_author_order() {
+    let mut contributions = BTreeMap::new();
+    for author in ["zoe", "ann", "mel", "bob"] {
+        contributions.insert(author.to_string(), 1);
+    }
+    let summary = ChurnSummary {
+        total_commits: 4,
+        total_files_changed: 1,
+        hotspot_files: vec![],
+        stable_files: vec![],
+        author_contributions: contributions,
+        mean_churn_score: 0.0,
+        variance_churn_score: 0.0,
+        stddev_churn_score: 0.0,
+    };
+    let json = serde_json::to_string(&summary.author_contributions)
+        .expect("a BTreeMap of counts must serialize");
+    assert_eq!(json, r#"{"ann":1,"bob":1,"mel":1,"zoe":1}"#);
 }

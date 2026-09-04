@@ -520,15 +520,23 @@ fn get_head_sha(path: &Path) -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-fn persist_score(path: &Path, score: &CompositeScore) {
+/// Write the score record under `.pmat-metrics/`.
+///
+/// Returns the failure rather than dropping it: every arm here used to be
+/// discarded (`if let Ok(..)`, `let _ = write`), so a full disk or a read-only
+/// checkout produced a score run that reported success and persisted nothing,
+/// and the next run that expected the record found none with no trace of why.
+fn persist_score(path: &Path, score: &CompositeScore) -> Result<std::path::PathBuf, String> {
     // #1070: `pmat score` on a clean checkout left `?? .pmat-metrics/` behind.
     // The directory carries its own ignore rule now — see `utils::pmat_cache_dir`.
     let metrics_dir = crate::utils::pmat_cache_dir::ensure_metrics_dir(path);
     let filename = format!("commit-{}-meta.json", score.sha);
     let filepath = metrics_dir.join(filename);
-    if let Ok(json) = serde_json::to_string_pretty(score) {
-        let _ = std::fs::write(filepath, json);
-    }
+    let json = serde_json::to_string_pretty(score)
+        .map_err(|e| format!("could not serialize score: {e}"))?;
+    std::fs::write(&filepath, json)
+        .map_err(|e| format!("could not save score to {}: {e}", filepath.display()))?;
+    Ok(filepath)
 }
 
 struct Violation {

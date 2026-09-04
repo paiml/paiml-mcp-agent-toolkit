@@ -387,7 +387,6 @@ mod churn_formatter_comprehensive {
     use pmat::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
 
     use chrono::Utc;
-    use std::collections::HashMap;
     use std::path::PathBuf;
 
     fn create_sample_file_churn(path: &str, commits: usize, score: f32) -> FileChurnMetrics {
@@ -421,7 +420,7 @@ mod churn_formatter_comprehensive {
             })
             .collect();
 
-        let mut author_contributions = HashMap::new();
+        let mut author_contributions = std::collections::BTreeMap::new();
         author_contributions.insert("alice@example.com".to_string(), file_count);
         author_contributions.insert("bob@example.com".to_string(), file_count.saturating_sub(1));
 
@@ -579,7 +578,7 @@ mod churn_formatter_comprehensive {
     #[test]
     fn test_format_churn_empty_contributors() {
         let mut analysis = create_sample_analysis(1);
-        analysis.summary.author_contributions = HashMap::new();
+        analysis.summary.author_contributions = std::collections::BTreeMap::new();
 
         let result = format_churn_as_summary(&analysis);
         assert!(result.is_ok());

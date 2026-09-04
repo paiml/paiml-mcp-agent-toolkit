@@ -578,3 +578,150 @@ fn test_save_load_roundtrip_corpus_lower_lazy() {
         assert_eq!(lower, &orig.to_lowercase());
     }
 }
+
+// ── CRUX-07: the index is a faithful view of the tree ──────────────────────
+
+/// A manifest written before per-file stats existed holds bare checksum
+/// strings. It must still load — and must authorise no skip.
+#[test]
+fn legacy_bare_checksum_manifest_loads_with_unknown_stats() {
+    let record: FileRecord = serde_json::from_str("\"deadbeef\"").expect("a bare checksum string must deserialize");
+    assert_eq!(record.checksum, "deadbeef");
+    assert!(
+        !record.has_stats(),
+        "a legacy record carries no stat evidence"
+    );
+    assert!(
+        !super::build::stats_agree(&record, (10, 5), 1_000),
+        "unknown stats must never authorise skipping the read"
+    );
+}
+
+/// The fast path may only skip when length AND ctime both say the file has not
+/// been written since the build.
+#[test]
+fn stats_agree_only_when_length_and_ctime_both_predate_the_build() {
+    let record = FileRecord {
+        checksum: "c".to_string(),
+        len: 32,
+        ctime: 500,
+    };
+    assert!(super::build::stats_agree(&record, (32, 500), 1_000), "quiescent file");
+    assert!(
+        !super::build::stats_agree(&record, (31, 500), 1_000),
+        "a different length is a rewrite, whatever mtime claims"
+    );
+    assert!(
+        !super::build::stats_agree(&record, (32, 1_500), 1_000),
+        "a ctime after the build is a rewrite, whatever mtime claims"
+    );
+    assert!(
+        !super::build::stats_agree(&record, (32, 1_000), 1_000),
+        "ctime == built_at is ambiguous, so it is not skippable"
+    );
+}
+
+/// A rewrite that backdates mtime behind `built_at` must still be re-indexed:
+/// it changes length and ctime, and either alone disqualifies the fast path.
+#[test]
+fn backdated_rewrite_is_reindexed_not_served_from_the_old_checksum() {
+    let temp_dir = tempfile::TempDir::new().expect("a temp dir must be creatable");
+    let project_path = temp_dir.path();
+    std::fs::create_dir_all(project_path.join("src")).expect("creating src/ must succeed");
+    let file = project_path.join("src/lib.rs");
+    std::fs::write(&file, "pub fn alpha_only() -> u32 { 1 }\n").expect("writing the fixture must succeed");
+
+    let index = AgentContextIndex::build(project_path).expect("building the index must succeed");
+    let built_at = index.manifest.built_at.clone();
+
+    std::fs::write(&file, "pub fn beta_only() -> u32 { 2 }\n").expect("rewriting the fixture must succeed");
+    // Backdate mtime to one second BEFORE the index was built.
+    let secs = chrono::DateTime::parse_from_rfc3339(&built_at)
+        .expect("built_at is RFC 3339")
+        .timestamp() as u64;
+    let backdated = std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs - 1);
+    let handle = std::fs::File::options().write(true).open(&file).expect("the fixture must be openable");
+    handle
+        .set_times(
+            std::fs::FileTimes::new()
+                .set_accessed(backdated)
+                .set_modified(backdated),
+        )
+        .expect("backdating mtime must succeed");
+    drop(handle);
+
+    let updated = AgentContextIndex::build_incremental(project_path, &index).expect("the incremental build must succeed");
+    let names: Vec<&str> = updated
+        .functions
+        .iter()
+        .map(|f| f.function_name.as_str())
+        .collect();
+    assert!(
+        names.contains(&"beta_only"),
+        "the rewritten content must be indexed, got {names:?}"
+    );
+    assert!(
+        !names.contains(&"alpha_only"),
+        "the deleted function must not be served, got {names:?}"
+    );
+}
+
+/// A manifest torn mid-write is not a manifest: the pair is rejected so the
+/// caller rebuilds, rather than serving rows from the database beside it.
+#[test]
+fn a_torn_manifest_is_rejected_and_named() {
+    let temp_dir = tempfile::TempDir::new().expect("a temp dir must be creatable");
+    let project_path = temp_dir.path();
+    std::fs::create_dir_all(project_path.join("src")).expect("creating src/ must succeed");
+    std::fs::write(project_path.join("src/lib.rs"), "pub fn delta() -> u32 { 4 }\n")
+        .expect("writing the fixture must succeed");
+
+    let index = AgentContextIndex::build(project_path).expect("building the index must succeed");
+    let idx_path = project_path.join("context.idx");
+    index.save(&idx_path).expect("saving to a writable dir must succeed");
+    assert!(AgentContextIndex::load(&idx_path).is_ok(), "a clean pair loads");
+
+    let manifest_file = idx_path.join("manifest.json");
+    let whole = std::fs::read_to_string(&manifest_file).expect("the manifest must be readable");
+    std::fs::write(&manifest_file, &whole[..whole.len() / 2]).expect("tearing the manifest must succeed");
+
+    let err = match AgentContextIndex::load(&idx_path) {
+        Ok(_) => unreachable!("a torn manifest must not load"),
+        Err(e) => e.to_lowercase(),
+    };
+    assert!(
+        err.contains("torn") || err.contains("corrupt"),
+        "the error must name the problem, got: {err}"
+    );
+}
+
+/// The manifest is replaced by rename, so a directory that cannot be written
+/// fails the save instead of truncating the manifest that is already there.
+#[test]
+#[cfg(unix)]
+fn save_into_a_read_only_index_dir_fails_instead_of_truncating() {
+    use std::os::unix::fs::PermissionsExt;
+    let temp_dir = tempfile::TempDir::new().expect("a temp dir must be creatable");
+    let project_path = temp_dir.path();
+    std::fs::create_dir_all(project_path.join("src")).expect("creating src/ must succeed");
+    std::fs::write(project_path.join("src/lib.rs"), "pub fn eps() -> u32 { 5 }\n")
+        .expect("writing the fixture must succeed");
+
+    let index = AgentContextIndex::build(project_path).expect("building the index must succeed");
+    let idx_path = project_path.join("context.idx");
+    index.save(&idx_path).expect("saving to a writable dir must succeed");
+    let before = std::fs::read_to_string(idx_path.join("manifest.json")).expect("the manifest must be readable");
+
+    std::fs::set_permissions(&idx_path, std::fs::Permissions::from_mode(0o555))
+        .expect("chmod must succeed");
+    let result = index.save(&idx_path);
+    std::fs::set_permissions(&idx_path, std::fs::Permissions::from_mode(0o755))
+        .expect("chmod must succeed");
+
+    assert!(result.is_err(), "a read-only index directory must fail the save");
+    assert_eq!(
+        std::fs::read_to_string(idx_path.join("manifest.json")).expect("the manifest must be readable"),
+        before,
+        "the manifest already on disk must survive a failed save intact"
+    );
+}

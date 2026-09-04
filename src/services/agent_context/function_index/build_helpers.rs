@@ -28,15 +28,76 @@ fn load_source_from_file(file_path: &str, start_line: usize, end_line: usize) ->
 /// Result of a successful mtime-based file reuse check.
 struct MtimeReuseResult {
     functions: Vec<FunctionEntry>,
-    checksum: String,
+    checksum: FileRecord,
     coverage_off: bool,
+}
+
+/// The stat fields the fast path rests on: length, and (unix) ctime in
+/// NANOSECONDS since the epoch.
+///
+/// Nanoseconds, not seconds: `built_at` and a file touched moments before it
+/// routinely land in the same second, and a whole-second ctime cannot be
+/// ordered against a build in that second — the fast path would refuse
+/// forever, because the refusal itself is what would have to be recorded.
+///
+/// On non-unix targets ctime is reported as 0 ("unknown"), which
+/// [`stats_agree`] treats as no evidence either way — the length check still
+/// applies there.
+pub(super) fn file_stat_fields(path: &Path) -> Option<(u64, i64)> {
+    let md = fs::metadata(path).ok()?;
+    #[cfg(unix)]
+    let ctime = {
+        use std::os::unix::fs::MetadataExt;
+        md.ctime()
+            .checked_mul(1_000_000_000)?
+            .checked_add(md.ctime_nsec())?
+    };
+    #[cfg(not(unix))]
+    let ctime = 0i64;
+    Some((md.len(), ctime))
+}
+
+/// Build the record persisted for a file: checksum plus today's stat evidence.
+pub(super) fn file_record(path: &Path, checksum: String) -> FileRecord {
+    let (len, ctime) = file_stat_fields(path).unwrap_or((0, 0));
+    FileRecord {
+        checksum,
+        len,
+        ctime,
+    }
+}
+
+/// Does what we see on disk match what the index recorded, well enough to skip
+/// the read entirely?
+///
+/// A recorded length must match exactly, and on unix the recorded ctime must
+/// predate the build: a rewrite advances ctime even when the writer backdates
+/// mtime, so `ctime < built_at` is the evidence that no write happened since
+/// the index was built. A record without stats (`has_stats() == false`) is a
+/// pre-CRUX-07 entry and authorises nothing.
+pub(super) fn stats_agree(record: &FileRecord, observed: (u64, i64), built_at_nanos: i64) -> bool {
+    if !record.has_stats() {
+        return false;
+    }
+    let (len, ctime) = observed;
+    if len != record.len {
+        return false;
+    }
+    // ctime == 0 means the platform gave us none; fall back to len + mtime.
+    ctime == 0 || ctime < built_at_nanos
 }
 
 /// Check if a file can be reused based on mtime (no read or SHA256 needed).
 ///
-/// Returns Some if the file's mtime is older than the index built_at timestamp
-/// and its checksum exists in the existing manifest. Returns None otherwise,
-/// signaling the caller must fall back to content-based SHA256 comparison.
+/// Returns Some only when every cheap signal agrees the file is the one the
+/// index read: mtime older than `built_at`, recorded length equal to the
+/// length on disk, and (unix) an inode change time that also predates
+/// `built_at`. mtime alone is not sufficient — it is writable by any process,
+/// so a rewritten file whose mtime is backdated behind `built_at` used to be
+/// served from the previous build's checksum forever (CRUX-07 leg a).
+///
+/// Returns None otherwise, signaling the caller must fall back to
+/// content-based SHA256 comparison.
 fn check_mtime_reuse(
     path: &Path,
     relative_path: &str,
@@ -48,7 +109,14 @@ fn check_mtime_reuse(
     if mtime >= *built_at {
         return None;
     }
-    let checksum = existing.manifest.file_checksums.get(relative_path)?.clone();
+    let record = existing.manifest.file_checksums.get(relative_path)?;
+    let built_at_nanos =
+        i64::try_from(built_at.duration_since(std::time::UNIX_EPOCH).ok()?.as_nanos()).ok()?;
+    let observed = file_stat_fields(path)?;
+    if !stats_agree(record, observed, built_at_nanos) {
+        return None;
+    }
+    let checksum = record.clone();
     let funcs = existing
         .file_index
         .get(relative_path)
@@ -72,11 +140,11 @@ fn check_mtime_reuse(
 /// Returns None if the string can't be parsed (graceful fallback to SHA256-only path).
 fn parse_built_at(built_at: &str) -> Option<std::time::SystemTime> {
     let dt = chrono::DateTime::parse_from_rfc3339(built_at).ok()?;
-    let secs = dt.timestamp();
-    if secs < 0 {
-        return None;
-    }
-    Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs as u64))
+    let nanos = u64::try_from(dt.timestamp_nanos_opt()?).ok()?;
+    // Sub-second precision is kept: truncating to whole seconds made a build
+    // and a write in the same second indistinguishable, which is exactly the
+    // window the fast path has to decide in.
+    Some(std::time::UNIX_EPOCH + std::time::Duration::from_nanos(nanos))
 }
 
 /// Extract the project prefix from a file path (everything before the first `/`).

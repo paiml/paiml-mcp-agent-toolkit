@@ -22,7 +22,6 @@
 use crate::cli::colors as c;
 use crate::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
 use chrono::Utc;
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// The byte that must not appear in any output rendered with colour off.
@@ -39,7 +38,7 @@ fn assert_plain(what: &str, rendered: &str) {
 }
 
 fn churn_analysis() -> CodeChurnAnalysis {
-    let mut author_contributions = HashMap::new();
+    let mut author_contributions = std::collections::BTreeMap::new();
     author_contributions.insert("alice".to_string(), 4usize);
     CodeChurnAnalysis {
         generated_at: Utc::now(),

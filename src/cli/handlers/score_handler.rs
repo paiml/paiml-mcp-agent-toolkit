@@ -155,8 +155,11 @@ pub async fn handle_score(
         score.composite
     );
 
-    // Persist to .pmat-metrics/
-    persist_score(path, &score);
+    // Persist to .pmat-metrics/. A failure is a warning, not a fatal error —
+    // the score is still printed — but it is never silent.
+    if let Err(e) = persist_score(path, &score) {
+        eprintln!("Warning: {e}");
+    }
 
     // Format output
     let output_text = render_score(&score, format)?;
@@ -1430,7 +1433,7 @@ mod tests {
     fn test_persist_score_writes_json_in_pmat_metrics() {
         let tmp = TempDir::new().unwrap();
         let score = dummy_score(zero_subs(), 50.0, 0);
-        persist_score(tmp.path(), &score);
+        persist_score(tmp.path(), &score).expect("persisting a score to a temp dir must succeed");
         let out = tmp
             .path()
             .join(".pmat-metrics")

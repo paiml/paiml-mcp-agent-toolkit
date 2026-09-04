@@ -221,7 +221,11 @@ fn write_summary_top_contributors(
     if !summary.author_contributions.is_empty() {
         writeln!(output, "\n{}Top Contributors{}\n", c::BOLD, c::RESET)?;
         let mut authors: Vec<_> = summary.author_contributions.iter().collect();
-        authors.sort_unstable_by(|a, b| b.1.cmp(a.1));
+        // Count descending, then author name ascending. `sort_unstable_by` on
+        // the count alone leaves authors with equal counts in an arbitrary
+        // order, so the printed ranking (and the `take(N)` cut it feeds)
+        // differed between runs over the same repository.
+        authors.sort_unstable_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
         for (author, files) in authors.iter().take(10) {
             writeln!(output, "  {}{}{}: {}{}{} files", c::CYAN, author, c::RESET, c::BOLD_WHITE, files, c::RESET)?;
         }
@@ -388,7 +392,11 @@ fn write_markdown_author_contributions(
         writeln!(output, "|--------|----------------|")?;
 
         let mut authors: Vec<_> = summary.author_contributions.iter().collect();
-        authors.sort_unstable_by(|a, b| b.1.cmp(a.1));
+        // Count descending, then author name ascending. `sort_unstable_by` on
+        // the count alone leaves authors with equal counts in an arbitrary
+        // order, so the printed ranking (and the `take(N)` cut it feeds)
+        // differed between runs over the same repository.
+        authors.sort_unstable_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
 
         for (author, count) in authors.iter().take(15) {
             writeln!(output, "| {author} | {count} |")?;

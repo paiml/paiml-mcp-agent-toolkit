@@ -71,7 +71,7 @@ impl AgentContextIndex {
         let mut functions = Vec::with_capacity(20_000);
         let mut file_count = 0;
         let mut languages_seen = HashMap::new();
-        let mut file_checksums: HashMap<String, String> = HashMap::with_capacity(4_000);
+        let mut file_checksums: HashMap<String, FileRecord> = HashMap::with_capacity(4_000);
         let mut coverage_off_files = HashSet::new();
         // Language -> (how many files the chunker refused, the first reason it
         // gave). Reported after the walk; see `format_skipped_summary`.
@@ -82,12 +82,16 @@ impl AgentContextIndex {
         // Load compile_commands.json for C/C++ include path discovery
         let _compile_commands = load_compile_commands(&project_root);
 
-        // Walk the project directory respecting .gitignore (fixes issue #146)
+        // Walk the project directory respecting .gitignore (fixes issue #146),
+        // in sorted path order: this walk defines the order functions are
+        // persisted in, and therefore the order tied results are returned in.
+        // Unsorted, two indexes of the same commit differ by directory order.
         for entry in WalkBuilder::new(&project_root)
             .hidden(true)
             .git_ignore(true)
             .git_global(true)
             .filter_entry(|e| !is_ignored_dir(e.path()))
+            .sort_by_file_path(std::path::Path::cmp)
             .build()
             .filter_map(|e| e.ok())
         {
@@ -118,9 +122,10 @@ impl AgentContextIndex {
                 .to_string_lossy()
                 .to_string();
 
-            // Compute SHA256 checksum for incremental updates
+            // Compute SHA256 checksum, and record the stat evidence the
+            // incremental fast path needs before it may skip a read.
             let checksum = compute_file_sha256(content);
-            file_checksums.insert(relative_path.clone(), checksum);
+            file_checksums.insert(relative_path.clone(), file_record(path, checksum));
 
             // Detect module-level coverage(off) — cached for O(1) query-time lookup
             if has_coverage_off(content) {

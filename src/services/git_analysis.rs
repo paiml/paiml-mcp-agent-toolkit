@@ -386,7 +386,8 @@ impl GitAnalysisService {
     /// It used to be computed here as `sum(file.commit_count)`, i.e. the number
     /// of file revisions, and was still labelled "Total commits" (GH #660).
     fn generate_summary(files: &[FileChurnMetrics], total_commits: usize) -> ChurnSummary {
-        let mut author_contributions: HashMap<String, usize> = HashMap::with_capacity(64);
+        let mut author_contributions: std::collections::BTreeMap<String, usize> =
+            std::collections::BTreeMap::new();
 
         for file in files {
             for author in &file.unique_authors {
