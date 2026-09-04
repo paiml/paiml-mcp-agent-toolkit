@@ -284,7 +284,6 @@ mod coverage_tests {
     fn test_cross_module_compatibility() {
         use churn::ChurnSummary;
         use dead_code::DeadCodeSummary;
-        use std::collections::HashMap;
         use std::path::PathBuf;
 
         // Create types from different modules and verify they work together
@@ -293,7 +292,7 @@ mod coverage_tests {
             total_files_changed: 50,
             hotspot_files: vec![PathBuf::from("src/main.rs")],
             stable_files: vec![PathBuf::from("src/lib.rs")],
-            author_contributions: HashMap::new(),
+            author_contributions: std::collections::BTreeMap::new(),
             mean_churn_score: 0.5,
             variance_churn_score: 0.1,
             stddev_churn_score: 0.316,
