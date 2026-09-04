@@ -4117,18 +4117,18 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-669
+- id: PMAT-656
   github_issue: null
   item_type: task
-  title: 'ci: container jobs restore the runner''s ownership of the _work tree so a poisoned runner cannot fail the next job (#1185)'
-  status: in_progress
+  title: 'AD-04: Quorum Review Skill — three lanes review the diff against the ticket and receipt; the merge helper refuses auto-merge without three PASS verdicts'
+  status: planned
   priority: high
   assigned_to: null
-  created: 2026-09-04T06:57:45Z
-  updated: 2026-09-04T06:57:45Z
+  created: 2026-09-03T22:48:05Z
+  updated: 2026-09-03T22:48:05Z
   spec: null
   acceptance_criteria:
-  - 'GitHub issue #1185. Fix and ship in the next release.'
+  - 'agentic-delivery-pmat.md section 3.1 / 5.2 / 9.4. Skill in the paiml-implement bundle: quorum-review.sh builds the prompt from git diff base...HEAD plus the ticket and receipt, runs three agy lanes under agy/quorum-schema.json, writes docs/audits/quorum-<ticket>.json and posts it as a PR comment; pmat-merge --auto refuses without three PASS. Controls: a planted contradiction gets at least one FAIL naming file:line; a clean diff gets three PASS; the helper refuses without the artifact.'
   phases: []
   subtasks: []
   estimated_effort: null
