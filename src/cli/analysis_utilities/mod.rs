@@ -90,6 +90,16 @@ include!("comprehensive.rs");
 // Quality check functions - extracted for file health (CB-040)
 include!("quality_checks.rs");
 
+// The three threshold checks — file size, churn, lint (AD-05). A fragment of
+// this module like its neighbours, not a `mod`: it uses the imports above.
+include!("quality_checks_part1_thresholds.rs");
+
+// AD-05 acceptance: each threshold check fails on a planted breach and passes
+// its control.
+#[cfg(test)]
+#[path = "quality_checks_thresholds_tests.rs"]
+mod quality_checks_thresholds_tests;
+
 // String utilities - extracted for file health (CB-040)
 include!("string_utils.rs");
 

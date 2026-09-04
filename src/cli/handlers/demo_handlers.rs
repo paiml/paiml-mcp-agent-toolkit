@@ -86,9 +86,10 @@ pub async fn handle_quality_gate(
     include_provability: bool,
     output: Option<PathBuf>,
     perf: bool,
+    thresholds: crate::cli::analysis_utilities::QualityThresholds,
 ) -> Result<()> {
     // Delegate to main quality gate implementation for now - will be extracted later
-    super::super::analysis_utilities::handle_quality_gate(
+    super::super::analysis_utilities::handle_quality_gate_with_thresholds(
         project_path,
         file,
         format,
@@ -100,6 +101,7 @@ pub async fn handle_quality_gate(
         include_provability,
         output,
         perf,
+        thresholds,
     )
     .await
 }

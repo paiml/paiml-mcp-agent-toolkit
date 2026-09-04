@@ -85,6 +85,49 @@ pub async fn handle_quality_gate(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    handle_quality_gate_with_thresholds(
+        project_path,
+        file,
+        format,
+        exit_on_violation,
+        checks,
+        max_dead_code,
+        min_entropy,
+        max_complexity_p99,
+        include_provability,
+        output,
+        perf,
+        QualityThresholds::default(),
+    )
+    .await
+}
+
+/// [`handle_quality_gate`], with the file-size and churn thresholds this run
+/// resolved (AD-05).
+///
+/// A sibling rather than two more parameters on the function above: that
+/// signature is called from four test modules and two dispatch routes, and
+/// growing it would have made a threshold-carrying call indistinguishable from
+/// a defaulted one at every one of them. `handle_quality_gate` is now exactly
+/// "this, at the shipped defaults".
+///
+/// # Errors
+/// As [`handle_quality_gate`].
+#[allow(clippy::too_many_arguments)]
+pub async fn handle_quality_gate_with_thresholds(
+    project_path: PathBuf,
+    file: Option<PathBuf>,
+    format: QualityGateOutputFormat,
+    exit_on_violation: bool,
+    checks: Vec<QualityCheckType>,
+    max_dead_code: f64,
+    min_entropy: Option<f64>,
+    max_complexity_p99: u32,
+    include_provability: bool,
+    output: Option<PathBuf>,
+    perf: bool,
+    thresholds: QualityThresholds,
+) -> Result<()> {
     use std::time::Instant;
 
     if !project_path.exists() {
@@ -136,6 +179,7 @@ pub async fn handle_quality_gate(
             include_provability,
             output,
             perf,
+            thresholds,
         )
         .await
     };
@@ -189,6 +233,8 @@ fn print_all_checks() {
     crate::status_eprintln!("  ✓ Code entropy");
     crate::status_eprintln!("  ✓ Duplicate code");
     crate::status_eprintln!("  ✓ Test coverage");
+    crate::status_eprintln!("  ✓ File size");
+    crate::status_eprintln!("  ✓ Churn (90-day commits per file)");
 }
 
 /// Toyota Way: Extract Method - Print selected checks (complexity ≤8)
@@ -215,6 +261,9 @@ fn get_check_message(check: &QualityCheckType) -> Option<&'static str> {
         QualityCheckType::Entropy => Some("Code entropy"),
         QualityCheckType::Duplicates => Some("Duplicate code"),
         QualityCheckType::Coverage => Some("Test coverage"),
+        QualityCheckType::FileSize => Some("File size"),
+        QualityCheckType::Churn => Some("Churn (90-day commits per file)"),
+        QualityCheckType::Lint => Some("Lint (cargo clippy -D warnings)"),
         _ => None,
     }
 }

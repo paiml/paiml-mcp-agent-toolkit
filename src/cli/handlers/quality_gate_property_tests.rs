@@ -222,6 +222,9 @@ fn get_check_names(checks: &[QualityCheckType]) -> Vec<String> {
             QualityCheckType::Coverage => names.push("Test coverage".to_string()),
             QualityCheckType::Sections => names.push("Documentation sections".to_string()),
             QualityCheckType::Provability => names.push("Provability".to_string()),
+            QualityCheckType::FileSize => names.push("File size".to_string()),
+            QualityCheckType::Churn => names.push("Churn".to_string()),
+            QualityCheckType::Lint => names.push("Lint".to_string()),
         }
     }
 

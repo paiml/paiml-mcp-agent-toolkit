@@ -149,6 +149,7 @@ async fn handle_project_quality_gate(
     include_provability: bool,
     output: Option<PathBuf>,
     perf: bool,
+    thresholds: QualityThresholds,
 ) -> Result<()> {
     use std::time::Instant;
     let mut violations = Vec::new();
@@ -166,6 +167,7 @@ async fn handle_project_quality_gate(
         &mut violations,
         &mut results,
         perf,
+        thresholds,
     )
     .await?;
 
@@ -306,6 +308,7 @@ async fn run_project_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
+    thresholds: QualityThresholds,
 ) -> Result<()> {
     // If checks contains All, just run that single check which will run all checks
     if checks.contains(&QualityCheckType::All) {
@@ -318,6 +321,7 @@ async fn run_project_checks(
             violations,
             results,
             perf,
+            thresholds,
         )
         .await?;
     } else {
@@ -331,6 +335,7 @@ async fn run_project_checks(
             violations,
             results,
             perf,
+            thresholds,
         )
         .await?;
     }
@@ -348,6 +353,7 @@ async fn run_individual_project_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
+    thresholds: QualityThresholds,
 ) -> Result<()> {
     use std::time::Instant;
 
@@ -363,6 +369,7 @@ async fn run_individual_project_checks(
             violations,
             results,
             perf,
+            thresholds,
         )
         .await?;
 
@@ -391,6 +398,9 @@ fn get_check_display_name(check: &QualityCheckType) -> &'static str {
         QualityCheckType::Coverage => "Coverage",
         QualityCheckType::Sections => "Sections",
         QualityCheckType::Provability => "Provability",
+        QualityCheckType::FileSize => "File size",
+        QualityCheckType::Churn => "Churn",
+        QualityCheckType::Lint => "Lint",
         QualityCheckType::All => "All",
     }
 }

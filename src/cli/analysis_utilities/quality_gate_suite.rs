@@ -145,7 +145,7 @@ pub async fn run_gate_suite(path: &Path) -> Result<GateSuite> {
     }
 }
 
-/// The nine checks `run_all_project_checks` runs, in the order it runs them.
+/// The eleven checks `run_all_project_checks` runs, in the order it runs them.
 ///
 /// `QualityCheckType::default_checks()` IS that list — one list, so a tenth
 /// check added to the gate cannot be advertised as run without being run.
@@ -177,6 +177,10 @@ async fn run_project_suite(project_path: &Path) -> Result<GateSuite> {
         &mut violations,
         &mut results,
         false,
+        // The MCP gate runs at the SAME thresholds the CLI defaults to, for the
+        // reason `the_suite_thresholds_are_the_cli_defaults` states about the
+        // other two: one name must not mean two numbers.
+        QualityThresholds::default(),
     )
     .await?;
 
@@ -394,8 +398,9 @@ mod quality_gate_suite_tests {
         }
         assert_eq!(
             project.len() - file_suite_checks().len(),
-            5,
-            "five project-wide checks a file cannot answer; if that changed, \
+            7,
+            "seven project-wide checks a file cannot answer — the original five \
+             plus file-size and churn (AD-05); if that changed, \
              `file_scope_reason` and the disclosure list changed with it"
         );
     }
@@ -420,6 +425,8 @@ mod quality_gate_suite_tests {
             "entropy",
             "provability",
             "sections",
+            "file-size",
+            "churn",
         ] {
             assert!(
                 suite.not_run_names().iter().any(|n| n == check),

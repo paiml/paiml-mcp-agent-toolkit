@@ -345,6 +345,11 @@ fn test_quality_check_type_display() {
     assert_eq!(QualityCheckType::Security.to_string(), "security");
     assert_eq!(QualityCheckType::Duplicates.to_string(), "duplicates");
     assert_eq!(QualityCheckType::All.to_string(), "all");
+    // AD-05. The rendering IS the `--checks` spelling, so these are also the
+    // names `--checks file-size,churn,lint` accepts.
+    assert_eq!(QualityCheckType::FileSize.to_string(), "file-size");
+    assert_eq!(QualityCheckType::Churn.to_string(), "churn");
+    assert_eq!(QualityCheckType::Lint.to_string(), "lint");
 }
 
 #[test]
@@ -359,7 +364,14 @@ fn test_quality_check_type_default_checks() {
     assert!(defaults.contains(&QualityCheckType::Coverage));
     assert!(defaults.contains(&QualityCheckType::Sections));
     assert!(defaults.contains(&QualityCheckType::Provability));
+    assert!(defaults.contains(&QualityCheckType::FileSize));
+    assert!(defaults.contains(&QualityCheckType::Churn));
     assert!(!defaults.contains(&QualityCheckType::All));
+    // `lint` costs a full compile of the analysed tree, so it is opt-in — and
+    // `default_checks()` is what the MCP suite advertises as run, so naming it
+    // here without running it would be the advertised-but-not-run defect
+    // `quality_gate_suite.rs` exists to prevent.
+    assert!(!defaults.contains(&QualityCheckType::Lint));
 }
 
 // ============ EntropyOutputFormat Tests ============

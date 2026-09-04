@@ -51,6 +51,12 @@ impl CommandDispatcher {
                 "entropy" => Some(QualityCheckType::Entropy),
                 "security" => Some(QualityCheckType::Security),
                 "duplicates" => Some(QualityCheckType::Duplicates),
+                // AD-05. Both spellings, because `--checks` renders this one
+                // hyphenated and `pmat.toml`/JSON callers write it with an
+                // underscore — the same pair `dead_code`/`dead-code` gets.
+                "file-size" | "file_size" => Some(QualityCheckType::FileSize),
+                "churn" => Some(QualityCheckType::Churn),
+                "lint" => Some(QualityCheckType::Lint),
                 "all" => Some(QualityCheckType::All),
                 _ => None,
             })

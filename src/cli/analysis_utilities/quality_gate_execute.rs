@@ -11,6 +11,7 @@ pub async fn run_single_project_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
+    thresholds: QualityThresholds,
 ) -> Result<()> {
     match check {
         QualityCheckType::All => {
@@ -22,6 +23,7 @@ pub async fn run_single_project_check(
                 violations,
                 results,
                 perf,
+                thresholds,
             )
             .await
         }
@@ -34,6 +36,7 @@ pub async fn run_single_project_check(
                 max_complexity_p99,
                 violations,
                 results,
+                thresholds,
             )
             .await
         }
@@ -50,10 +53,11 @@ async fn execute_specific_quality_check(
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
+    thresholds: QualityThresholds,
 ) -> Result<()> {
     use QualityCheckType::{
-        All, Complexity, Coverage, DeadCode, Duplicates, Entropy, Provability, Satd, Sections,
-        Security,
+        All, Churn, Complexity, Coverage, DeadCode, Duplicates, Entropy, FileSize, Lint,
+        Provability, Satd, Sections, Security,
     };
 
     match check {
@@ -68,6 +72,9 @@ async fn execute_specific_quality_check(
         Coverage => execute_coverage_check(project_path, violations, results).await,
         Sections => execute_sections_check(project_path, violations, results).await,
         Provability => execute_provability_check(project_path, violations, results).await,
+        FileSize => execute_file_size_check(project_path, thresholds, violations, results).await,
+        Churn => execute_churn_check(project_path, thresholds, violations, results).await,
+        Lint => execute_lint_check(project_path, violations, results).await,
         All => unreachable!("All case handled in parent function"),
     }
 }
@@ -326,6 +333,59 @@ mod coverage_is_measured_or_disclosed_tests {
             violations[0].message
         );
     }
+}
+
+/// Helper for the file-size check (AD-05).
+async fn execute_file_size_check(
+    project_path: &Path,
+    thresholds: QualityThresholds,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_file_size(project_path, thresholds.max_file_lines),
+        |count| results.file_size_violations = count,
+        violations,
+    )
+    .await
+}
+
+/// Helper for the churn check (AD-05).
+///
+/// Not routed through `execute_quality_check_template`: the check can return an
+/// advisory `scope` row saying there was no history to read, and counting that
+/// as a churn violation would report an unmeasured check as a breached one.
+async fn execute_churn_check(
+    project_path: &Path,
+    thresholds: QualityThresholds,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    let found = check_churn(project_path, thresholds.max_churn_commits_90d).await?;
+    results.churn_violations = count_of_type("churn", &found);
+    violations.extend(found);
+    Ok(())
+}
+
+/// Helper for the lint check (AD-05). Same shape, same reason, as churn's.
+async fn execute_lint_check(
+    project_path: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    let found = check_lint(project_path).await?;
+    results.lint_violations = count_of_type("lint", &found);
+    violations.extend(found);
+    Ok(())
+}
+
+/// Findings of one check type, so a disclosure row filed under `scope` is never
+/// counted as a breach of the threshold it discloses.
+fn count_of_type(check_type: &str, violations: &[QualityViolation]) -> usize {
+    violations
+        .iter()
+        .filter(|v| v.check_type == check_type)
+        .count()
 }
 
 /// Helper for sections check execution

@@ -27,6 +27,16 @@ pub struct QualityGateResults {
     pub coverage_violations: usize,
     pub section_violations: usize,
     pub provability_violations: usize,
+    /// Files longer than the resolved `max_file_lines` (AD-05).
+    pub file_size_violations: usize,
+    /// Files with more commits in the last 90 days than the resolved
+    /// `max_churn_commits_90d` (AD-05).
+    pub churn_violations: usize,
+    /// `cargo clippy --all-targets -- -D warnings` findings (AD-05).
+    ///
+    /// One finding, not one per diagnostic: the question the lint check asks is
+    /// "does this tree lint clean", and clippy's own output is the detail.
+    pub lint_violations: usize,
     pub provability_score: Option<f64>,
     /// Source files the gate actually looked at.
     ///
@@ -119,6 +129,9 @@ impl QualityGateResults {
         self.coverage_violations = violations.iter().filter(|v| v.check_type == "coverage").count();
         self.section_violations = violations.iter().filter(|v| v.check_type == "sections").count();
         self.provability_violations = violations.iter().filter(|v| v.check_type == "provability").count();
+        self.file_size_violations = violations.iter().filter(|v| v.check_type == "file-size").count();
+        self.churn_violations = violations.iter().filter(|v| v.check_type == "churn").count();
+        self.lint_violations = violations.iter().filter(|v| v.check_type == "lint").count();
         self.total_violations = violations.len();
         self.blocking_violations = blocking_violation_count(violations);
         self.set_violation_lines(violations);
@@ -145,6 +158,9 @@ impl Default for QualityGateResults {
             coverage_violations: 0,
             section_violations: 0,
             provability_violations: 0,
+            file_size_violations: 0,
+            churn_violations: 0,
+            lint_violations: 0,
             provability_score: None,
             violations: Vec::new(),
         }

@@ -93,6 +93,14 @@ pub enum QualityCheckType {
     Entropy,
     Security,
     Duplicates,
+    /// Lines per file, against `--max-file-lines` (AD-05).
+    FileSize,
+    /// Commits per file in the last 90 days, against `--max-churn-commits` (AD-05).
+    Churn,
+    /// `cargo clippy --all-targets -- -D warnings`, the lint question `pmat
+    /// verify` asks (AD-05). Opt-in: it costs a compile, so it is not in
+    /// [`QualityCheckType::default_checks`].
+    Lint,
     All,
 }
 
@@ -111,6 +119,8 @@ impl QualityCheckType {
             QualityCheckType::Coverage,
             QualityCheckType::Sections,
             QualityCheckType::Provability,
+            QualityCheckType::FileSize,
+            QualityCheckType::Churn,
         ]
     }
 }
@@ -128,6 +138,9 @@ impl QualityCheckType {
             QualityCheckType::Entropy => "entropy",
             QualityCheckType::Security => "security",
             QualityCheckType::Duplicates => "duplicates",
+            QualityCheckType::FileSize => "file-size",
+            QualityCheckType::Churn => "churn",
+            QualityCheckType::Lint => "lint",
             QualityCheckType::All => "all",
         }
     }

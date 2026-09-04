@@ -23,6 +23,9 @@ mod quality_checks_part3_tests {
             coverage_violations: 0,
             section_violations: 0,
             provability_violations: 0,
+            file_size_violations: 0,
+            churn_violations: 0,
+            lint_violations: 0,
             provability_score: Some(0.85),
             violations: vec![],
         }

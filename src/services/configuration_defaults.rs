@@ -22,6 +22,16 @@ impl Default for SystemConfig {
     }
 }
 
+/// The file-length cap, in ONE place.
+///
+/// `pmat work`'s contract profiles already default to 500 lines
+/// (`work_contract_profile.rs`); the file-size gate enforces the same number
+/// rather than inventing a second one.
+pub const DEFAULT_MAX_FILE_LINES: usize = 500;
+
+/// The 90-day churn cap (AD-05, spec §4.5).
+pub const DEFAULT_MAX_CHURN_COMMITS_90D: usize = 20;
+
 impl Default for QualityConfig {
     fn default() -> Self {
         Self {
@@ -32,6 +42,8 @@ impl Default for QualityConfig {
             require_docs: true,
             lint_compliance: true,
             fail_on_violation: true,
+            max_file_lines: DEFAULT_MAX_FILE_LINES,
+            max_churn_commits_90d: DEFAULT_MAX_CHURN_COMMITS_90D,
         }
     }
 }

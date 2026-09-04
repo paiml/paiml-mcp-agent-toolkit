@@ -24,6 +24,15 @@ pub struct QualityGateResults {
     pub duplicate_violations: usize,
     pub coverage_violations: usize,
     pub section_violations: usize,
+    /// Files over `[quality] max_file_lines` (AD-05).
+    #[serde(default)]
+    pub file_size_violations: usize,
+    /// Files over `[quality] max_churn_commits_90d` (AD-05).
+    #[serde(default)]
+    pub churn_violations: usize,
+    /// `cargo clippy -D warnings` findings (AD-05).
+    #[serde(default)]
+    pub lint_violations: usize,
     pub violations: Vec<QualityViolation>,
 }
 
@@ -58,6 +67,9 @@ impl Default for QualityGateResults {
             duplicate_violations: 0,
             coverage_violations: 0,
             section_violations: 0,
+            file_size_violations: 0,
+            churn_violations: 0,
+            lint_violations: 0,
             violations: Vec::new(),
         }
     }
@@ -73,6 +85,9 @@ pub enum QualityCheckType {
     Entropy,
     Duplicates,
     Coverage,
+    FileSize,
+    Churn,
+    Lint,
 }
 
 impl fmt::Display for QualityCheckType {
@@ -85,6 +100,11 @@ impl fmt::Display for QualityCheckType {
             QualityCheckType::Entropy => write!(f, "entropy"),
             QualityCheckType::Duplicates => write!(f, "duplicates"),
             QualityCheckType::Coverage => write!(f, "coverage"),
+            // The spelling `--checks` uses, so a name that crosses between this
+            // enum and `cli::enums::QualityCheckType` cannot change meaning.
+            QualityCheckType::FileSize => write!(f, "file-size"),
+            QualityCheckType::Churn => write!(f, "churn"),
+            QualityCheckType::Lint => write!(f, "lint"),
         }
     }
 }
@@ -127,6 +147,9 @@ mod tests {
         assert_eq!(results.duplicate_violations, 0);
         assert_eq!(results.coverage_violations, 0);
         assert_eq!(results.section_violations, 0);
+        assert_eq!(results.file_size_violations, 0);
+        assert_eq!(results.churn_violations, 0);
+        assert_eq!(results.lint_violations, 0);
         assert!(results.violations.is_empty());
     }
 
@@ -165,6 +188,9 @@ mod tests {
         assert_eq!(QualityCheckType::Entropy.to_string(), "entropy");
         assert_eq!(QualityCheckType::Duplicates.to_string(), "duplicates");
         assert_eq!(QualityCheckType::Coverage.to_string(), "coverage");
+        assert_eq!(QualityCheckType::FileSize.to_string(), "file-size");
+        assert_eq!(QualityCheckType::Churn.to_string(), "churn");
+        assert_eq!(QualityCheckType::Lint.to_string(), "lint");
     }
 
     #[test]
@@ -229,6 +255,9 @@ mod tests {
             duplicate_violations: 0,
             coverage_violations: 0,
             section_violations: 0,
+            file_size_violations: 0,
+            churn_violations: 0,
+            lint_violations: 0,
             violations: vec![QualityViolation {
                 file: "test.rs".to_string(),
                 line: Some(100),

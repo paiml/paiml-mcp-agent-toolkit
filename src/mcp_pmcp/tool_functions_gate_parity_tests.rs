@@ -233,8 +233,9 @@ async fn a_file_gate_names_the_checks_it_cannot_run() {
             .unwrap_or_else(|| panic!("`checks.not_run` must be an array: {gate}"));
         assert_eq!(
             not_run.len(),
-            5,
-            "via {surface}: five project-wide checks a file cannot answer: {gate}"
+            7,
+            "via {surface}: seven project-wide checks a file cannot answer — the \
+             original five plus file-size and churn (AD-05): {gate}"
         );
         assert!(
             not_run

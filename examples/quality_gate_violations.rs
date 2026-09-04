@@ -47,6 +47,9 @@ fn main() {
         coverage_violations: 0,
         section_violations: 0,
         provability_violations: 0,
+        file_size_violations: 0,
+        churn_violations: 0,
+        lint_violations: 0,
         provability_score: None,
         violations: vec![], // Simplified for backwards compat
     };

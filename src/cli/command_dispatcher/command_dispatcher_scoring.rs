@@ -30,6 +30,8 @@ impl CommandDispatcher {
                 max_dead_code,
                 min_entropy,
                 max_complexity_p99,
+                max_file_lines,
+                max_churn_commits,
                 include_provability,
                 output,
                 perf,
@@ -40,7 +42,17 @@ impl CommandDispatcher {
                 {
                     eprintln!("{note}");
                 }
-                crate::cli::analysis_utilities::handle_quality_gate(
+                // AD-05: resolved HERE, where both the flags and the project
+                // path are in hand — and resolved identically on the sibling
+                // route in `dispatch_ext_scoring.rs`, because a threshold that
+                // reaches one dispatcher and not the other is a flag that works
+                // only by accident of which route ran.
+                let thresholds = crate::cli::analysis_utilities::QualityThresholds::resolve(
+                    &project_path,
+                    max_file_lines,
+                    max_churn_commits,
+                );
+                crate::cli::analysis_utilities::handle_quality_gate_with_thresholds(
                     project_path,
                     file,
                     format,
@@ -52,6 +64,7 @@ impl CommandDispatcher {
                     include_provability,
                     output,
                     perf,
+                    thresholds,
                 )
                 .await
             }

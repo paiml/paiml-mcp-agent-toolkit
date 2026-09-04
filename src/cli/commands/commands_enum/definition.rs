@@ -594,6 +594,20 @@ pub enum Commands {
         #[arg(long, default_value = "50")]
         max_complexity_p99: u32,
 
+        // AD-05. `Option` rather than a `default_value`, for #683's reason: an
+        // explicit value must be distinguishable from "unset" so it can outrank
+        // `pmat.toml`, instead of being silently replaced by project config.
+        /// Maximum lines per source file for `--checks file-size` [default:
+        /// `[quality] max_file_lines` from pmat.toml, else 500]
+        #[arg(long)]
+        max_file_lines: Option<usize>,
+
+        /// Maximum commits per source file in the last 90 days for
+        /// `--checks churn` [default: `[quality] max_churn_commits_90d` from
+        /// pmat.toml, else 20]
+        #[arg(long)]
+        max_churn_commits: Option<usize>,
+
         /// Include provability checks
         #[arg(long)]
         include_provability: bool,

@@ -105,6 +105,9 @@ async fn run_all_checks(
         violations,
         results,
         perf,
+        // This runner has no CLI flags of its own to resolve from, so it asks
+        // for the shipped defaults by name rather than restating 500/20.
+        crate::cli::analysis_utilities::QualityThresholds::default(),
     )
     .await
 }
@@ -143,6 +146,7 @@ async fn run_individual_checks(
             violations,
             results,
             config.perf,
+            crate::cli::analysis_utilities::QualityThresholds::default(),
         )
         .await?;
 
@@ -166,6 +170,9 @@ fn print_check_timing(check: &QualityCheckType, elapsed_secs: f64) {
         QualityCheckType::Coverage => "Coverage",
         QualityCheckType::Sections => "Sections",
         QualityCheckType::Provability => "Provability",
+        QualityCheckType::FileSize => "File size",
+        QualityCheckType::Churn => "Churn",
+        QualityCheckType::Lint => "Lint",
         QualityCheckType::All => "All",
     };
     eprintln!("    ⏱️  {check_name} check: {elapsed_secs:.3}s");

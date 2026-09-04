@@ -67,6 +67,8 @@ impl CommandExecutor {
                 max_dead_code,
                 min_entropy,
                 max_complexity_p99,
+                max_file_lines,
+                max_churn_commits,
                 include_provability,
                 output,
                 perf,
@@ -76,6 +78,15 @@ impl CommandExecutor {
                 {
                     eprintln!("{note}");
                 }
+                // AD-05, and the same reason this arm already restates about
+                // `fail_on_violation`: there are TWO dispatch paths for
+                // `quality-gate`, so a threshold wired into one of them is
+                // silent on the other.
+                let thresholds = crate::cli::analysis_utilities::QualityThresholds::resolve(
+                    &project_path,
+                    max_file_lines,
+                    max_churn_commits,
+                );
                 self.registry
                     .demo_handlers
                     .handle_quality_gate(
@@ -90,6 +101,7 @@ impl CommandExecutor {
                         include_provability,
                         output,
                         perf,
+                        thresholds,
                     )
                     .await
             }

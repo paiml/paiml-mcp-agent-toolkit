@@ -78,6 +78,7 @@ impl DemoCommandGroup {
         include_provability: bool,
         output: Option<std::path::PathBuf>,
         perf: bool,
+        thresholds: crate::cli::analysis_utilities::QualityThresholds,
     ) -> Result<()> {
         // Use dedicated demo handlers module
         crate::cli::handlers::demo_handlers::handle_quality_gate(
@@ -92,6 +93,7 @@ impl DemoCommandGroup {
             include_provability,
             output,
             perf,
+            thresholds,
         )
         .await
     }
@@ -141,6 +143,7 @@ impl DemoCommandGroup {
         _include_provability: bool,
         _output: Option<std::path::PathBuf>,
         _perf: bool,
+        _thresholds: crate::cli::analysis_utilities::QualityThresholds,
     ) -> Result<()> {
         anyhow::bail!("Demo feature not enabled. Build with --features demo")
     }

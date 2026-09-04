@@ -107,6 +107,7 @@ pub async fn run_all_project_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
+    thresholds: QualityThresholds,
 ) -> Result<()> {
     use std::time::Instant;
 
@@ -185,7 +186,61 @@ pub async fn run_all_project_checks(
         check_provability(project_path, provability_threshold),
         provability_violations
     );
+    // AD-05. `file-size` and `churn` join the suite; `lint` does NOT, and the
+    // omission is deliberate rather than an oversight: clippy costs a full
+    // compile of the analysed tree, so putting it here would make every
+    // `pmat quality-gate` and every MCP `quality_gate` call build a crate. It
+    // is reachable as `--checks lint`, and `default_checks()` — which is what
+    // the suite ADVERTISES as run — does not name it, so the two stay in step.
+    run_check!(
+        "file size",
+        check_file_size(project_path, thresholds.max_file_lines),
+        file_size_violations
+    );
+    run_churn_check_counted(project_path, thresholds, violations, results, perf).await?;
 
+    Ok(())
+}
+
+/// Churn, counted without its disclosure row.
+///
+/// Two things `run_check!` cannot do here. It sets the counter from the returned
+/// list's LENGTH, and the churn check can return an advisory `scope` row when
+/// there is no git history to read — through the macro that row would render as
+/// `churn_violations: 1`, an unmeasured check reported as a breached one.
+///
+/// The row itself is then DROPPED from the suite's findings, which is the
+/// convention `run_all_project_checks` already follows for the security check's
+/// identical scope row: `--checks security` pushes
+/// `security_scope_disclosure` and this suite does not. `--checks churn` keeps
+/// the disclosure for the same reason. That asymmetry is inherited, not
+/// invented here — see the receipt's open question.
+async fn run_churn_check_counted(
+    project_path: &Path,
+    thresholds: QualityThresholds,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+    perf: bool,
+) -> Result<()> {
+    use std::time::Instant;
+
+    if !crate::cli::progress::quiet_mode_enabled() {
+        eprint!("  \u{1f50d} Checking churn...");
+    }
+    let start = if perf { Some(Instant::now()) } else { None };
+    let mut found = check_churn(project_path, thresholds.max_churn_commits_90d).await?;
+    found.retain(|v| v.check_type == "churn");
+    results.churn_violations = found.len();
+    violations.extend(found);
+    if let Some(s) = start {
+        crate::status_eprintln!(
+            " {} violations found ({:.3}s)",
+            results.churn_violations,
+            s.elapsed().as_secs_f64()
+        );
+    } else {
+        crate::status_eprintln!(" {} violations found", results.churn_violations);
+    }
     Ok(())
 }
 

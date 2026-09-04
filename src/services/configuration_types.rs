@@ -99,6 +99,23 @@ pub struct QualityConfig {
 
     /// Fail builds on quality violations
     pub fail_on_violation: bool,
+
+    /// Maximum lines per source file, enforced by
+    /// `pmat quality-gate --checks file-size` (AD-05).
+    ///
+    /// The SAME key `pmat work`'s contract profiles read
+    /// (`work_contract_profile.rs`, `max_file_lines … unwrap_or(500)`), so a
+    /// project states its file-length rule once.
+    pub max_file_lines: usize,
+
+    /// Maximum commits touching one source file in the last 90 days, enforced
+    /// by `pmat quality-gate --checks churn` (AD-05).
+    ///
+    /// `max_churn_commits` is accepted as an alias because that is what the CLI
+    /// flag is called; the 90-day window is part of the question, so the key
+    /// carries it.
+    #[serde(alias = "max_churn_commits")]
+    pub max_churn_commits_90d: usize,
 }
 
 /// Analysis configuration settings
