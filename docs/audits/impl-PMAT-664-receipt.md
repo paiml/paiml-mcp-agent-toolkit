@@ -10,6 +10,7 @@ Bundle side: paiml/paiml-implement#10 (`skills/paiml-implement/scripts/agy-lane.
 | RED (before) | agy 1.1.25 has no `/goal` or `/grillme` (AIS-006) and nothing composed a per-mode calling form: a lane's mode was prose in a brief |
 | GREEN — `agy-lane.sh --self-test` | ten ✓: unknown mode refused; no prompt refused; **each mode's `--dry-run` prints its calling form** (teamwork prefixes `/teamwork-preview` and keeps the 20m floor — a 5m teamwork is refused; plan passes `--mode plan`; goal attaches its schema; grillme attaches its schema and the refutation doctrine; **every mode** — goal, teamwork, grillme, plan — carries `--sandbox` unless `--writes`, and `--writes` lifts it, asserted per mode in the self-test since paiml/paiml-implement#12, fourteen ✓) — the dry run IS the control the ticket names: nothing is spawned, the composed command is asserted |
 | AD-04 quorum on head 2b10b6598 | 1 FAIL, 2 PASS: the self-test asserted sandboxing only for `goal` while the composer sandboxes every mode — the self-test now asserts all four (bundle #12) and this receipt says so |
+| AD-04 quorum on head fd2fa6fd6 | 1 FAIL, 2 PASS: the spec note still said the self-test has ten checks (fourteen since bundle #12) — corrected |
 | bundle `verify.sh` | `lane-modes` PASS among 28 rows |
 | bashrs on the composer | 0 errors |
 

@@ -323,7 +323,7 @@ prefixes `/teamwork-preview` and refuses a timeout under 20 minutes; `plan` pass
 `grillme` are prompt templates with their own schemas (`agy/goal-schema.json`: achieved | partial | blocked with
 grounded evidence; `agy/grillme-schema.json`: questions marked answered-by-the-text or not, verdict including
 `do-not-implement-as-written`) until agy ships them natively (AIS-006); lanes are sandboxed unless `--writes`.
-`--self-test` proves the refusals and each mode's calling form (ten checks) and the bundle's `verify.sh` runs it;
+`--self-test` proves the refusals, each mode's calling form and the sandbox rule for every mode (fourteen checks since paiml-implement#12) and the bundle's `verify.sh` runs it;
 the delegate brief gains a `mode` field and names it in its receipt. pmat side: this note and
 `docs/audits/impl-PMAT-664-receipt.md`.
 
