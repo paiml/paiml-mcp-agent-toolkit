@@ -49,7 +49,7 @@ falsification:
 
 falsification_tests:
   - id: strict_refuses_unlinked_commits
-    rule: "legs 1-4 of scripts/commit-enforcement-audit.sh; the five commit_enforcement_tests drive git commit in a temp repository"
+    rule: "legs 1-4 of scripts/commit-enforcement-audit.sh; of the commit_enforcement_tests, four drive git commit in a temp repository and the rest assert the generated hook text, the strict plumbing and the --strict/--stack refusal"
     prediction: "pre-fix binary: FAIL at leg 1 (no --strict, no commit-msg hook); fixed binary: PASS"
     test: "PMAT=<binary> bash scripts/commit-enforcement-audit.sh"
     if_fails: "ticket linking stays a habit and #1126's warning-that-passes returns"

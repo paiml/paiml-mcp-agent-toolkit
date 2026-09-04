@@ -42,6 +42,17 @@ pub async fn handle_hooks_command(cmd: &HooksCommands) -> Result<()> {
             update,
         } => {
             if *stack {
+                // AD-03: the stack installer writes its own lightweight pre-commit hook and
+                // no commit-msg hook, so --strict would change nothing there. A flag that
+                // changes nothing must refuse, not pass (PMAT-659 tracks stack-wide strict).
+                if *strict {
+                    anyhow::bail!(
+                        "--strict is not supported together with --stack: the stack installer \
+                         writes a lightweight pre-commit hook and no commit-msg hook, so strict \
+                         mode would silently change nothing. Run `pmat hooks install --strict` \
+                         in each repository (PMAT-659)."
+                    );
+                }
                 return crate::cli::handlers::hooks_stack_handler::handle_hooks_install_stack(
                     *update,
                 )

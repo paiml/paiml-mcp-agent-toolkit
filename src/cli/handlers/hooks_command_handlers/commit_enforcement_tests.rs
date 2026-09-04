@@ -209,3 +209,31 @@ fn hooks_verify_fix_keeps_a_strict_install_strict() {
         "an automatic rewrite dropped --strict:\n{rewritten}"
     );
 }
+
+/// Third finding of the AD-04 quorum on the PR head: `--strict --stack` silently
+/// dropped strict — the stack installer writes its own lightweight pre-commit hook
+/// and no commit-msg hook. A flag that changes nothing must refuse, not pass.
+#[test]
+fn strict_with_stack_is_refused_rather_than_silently_dropped() {
+    use crate::cli::commands::HooksCommands;
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    let err = rt
+        .block_on(super::command_dispatch::handle_hooks_command(
+            &HooksCommands::Install {
+                interactive: false,
+                force: false,
+                backup: false,
+                tdg_enforcement: false,
+                strict: true,
+                stack: true,
+                update: false,
+            },
+        ))
+        .expect_err("--strict --stack must be refused");
+    let msg = err.to_string();
+    assert!(msg.contains("--stack") && msg.contains("--strict"), "{msg}");
+    assert!(
+        msg.contains("PMAT-659"),
+        "the refusal names the ticket that closes the gap: {msg}"
+    );
+}
