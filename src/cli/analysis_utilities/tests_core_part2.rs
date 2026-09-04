@@ -100,16 +100,11 @@ fn test_is_excluded_directory() {
     assert!(!is_excluded_directory("./server/src/cli"));
 }
 
-/// Test check_single_file_complexity with high complexity function
-#[tokio::test]
-async fn test_check_single_file_complexity_violations() -> anyhow::Result<()> {
-    let temp_dir = TempDir::new()?;
-
-    // Create Rust file with high complexity function
-    let rust_file = temp_dir.path().join("complex.rs");
-    tokio::fs::write(
-        &rust_file,
-        r#"
+/// A function five `if`s deep: the fixture `test_check_single_file_complexity_violations`
+/// writes. Hoisted out of the test body because the complexity analyzer counts the nesting
+/// inside a string literal as the enclosing function's own (cognitive 26 for a test with no
+/// branches of its own).
+const HIGH_COMPLEXITY_FIXTURE: &str = r#"
 fn high_complexity_function(x: i32) -> i32 {
     if x > 10 {
         if x > 20 {
@@ -133,7 +128,18 @@ fn high_complexity_function(x: i32) -> i32 {
         50
     }
 }
-"#,
+"#;
+
+/// Test check_single_file_complexity with high complexity function
+#[tokio::test]
+async fn test_check_single_file_complexity_violations() -> anyhow::Result<()> {
+    let temp_dir = TempDir::new()?;
+
+    // Create Rust file with high complexity function
+    let rust_file = temp_dir.path().join("complex.rs");
+    tokio::fs::write(
+        &rust_file,
+        HIGH_COMPLEXITY_FIXTURE,
     )
     .await?;
 

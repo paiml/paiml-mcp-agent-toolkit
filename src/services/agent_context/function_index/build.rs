@@ -2,7 +2,7 @@
 
 use super::helpers::*;
 use super::types::*;
-use crate::services::semantic::chunk_code;
+use crate::services::semantic::{chunk_code, CodeChunk};
 use ignore::WalkBuilder;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -42,6 +42,183 @@ fn format_skipped_summary(skipped: &HashMap<String, (usize, String)>) -> Vec<Str
         .collect()
 }
 
+/// Mutable accumulators threaded through the directory walk in [`AgentContextIndex::build`].
+///
+/// Grouping them lets the per-file work live in [`index_one_file`] instead of
+/// being inlined in the walk's closure body.
+struct BuildState {
+    functions: Vec<FunctionEntry>,
+    file_count: usize,
+    languages_seen: HashMap<String, usize>,
+    file_checksums: HashMap<String, FileRecord>,
+    coverage_off_files: HashSet<String>,
+    /// Language -> (how many files the chunker refused, the first reason it
+    /// gave). Reported after the walk; see `format_skipped_summary`.
+    skipped_by_language: HashMap<String, (usize, String)>,
+    /// Reusable read buffer — avoids allocating a new String per file (~33 MB saved)
+    read_buf: String,
+}
+
+impl BuildState {
+    fn new() -> Self {
+        Self {
+            functions: Vec::with_capacity(20_000),
+            file_count: 0,
+            languages_seen: HashMap::new(),
+            file_checksums: HashMap::with_capacity(4_000),
+            coverage_off_files: HashSet::new(),
+            skipped_by_language: HashMap::new(),
+            read_buf: String::with_capacity(32 * 1024),
+        }
+    }
+}
+
+/// Turn one chunker result into `FunctionEntry` rows and push them onto `functions`.
+///
+/// Extracted from the body of [`index_one_file`]'s chunk loop; behaviour (which
+/// chunk types are indexed, which are skipped as tests, and every field of the
+/// resulting `FunctionEntry`) is unchanged.
+fn push_chunk_functions(
+    chunks: Vec<CodeChunk>,
+    content: &str,
+    relative_path: &str,
+    lang_str: &str,
+    functions: &mut Vec<FunctionEntry>,
+) {
+    for mut chunk in chunks {
+        // Index functions, structs, enums, traits, type aliases (issue #150)
+        use crate::services::semantic::ChunkType;
+        let definition_type = match &chunk.chunk_type {
+            ChunkType::Function => DefinitionType::Function,
+            ChunkType::Struct => DefinitionType::Struct,
+            ChunkType::Enum => DefinitionType::Enum,
+            ChunkType::Trait => DefinitionType::Trait,
+            ChunkType::TypeAlias => DefinitionType::TypeAlias,
+            _ => continue, // Skip classes, modules, files, impl blocks
+        };
+
+        // Skip test functions and test files (#159: reduce index bloat)
+        if is_test_chunk(&chunk.chunk_name, relative_path) {
+            continue;
+        }
+
+        // Extract quality metrics (borrows chunk)
+        let quality = extract_quality_metrics(&chunk, content);
+
+        // Extract signature (first line of definition) — must borrow before move
+        let signature = chunk
+            .content
+            .lines()
+            .next()
+            .unwrap_or(&chunk.chunk_name)
+            .to_string();
+
+        // Extract doc comment (lines starting with /// or /** before definition)
+        let doc_comment = extract_doc_comment(content, chunk.start_line);
+
+        // Take ownership of chunk fields (avoids .clone() — saves ~12.5 MB peak)
+        let entry = FunctionEntry {
+            file_path: relative_path.to_string(),
+            function_name: std::mem::take(&mut chunk.chunk_name),
+            signature,
+            definition_type,
+            doc_comment,
+            source: std::mem::take(&mut chunk.content),
+            start_line: chunk.start_line,
+            end_line: chunk.end_line,
+            language: lang_str.to_string(),
+            quality,
+            checksum: std::mem::take(&mut chunk.content_checksum),
+            // Annotations populated after all definitions collected
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
+            linked_definition: None,
+        };
+
+        functions.push(entry);
+    }
+}
+
+/// Read, checksum and chunk one directory-walk entry into `state`.
+///
+/// Extracted from the body of the sorted walk in [`AgentContextIndex::build`];
+/// every early return here corresponds exactly to a `continue` in the original
+/// loop, so the walk's side effects (which files count, which are skipped and
+/// why) are unchanged.
+fn index_one_file(state: &mut BuildState, path: &Path, project_root: &Path) {
+    if !path.is_file() {
+        return;
+    }
+
+    // Detect language from extension
+    let language = match detect_language(path) {
+        Some(lang) => lang,
+        None => return,
+    };
+
+    // Read file content into reusable buffer
+    state.read_buf.clear();
+    let content = match std::fs::File::open(path).and_then(|mut f| {
+        use std::io::Read;
+        f.read_to_string(&mut state.read_buf)
+    }) {
+        Ok(_) => state.read_buf.as_str(),
+        Err(_) => return, // Skip binary/unreadable files
+    };
+
+    let relative_path = path
+        .strip_prefix(project_root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .to_string();
+
+    // Compute SHA256 checksum, and record the stat evidence the
+    // incremental fast path needs before it may skip a read.
+    let checksum = compute_file_sha256(content);
+    state
+        .file_checksums
+        .insert(relative_path.clone(), file_record(path, checksum));
+
+    // Detect module-level coverage(off) — cached for O(1) query-time lookup
+    if has_coverage_off(content) {
+        state.coverage_off_files.insert(relative_path.clone());
+    }
+
+    // Extract functions using AST chunker. A refusal here is recorded,
+    // not swallowed — a language this build cannot parse must not look
+    // like a language that simply has no matches.
+    let chunks = match chunk_code(content, language) {
+        Ok(c) => c,
+        Err(reason) => {
+            let entry = state
+                .skipped_by_language
+                .entry(format!("{language:?}"))
+                .or_insert((0, reason));
+            entry.0 += 1;
+            return;
+        }
+    };
+
+    let lang_str = format!("{language:?}");
+    *state.languages_seen.entry(lang_str.clone()).or_insert(0) += 1;
+
+    push_chunk_functions(
+        chunks,
+        content,
+        &relative_path,
+        &lang_str,
+        &mut state.functions,
+    );
+
+    state.file_count += 1;
+    if state.file_count.is_multiple_of(500) {
+        eprint!("\r  Indexing... {} files", state.file_count);
+    }
+}
+
 /// Load cached coverage_off_files from SQLite metadata.
 fn load_coverage_off_files(conn: &rusqlite::Connection) -> HashSet<String> {
     let json: String = conn
@@ -68,16 +245,7 @@ impl AgentContextIndex {
             .canonicalize()
             .map_err(|e| format!("Invalid project path: {e}"))?;
 
-        let mut functions = Vec::with_capacity(20_000);
-        let mut file_count = 0;
-        let mut languages_seen = HashMap::new();
-        let mut file_checksums: HashMap<String, FileRecord> = HashMap::with_capacity(4_000);
-        let mut coverage_off_files = HashSet::new();
-        // Language -> (how many files the chunker refused, the first reason it
-        // gave). Reported after the walk; see `format_skipped_summary`.
-        let mut skipped_by_language: HashMap<String, (usize, String)> = HashMap::new();
-        // Reusable read buffer — avoids allocating a new String per file (~33 MB saved)
-        let mut read_buf = String::with_capacity(32 * 1024);
+        let mut state = BuildState::new();
 
         // Load compile_commands.json for C/C++ include path discovery
         let _compile_commands = load_compile_commands(&project_root);
@@ -95,127 +263,23 @@ impl AgentContextIndex {
             .build()
             .filter_map(|e| e.ok())
         {
-            let path = entry.path();
-            if !path.is_file() {
-                continue;
-            }
-
-            // Detect language from extension
-            let language = match detect_language(path) {
-                Some(lang) => lang,
-                None => continue,
-            };
-
-            // Read file content into reusable buffer
-            read_buf.clear();
-            let content = match std::fs::File::open(path).and_then(|mut f| {
-                use std::io::Read;
-                f.read_to_string(&mut read_buf)
-            }) {
-                Ok(_) => read_buf.as_str(),
-                Err(_) => continue, // Skip binary/unreadable files
-            };
-
-            let relative_path = path
-                .strip_prefix(&project_root)
-                .unwrap_or(path)
-                .to_string_lossy()
-                .to_string();
-
-            // Compute SHA256 checksum, and record the stat evidence the
-            // incremental fast path needs before it may skip a read.
-            let checksum = compute_file_sha256(content);
-            file_checksums.insert(relative_path.clone(), file_record(path, checksum));
-
-            // Detect module-level coverage(off) — cached for O(1) query-time lookup
-            if has_coverage_off(content) {
-                coverage_off_files.insert(relative_path.clone());
-            }
-
-            // Extract functions using AST chunker. A refusal here is recorded,
-            // not swallowed — a language this build cannot parse must not look
-            // like a language that simply has no matches.
-            let chunks = match chunk_code(content, language) {
-                Ok(c) => c,
-                Err(reason) => {
-                    let entry = skipped_by_language
-                        .entry(format!("{language:?}"))
-                        .or_insert((0, reason));
-                    entry.0 += 1;
-                    continue;
-                }
-            };
-
-            let lang_str = format!("{language:?}");
-            *languages_seen.entry(lang_str.clone()).or_insert(0) += 1;
-
-            for mut chunk in chunks {
-                // Index functions, structs, enums, traits, type aliases (issue #150)
-                use crate::services::semantic::ChunkType;
-                let definition_type = match &chunk.chunk_type {
-                    ChunkType::Function => DefinitionType::Function,
-                    ChunkType::Struct => DefinitionType::Struct,
-                    ChunkType::Enum => DefinitionType::Enum,
-                    ChunkType::Trait => DefinitionType::Trait,
-                    ChunkType::TypeAlias => DefinitionType::TypeAlias,
-                    _ => continue, // Skip classes, modules, files, impl blocks
-                };
-
-                // Skip test functions and test files (#159: reduce index bloat)
-                if is_test_chunk(&chunk.chunk_name, &relative_path) {
-                    continue;
-                }
-
-                // Extract quality metrics (borrows chunk)
-                let quality = extract_quality_metrics(&chunk, content);
-
-                // Extract signature (first line of definition) — must borrow before move
-                let signature = chunk
-                    .content
-                    .lines()
-                    .next()
-                    .unwrap_or(&chunk.chunk_name)
-                    .to_string();
-
-                // Extract doc comment (lines starting with /// or /** before definition)
-                let doc_comment = extract_doc_comment(content, chunk.start_line);
-
-                // Take ownership of chunk fields (avoids .clone() — saves ~12.5 MB peak)
-                let entry = FunctionEntry {
-                    file_path: relative_path.clone(),
-                    function_name: std::mem::take(&mut chunk.chunk_name),
-                    signature,
-                    definition_type,
-                    doc_comment,
-                    source: std::mem::take(&mut chunk.content),
-                    start_line: chunk.start_line,
-                    end_line: chunk.end_line,
-                    language: lang_str.clone(),
-                    quality,
-                    checksum: std::mem::take(&mut chunk.content_checksum),
-                    // Annotations populated after all definitions collected
-                    commit_count: 0,
-                    churn_score: 0.0,
-                    clone_count: 0,
-                    pattern_diversity: 0.0,
-                    fault_annotations: Vec::new(),
-                    linked_definition: None,
-                };
-
-                functions.push(entry);
-            }
-
-            file_count += 1;
-            if file_count % 500 == 0 {
-                eprint!("\r  Indexing... {} files", file_count);
-            }
+            index_one_file(&mut state, entry.path(), &project_root);
         }
-        if file_count >= 500 {
-            eprintln!("\r  Indexed {} files", file_count);
+        if state.file_count >= 500 {
+            eprintln!("\r  Indexed {} files", state.file_count);
         }
-        for line in format_skipped_summary(&skipped_by_language) {
+        for line in format_skipped_summary(&state.skipped_by_language) {
             eprintln!("{line}");
         }
+
+        let BuildState {
+            mut functions,
+            file_count,
+            languages_seen,
+            file_checksums,
+            coverage_off_files,
+            ..
+        } = state;
 
         // Build indices and corpus
         let indices = build_indices(&functions);

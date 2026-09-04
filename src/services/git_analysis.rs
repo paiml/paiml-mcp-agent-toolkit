@@ -153,12 +153,19 @@ impl GitAnalysisService {
     /// commit once per file it touched. That sum was what "Total commits"
     /// reported (GH #660) — 756 for a window git puts at 40, and 2 for a
     /// fixture repo with a single commit touching two files.
-    fn get_file_metrics(
+    /// Run `git log --numstat` in a timeout-guarded thread (#245) and return
+    /// its stdout as text.
+    ///
+    /// `Ok(None)` means "there is nothing to report and it is not an error" —
+    /// either the 60s timeout fired (logged as a warning) or git reported the
+    /// empty-repository case (`does not have any commits yet`). Both were
+    /// `return Ok((Vec::new(), 0))` early-returns in the original function;
+    /// callers must still perform that early return themselves.
+    fn capture_git_log_output(
         project_path: &Path,
         since_date: Option<&str>,
         scope: Option<&Path>,
-    ) -> Result<(Vec<FileChurnMetrics>, usize), TemplateError> {
-        // Spawn git log with timeout to prevent runaway processes (#245)
+    ) -> Result<Option<String>, TemplateError> {
         let (tx, rx) = std::sync::mpsc::channel();
         let project_dir = project_path.to_path_buf();
         let since = since_date.map(std::string::ToString::to_string);
@@ -193,7 +200,7 @@ impl GitAnalysisService {
                     timeout.as_secs(),
                     project_path.display()
                 );
-                return Ok((Vec::new(), 0));
+                return Ok(None);
             }
         };
 
@@ -201,19 +208,27 @@ impl GitAnalysisService {
             let error_msg = String::from_utf8_lossy(&output.stderr);
             // Handle empty repository case
             if error_msg.contains("does not have any commits yet") {
-                return Ok((Vec::new(), 0));
+                return Ok(None);
             }
             return Err(TemplateError::NotFound(format!(
                 "Git log failed: {error_msg}"
             )));
         }
 
-        let log_output = String::from_utf8_lossy(&output.stdout);
+        Ok(Some(String::from_utf8_lossy(&output.stdout).into_owned()))
+    }
+
+    /// Parse `git log --pretty=format:%H|%an|%aI --numstat` output into
+    /// per-file stats plus the set of distinct commit hashes seen.
+    ///
+    /// Extracted verbatim from the loop body in [`Self::get_file_metrics`];
+    /// the commit-hash set is returned separately for the same reason noted
+    /// on `get_file_metrics` itself — it cannot be recovered from the stats.
+    fn parse_log_into_file_stats(
+        log_output: &str,
+    ) -> (HashMap<PathBuf, FileStats>, HashSet<String>) {
         let mut file_stats: HashMap<PathBuf, FileStats> = HashMap::with_capacity(64);
         let mut current_commit: Option<CommitInfo> = None;
-        // Distinct commits seen in the window. One header line per commit, so
-        // this equals `git rev-list --count --since=<date>` — including merge
-        // commits, which print a header but no --numstat lines.
         let mut commit_hashes: HashSet<String> = HashSet::with_capacity(64);
 
         for line in log_output.lines() {
@@ -251,6 +266,15 @@ impl GitAnalysisService {
             }
         }
 
+        (file_stats, commit_hashes)
+    }
+
+    /// Turn per-file stats into ranked `FileChurnMetrics`, in the deterministic
+    /// order documented on [`Self::churn_rank_cmp`].
+    fn build_churn_metrics(
+        project_path: &Path,
+        file_stats: HashMap<PathBuf, FileStats>,
+    ) -> Vec<FileChurnMetrics> {
         let max_commits = file_stats
             .values()
             .map(|s| s.commits.len())
@@ -292,6 +316,21 @@ impl GitAnalysisService {
             .collect();
 
         metrics.sort_by(Self::churn_rank_cmp);
+        metrics
+    }
+
+    fn get_file_metrics(
+        project_path: &Path,
+        since_date: Option<&str>,
+        scope: Option<&Path>,
+    ) -> Result<(Vec<FileChurnMetrics>, usize), TemplateError> {
+        let log_output = match Self::capture_git_log_output(project_path, since_date, scope)? {
+            Some(log) => log,
+            None => return Ok((Vec::new(), 0)),
+        };
+
+        let (file_stats, commit_hashes) = Self::parse_log_into_file_stats(&log_output);
+        let metrics = Self::build_churn_metrics(project_path, file_stats);
 
         Ok((metrics, commit_hashes.len()))
     }
