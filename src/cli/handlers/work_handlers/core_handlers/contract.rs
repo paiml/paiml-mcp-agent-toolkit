@@ -24,6 +24,7 @@ pub(super) async fn create_work_contract(
     iteration: u32,
     implements: &[String],
     agent: Option<crate::cli::handlers::work_ledger::AgentProvenance>,
+    level: Option<crate::cli::handlers::work_verification_level::VerificationLevel>,
 ) -> Result<()> {
     println!();
     println!("📋 Creating Work Contract (Popperian Falsification)...");
@@ -83,6 +84,13 @@ pub(super) async fn create_work_contract(
         }
         contract.implements = bindings;
     }
+    // #1186: the claim follows the evidence — explicit --level, else L2 when
+    // bound, else L1 — so `complete` can honour it without a hand edit.
+    contract.verification_level = crate::cli::handlers::work_contract::initial_verification_level(
+        level,
+        !contract.implements.is_empty(),
+    );
+    println!("   🪜 Verification claim: {}", contract.verification_level);
 
     // Display profile and triad info
     if contract.is_dbc() {
