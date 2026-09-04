@@ -1,0 +1,31 @@
+{
+ "ticket": "PMAT-655",
+ "base": "origin/master",
+ "head": "1e668d6ba25959f7fd241bd14422d85e218b4a24",
+ "width": 3,
+ "executor": "agy",
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "I have reviewed the diff against the requirements specified in Ticket PMAT-655 and the receipt. The implementation accurately fulfills all deliverables, correctly adds the strict enforcement logic for SATD, task ID check via a `commit-msg` hook, and properly manages configuration values. The code has also been correctly refactored to remain under complexity limits without regressions. No issues found.",
+   "findings": [],
+   "raw_bytes": 2312
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff perfectly implements PMAT-655. It introduces the 'strict' mode logic to the hooks installation and execution exactly as specified. The commit-msg hook enforces the presence of the ticket pattern, the pre-commit hook properly fails on SATD comments under strict mode, and all requested metrics, tests, refactors, and documents (including the YAML contract and script) match the receipt exactly. No discrepancies or forbidden actions were found.",
+   "findings": [],
+   "raw_bytes": 1939
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "I have reviewed the diff against the receipt and ticket PMAT-655.\n\nAll deliverables requested in the ticket and claimed in the receipt are accurately implemented:\n- The `[hooks]` configuration section and its options (`strict`, `ticket_pattern`) are properly added and exposed.\n- `PMAT_HOOKS_STRICT` is correctly exported in the pre-commit hook by reading either the `--strict` flag or the configuration, allowing it to correctly toggle SATD over the threshold into an `exit 1` block.\n- The dead pre-commit task-ID block has been removed, and the logic is successfully migrated to the new auto-managed `commit-msg` hook which correctly parses the `Pmat-Ticket` trailer and applies the `ticket_pattern`.\n- The strict plumbing has been tested to persist properly through auto-installs and auto-updates, ensuring an initial `--strict` is not silently dropped on `verify --fix` or `update`.\n- `--strict` with `--stack` explicitly refuses and warns the user, aligning with the expected behavior mentioned in PMAT-659.\n- The cognitive complexity refactors are correct, semantically equivalent to the original code, and they ensure the functions remain within the complexity limits.\n- The 8 git commit-driven validation tests have been implemented and properly orchestrate repository environments to prevent regressions.\n\nI found no weakened gates or unrequested changes. The change satisfies the ticket without violations.",
+   "findings": [],
+   "raw_bytes": 5409
+  }
+ ]
+}
