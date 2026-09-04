@@ -1,0 +1,59 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-04"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/agentic-delivery-pmat.md section 8 / 9.7 (AD-07)"
+    - "contracts/commit-enforcement-v1.yaml (AD-03) — the hook that writes the trailer this check reads"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    The machine-readable link between a commit and its work is the
+    Pmat-Ticket trailer. Comply check CB-1340 reads it back with git's own
+    trailer parser for every non-merge commit between the default branch and
+    HEAD and fails, naming each offending sha, when a commit has no trailer or
+    names a ticket that is not in the roadmap or not in progress; on the
+    default branch, or outside a git repository, there is nothing to judge
+    and the check passes saying so. pmat work link records commits and pull
+    requests on the ticket (links on the roadmap item) and pmat work annotate
+    shows them.
+  contract: ticket-trailer
+  status: draft
+
+equations:
+  every_branch_commit_names_in_progress_work:
+    formula: "on a non-default branch: for all c in merge_base(default, HEAD)..HEAD, not merge(c): trailer(c, Pmat-Ticket) names an item with status in_progress (or #NNN naming an item's github_issue) — else CB-1340 fails naming short(c) and the reason"
+    domain: "any git repository with docs/roadmaps/roadmap.yaml"
+    codomain: bool
+    invariants:
+      - "the trailer is read with git's trailer parsing, never a regex over the subject"
+      - "a completed or planned ticket is not in progress: naming it fails"
+      - "on the default branch, or outside a git repository, the check passes with a message saying there is nothing to judge"
+      - "merge commits are skipped"
+    preconditions: []
+
+  links_are_recorded_idempotently:
+    formula: "work link T --commit S resolves S with git rev-parse --verify and stores the full sha; work link T --pr N stores N; repeating either changes nothing; annotate T shows every link"
+    domain: "pmat work link, pmat work annotate"
+    codomain: bool
+    invariants:
+      - "an unknown ticket, an unresolvable sha, or neither --commit nor --pr is a refusal, not a silent no-op"
+      - "roadmaps without a links field round-trip unchanged (serde default, skipped when empty)"
+    preconditions: []
+
+falsification_tests:
+  - id: F1
+    rule: "the released binary has neither CB-1340 nor work link"
+    prediction: "on pmat 3.36.0 all six legs of scripts/ticket-trailer-audit.sh are red: CB-1340 is absent from comply check --format json and work link does not parse"
+    test: "PMAT=<pmat 3.36.0> bash scripts/ticket-trailer-audit.sh"
+    if_fails: "an older binary already carries the check or the subcommand: the RED side was never measured, re-establish it"
+  - id: F2
+    rule: "this tree passes the six legs with controls"
+    prediction: "trailered commits pass; an untrailered commit fails naming its sha; a trailer naming a completed ticket fails; the default branch passes; work link records a commit and a PR; annotate shows the commit"
+    test: "PMAT=$(cargo build --bin pmat --message-format json | ...executable) bash scripts/ticket-trailer-audit.sh"
+    if_fails: "the red leg names which rule regressed: trailer reading, status judgment, default-branch detection, or link persistence"
+  - id: F3
+    rule: "the status judgment can be broken (named mutation)"
+    prediction: "accepting any known ticket regardless of status turns the completed-ticket leg RED while the others stay green"
+    test: "sed the status test in check_ticket_trailer.rs to accept every status, rebuild, run F2, revert and REBUILD"
+    if_fails: "the audit no longer discriminates the status rule; also confirm the binary under test was rebuilt after the revert"

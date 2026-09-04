@@ -295,6 +295,15 @@ this script existed; that chain receipt stays, and links to this script's output
 ### 9.7 AD-07 — `pmat work link` + comply trailer check (M)
 **Problem.** §4.7, §8. **Proposal.** `pmat work link <ticket> --commit <sha> | --pr <n>` records on the ticket; `pmat work annotate` shows the links; comply check `CB-TRACE` walks `git log <base>..HEAD` and fails on a commit without a trailer or with a trailer naming a ticket not in progress. **Acceptance.** §4.7 last two legs.
 
+*Implementation note (PMAT-661, 2026-09-04).* `pmat work link <ticket> --commit <sha> | --pr <n>` records
+`links` on the roadmap item (serde default, omitted when empty, so old roadmaps round-trip byte-for-byte);
+`pmat work annotate` shows them. Comply check **CB-1340** (`check_ticket_trailer.rs`, registered with the
+cb-13xx commit checks) reads `Pmat-Ticket` with git's trailer parser for every non-merge commit between the
+default branch and `HEAD` and fails naming each sha whose trailer is missing, unknown, or names a ticket that is
+not in progress; on the default branch or outside a repository it passes saying there is nothing to judge.
+Acceptance `scripts/ticket-trailer-audit.sh` (six legs; RED on 3.36.0: the check is absent and `work link`
+does not parse), contract `contracts/ticket-trailer-v1.yaml`, receipt `docs/audits/impl-PMAT-661-receipt.md`.
+
 ### 9.8 AD-08 — swappable executor, width 2–20 (S)
 **Problem.** §5.4, §5.5. **Proposal.** `PAIML_EXECUTOR` (`agy` default) in the delegate, executor-specific calling forms in one table, width cap 20 behind the token budget guard. **Acceptance.** §5.4, §5.5.
 
