@@ -85,7 +85,7 @@ pub async fn handle_quality_gate(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
-    handle_quality_gate_with_thresholds(
+    handle_quality_gate_with_thresholds(QualityGateRequest {
         project_path,
         file,
         format,
@@ -97,9 +97,29 @@ pub async fn handle_quality_gate(
         include_provability,
         output,
         perf,
-        QualityThresholds::default(),
-    )
+        thresholds: QualityThresholds::default(),
+    })
     .await
+}
+
+/// Everything one `pmat quality-gate` run needs, in one value: the eleven
+/// arguments [`handle_quality_gate`] has always taken plus the AD-05
+/// thresholds. One struct rather than a twelve-argument sibling, so the
+/// threshold-carrying entry point needs no `too_many_arguments` allowance.
+#[derive(Debug, Clone)]
+pub struct QualityGateRequest {
+    pub project_path: PathBuf,
+    pub file: Option<PathBuf>,
+    pub format: QualityGateOutputFormat,
+    pub exit_on_violation: bool,
+    pub checks: Vec<QualityCheckType>,
+    pub max_dead_code: f64,
+    pub min_entropy: Option<f64>,
+    pub max_complexity_p99: u32,
+    pub include_provability: bool,
+    pub output: Option<PathBuf>,
+    pub perf: bool,
+    pub thresholds: QualityThresholds,
 }
 
 /// [`handle_quality_gate`], with the file-size and churn thresholds this run
@@ -113,22 +133,22 @@ pub async fn handle_quality_gate(
 ///
 /// # Errors
 /// As [`handle_quality_gate`].
-#[allow(clippy::too_many_arguments)]
-pub async fn handle_quality_gate_with_thresholds(
-    project_path: PathBuf,
-    file: Option<PathBuf>,
-    format: QualityGateOutputFormat,
-    exit_on_violation: bool,
-    checks: Vec<QualityCheckType>,
-    max_dead_code: f64,
-    min_entropy: Option<f64>,
-    max_complexity_p99: u32,
-    include_provability: bool,
-    output: Option<PathBuf>,
-    perf: bool,
-    thresholds: QualityThresholds,
-) -> Result<()> {
+pub async fn handle_quality_gate_with_thresholds(request: QualityGateRequest) -> Result<()> {
     use std::time::Instant;
+    let QualityGateRequest {
+        project_path,
+        file,
+        format,
+        exit_on_violation,
+        checks,
+        max_dead_code,
+        min_entropy,
+        max_complexity_p99,
+        include_provability,
+        output,
+        perf,
+        thresholds,
+    } = request;
 
     if !project_path.exists() {
         return Err(anyhow::anyhow!(

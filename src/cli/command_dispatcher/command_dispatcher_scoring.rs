@@ -53,18 +53,22 @@ impl CommandDispatcher {
                     max_churn_commits,
                 );
                 crate::cli::analysis_utilities::handle_quality_gate_with_thresholds(
-                    project_path,
-                    file,
-                    format,
-                    crate::cli::analysis_utilities::gate_exits_on_violation(report_only),
-                    checks,
-                    max_dead_code,
-                    min_entropy,
-                    max_complexity_p99,
-                    include_provability,
-                    output,
-                    perf,
-                    thresholds,
+                    crate::cli::analysis_utilities::QualityGateRequest {
+                        project_path,
+                        file,
+                        format,
+                        exit_on_violation: crate::cli::analysis_utilities::gate_exits_on_violation(
+                            report_only,
+                        ),
+                        checks,
+                        max_dead_code,
+                        min_entropy,
+                        max_complexity_p99,
+                        include_provability,
+                        output,
+                        perf,
+                        thresholds,
+                    },
                 )
                 .await
             }

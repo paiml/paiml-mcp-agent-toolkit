@@ -1,0 +1,72 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-04"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/agentic-delivery-pmat.md section 5.1 / 9.5 (AD-05)"
+    - "src/cli/handlers/work_contract_profile.rs — the max_file_lines default the gate reuses"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    The three thresholds the delivery diagram names — lint (zero clippy
+    warnings), churn (commits per file in 90 days) and lines per file — are
+    checks of pmat quality-gate: --checks file-size, churn, lint, with
+    --max-file-lines and --max-churn-commits, defaulting from pmat.toml
+    [quality] max_file_lines (500) and max_churn_commits_90d (20, alias
+    max_churn_commits). file-size and churn are in default_checks() and so in
+    the MCP quality_gate suite; lint is opt-in because it compiles the tree. A
+    check that cannot be answered (churn outside a git repository, lint without
+    a Cargo.toml) is disclosed as a scope row, never counted as passed.
+  contract: quality-gate-thresholds
+  status: draft
+
+equations:
+  file_size_is_a_threshold_not_a_report:
+    formula: "lines(f) > max_file_lines => violation(file-size, f) and exit 1 under --fail-on-violation; lines(f) <= max_file_lines => no violation"
+    domain: "every source file the gate enumerates"
+    codomain: bool
+    invariants:
+      - "the default 500 is the one value work_contract_profile.rs already uses; the CLI flag overrides pmat.toml, pmat.toml overrides the default"
+      - "a file exactly at the cap passes"
+    preconditions: []
+
+  churn_counts_commits_in_ninety_days:
+    formula: "commits_90d(f) > max_churn_commits_90d => violation(churn, f) naming the count"
+    domain: "files in a git repository; one git log --since pass, a path named twice in one commit counts once"
+    codomain: bool
+    invariants:
+      - "no git repository => an advisory scope row, not an empty (passing) result"
+      - "the same tree passes a higher cap"
+    preconditions: []
+
+  lint_asks_verifys_question:
+    formula: "clippy(--all-targets, -D warnings) exits non-zero => ONE violation carrying the first diagnostic's file:line"
+    domain: "a tree with Cargo.toml"
+    codomain: bool
+    invariants:
+      - "the arguments are the ones pmat verify's clippy stage uses, so the two can never disagree"
+      - "no Cargo.toml => an advisory scope row"
+      - "one clippy warning fails; the fixed crate passes"
+    preconditions: []
+
+  both_dispatch_routes_forward_the_thresholds:
+    formula: "for route in {command_dispatcher_scoring, dispatch_ext_scoring}: --max-file-lines n reaches the gate as max_file_lines = n"
+    domain: "pmat quality-gate through either dispatcher"
+    codomain: bool
+    invariants:
+      - "the thresholds travel in QualityGateRequest, one value, so no twelve-argument sibling needs a too_many_arguments allowance (the allow_attributes_src ratchet stays at its baseline)"
+    preconditions: []
+
+falsification_tests:
+  - id: F1
+    name: released binary
+    command: "PMAT=<pmat 3.36.0> bash scripts/quality-gate-thresholds-audit.sh"
+    expect: "seven legs rc=2 (the checks and flags do not parse), RED, exit 1"
+  - id: F2
+    name: this tree
+    command: "PMAT=$(cargo build --bin pmat --message-format json | ...executable) bash scripts/quality-gate-thresholds-audit.sh"
+    expect: "seven ✓, GREEN, exit 0"
+  - id: F3
+    name: named mutation
+    command: "flip the file-size comparison to >= (or drop the churn threshold compare) and re-run F2"
+    expect: "the control leg for that check goes red"

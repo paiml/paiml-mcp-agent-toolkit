@@ -486,7 +486,7 @@ fn clap_parses_both_threshold_flags_and_defaults_them_to_unset() {
                 ..
             } = cli.command
             else {
-                panic!("{argv:?} must parse as QualityGate");
+                unreachable!("{argv:?} must parse as QualityGate");
             };
             (max_file_lines, max_churn_commits)
         };
@@ -532,7 +532,7 @@ fn the_three_new_checks_are_selectable_and_two_of_them_are_in_the_suite() {
         ])
         .expect("argv must parse");
         let crate::cli::Commands::QualityGate { checks, .. } = cli.command else {
-            panic!("must parse as QualityGate");
+            unreachable!("must parse as QualityGate");
         };
         checks
     });

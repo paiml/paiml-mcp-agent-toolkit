@@ -277,6 +277,20 @@ Each item ships as one ticket and one PR under the paiml-implement discipline (R
 ### 9.5 AD-05 — `quality-gate --checks lint,churn,file-size` and a CI leg (M)
 **Problem.** §4.4–4.6 and §3.3. **Proposal.** Three new checks in `src/cli/analysis_utilities/quality_gate_execute.rs` / `quality_gate_part2a.rs`, routed through `quality_gate_suite.rs` so MCP `quality_gate` gains them; thresholds from `pmat.toml [quality]` (`max_file_lines` — the key `work_contract_profile.rs` already reads, default 500; `max_churn_commits_90d`, default 20; lint = clippy `-D warnings` reusing the verify stage's runner); `checks_run`, `not_measured` and the differential gate's `ALLOWED_CONSTANTS` updated with reasons. A CI leg `pmat quality-gate --checks all` on the merge commit. **Acceptance.** §4.4–4.6 with their controls. **Risk.** clippy inside the gate costs a compile; `lint` is opt-in for `--checks all` on non-Rust trees (`not_applicable`).
 
+*Implementation note (PMAT-657, 2026-09-04).* `pmat quality-gate --checks file-size,churn,lint`,
+`--max-file-lines` and `--max-churn-commits`, defaulting from `[quality] max_file_lines` (500 — the one
+value `work_contract_profile.rs` already used) and `[quality] max_churn_commits_90d` (20; alias
+`max_churn_commits`). Implementations in `src/cli/analysis_utilities/quality_checks_part1_thresholds.rs`;
+the eleven gate arguments plus the thresholds travel in one `QualityGateRequest`, so the threshold-carrying
+entry point needs no `too_many_arguments` allowance and the `allow_attributes_src` ratchet stays at its
+baseline. `file-size` and `churn` join `default_checks()` and therefore the MCP `quality_gate` suite; `lint`
+(clippy `--all-targets -D warnings`, the same invocation as `pmat verify`'s stage) is opt-in because it
+compiles the tree. A check that cannot be answered — churn outside a git repository, lint without a
+`Cargo.toml` — is disclosed as a scope row under `--checks <that check>`; under `--checks all` that row is
+dropped, exactly as the security check's has always been (PMAT-658 tracks closing both). Acceptance
+`scripts/quality-gate-thresholds-audit.sh` (seven legs with controls; RED on 3.36.0: nothing parses),
+contract `contracts/quality-gate-thresholds-v1.yaml`, receipt `docs/audits/impl-PMAT-657-receipt.md`.
+
 ### 9.6 AD-06 — worker receipt carries the gate (S)
 **Problem.** §4.2. **Proposal.** `agents/paiml-impl-worker.md` §receipt gains `gate: {cmd, ok, stages_measured, not_measured}` from `pmat verify --format json`; `SKILL.md` §6.2 treats its absence as `partial=true`; `verify.sh` checks the agent file contains the field. **Acceptance.** §4.2.
 

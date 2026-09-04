@@ -4083,3 +4083,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-658
+  github_issue: null
+  item_type: task
+  title: quality-gate --checks all drops the advisory scope rows churn and security emit when they cannot be answered
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-04T00:36:57Z
+  updated: 2026-09-04T00:36:57Z
+  spec: null
+  acceptance_criteria:
+  - 'Inherited by AD-05 (PMAT-657): run_all_project_checks drops the security check''s scope row, and churn now mirrors that, so --checks all reads a tree without git history as clean while --checks churn discloses it. Closing it for both means test_check_quality_gates_project_verdict_not_inverted (src/mcp_pmcp/tool_functions_tests.rs) must assert blocking_violations == 0 rather than violations.is_empty(). Control: --checks all on a non-repository must show the churn and security scope rows; a clean repository must still pass.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

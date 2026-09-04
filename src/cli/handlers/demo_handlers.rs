@@ -90,18 +90,20 @@ pub async fn handle_quality_gate(
 ) -> Result<()> {
     // Delegate to main quality gate implementation for now - will be extracted later
     super::super::analysis_utilities::handle_quality_gate_with_thresholds(
-        project_path,
-        file,
-        format,
-        exit_on_violation,
-        checks,
-        max_dead_code,
-        min_entropy,
-        max_complexity_p99,
-        include_provability,
-        output,
-        perf,
-        thresholds,
+        super::super::analysis_utilities::QualityGateRequest {
+            project_path,
+            file,
+            format,
+            exit_on_violation,
+            checks,
+            max_dead_code,
+            min_entropy,
+            max_complexity_p99,
+            include_provability,
+            output,
+            perf,
+            thresholds,
+        },
     )
     .await
 }

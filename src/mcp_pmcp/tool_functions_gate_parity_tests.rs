@@ -281,7 +281,7 @@ fn the_advertised_checks_are_the_checks_it_runs() {
 
     assert!(
         !description.to_lowercase().contains("lint"),
-        "no pmat gate has a `lint` check — `--checks` takes exactly {:?}: {description}",
+        "the MCP suite does not run `lint` (AD-05 made it opt-in via `--checks lint`; it is not in default_checks()) — the suite runs exactly {:?}: {description}",
         QualityCheckType::default_checks()
             .iter()
             .map(ToString::to_string)
