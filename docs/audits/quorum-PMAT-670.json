@@ -1,0 +1,34 @@
+{
+ "ticket": "PMAT-670",
+ "base": "origin/master",
+ "head": "135fba8c1daf6861a1df4a260cdb811c0ae54af2",
+ "diff_sha256": "0e6cbe92b111f7437ad1ef5d147ace2bbf15e2d42488adc1d5ff31d34afcd753",
+ "width": 3,
+ "executor": "agy",
+ "prompt_mode": "inline",
+ "prompt_bytes": 47132,
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff correctly implements the features described in PMAT-670 and the associated receipt. It correctly parses and handles `--level` and `--implements` across `add`, `start`, and `edit` commands, updating the verification level claim accordingly (lifting to `L2` if bound unless overridden, and defaulting to `L1` when unbound instead of `L3`). The ladder validation was properly moved before the quality check in `handle_work_complete`. Finally, `require_equation` was correctly added and integrated to ensure bindings correspond to declared equations in the contract YAML. All acceptance script tests support these changes and verify the specified rules, with no regressions found.",
+   "findings": [],
+   "raw_bytes": 3184
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff perfectly matches the receipt and the contract. It correctly adjusts the initial verification level depending on bindings, wires up `--level` and `--implements` appropriately across `add`, `start`, and `edit`, correctly parses and checks the target contract for the required equation during resolution, and moves the ladder fallback check to be evaluated before the quality gate. No tests fail and no gates are weakened.",
+   "findings": [],
+   "raw_bytes": 1899
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff perfectly implements ticket PMAT-670. The ladder check is properly moved before the quality gates on complete, `--level` is respected during add/start/edit, `--implements` properly adds bindings during edit (lifting an L1 claim to L2), and equations are correctly verified against the target contract file to prevent binding to non-existent equations. All claims in the receipt are strongly grounded in the diff.",
+   "findings": [],
+   "raw_bytes": 1894
+  }
+ ]
+}
