@@ -145,9 +145,7 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
             // sequence, so two rows sharing an id are two well-formed rows and
             // serde has nothing to complain about. Only the raw text can see
             // the collision, and only the raw text can locate it.
-            // MUTATION PMAT-674 (DO NOT MERGE): the pre-fix validator never looked for duplicates.
-            let duplicates: Vec<(String, Vec<usize>)> = Vec::new();
-            let _ = duplicate_ids(&content);
+            let duplicates = duplicate_ids(&content);
             if !duplicates.is_empty() {
                 return Err(report_duplicate_ids(&duplicates, &roadmap_path));
             }
