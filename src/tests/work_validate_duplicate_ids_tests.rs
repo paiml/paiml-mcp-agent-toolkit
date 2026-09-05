@@ -311,6 +311,58 @@ const ORDER_FIXTURE: &str = "roadmap:
 - id: SECOND
 ";
 
+/// Quorum finding on PMAT-674 (3/3 lanes): a scanner with no block-scalar
+/// state harvests an `id:` line INSIDE a multi-line `notes: |` as an id (a
+/// false red), and one that only knows the block spellings misses a
+/// flow-style row (a false green — the direction that lets a duplicate
+/// through). The live roadmap carries a `notes: |` block, so the first is not
+/// hypothetical.
+#[test]
+fn work_validate_duplicate_scanner_skips_block_scalars_and_reads_flow_mappings() {
+    use crate::cli::handlers::work_handlers::{collect_id_lines, duplicate_ids};
+
+    let raw = "roadmap:\n\
+               \x20 - id: PMAT-001\n\
+               \x20   title: one\n\
+               \x20   notes: |\n\
+               \x20     the reviewer wrote:\n\
+               \x20     id: PMAT-001\n\
+               \x20     - id: PMAT-002\n\
+               \x20   status: planned\n\
+               \x20 - id: PMAT-002\n\
+               \x20   acceptance_criteria:\n\
+               \x20   - >-\n\
+               \x20     folded text with id: PMAT-002 inside\n\
+               \x20   title: two\n\
+               \x20 - {id: PMAT-003, title: three, status: planned}\n\
+               \x20 - { \"id\": \"PMAT-004\" , title: four }\n";
+    let expected: Vec<(usize, String)> = [
+        (2, "PMAT-001"),
+        (9, "PMAT-002"),
+        (14, "PMAT-003"),
+        (15, "PMAT-004"),
+    ]
+    .into_iter()
+    .map(|(line, id)| (line, id.to_string()))
+    .collect();
+    assert_eq!(
+        collect_id_lines(raw),
+        expected,
+        "block-scalar bodies are text, flow mappings are rows"
+    );
+    assert!(
+        duplicate_ids(raw).is_empty(),
+        "an id quoted inside a block scalar is not a duplicate"
+    );
+
+    let flow_duplicate = "roadmap:\n  - id: PMAT-007\n    title: a\n  - {id: PMAT-007, title: b}\n";
+    assert_eq!(
+        duplicate_ids(flow_duplicate),
+        vec![("PMAT-007".to_string(), vec![2, 4])],
+        "a flow-style row that repeats an id is a duplicate"
+    );
+}
+
 /// V5: `collect_id_lines` reads every spelling of the key, at any depth, and
 /// nothing that merely looks like it.
 #[test]

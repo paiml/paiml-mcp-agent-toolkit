@@ -204,22 +204,68 @@ fn locate_parse_error(error: &serde_yaml_ng::Error, roadmap_path: &Path) -> anyh
 ///
 /// Recognised at any depth (items and subtasks alike), under every spelling
 /// YAML allows for the same key: `- id: X`, `-   id: X`, a bare `id: X` whose
-/// dash sits on the previous line, `- "id": X` and `- 'id': X`, and `- id:X`.
+/// dash sits on the previous line, `- "id": X` and `- 'id': X`, `- id:X`, and
+/// a flow mapping `- {id: X, title: …}`.
 /// Not recognised: `identity:` and `github_issue:` (different keys), a
-/// commented-out `# - id:`, and `-id:` — YAML needs a space after the dash, so
-/// that line is the scalar "-id:" and not a mapping at all.
+/// commented-out `# - id:`, `-id:` — YAML needs a space after the dash, so
+/// that line is the scalar "-id:" and not a mapping at all — and the explicit
+/// key form `? id` (never emitted, never seen in a roadmap).
+///
+/// Quorum finding on PMAT-674: the body of a block scalar (`notes: |`,
+/// `- >-`) is text, not YAML. Every line indented deeper than the key that
+/// opened the block is skipped, so a reviewer's note quoting `id: PMAT-001`
+/// cannot fail the roadmap it sits in.
 pub(crate) fn collect_id_lines(raw: &str) -> Vec<(usize, String)> {
-    raw.lines()
-        .enumerate()
-        .filter_map(|(index, line)| id_value_on_line(line).map(|id| (index + 1, id)))
-        .collect()
+    let mut found = Vec::new();
+    // Indentation of the line that opened a block scalar; `None` outside one.
+    let mut block_opened_at: Option<usize> = None;
+    for (index, line) in raw.lines().enumerate() {
+        let indent = line.len() - line.trim_start().len();
+        if let Some(opened_at) = block_opened_at {
+            if line.trim().is_empty() || indent > opened_at {
+                continue;
+            }
+            block_opened_at = None;
+        }
+        if let Some(id) = id_value_on_line(line) {
+            found.push((index + 1, id));
+        }
+        if opens_block_scalar(line) {
+            block_opened_at = Some(indent);
+        }
+    }
+    found
+}
+
+/// `key: |`, `key: >-`, `- |`: the value that starts here is a block scalar
+/// whose body is every deeper-indented line that follows.
+fn opens_block_scalar(line: &str) -> bool {
+    let trimmed = line.trim();
+    let value = match trimmed.find(':') {
+        Some(colon) => &trimmed[colon + 1..],
+        None => trimmed.strip_prefix('-').unwrap_or(""),
+    };
+    let head = value.trim().split(" #").next().unwrap_or("").trim();
+    let mut chars = head.chars();
+    matches!(chars.next(), Some('|' | '>')) && chars.all(|c| matches!(c, '-' | '+' | '0'..='9'))
 }
 
 /// The id declared on one raw line, if that line declares one.
 fn id_value_on_line(line: &str) -> Option<String> {
     let after_dash = strip_sequence_dash(line.trim_start())?;
+    if after_dash.starts_with('{') {
+        return id_in_flow_mapping(after_dash);
+    }
     let after_key = strip_id_key(after_dash)?;
     Some(clean_scalar(after_key))
+}
+
+/// The `id` entry of a single-line flow mapping `{id: X, title: …}`.
+fn id_in_flow_mapping(flow: &str) -> Option<String> {
+    let inner = flow.strip_prefix('{')?.split('}').next()?;
+    inner
+        .split(',')
+        .find_map(|entry| strip_id_key(entry.trim()).map(clean_scalar))
 }
 
 /// Strip a leading `- ` sequence indicator, if there is one.
