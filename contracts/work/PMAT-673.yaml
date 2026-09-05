@@ -1,0 +1,61 @@
+# Hand-authored work contract for PMAT-673 (pmat#1193, pmat#1169): `pmat work add`
+# minted colliding ids because the allocator ran outside the write lock over the
+# parsed model. Every `evidence_method` below is a command that was run on this
+# tree by the orchestrator; the lib tests it names are compiled from
+# src/cli/handlers/work_handlers/mod.rs (#[path] to src/tests/work_add_allocator_tests.rs)
+# and therefore run under CI's `cargo test --lib`.
+name: "PMAT-673"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "pmat work add mints each ticket id exactly once: under the exclusive lock, from every raw `id:` line of the roadmap plus the lock file's high-water mark (#1193, #1169)"
+  references:
+    - "src/services/roadmap_service_operations.rs"
+    - "src/services/roadmap_service_io.rs"
+    - "src/cli/handlers/work_handlers/ticket_crud.rs"
+    - "src/tests/work_add_allocator_tests.rs"
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1193"
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1169"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 6
+proof_obligations:
+- id: "PO-A1"
+  statement: "Two sequential adds on an empty roadmap mint PMAT-001 then PMAT-002 and both rows are present with their own titles; the first is not replaced by the second."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_sequential_adds_mint_001_then_002"
+- id: "PO-A2"
+  statement: "Twelve OS processes (two rounds of six, each a re-exec of the test binary running one add) mint twelve distinct ids and the roadmap holds all twelve rows with their titles. Threads cannot observe the defect: flock is per open file description, so only processes contend the way concurrent checkouts do."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_twelve_processes_mint_twelve_distinct_ids"
+- id: "PO-A3"
+  statement: "The lock file's high-water mark is read under the same exclusive lock and beats the roadmap's max: with the roadmap at PMAT-010 and the lock file holding 5000, the add mints PMAT-5001 and the lock file then reads 5001. Before the fix acquire_write_lock opened the file with truncate(true), so nothing could persist there."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_honours_the_lock_file_high_water_mark"
+- id: "PO-A4"
+  statement: "The allocator scans the RAW text, not the parsed model: a subtask carrying `- id: PMAT-900` under item PMAT-010 makes the next mint PMAT-901. Every YAML spelling of the key counts (`-   id:`, a bare `-` with `id:` on the next line, `\"id\":`, `'id':`, `id:X`); a key that merely starts with `id` or a commented-out row does not. Over-matching is safe (monotonic); under-matching is the only direction that mints a duplicate."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_allocator_next_id_number work_add_allocator_counts_nested_subtask_ids_from_the_raw_text"
+- id: "PO-A5"
+  statement: "An unparseable roadmap (a row with `status: bogus`) is refused with an error that names roadmap.yaml and a line number, and NOTHING is written: the roadmap bytes are identical before and after, and the lock file gains no high-water mark."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_writes_nothing_when_the_roadmap_does_not_parse"
+- id: "PO-A6"
+  statement: "The tests discriminate: with the pre-fix allocator planted back into add_item_with_next_id (parsed-model max, no high-water mark), PO-A3 and PO-A4 fail. Observed locally in a worktree and once in CI on the PR branch (the commit is reverted; see docs/audits/impl-PMAT-673-receipt.md)."
+  evidence_method: "git log --format=%s | grep -c 'MUTATION PMAT-673'   # 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+falsifiable_claims:
+- hypothesis: "Two sequential adds on an empty roadmap mint PMAT-001 then PMAT-002 and both rows are present with their own titles; the first is not replaced by the second."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_sequential_adds_mint_001_then_002"
+  from_step: "A1"
+- hypothesis: "Twelve OS processes (two rounds of six, each a re-exec of the test binary running one add) mint twelve distinct ids and the roadmap holds all twelve rows with their titles. Threads cannot observe the defect: flock is per open file description, so only processes contend the way concurrent checkouts do."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_twelve_processes_mint_twelve_distinct_ids"
+  from_step: "A2"
+- hypothesis: "The lock file's high-water mark is read under the same exclusive lock and beats the roadmap's max: with the roadmap at PMAT-010 and the lock file holding 5000, the add mints PMAT-5001 and the lock file then reads 5001. Before the fix acquire_write_lock opened the file with truncate(true), so nothing could persist there."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_honours_the_lock_file_high_water_mark"
+  from_step: "A3"
+- hypothesis: "The allocator scans the RAW text, not the parsed model: a subtask carrying `- id: PMAT-900` under item PMAT-010 makes the next mint PMAT-901. Every YAML spelling of the key counts (`-   id:`, a bare `-` with `id:` on the next line, `\"id\":`, `'id':`, `id:X`); a key that merely starts with `id` or a commented-out row does not. Over-matching is safe (monotonic); under-matching is the only direction that mints a duplicate."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_allocator_next_id_number work_add_allocator_counts_nested_subtask_ids_from_the_raw_text"
+  from_step: "A4"
+- hypothesis: "An unparseable roadmap (a row with `status: bogus`) is refused with an error that names roadmap.yaml and a line number, and NOTHING is written: the roadmap bytes are identical before and after, and the lock file gains no high-water mark."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_writes_nothing_when_the_roadmap_does_not_parse"
+  from_step: "A5"
+- hypothesis: "The tests discriminate: with the pre-fix allocator planted back into add_item_with_next_id (parsed-model max, no high-water mark), PO-A3 and PO-A4 fail. Observed locally in a worktree and once in CI on the PR branch (the commit is reverted; see docs/audits/impl-PMAT-673-receipt.md)."
+  method: "git log --format=%s | grep -c 'MUTATION PMAT-673'   # 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+  from_step: "A6"
