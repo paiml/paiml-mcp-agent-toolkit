@@ -4032,23 +4032,6 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-654
-  github_issue: null
-  item_type: task
-  title: 'git_context tests fail in any git worktree: the repo-path helper requires .git/HEAD, but a worktree''s .git is a file'
-  status: planned
-  priority: medium
-  assigned_to: null
-  created: 2026-09-03T21:34:43Z
-  updated: 2026-09-03T21:34:43Z
-  spec: null
-  acceptance_criteria:
-  - 'src/models/git_context.rs tests: repo_path() walks up from CARGO_MANIFEST_DIR looking for .git/HEAD; in a linked worktree .git is a file (''gitdir: …''), so the walk falls through to manifest_dir.parent() (not a repo) and four tests fail: test_is_git_repo_returns_true_for_git_repo, test_from_current_dir_extracts_commit_sha, test_from_current_dir_extracts_author_info, test_git_context_serialization. Seen by the aprender session on #1166 and by pmat verify on the AD-02 worktree (PMAT-652). Fix: accept a .git file (or ask git rev-parse --show-toplevel). Linked: PMAT-652.'
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
 - id: PMAT-655
   github_issue: null
   item_type: task
@@ -4087,7 +4070,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-06: the worker receipt carries the gate verdict and the orchestrator re-runs and diffs it'
-  status: in_progress
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-04T00:46:54Z
@@ -4104,7 +4087,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-10: the four lane modes — goal, teamwork, grill-me, plan — as one calling form'
-  status: in_progress
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-09-04T02:30:46Z
@@ -4138,7 +4121,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-07: the index is a faithful, reproducible view of the tree'
-  status: in_progress
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-04T02:51:57Z
@@ -4200,7 +4183,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: 'The AD-02 dog-food runs against the crate crates.io serves, so its receipt (docs/audits/release-3.37.0-dogfood.md) lands in the post-publish PR, as for 3.36.0 (#1173) — not in this cut.'
+  notes: The AD-02 dog-food runs against the crate crates.io serves, so its receipt (docs/audits/release-3.37.0-dogfood.md) lands in the post-publish PR, as for 3.36.0 (#1173) — not in this cut.
 - id: PMAT-672
   github_issue: null
   item_type: task
@@ -4217,4 +4200,42 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
+- id: PMAT-673
+  github_issue: null
+  item_type: task
+  title: 'work add: id allocator collides (pmat#1193/#1169)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-05T17:58:14Z
+  updated: 2026-09-05T17:58:14Z
+  spec: null
+  acceptance_criteria:
+  - 'generate_next_id (src/cli/handlers/work_handlers/ticket_handlers.rs) takes max over the PARSED items of one load() under a SHARED lock that is released before upsert_item takes the EXCLUSIVE lock; two processes both read max=N and both mint N+1, and the second upsert_item finds the id present and OVERWRITES the first ticket (find_item_mut). Fix: allocate under the exclusive lock as max over every ''- id:'' line of the raw roadmap text (not the parsed model, which drops rows serde rejects) plus the id recorded in docs/roadmaps/roadmap.yaml.lock, write the roadmap and the lock''s high-water mark under the same lock. Acceptance: sequential adds mint distinct ids; two concurrent processes mint distinct ids; an unparseable roadmap is refused with file:line and mints nothing (no roadmap write, no lock bump); a mutation that restores the old allocator turns the concurrent test RED once in CI, then reverted. Contract: pv contract in the same PR, or pv_lane=NotRun named in the receipt.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - bug
+  notes: null
+- id: PMAT-674
+  github_issue: null
+  item_type: task
+  title: 'work validate: duplicate ids RED, unparseable RED with file:line, wired into ci / gate'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-05T17:58:14Z
+  updated: 2026-09-05T17:58:14Z
+  spec: null
+  acceptance_criteria:
+  - 'handle_work_validate (src/cli/handlers/work_handlers/ticket_validate_migrate.rs) printed ''Validation passed'' on a roadmap carrying PMAT-654 twice (master 914fe6246, docs/roadmaps/roadmap.yaml:4001 and :4035). Fix: (1) a duplicated ''- id:'' is an ERROR, exit non-zero, naming the id and both file:line positions; (2) an unparseable roadmap exits non-zero and names file:line of the first parse error; (3) exit codes are documented in the command''s --help (0 valid, 1 invalid or unreadable); (4) a job that runs ''pmat work validate'' from the tree is added to .github/workflows/ci.yml and to the gate job''s needs list AND to its result loop, so a red roadmap fails the required check ''ci / gate'' rather than printing a warning. Acceptance: fixture with a duplicate id exits 1 and prints both lines; fixture with a YAML error exits 1 and prints file:line; the current roadmap exits 0; the gate loop names the new job.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - bug
   notes: null
