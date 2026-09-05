@@ -4224,11 +4224,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'work validate: duplicate ids RED, unparseable RED with file:line, wired into ci / gate'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-05T17:58:14Z
-  updated: 2026-09-05T17:58:14Z
+  updated: 2026-09-05T19:14:04.031896401+00:00
   spec: null
   acceptance_criteria:
   - 'handle_work_validate (src/cli/handlers/work_handlers/ticket_validate_migrate.rs) printed ''Validation passed'' on a roadmap carrying PMAT-654 twice (master 914fe6246, docs/roadmaps/roadmap.yaml:4001 and :4035). Fix: (1) a duplicated ''- id:'' is an ERROR, exit non-zero, naming the id and both file:line positions; (2) an unparseable roadmap exits non-zero and names file:line of the first parse error; (3) exit codes are documented in the command''s --help (0 valid, 1 invalid or unreadable); (4) a job that runs ''pmat work validate'' from the tree is added to .github/workflows/ci.yml and to the gate job''s needs list AND to its result loop, so a red roadmap fails the required check ''ci / gate'' rather than printing a warning. Acceptance: fixture with a duplicate id exits 1 and prints both lines; fixture with a YAML error exits 1 and prints file:line; the current roadmap exits 0; the gate loop names the new job.'

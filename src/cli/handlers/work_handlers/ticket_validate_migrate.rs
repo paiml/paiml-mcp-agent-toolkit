@@ -141,15 +141,200 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
 
     match serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>(&content) {
         Ok(roadmap) => {
+            // A duplicated id survives the strict parse: `roadmap` is a
+            // sequence, so two rows sharing an id are two well-formed rows and
+            // serde has nothing to complain about. Only the raw text can see
+            // the collision, and only the raw text can locate it.
+            let duplicates = duplicate_ids(&content);
+            if !duplicates.is_empty() {
+                return Err(report_duplicate_ids(&duplicates, &roadmap_path));
+            }
             print_valid_roadmap(&roadmap, verbose, fix);
             Ok(())
         }
         Err(e) => {
             print_yaml_error_context(&format!("{}", e), &content);
             print_row_violations(&collect_row_violations(&content));
-            anyhow::bail!("Roadmap validation failed")
+            Err(locate_parse_error(&e, &roadmap_path))
         }
     }
+}
+
+/// Print every duplicated id and return the error `work validate` fails with.
+///
+/// Both carry the same text: the stdout lines are for a human reading the run,
+/// the error is what a caller that only captures stderr (or a `?` chain) gets.
+fn report_duplicate_ids(duplicates: &[(String, Vec<usize>)], roadmap_path: &Path) -> anyhow::Error {
+    let file = roadmap_path.display().to_string();
+    let mut located = Vec::with_capacity(duplicates.len());
+    for (id, lines) in duplicates {
+        let at = lines
+            .iter()
+            .map(|line| format!("{file}:{line}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        println!("error: duplicate id {id} at {at}");
+        located.push(format!("{id} at {at}"));
+    }
+    anyhow::anyhow!(
+        "Roadmap validation failed: {} duplicate id(s): {}",
+        duplicates.len(),
+        located.join("; ")
+    )
+}
+
+/// Prefix a YAML parse failure with the position it happened at.
+///
+/// `serde_yaml_ng` knows the line and column; the previous bail threw them away
+/// and returned the bare string "Roadmap validation failed", so the only copy
+/// of the position was in the context block printed to stdout.
+fn locate_parse_error(error: &serde_yaml_ng::Error, roadmap_path: &Path) -> anyhow::Error {
+    let file = roadmap_path.display();
+    match error.location() {
+        Some(at) => anyhow::anyhow!("{file}:{}:{}: {error}", at.line(), at.column()),
+        None => anyhow::anyhow!("{file}: {error}"),
+    }
+}
+
+/// Every `id` key line of the raw roadmap text, 1-based, in file order.
+///
+/// Scanning text rather than the parsed document is deliberate on both counts:
+/// the parse has already discarded the collision by the time it returns a
+/// `Roadmap`, and a line number is what a reader needs in a 4,000-line file.
+///
+/// Recognised at any depth (items and subtasks alike), under every spelling
+/// YAML allows for the same key: `- id: X`, `-   id: X`, a bare `id: X` whose
+/// dash sits on the previous line, `- "id": X` and `- 'id': X`, `- id:X`, and
+/// a flow mapping `- {id: X, title: …}`.
+/// Not recognised: `identity:` and `github_issue:` (different keys), a
+/// commented-out `# - id:`, `-id:` — YAML needs a space after the dash, so
+/// that line is the scalar "-id:" and not a mapping at all — and the explicit
+/// key form `? id` (never emitted, never seen in a roadmap).
+///
+/// Quorum finding on PMAT-674: the body of a block scalar (`notes: |`,
+/// `- >-`) is text, not YAML. Every line indented deeper than the key that
+/// opened the block is skipped, so a reviewer's note quoting `id: PMAT-001`
+/// cannot fail the roadmap it sits in.
+pub(crate) fn collect_id_lines(raw: &str) -> Vec<(usize, String)> {
+    let mut found = Vec::new();
+    // Indentation of the line that opened a block scalar; `None` outside one.
+    let mut block_opened_at: Option<usize> = None;
+    for (index, line) in raw.lines().enumerate() {
+        let indent = line.len() - line.trim_start().len();
+        if let Some(opened_at) = block_opened_at {
+            if line.trim().is_empty() || indent > opened_at {
+                continue;
+            }
+            block_opened_at = None;
+        }
+        if let Some(id) = id_value_on_line(line) {
+            found.push((index + 1, id));
+        }
+        if opens_block_scalar(line) {
+            block_opened_at = Some(indent);
+        }
+    }
+    found
+}
+
+/// `key: |`, `key: >-`, `- |`: the value that starts here is a block scalar
+/// whose body is every deeper-indented line that follows.
+fn opens_block_scalar(line: &str) -> bool {
+    let trimmed = line.trim();
+    let value = match trimmed.find(':') {
+        Some(colon) => &trimmed[colon + 1..],
+        None => trimmed.strip_prefix('-').unwrap_or(""),
+    };
+    let head = value.trim().split(" #").next().unwrap_or("").trim();
+    let mut chars = head.chars();
+    matches!(chars.next(), Some('|' | '>')) && chars.all(|c| matches!(c, '-' | '+' | '0'..='9'))
+}
+
+/// The id declared on one raw line, if that line declares one.
+fn id_value_on_line(line: &str) -> Option<String> {
+    let after_dash = strip_sequence_dash(line.trim_start())?;
+    if after_dash.starts_with('{') {
+        return id_in_flow_mapping(after_dash);
+    }
+    let after_key = strip_id_key(after_dash)?;
+    Some(clean_scalar(after_key))
+}
+
+/// The `id` entry of a single-line flow mapping `{id: X, title: …}`.
+fn id_in_flow_mapping(flow: &str) -> Option<String> {
+    let inner = flow.strip_prefix('{')?.split('}').next()?;
+    inner
+        .split(',')
+        .find_map(|entry| strip_id_key(entry.trim()).map(clean_scalar))
+}
+
+/// Strip a leading `- ` sequence indicator, if there is one.
+///
+/// Returns `None` for a comment line and for `-id:`, where the dash is part of
+/// the scalar rather than an indicator.
+fn strip_sequence_dash(trimmed: &str) -> Option<&str> {
+    if trimmed.starts_with('#') {
+        return None;
+    }
+    let Some(after) = trimmed.strip_prefix('-') else {
+        return Some(trimmed);
+    };
+    if after.starts_with(char::is_whitespace) {
+        Some(after.trim_start())
+    } else {
+        None
+    }
+}
+
+/// Strip the key `id` — bare, "double" or 'single' quoted — and its colon.
+///
+/// The colon is required immediately (whitespace aside), which is what keeps
+/// `identity:` out: after `id` comes `e`, not a colon.
+fn strip_id_key(rest: &str) -> Option<&str> {
+    let after_key = rest
+        .strip_prefix("\"id\"")
+        .or_else(|| rest.strip_prefix("'id'"))
+        .or_else(|| rest.strip_prefix("id"))?;
+    after_key.trim_start().strip_prefix(':')
+}
+
+/// The scalar value of an `id:` line: unquoted, without a trailing comment.
+fn clean_scalar(raw: &str) -> String {
+    let value = raw.trim();
+    for quote in ['"', '\''] {
+        if let Some(inner) = value.strip_prefix(quote) {
+            if let Some(end) = inner.find(quote) {
+                return inner[..end].to_string();
+            }
+        }
+    }
+    match value.find(" #") {
+        Some(at) => value[..at].trim_end().to_string(),
+        None => value.to_string(),
+    }
+}
+
+/// Ids declared on more than one line, ordered by first occurrence, each with
+/// every line it was declared on.
+pub(crate) fn duplicate_ids(raw: &str) -> Vec<(String, Vec<usize>)> {
+    use std::collections::HashMap;
+
+    let mut first_seen: Vec<String> = Vec::new();
+    let mut lines_by_id: HashMap<String, Vec<usize>> = HashMap::new();
+    for (line, id) in collect_id_lines(raw) {
+        let lines = lines_by_id.entry(id.clone()).or_default();
+        if lines.is_empty() {
+            first_seen.push(id);
+        }
+        lines.push(line);
+    }
+    first_seen
+        .into_iter()
+        .filter_map(|id| {
+            let lines = lines_by_id.remove(&id)?;
+            (lines.len() > 1).then_some((id, lines))
+        })
+        .collect()
 }
 
 /// A schema violation in a single roadmap row, located by index and id.
