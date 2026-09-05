@@ -4205,11 +4205,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'work add: id allocator collides (pmat#1193/#1169)'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-05T17:58:14Z
-  updated: 2026-09-05T17:58:14Z
+  updated: 2026-09-05T18:05:10.828438430+00:00
   spec: null
   acceptance_criteria:
   - 'generate_next_id (src/cli/handlers/work_handlers/ticket_handlers.rs) takes max over the PARSED items of one load() under a SHARED lock that is released before upsert_item takes the EXCLUSIVE lock; two processes both read max=N and both mint N+1, and the second upsert_item finds the id present and OVERWRITES the first ticket (find_item_mut). Fix: allocate under the exclusive lock as max over every ''- id:'' line of the raw roadmap text (not the parsed model, which drops rows serde rejects) plus the id recorded in docs/roadmaps/roadmap.yaml.lock, write the roadmap and the lock''s high-water mark under the same lock. Acceptance: sequential adds mint distinct ids; two concurrent processes mint distinct ids; an unparseable roadmap is refused with file:line and mints nothing (no roadmap write, no lock bump); a mutation that restores the old allocator turns the concurrent test RED once in CI, then reverted. Contract: pv contract in the same PR, or pv_lane=NotRun named in the receipt.'

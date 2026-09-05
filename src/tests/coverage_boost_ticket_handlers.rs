@@ -10,12 +10,12 @@
 //! - handle_work_edit
 //! - handle_work_delete
 //! - handle_work_annotate
-//! - Helper functions (generate_next_id, find_item_fuzzy, extract_line_from_yaml_error, etc.)
+//! - Helper functions (next_id_number, find_item_fuzzy, extract_line_from_yaml_error, etc.)
 
 use crate::cli::commands::AnnotateOutputFormat;
 use crate::cli::commands::WorkPriority;
 use crate::models::roadmap::{ItemStatus, Priority, Roadmap, RoadmapItem};
-use crate::services::roadmap_service::RoadmapService;
+use crate::services::roadmap_service::{next_id_number, RoadmapService};
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -107,63 +107,50 @@ fn extract_line_from_yaml_error_test(error: &str) -> Option<usize> {
 }
 
 // ============================================================================
-// Tests for generate_next_id
+// Tests for the id allocator (PMAT-673)
+//
+// These used to call `generate_next_id_test`, a copy of `generate_next_id`'s
+// body living in this file: it asserted that the copy agreed with itself and
+// would have passed unchanged after the real function was deleted. They now
+// call the real pure allocator, `next_id_number`, which reads the RAW roadmap
+// text (so a subtask's id counts) plus the lock file's high-water mark.
 // ============================================================================
 
 #[test]
-fn test_generate_next_id_empty_roadmap() {
-    let roadmap = Roadmap::new(None);
-    let next_id = generate_next_id_test(&roadmap);
-    assert_eq!(next_id, "PMAT-001");
+fn test_next_id_number_empty_roadmap() {
+    assert_eq!(next_id_number("roadmap: []\n", None), 1);
 }
 
 #[test]
-fn test_generate_next_id_with_existing_items() {
-    let mut roadmap = Roadmap::new(None);
-    roadmap.upsert_item(RoadmapItem::new("PMAT-001".to_string(), "Test".to_string()));
-    roadmap.upsert_item(RoadmapItem::new("PMAT-005".to_string(), "Test".to_string()));
-    let next_id = generate_next_id_test(&roadmap);
-    assert_eq!(next_id, "PMAT-006");
+fn test_next_id_number_with_existing_items() {
+    let raw = "roadmap:\n  - id: PMAT-001\n  - id: PMAT-005\n";
+    assert_eq!(next_id_number(raw, None), 6);
 }
 
 #[test]
-fn test_generate_next_id_with_mixed_prefixes() {
-    let mut roadmap = Roadmap::new(None);
-    roadmap.upsert_item(RoadmapItem::new("GH-100".to_string(), "Test".to_string()));
-    roadmap.upsert_item(RoadmapItem::new("PMAT-003".to_string(), "Test".to_string()));
-    roadmap.upsert_item(RoadmapItem::new("TASK-050".to_string(), "Test".to_string()));
-    let next_id = generate_next_id_test(&roadmap);
-    // Should find max number across all prefixes (100) and add 1
-    assert_eq!(next_id, "PMAT-101");
+fn test_next_id_number_with_mixed_prefixes() {
+    // The number collides, not the prefix: max(100, 3, 50) + 1.
+    let raw = "roadmap:\n  - id: GH-100\n  - id: PMAT-003\n  - id: TASK-050\n";
+    assert_eq!(next_id_number(raw, None), 101);
 }
 
 #[test]
-fn test_generate_next_id_with_non_numeric_ids() {
-    let mut roadmap = Roadmap::new(None);
-    roadmap.upsert_item(RoadmapItem::new(
-        "no-number".to_string(),
-        "Test".to_string(),
-    ));
-    roadmap.upsert_item(RoadmapItem::new(
-        "also-no-number".to_string(),
-        "Test".to_string(),
-    ));
-    let next_id = generate_next_id_test(&roadmap);
-    // No numeric suffixes found, so starts from 1
-    assert_eq!(next_id, "PMAT-001");
+fn test_next_id_number_with_non_numeric_ids() {
+    let raw = "roadmap:\n  - id: no-number\n  - id: also-no-number\n";
+    assert_eq!(next_id_number(raw, None), 1);
 }
 
-/// Test helper that mimics generate_next_id logic
-fn generate_next_id_test(roadmap: &Roadmap) -> String {
-    let mut max_num = 0u32;
-    for item in &roadmap.roadmap {
-        if let Some(num_str) = item.id.split('-').next_back() {
-            if let Ok(num) = num_str.parse::<u32>() {
-                max_num = max_num.max(num);
-            }
-        }
-    }
-    format!("PMAT-{:03}", max_num + 1)
+#[test]
+fn test_next_id_number_counts_subtask_ids_the_model_hides() {
+    // The old `generate_next_id` walked the parsed items and could not see
+    // this id at all, so it minted PMAT-011 over a live PMAT-900 range.
+    let raw = "roadmap:\n  - id: PMAT-010\n    subtasks:\n      - id: PMAT-900\n";
+    assert_eq!(next_id_number(raw, None), 901);
+}
+
+#[test]
+fn test_next_id_number_lock_high_water_mark_wins() {
+    assert_eq!(next_id_number("  - id: PMAT-012\n", Some(5000)), 5001);
 }
 
 // ============================================================================
