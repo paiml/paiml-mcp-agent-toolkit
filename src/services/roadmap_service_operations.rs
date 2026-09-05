@@ -79,7 +79,14 @@ impl RoadmapService {
         // (c) every id line in the raw text, plus the persisted high-water
         // mark, beats the parsed model: subtask ids and rows the model drops
         // are ids in use too.
-        let next = next_id_number(&raw, read_high_water_mark(&mut lock));
+        // MUTATION PMAT-673 (DO NOT MERGE): the pre-fix allocator — parsed model only, no high-water mark.
+        let next = roadmap
+            .roadmap
+            .iter()
+            .filter_map(|i| i.id.rsplit('-').next()?.parse::<u32>().ok())
+            .max()
+            .unwrap_or(0)
+            + 1;
         let id = format!("PMAT-{next:03}");
 
         // (d) append — never upsert. The id is fresh by construction, and
