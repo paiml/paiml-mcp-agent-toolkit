@@ -239,6 +239,7 @@ jobs:
 - [ ] Documentation updated
 - [ ] Version bumped in Cargo.toml
 - [ ] RELEASE_NOTES.md updated
+- [ ] Mutation (diff) nightly's last verdict is green — it is a release gate, not a merge gate (BSE-06): `gh run list --workflow mutation-diff.yml -L1 --json conclusion`
 
 ### Release
 - [ ] Git tag created and pushed
