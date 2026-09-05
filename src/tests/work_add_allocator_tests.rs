@@ -15,7 +15,7 @@
 
 use crate::cli::commands::WorkPriority;
 use crate::models::roadmap::Roadmap;
-use crate::services::roadmap_service::RoadmapService;
+use crate::services::roadmap_service::{next_id_number, RoadmapService};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -220,12 +220,13 @@ async fn work_add_allocator_child_mints_once() {
     add(&project, &title).await.expect("child add succeeds");
 
     let roadmap = load_roadmap(&project);
-    let item = roadmap
-        .roadmap
-        .iter()
-        .find(|i| i.title == title)
-        .unwrap_or_else(|| panic!("the child's own ticket '{title}' is missing after its add"));
-    println!("MINTED {}", item.id);
+    let item = roadmap.roadmap.iter().find(|i| i.title == title);
+    assert!(
+        item.is_some(),
+        "the child's own ticket '{title}' is missing after its add, roadmap holds {:?}",
+        ids(&roadmap)
+    );
+    println!("MINTED {}", item.expect("asserted present above").id);
 }
 
 #[test]
@@ -262,12 +263,12 @@ fn work_add_allocator_twelve_processes_mint_twelve_distinct_ids() {
             );
             let id = stdout
                 .lines()
-                .find_map(|l| l.trim().strip_prefix("MINTED "))
-                .unwrap_or_else(|| {
-                    panic!("no MINTED line for '{title}'\nstdout:\n{stdout}\nstderr:\n{stderr}")
-                })
-                .to_string();
-            minted.push((title, id));
+                .find_map(|l| l.trim().strip_prefix("MINTED "));
+            assert!(
+                id.is_some(),
+                "no MINTED line for '{title}'\nstdout:\n{stdout}\nstderr:\n{stderr}"
+            );
+            minted.push((title, id.expect("asserted present above").to_string()));
         }
     }
 
@@ -288,19 +289,58 @@ fn work_add_allocator_twelve_processes_mint_twelve_distinct_ids() {
         ids(&roadmap)
     );
     for (title, id) in &minted {
-        let found = roadmap
-            .roadmap
-            .iter()
-            .find(|i| &i.id == id)
-            .unwrap_or_else(|| panic!("{id} is gone from the roadmap: {:?}", ids(&roadmap)));
-        assert_eq!(&found.title, title, "{id} carries the wrong title");
+        let found = roadmap.roadmap.iter().find(|i| &i.id == id);
+        assert!(
+            found.is_some(),
+            "{id} is gone from the roadmap: {:?}",
+            ids(&roadmap)
+        );
+        assert_eq!(
+            &found.expect("asserted present above").title,
+            title,
+            "{id} carries the wrong title"
+        );
     }
 }
 
 // ── T6: the pure allocator ──────────────────────────────────────────────────
-//
-// The unit cases for `next_id_number` land with the function itself: the
-// pre-commit gate runs clippy, so a committed tree that names a function that
-// does not exist cannot be committed at all. Their RED is the link error
-// `unresolved import crate::services::roadmap_service::next_id_number`,
-// recorded in this commit's message.
+
+#[test]
+fn work_add_allocator_next_id_number_starts_at_one() {
+    assert_eq!(next_id_number("", None), 1);
+    assert_eq!(
+        next_id_number("roadmap_version: '1.0'\nroadmap: []\n", None),
+        1
+    );
+}
+
+#[test]
+fn work_add_allocator_next_id_number_takes_the_max_over_every_prefix() {
+    let raw = "roadmap:\n  - id: GH-7\n  - id: PMAT-3\n";
+    assert_eq!(next_id_number(raw, None), 8);
+}
+
+#[test]
+fn work_add_allocator_next_id_number_reads_quoted_ids() {
+    assert_eq!(next_id_number("  - id: \"PMAT-12\"\n", None), 13);
+    assert_eq!(next_id_number("  - id: 'PMAT-12'\n", None), 13);
+}
+
+#[test]
+fn work_add_allocator_next_id_number_counts_nested_subtask_ids() {
+    let raw = "roadmap:\n  - id: PMAT-010\n    subtasks:\n      - id: PMAT-900\n";
+    assert_eq!(next_id_number(raw, None), 901);
+}
+
+#[test]
+fn work_add_allocator_next_id_number_lock_high_water_can_win() {
+    let raw = "  - id: PMAT-12\n";
+    assert_eq!(next_id_number(raw, Some(20)), 21);
+    assert_eq!(next_id_number(raw, Some(2)), 13);
+}
+
+#[test]
+fn work_add_allocator_next_id_number_ignores_non_numeric_suffixes() {
+    let raw = "  - id: PMAT-XX\n  - id: no-number-here\n  - id: PMAT-009\n";
+    assert_eq!(next_id_number(raw, None), 10);
+}
