@@ -10,21 +10,13 @@
 
 // --- Shared utility functions used across multiple include files ---
 
-/// Generate the next available ID for a new ticket
-fn generate_next_id(roadmap: &crate::models::roadmap::Roadmap) -> String {
-    let mut max_num = 0u32;
-
-    for item in &roadmap.roadmap {
-        // Try to extract number from IDs like "PMAT-001", "GH-123", etc.
-        if let Some(num_str) = item.id.split('-').next_back() {
-            if let Ok(num) = num_str.parse::<u32>() {
-                max_num = max_num.max(num);
-            }
-        }
-    }
-
-    format!("PMAT-{:03}", max_num + 1)
-}
+// PMAT-673: `generate_next_id(&roadmap)` lived here and is gone. It read the
+// PARSED items, so it could not see a subtask's id, and it ran outside the
+// write lock, so two processes minted the same number and the second add
+// silently replaced the first ticket (#1193, #1169). The allocator is now
+// `RoadmapService::add_item_with_next_id`, which mints from the RAW text plus
+// the lock file's high-water mark while holding the exclusive lock; its pure
+// core is `crate::services::roadmap_service::next_id_number`.
 
 /// Find an item with fuzzy ID matching (case-insensitive, partial match)
 fn find_item_fuzzy(
@@ -151,65 +143,40 @@ mod ticket_handlers_pure_tests {
         assert_eq!(extract_line_from_yaml_error(err), None);
     }
 
-    // ── generate_next_id ──
+    // ── next_id_number (PMAT-673) ──
+    //
+    // These were `generate_next_id` cases. That function re-derived the max
+    // from the parsed model; the cases are kept, pointed at the real allocator,
+    // and expressed in the RAW text it actually reads.
+
+    use crate::services::roadmap_service::next_id_number;
 
     #[test]
-    fn test_generate_next_id_empty_roadmap_starts_at_001() {
-        use crate::models::roadmap::Roadmap;
-        let roadmap = Roadmap::new(None);
-        assert_eq!(generate_next_id(&roadmap), "PMAT-001");
+    fn test_next_id_number_empty_roadmap_starts_at_001() {
+        assert_eq!(next_id_number("roadmap: []\n", None), 1);
     }
 
     #[test]
-    fn test_generate_next_id_picks_max_plus_one() {
-        use crate::models::roadmap::{Roadmap, RoadmapItem};
-        let mut roadmap = Roadmap::new(None);
-        roadmap
-            .roadmap
-            .push(RoadmapItem::new("PMAT-005".into(), "x".into()));
-        roadmap
-            .roadmap
-            .push(RoadmapItem::new("PMAT-100".into(), "y".into()));
-        roadmap
-            .roadmap
-            .push(RoadmapItem::new("PMAT-042".into(), "z".into()));
-        assert_eq!(generate_next_id(&roadmap), "PMAT-101");
+    fn test_next_id_number_picks_max_plus_one() {
+        let raw = "roadmap:\n  - id: PMAT-005\n  - id: PMAT-100\n  - id: PMAT-042\n";
+        assert_eq!(next_id_number(raw, None), 101);
     }
 
     #[test]
-    fn test_generate_next_id_handles_mixed_id_prefixes() {
-        use crate::models::roadmap::{Roadmap, RoadmapItem};
-        let mut roadmap = Roadmap::new(None);
-        roadmap
-            .roadmap
-            .push(RoadmapItem::new("GH-50".into(), "x".into()));
-        roadmap
-            .roadmap
-            .push(RoadmapItem::new("PMAT-007".into(), "y".into()));
-        // max(50, 7) = 50, so next is PMAT-051.
-        assert_eq!(generate_next_id(&roadmap), "PMAT-051");
+    fn test_next_id_number_handles_mixed_id_prefixes() {
+        // max(50, 7) = 50, so the next number is 51 whatever the prefixes are.
+        assert_eq!(next_id_number("  - id: GH-50\n  - id: PMAT-007\n", None), 51);
     }
 
     #[test]
-    fn test_generate_next_id_skips_non_numeric_suffixes() {
-        use crate::models::roadmap::{Roadmap, RoadmapItem};
-        let mut roadmap = Roadmap::new(None);
-        roadmap
-            .roadmap
-            .push(RoadmapItem::new("PMAT-XX".into(), "non-num".into()));
-        roadmap
-            .roadmap
-            .push(RoadmapItem::new("PMAT-009".into(), "num".into()));
-        // Non-numeric suffix is ignored; next is 9 + 1 = 10.
-        assert_eq!(generate_next_id(&roadmap), "PMAT-010");
+    fn test_next_id_number_skips_non_numeric_suffixes() {
+        // A suffix that is not a number cannot collide with a minted PMAT-NNN.
+        assert_eq!(next_id_number("  - id: PMAT-XX\n  - id: PMAT-009\n", None), 10);
     }
 
     #[test]
-    fn test_generate_next_id_pads_to_3_digits() {
-        use crate::models::roadmap::Roadmap;
-        let roadmap = Roadmap::new(None);
-        // Empty → max=0, next=1 → "PMAT-001" (3-digit zero pad).
-        let id = generate_next_id(&roadmap);
-        assert_eq!(id, "PMAT-001");
+    fn test_next_id_number_is_padded_to_3_digits_by_its_caller() {
+        // The number is the allocator's job; the shape is the caller's.
+        assert_eq!(format!("PMAT-{:03}", next_id_number("", None)), "PMAT-001");
     }
 }

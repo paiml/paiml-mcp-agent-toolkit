@@ -10,6 +10,13 @@ impl RoadmapService {
     }
 
     /// Acquire exclusive lock for writing
+    ///
+    /// PMAT-673: opened `read(true)` and `truncate(false)`. It used to be
+    /// `truncate(true)`, which emptied the file on every acquisition, so the
+    /// lock file could hold nothing but its own existence. It now carries the
+    /// id high-water mark that [`RoadmapService::add_item_with_next_id`] reads
+    /// and advances, and truncating on open would have destroyed that before
+    /// the first read.
     fn acquire_write_lock(&self) -> Result<File> {
         let lock_path = self.lock_file_path();
 
@@ -21,8 +28,9 @@ impl RoadmapService {
 
         let lock_file = OpenOptions::new()
             .create(true)
+            .read(true)
             .write(true)
-            .truncate(true)
+            .truncate(false)
             .open(&lock_path)
             .with_context(|| format!("Failed to open lock file: {:?}", lock_path))?;
 

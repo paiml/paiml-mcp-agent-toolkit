@@ -28,46 +28,49 @@ pub async fn handle_work_add(
         );
     }
 
-    // Load existing roadmap to find next available ID
-    let roadmap = service.load()?;
-    let next_id = generate_next_id(&roadmap);
-
-    // Create new item
+    // Everything about the item except its id, which only the allocator may
+    // decide.
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
-    let item = crate::models::roadmap::RoadmapItem {
-        id: next_id.clone(),
+    let item_priority = priority.to_roadmap_priority();
+    let item_title = title.clone();
+    let acceptance_criteria = description
+        .as_ref()
+        .map(|d| vec![d.clone()])
+        .unwrap_or_default();
+    let mut labels: Vec<String> = tags
+        .clone()
+        .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_default();
+    // #1186: `--level` is recorded as a `level:<L>` label until `work start`
+    // writes the contract, which reads it back.
+    if let Some(lv) = claimed {
+        labels.retain(|l| !l.starts_with("level:"));
+        labels.push(format!("level:{lv}"));
+    }
+
+    // PMAT-673 (#1193, #1169): mint the id and write the item under ONE
+    // exclusive lock. This used to be `generate_next_id(&service.load()?)`
+    // followed by `upsert_item`, with the lock released in between: two
+    // processes minted the same id and the second silently replaced the first
+    // ticket.
+    let next_id = service.add_item_with_next_id(move |id| crate::models::roadmap::RoadmapItem {
+        id,
         github_issue: None,
         item_type: crate::models::roadmap::ItemType::Task,
-        title: title.clone(),
+        title: item_title,
         status: crate::models::roadmap::ItemStatus::Planned,
-        priority: priority.to_roadmap_priority(),
+        priority: item_priority,
         assigned_to: None,
         created: now.clone(),
         updated: now,
         spec: None,
-        acceptance_criteria: description
-            .as_ref()
-            .map(|d| vec![d.clone()])
-            .unwrap_or_default(),
+        acceptance_criteria,
         phases: vec![],
         subtasks: vec![],
         estimated_effort: None,
-        labels: tags
-            .clone()
-            .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
-            .unwrap_or_default(),
+        labels,
         notes: None,
-    };
-
-    // #1186: `--level` is recorded as a `level:<L>` label until `work start`
-    // writes the contract, which reads it back.
-    let mut item = item;
-    if let Some(lv) = claimed {
-        item.labels.retain(|l| !l.starts_with("level:"));
-        item.labels.push(format!("level:{lv}"));
-    }
-    // Save to roadmap
-    service.upsert_item(item)?;
+    })?;
 
     println!("{}", c::pass(&format!("Created ticket: {}", c::path(&next_id))));
     println!("   {} {}", c::label("Title:"), title);

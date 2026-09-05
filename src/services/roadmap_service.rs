@@ -8,6 +8,9 @@ use crate::models::roadmap::{Roadmap, RoadmapItem};
 use anyhow::{Context, Result};
 use fs2::FileExt;
 use std::fs::{self, File, OpenOptions};
+// PMAT-673: the lock file stores the id high-water mark, so it is read, seeked
+// and written in place rather than merely held.
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 /// Default roadmap file location
