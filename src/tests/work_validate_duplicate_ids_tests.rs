@@ -278,3 +278,100 @@ fn work_validate_duplicate_help_documents_the_exit_codes() {
         "`work validate --help` must document exit 1: {help}"
     );
 }
+
+/// Every YAML spelling of the same key, plus four near misses that are not it.
+/// Line numbers matter, so the fixture is laid out one case per line.
+const SPELLINGS_FIXTURE: &str = "roadmap:
+- id: PLAIN
+-   id: EXTRA-SPACE
+- \"id\": DOUBLE-QUOTED-KEY
+- 'id': SINGLE-QUOTED-KEY
+- id:NO-SPACE
+- id: \"DOUBLE-QUOTED\"
+- id: 'SINGLE-QUOTED'
+- id: WITH-COMMENT # and a trailing comment
+- identity: NOT-AN-ID
+  github_issue: 12
+# - id: COMMENTED-OUT
+-id: NOT-A-SEQUENCE-ENTRY
+- title: the dash sits on this line
+  id: BARE
+  subtasks:
+  - id: SUB
+";
+
+/// Ids in an order that a set would lose: SECOND is declared first.
+const ORDER_FIXTURE: &str = "roadmap:
+- id: SECOND
+- id: FIRST
+- id: FIRST
+  subtasks:
+  - id: SECOND
+- id: FIRST
+- id: SECOND
+";
+
+/// V5: `collect_id_lines` reads every spelling of the key, at any depth, and
+/// nothing that merely looks like it.
+#[test]
+fn work_validate_duplicate_collect_id_lines_reads_every_spelling() {
+    let found = crate::cli::handlers::work_handlers::collect_id_lines(SPELLINGS_FIXTURE);
+
+    let expected: Vec<(usize, String)> = [
+        (2, "PLAIN"),
+        (3, "EXTRA-SPACE"),
+        (4, "DOUBLE-QUOTED-KEY"),
+        (5, "SINGLE-QUOTED-KEY"),
+        (6, "NO-SPACE"),
+        (7, "DOUBLE-QUOTED"),
+        (8, "SINGLE-QUOTED"),
+        (9, "WITH-COMMENT"),
+        (15, "BARE"),
+        (17, "SUB"),
+    ]
+    .into_iter()
+    .map(|(line, id)| (line, id.to_string()))
+    .collect();
+
+    assert_eq!(
+        found, expected,
+        "line numbers are 1-based and `identity:`, `github_issue:`, `# - id:` \
+         and `-id:` are not id lines"
+    );
+}
+
+/// V5: `duplicate_ids` keeps declaration order and reports every line, not just
+/// the second one — a reader fixing the roadmap needs both ends of the clash.
+#[test]
+fn work_validate_duplicate_ids_are_ordered_by_first_occurrence() {
+    let duplicates = crate::cli::handlers::work_handlers::duplicate_ids(ORDER_FIXTURE);
+
+    let expected = vec![
+        ("SECOND".to_string(), vec![2, 6, 8]),
+        ("FIRST".to_string(), vec![3, 4, 7]),
+    ];
+    assert_eq!(duplicates, expected);
+}
+
+/// V5: a subtask that reuses an item's id is a duplicate. Ids are the handle
+/// `pmat work` addresses tickets by, so the collision is real whatever depth
+/// the two declarations sit at.
+#[test]
+fn work_validate_duplicate_subtask_id_matching_an_item_id_counts() {
+    let yaml = "roadmap:\n- id: PMAT-1\n  subtasks:\n  - id: PMAT-1\n";
+
+    let duplicates = crate::cli::handlers::work_handlers::duplicate_ids(yaml);
+
+    assert_eq!(duplicates, vec![("PMAT-1".to_string(), vec![2, 4])]);
+}
+
+/// V5: a roadmap whose ids are all distinct has no duplicates to report.
+#[test]
+fn work_validate_duplicate_ids_is_empty_when_every_id_is_distinct() {
+    let duplicates = crate::cli::handlers::work_handlers::duplicate_ids(VALID_FIXTURE);
+
+    assert!(
+        duplicates.is_empty(),
+        "distinct ids must not be reported: {duplicates:?}"
+    );
+}
