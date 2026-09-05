@@ -79,7 +79,7 @@ name: Mutation (diff)
 on:
   schedule:
     # 03:17 UTC, off the hour to avoid the top-of-hour scheduling queue.
-    - cron: '17 3 * * *'
+    - cron: '0 2 * * *'
   pull_request:
     branches: [main, master]
     types: [opened, synchronize, reopened, labeled]
@@ -110,7 +110,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' ||
       contains(github.event.pull_request.labels.*.name, 'mutation')
-    runs-on: [self-hosted, X64, Linux]
+    runs-on: [self-hosted, X64, Linux, clean-room]
     container:
       image: localhost:5000/sovereign-ci:stable
     timeout-minutes: 300

@@ -21,6 +21,7 @@ jobs:
   verify-release:
     name: Verify published release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -66,6 +67,7 @@ jobs:
   msrv-check:
     name: MSRV verification
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       # Derive the MSRV from Cargo.toml's declared `rust-version` instead of

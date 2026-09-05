@@ -60,6 +60,7 @@ jobs:
             os: macos-latest
             cross: false
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - name: Resolve release tag
         id: tag
@@ -165,6 +166,7 @@ jobs:
     name: Summary
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: always()
     steps:
       - name: Write summary

@@ -27,6 +27,7 @@ jobs:
   # a red gate rather than a missing one.
   gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [ci, windows-check, reusable-pin-drift]
     if: always()
     steps:
@@ -201,7 +202,7 @@ jobs:
   #   5. ratchet from the measured baseline, not the absolute 80.0
   #   6. only then remove both `continue-on-error`
   mutants:
-    runs-on: [self-hosted, X64, Linux]
+    runs-on: [self-hosted, clean-room]
     continue-on-error: true
     container:
       image: localhost:5000/sovereign-ci:stable

@@ -4200,5 +4200,21 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
-  notes:
-  - 'The AD-02 dog-food runs against the crate crates.io serves, so its receipt (docs/audits/release-3.37.0-dogfood.md) lands in the post-publish PR, as for 3.36.0 (#1173) — not in this cut.'
+  notes: 'The AD-02 dog-food runs against the crate crates.io serves, so its receipt (docs/audits/release-3.37.0-dogfood.md) lands in the post-publish PR, as for 3.36.0 (#1173) — not in this cut.'
+- id: PMAT-672
+  github_issue: null
+  item_type: task
+  title: 'BSE-05/06: timeout-minutes on every job; one pool label per runs-on; mutation-diff off the PR path (BSE-001 wave 1)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-05T08:42:03Z
+  updated: 2026-09-05T08:42:03Z
+  spec: null
+  acceptance_criteria:
+  - 'spec: paiml/infra docs/specifications/build-system-enhancement.md §4 wave 1'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

@@ -1,0 +1,5 @@
+# actionlint knows GitHub-hosted labels only; self-hosted labels must be declared here or
+# every fleet runs-on is reported as an unknown label (BSE-001 wave 1).
+# Pool labels: exactly one per self-hosted runs-on (infra runs-on-pool-label-guard.sh).
+self-hosted-runner:
+  labels: [clean-room, perf-solo, merge-queue, intel]

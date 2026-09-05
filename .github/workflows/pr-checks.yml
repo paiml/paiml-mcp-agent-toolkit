@@ -8,6 +8,7 @@ jobs:
   pr-title:
     name: PR Title Check
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     steps:
       - name: Validate PR title
         uses: amannn/action-semantic-pull-request@v6
@@ -37,6 +38,7 @@ jobs:
   pr-size:
     name: PR Size Check
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       
@@ -101,6 +103,7 @@ jobs:
   conflicts-check:
     name: Merge Conflicts Check
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       
