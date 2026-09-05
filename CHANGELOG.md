@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.38.0] - 2026-09-05
+
+### Fixed
+
+- `pmat work add` minted colliding ids (#1193, #1169; PMAT-673, PR #1195). The
+  allocator ran outside the write lock over the parsed model: two processes both
+  read `max = N`, both minted `N+1`, and the second silently overwrote the first
+  ticket. The id is now minted under ONE exclusive lock from every `id:` line of
+  the raw roadmap text (subtask ids and every YAML spelling of the key included)
+  plus a high-water mark persisted in `docs/roadmaps/roadmap.yaml.lock`; an
+  unparseable roadmap is refused with `file:line` and writes nothing. 13 lib
+  tests including a 12-process contention test; the planted pre-fix allocator
+  was observed RED in CI and reverted.
+- `pmat work validate` printed "Validation passed" on a roadmap carrying the
+  same id twice (PMAT-674, PR #1196; this repo's own roadmap carried `PMAT-654`
+  twice, removed in #1194). A duplicated id is now an error naming the id and
+  every `file:line`; an unparseable roadmap fails with `file:line:column` in the
+  error itself; `--help` documents the exit codes (0 valid, 1 invalid or
+  unreadable). The raw-text scanner skips block-scalar bodies and reads
+  flow-style rows (agy quorum findings, both reproduced RED before the fix).
+
+### Added
+
+- CI job `roadmap validates` (`.github/workflows/ci.yml`): builds pmat from the
+  tree, first proves the validator can fail on a duplicated-id fixture, then
+  validates `docs/roadmaps/roadmap.yaml`. It is in the required `gate`'s `needs`
+  and result loop, so a red roadmap fails `ci / gate` instead of printing a
+  warning. Its own control step went RED on the planted mutation.
+- pv work contracts `contracts/work/PMAT-673.yaml` and `contracts/work/PMAT-674.yaml`;
+  receipts `docs/audits/impl-PMAT-673-receipt.md` and `impl-PMAT-674-receipt.md`.
+
+### Known, not fixed
+
+- The whole-file re-serialisation of `roadmap.yaml` on every `work add` / `work
+  edit` (the other half of #1193 / #1169) and cross-checkout id collisions (the
+  lock file is per checkout) are follow-ups.
+- The infra pin bump 3.37.0 → 3.38.0 in the org workflows is a named follow-up.
+
 ## [3.37.0] - 2026-09-04
 
 Agentic delivery (spec: `docs/specifications/agentic-delivery-pmat.md`) and two
