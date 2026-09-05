@@ -833,6 +833,7 @@ jobs:
   feature-gate:
     name: feature-gate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, dependabot-alerts, unrun-tests, reachability-ledger, differential-corpus, flag-efficacy]
     if: always()
     steps:
