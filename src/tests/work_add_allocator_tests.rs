@@ -326,6 +326,51 @@ fn work_add_allocator_next_id_number_reads_quoted_ids() {
     assert_eq!(next_id_number("  - id: 'PMAT-12'\n", None), 13);
 }
 
+/// Quorum finding on PMAT-673 (3/3 lanes): the first scanner matched the
+/// literal `- id:` only. A hand-edited roadmap may spell the key in ways serde
+/// never emits, and missing one is a false LOW — the only direction that mints
+/// a duplicate. Every spelling below is an id in use.
+#[test]
+fn work_add_allocator_next_id_number_reads_every_yaml_spelling_of_the_key() {
+    assert_eq!(
+        next_id_number("  -   id: PMAT-21\n", None),
+        22,
+        "extra spaces after the dash"
+    );
+    assert_eq!(
+        next_id_number("  -\n    id: PMAT-22\n", None),
+        23,
+        "id on the line after a bare dash"
+    );
+    assert_eq!(
+        next_id_number("  - \"id\": PMAT-23\n", None),
+        24,
+        "double-quoted key"
+    );
+    assert_eq!(
+        next_id_number("  - 'id': \"PMAT-24\"\n", None),
+        25,
+        "single-quoted key, quoted value"
+    );
+    assert_eq!(
+        next_id_number("  - id:PMAT-25\n", None),
+        26,
+        "no space after the colon"
+    );
+    assert_eq!(
+        next_id_number("  - id: PMAT-26   # trailing comment\n", None),
+        27,
+        "trailing comment"
+    );
+    // Not ids: a key that merely starts with `id`, a commented-out row, another key.
+    let not_ids = "  - identity: PMAT-99\n  # - id: PMAT-98\n  github_issue: 97\n  -id: PMAT-96\n";
+    assert_eq!(
+        next_id_number(not_ids, None),
+        1,
+        "nothing here is an id key"
+    );
+}
+
 #[test]
 fn work_add_allocator_next_id_number_counts_nested_subtask_ids() {
     let raw = "roadmap:\n  - id: PMAT-010\n    subtasks:\n      - id: PMAT-900\n";

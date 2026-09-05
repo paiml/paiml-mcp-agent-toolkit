@@ -190,7 +190,7 @@ impl RoadmapService {
 pub(crate) fn next_id_number(raw_text: &str, lock_high_water: Option<u32>) -> u32 {
     let mut max = lock_high_water.unwrap_or(0);
     for line in raw_text.lines() {
-        let Some(value) = line.trim_start().strip_prefix("- id:") else {
+        let Some(value) = id_key_value(line) else {
             continue;
         };
         let Some(token) = value.split_whitespace().next() else {
@@ -204,6 +204,31 @@ pub(crate) fn next_id_number(raw_text: &str, lock_high_water: Option<u32>) -> u3
         }
     }
     max.saturating_add(1)
+}
+
+/// The value of an `id:` mapping key on this line, under every YAML spelling
+/// a hand-edited roadmap can use: `- id: X`, `-   id: X`, `id: X` (the `-` on
+/// the line above), `- "id": X`, `- 'id': X`, `- id:X`. A comment, another
+/// key (`identity:`, `github_issue:`), or a scalar continuation is `None`.
+///
+/// PMAT-673 quorum finding: the first version matched the literal `- id:`
+/// only, so an id in use under any other valid spelling was invisible to the
+/// allocator — a false LOW, the one direction that mints a duplicate.
+/// Over-matching (a block scalar that happens to contain `id: PMAT-9`) is
+/// safe: it can only push the next number higher.
+fn id_key_value(line: &str) -> Option<&str> {
+    let mut rest = line.trim_start();
+    if let Some(after_dash) = rest.strip_prefix('-') {
+        // A sequence item: the dash must be followed by whitespace or nothing.
+        if !after_dash.is_empty() && !after_dash.starts_with(char::is_whitespace) {
+            return None;
+        }
+        rest = after_dash.trim_start();
+    }
+    let after_key = ["\"id\"", "'id'", "id"]
+        .iter()
+        .find_map(|key| rest.strip_prefix(key))?;
+    after_key.trim_start().strip_prefix(':')
 }
 
 /// The id high-water mark persisted in an already-held lock file, if it holds
