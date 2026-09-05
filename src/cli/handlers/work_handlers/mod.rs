@@ -23,3 +23,11 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
 include!("ticket_handlers.rs");
+
+// PMAT-674: duplicate-id and parse-location guards for `pmat work validate`.
+// Declared here rather than from `src/tests/lib.rs`, which is an orphan target
+// (docs/status/orphan-files-ledger.md) — CI runs `cargo test --lib`, so a test
+// registered only there would never be compiled, and would never fail.
+#[cfg(test)]
+#[path = "../../../tests/work_validate_duplicate_ids_tests.rs"]
+mod work_validate_duplicate_ids_tests;
