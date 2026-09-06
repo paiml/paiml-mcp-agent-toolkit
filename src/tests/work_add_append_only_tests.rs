@@ -327,3 +327,83 @@ fn work_add_append_only_pure_operations_refuse_what_they_cannot_locate() {
         "an empty sequence has no indent to read"
     );
 }
+
+/// Quorum lane 1 on PR #1201 (PMAT-679): `append_item` appended at EOF, so a
+/// roadmap whose `roadmap:` sequence is NOT the last top-level key received a
+/// sequence item inside the following mapping — YAML that `validate` rejects.
+/// The row must land at the end of the sequence, before the next key; when
+/// `roadmap:` is the last key the result is still exactly `old + block`.
+#[test]
+fn work_add_append_only_appends_inside_the_sequence_when_a_key_follows_it() {
+    let raw = "roadmap_version: '1.0'\nroadmap:\n- id: PMAT-001\n  title: a\n  status: planned\ngithub_enabled: false\ngithub_repo: paiml/x\n";
+    let block = "- id: PMAT-002\n  title: b\n  status: planned\n";
+    let out = crate::services::roadmap_text::append_item(raw, block);
+    let parsed: Result<crate::models::roadmap::Roadmap, _> = serde_yaml_ng::from_str(&out);
+    assert!(
+        parsed.is_ok(),
+        "the appended file must still parse: {:?}\n{out}",
+        parsed.err()
+    );
+    let parsed = parsed.unwrap_or_default();
+    assert_eq!(
+        parsed.roadmap.len(),
+        2,
+        "both rows are rows of the sequence:\n{out}"
+    );
+    assert_eq!(
+        parsed.github_repo.as_deref(),
+        Some("paiml/x"),
+        "the trailing key survives:\n{out}"
+    );
+    let key_at = out.find("\ngithub_enabled:").expect("trailing key present");
+    let row_at = out.find("- id: PMAT-002").expect("new row present");
+    assert!(
+        row_at < key_at,
+        "the new row sits before the trailing key:\n{out}"
+    );
+    // When the sequence is the last key, nothing but an append happens.
+    let tail_raw =
+        "roadmap_version: '1.0'\nroadmap:\n- id: PMAT-001\n  title: a\n  status: planned\n";
+    assert_eq!(
+        crate::services::roadmap_text::append_item(tail_raw, block),
+        format!("{tail_raw}{block}")
+    );
+}
+
+/// Quorum lane 1 on PR #1201 (PMAT-679): a row written with its `id` on the
+/// SECOND line (`- title: …` first) was invisible to the row finder, so
+/// editing the row above it swallowed it into the replaced span. Every dash
+/// line at the row indent starts a row, whichever key comes first.
+#[test]
+fn work_add_append_only_edit_never_swallows_a_row_whose_id_is_not_on_the_dash_line() {
+    let raw = "roadmap_version: '1.0'\nroadmap:\n- id: PMAT-001\n  title: a\n  status: planned\n- title: early\n  id: PMAT-002\n  status: planned\n- id: PMAT-003\n  title: c\n  status: planned\n";
+    let block = "- id: PMAT-001\n  title: a (edited)\n  status: planned\n";
+    let out = crate::services::roadmap_text::replace_item_block(raw, "PMAT-001", block)
+        .expect("PMAT-001 is a top-level row");
+    assert!(
+        out.contains("- title: early\n  id: PMAT-002\n  status: planned\n"),
+        "the id-on-second-line row survives verbatim:\n{out}"
+    );
+    assert!(
+        out.contains("- id: PMAT-003\n  title: c\n"),
+        "the row after it survives:\n{out}"
+    );
+    assert_eq!(out.matches("- id: PMAT-001").count(), 1);
+    // And that row is itself editable.
+    let block2 = "- id: PMAT-002\n  title: early (edited)\n  status: planned\n";
+    let out2 = crate::services::roadmap_text::replace_item_block(raw, "PMAT-002", block2);
+    assert!(
+        out2.is_some(),
+        "a row whose id is not on the dash line is still a row"
+    );
+    let out2 = out2.unwrap_or_default();
+    assert!(
+        out2.contains("- id: PMAT-001\n  title: a\n")
+            && out2.contains("- id: PMAT-003\n  title: c\n"),
+        "neighbours untouched:\n{out2}"
+    );
+    assert!(
+        !out2.contains("- title: early\n"),
+        "the old row body is gone:\n{out2}"
+    );
+}

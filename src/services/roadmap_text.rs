@@ -385,7 +385,36 @@ pub fn append_item(raw: &str, block: &str) -> String {
             out.push_str(&raw[span.1..]);
             out
         }
-        Some((_, false)) => append_at_end(raw, block),
+        Some((key_span, false)) => {
+            // Quorum lane 1 on PR #1201: when a top-level key FOLLOWS the
+            // sequence, the row must land at the end of the sequence, not at
+            // EOF inside that key's mapping. With `roadmap:` last (what pmat
+            // writes) this is exactly `raw + block`.
+            let spans = line_spans(raw);
+            let indent = row_indent(raw);
+            let key_index = spans.iter().position(|&s| s == key_span).unwrap_or(0);
+            match sequence_boundary(raw, &spans, indent, key_index + 1) {
+                None => append_at_end(raw, block),
+                Some(boundary) => {
+                    let last_start = top_level_rows(raw, &spans, indent)
+                        .iter()
+                        .map(|(index, _)| *index)
+                        .rfind(|&index| index < boundary);
+                    let end = last_start.map_or(key_index, |start| {
+                        last_line_of_row(raw, &spans, start, boundary, indent)
+                    });
+                    let head = &raw[..spans[end].1];
+                    let mut out = String::with_capacity(raw.len() + block.len() + 1);
+                    out.push_str(head);
+                    if !head.ends_with('\n') {
+                        out.push('\n');
+                    }
+                    out.push_str(block);
+                    out.push_str(&raw[spans[end].1..]);
+                    out
+                }
+            }
+        }
         None => {
             let mut out = append_at_end(raw, "roadmap:\n");
             out.push_str(block);
@@ -439,11 +468,16 @@ pub fn replace_item_block(raw: &str, id: &str, block: &str) -> Option<String> {
     let indent = row_indent(raw);
     let spans = line_spans(raw);
     let rows = top_level_rows(raw, &spans, indent);
-    let position = rows.iter().position(|(_, found)| found == id)?;
+    let position = rows
+        .iter()
+        .position(|(_, found)| found.as_deref() == Some(id))?;
     let start = rows[position].0;
-    let limit = rows
+    let next_row = rows
         .get(position + 1)
         .map_or(spans.len(), |(index, _)| *index);
+    // A top-level key after the last row ends the sequence before it too.
+    let limit =
+        sequence_boundary(raw, &spans, indent, start + 1).map_or(next_row, |b| b.min(next_row));
     let end = last_line_of_row(raw, &spans, start, limit, indent);
     Some(format!(
         "{}{}{}",
@@ -474,20 +508,67 @@ fn line_text(raw: &str, span: (usize, usize)) -> &str {
     raw[span.0..span.1].trim_end_matches(['\n', '\r'])
 }
 
-/// Every top-level row: the index of its `- id:` line, and the id it declares.
-fn top_level_rows(raw: &str, spans: &[(usize, usize)], indent: usize) -> Vec<(usize, String)> {
-    spans
+/// Every top-level row: the index of its dash line at the row indent, and the
+/// id it declares — found among the row's own keys, not only on the dash line
+/// (quorum lane 1 on PR #1201: `- title: …` first and `id:` second is a row
+/// too, and one that the row finder must never fold into its neighbour). A
+/// row without an id is still a boundary for the row before it.
+fn top_level_rows(
+    raw: &str,
+    spans: &[(usize, usize)],
+    indent: usize,
+) -> Vec<(usize, Option<String>)> {
+    let starts: Vec<usize> = spans
         .iter()
         .enumerate()
         .filter_map(|(index, &span)| {
             let line = line_text(raw, span);
             let trimmed = line.trim_start();
-            if !trimmed.starts_with('-') || line.len() - trimmed.len() != indent {
-                return None;
-            }
-            id_value_on_line(line).map(|id| (index, id))
+            let dash = trimmed.strip_prefix('-')?;
+            let is_item = dash.is_empty() || dash.starts_with(char::is_whitespace);
+            (is_item && line.len() - trimmed.len() == indent).then_some(index)
+        })
+        .collect();
+    starts
+        .iter()
+        .enumerate()
+        .map(|(n, &start)| {
+            let limit = starts.get(n + 1).copied().unwrap_or(spans.len());
+            let limit =
+                sequence_boundary(raw, spans, indent, start + 1).map_or(limit, |b| b.min(limit));
+            let id = (start..limit).find_map(|index| {
+                let line = line_text(raw, spans[index]);
+                let column = line.len() - line.trim_start().len();
+                if column <= indent + 2 {
+                    id_value_on_line(line)
+                } else {
+                    None
+                }
+            });
+            (start, id)
         })
         .collect()
+}
+
+/// The index of the first line at or after `from` that ends the top-level
+/// `roadmap:` sequence — non-blank, not a comment, at a column no deeper than
+/// the row indent and not a row's dash: the next top-level key. `None` when
+/// the sequence runs to the end of the file (what pmat itself writes).
+fn sequence_boundary(
+    raw: &str,
+    spans: &[(usize, usize)],
+    indent: usize,
+    from: usize,
+) -> Option<usize> {
+    (from..spans.len()).find(|&index| {
+        let line = line_text(raw, spans[index]);
+        let trimmed = line.trim_start();
+        let column = line.len() - trimmed.len();
+        !trimmed.is_empty()
+            && !trimmed.starts_with('#')
+            && column <= indent
+            && !trimmed.starts_with('-')
+    })
 }
 
 /// The last line index that belongs to the row starting at `start`: the last

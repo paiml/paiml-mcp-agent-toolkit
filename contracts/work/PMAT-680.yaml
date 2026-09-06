@@ -26,7 +26,7 @@ proof_obligations:
   evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_single_authority_counts_ids_on_other_refs work_add_single_authority_lock_lives_in_the_git_common_dir work_add_single_authority_falls_back_to_the_sibling_lock_outside_git"
 - id: "PO-3"
   statement: "Discrimination: with the every-ref term dropped from the mint, the other-refs test fails while the two-checkout, common-dir and fallback tests stay green (observed on the branch, restored; re-observed by the orchestrator)."
-  evidence_method: "git log --format=%s | grep -c 'MUTATION PMAT-680'   # 0 on the merged branch"
+  evidence_method: "! git log --format=%s | grep -q 'MUTATION PMAT-680'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
 falsifiable_claims:
 - hypothesis: "Two checkouts (worktrees) of one repository running work add concurrently, three rounds, mint six distinct ids; each checkout's roadmap holds exactly its own new rows and new_text == old_text + its appended blocks."
   method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_single_authority_tests::work_add_single_authority_two_checkouts_mint_distinct_ids"
@@ -35,5 +35,5 @@ falsifiable_claims:
   method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_single_authority_counts_ids_on_other_refs work_add_single_authority_lock_lives_in_the_git_common_dir work_add_single_authority_falls_back_to_the_sibling_lock_outside_git"
   from_step: "2"
 - hypothesis: "Discrimination: with the every-ref term dropped from the mint, the other-refs test fails while the two-checkout, common-dir and fallback tests stay green (observed on the branch, restored; re-observed by the orchestrator)."
-  method: "git log --format=%s | grep -c 'MUTATION PMAT-680'   # 0 on the merged branch"
+  method: "! git log --format=%s | grep -q 'MUTATION PMAT-680'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
   from_step: "3"

@@ -26,7 +26,7 @@ proof_obligations:
   evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_append_only_edit_replaces_only_the_edited_block work_add_append_only_add_opens_an_empty_flow_sequence work_add_append_only_pure_operations_refuse_what_they_cannot_locate"
 - id: "PO-3"
   statement: "Discrimination: with the add path routed back through the whole-file serde writer, PO-1 fails while work_add_refuses_invalid_* and work_add_allocator_* stay green (observed on the branch, restored; re-observed by the orchestrator)."
-  evidence_method: "git log --format=%s | grep -c 'MUTATION PMAT-679'   # 0 on the merged branch"
+  evidence_method: "! git log --format=%s | grep -q 'MUTATION PMAT-679'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
 falsifiable_claims:
 - hypothesis: "On a fixture with a leading comment, an unknown key, a flow-style row, a block scalar and a trailing comment, work add produces new_text == old_text + exactly one rendered block; the file still parses and validates; the changed lines are the block's lines and nothing else."
   method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_append_only_tests::work_add_append_only_add_appends_the_row_and_rewrites_nothing"
@@ -35,5 +35,5 @@ falsifiable_claims:
   method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_append_only_edit_replaces_only_the_edited_block work_add_append_only_add_opens_an_empty_flow_sequence work_add_append_only_pure_operations_refuse_what_they_cannot_locate"
   from_step: "2"
 - hypothesis: "Discrimination: with the add path routed back through the whole-file serde writer, PO-1 fails while work_add_refuses_invalid_* and work_add_allocator_* stay green (observed on the branch, restored; re-observed by the orchestrator)."
-  method: "git log --format=%s | grep -c 'MUTATION PMAT-679'   # 0 on the merged branch"
+  method: "! git log --format=%s | grep -q 'MUTATION PMAT-679'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
   from_step: "3"

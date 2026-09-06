@@ -29,7 +29,7 @@ proof_obligations:
   evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_refuses_invalid_clean_roadmap_still_mints_and_still_validates work_add_refuses_invalid_one_scanner_settles_both_readings work_add_refuses_invalid_check_roadmap_text_renders_validates_wording work_add_allocator work_validate_duplicate"
 - id: "PO-W4"
   statement: "Discrimination: with the check_roadmap_text call removed from add_item_with_next_id, PO-W1 fails while every work_validate_duplicate_* test and PO-W2 stay green (observed on the branch, then restored; re-observed once in CI on the PR branch and reverted)."
-  evidence_method: "git log --format=%s | grep -c 'MUTATION PMAT-676'   # 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+  evidence_method: "! git log --format=%s | grep -q 'MUTATION PMAT-676'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
 falsifiable_claims:
 - hypothesis: "On a roadmap that declares PMAT-011 twice, `work add` returns Err naming the id and both file:line positions, the roadmap bytes are identical before and after, and the lock file's high-water mark is unchanged."
   method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_refuses_invalid_tests::work_add_refuses_invalid_add_refuses_a_duplicated_id_and_writes_nothing"
@@ -41,5 +41,5 @@ falsifiable_claims:
   method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_refuses_invalid_clean_roadmap_still_mints_and_still_validates work_add_refuses_invalid_one_scanner_settles_both_readings work_add_refuses_invalid_check_roadmap_text_renders_validates_wording work_add_allocator work_validate_duplicate"
   from_step: "W3"
 - hypothesis: "Discrimination: with the check_roadmap_text call removed from add_item_with_next_id, PO-W1 fails while every work_validate_duplicate_* test and PO-W2 stay green (observed on the branch, then restored; re-observed once in CI on the PR branch and reverted)."
-  method: "git log --format=%s | grep -c 'MUTATION PMAT-676'   # 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+  method: "! git log --format=%s | grep -q 'MUTATION PMAT-676'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
   from_step: "W4"
