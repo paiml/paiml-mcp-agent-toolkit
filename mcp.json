@@ -1,6 +1,6 @@
 {
   "name": "pmat",
-  "version": "3.37.0",
+  "version": "3.38.0",
   "description": "Project Analysis and Intelligence Modeling Toolkit",
   "main": "pmat",
   "bin": {
