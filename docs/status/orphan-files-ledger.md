@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4435 tracked `.rs` files: 3946 reachable from 137 target root(s), 407 orphaned (126935 lines, 6292 `#[test]` fns), 82 quarantined (35891 lines, 2021 `#[test]` fns).
+4437 tracked `.rs` files: 3948 reachable from 137 target root(s), 407 orphaned (126922 lines, 6294 `#[test]` fns), 82 quarantined (35891 lines, 2021 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -369,7 +369,7 @@ same change; do not edit counts by hand.
 | `src/tests/coverage_boost_similarity.rs` | pending-#1017 | 0 | 31 |
 | `src/tests/coverage_boost_tdg.rs` | pending-#1017 | 22 | 303 |
 | `src/tests/coverage_boost_tdg_calculator.rs` | pending-#1017 | 26 | 321 |
-| `src/tests/coverage_boost_ticket_handlers.rs` | pending-#1017 | 34 | 495 |
+| `src/tests/coverage_boost_ticket_handlers.rs` | pending-#1017 | 36 | 482 |
 | `src/tests/coverage_boost_ticket_handlers_part2.rs` | pending-#1017 | 35 | 465 |
 | `src/tests/coverage_boost_ticket_handlers_part3.rs` | pending-#1017 | 18 | 387 |
 | `src/tests/coverage_boost_unified_ast.rs` | pending-#1017 | 122 | 816 |
