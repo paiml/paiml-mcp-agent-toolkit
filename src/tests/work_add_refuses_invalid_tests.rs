@@ -246,3 +246,109 @@ async fn work_add_refuses_invalid_clean_roadmap_still_mints_and_still_validates(
     .await
     .expect("what `add` and `edit` wrote must validate");
 }
+
+// ── R4: the one scanner, against both implementations it replaces ───────────
+
+/// The merged contract, fixture by fixture, against what the two scanners it
+/// replaces returned. Where they disagreed, the validator's reading wins —
+/// that is the whole point of having one scanner, and both differences move
+/// the allocator towards the stricter reading rather than away from it.
+#[test]
+fn work_add_refuses_invalid_one_scanner_settles_both_readings() {
+    use crate::services::roadmap_text::{duplicate_ids, next_id_number};
+
+    // (1) A block-scalar body is text, not YAML. The validator has always
+    // skipped it; the old allocator counted it and would have minted PMAT-901
+    // because a reviewer's note quoted an id. Nobody declared PMAT-900 here.
+    let block = "roadmap:\n\
+                 \x20 - id: PMAT-010\n\
+                 \x20   notes: |\n\
+                 \x20     the reviewer wrote:\n\
+                 \x20     id: PMAT-900\n\
+                 \x20   status: planned\n";
+    assert_eq!(
+        next_id_number(block, None),
+        11,
+        "an id quoted inside a block scalar is not an id in use (the old \
+         allocator read 901 here; the validator has always read none)"
+    );
+    assert!(
+        duplicate_ids(block).is_empty(),
+        "and it is not a duplicate either: {:?}",
+        duplicate_ids(block)
+    );
+
+    // (2) A flow-style row IS a row. The validator read it; the old allocator
+    // stopped at the `{` and read no id at all — a false LOW, and a false LOW
+    // is the one direction that mints a duplicate.
+    let flow = "roadmap:\n  - {id: PMAT-030, title: three, status: planned}\n";
+    assert_eq!(
+        next_id_number(flow, None),
+        31,
+        "a flow-style row is an id in use (the old allocator read 1 here)"
+    );
+
+    // (3) A subtask's id is an id in use, at any depth. Both implementations
+    // agreed, and so does this one.
+    let subtask = "roadmap:\n  - id: PMAT-010\n    subtasks:\n      - id: PMAT-900\n";
+    assert_eq!(next_id_number(subtask, None), 901);
+    assert!(duplicate_ids(subtask).is_empty());
+    assert_eq!(
+        duplicate_ids("roadmap:\n- id: PMAT-1\n  subtasks:\n  - id: PMAT-1\n"),
+        vec![("PMAT-1".to_string(), vec![2, 4])],
+        "a subtask reusing its parent's id is a clash at lines 2 and 4"
+    );
+
+    // (4) The lock file's high-water mark still beats the text, and still
+    // loses to a higher id in the text.
+    let raw = "  - id: PMAT-12\n";
+    assert_eq!(next_id_number(raw, Some(20)), 21);
+    assert_eq!(next_id_number(raw, Some(2)), 13);
+
+    // (5) Every spelling of the key, and nothing that merely looks like one —
+    // the PMAT-673 quorum fixture, read by the PMAT-674 scanner.
+    let spellings = "roadmap:\n\
+                     \x20 -   id: PMAT-021\n\
+                     \x20 - \"id\": PMAT-022\n\
+                     \x20 - 'id': \"PMAT-023\"\n\
+                     \x20 - id:PMAT-024\n\
+                     \x20 - id: PMAT-025   # trailing comment\n\
+                     \x20 - identity: PMAT-990\n\
+                     \x20 # - id: PMAT-991\n\
+                     \x20 -id: PMAT-992\n\
+                     \x20   github_issue: 993\n";
+    assert_eq!(
+        next_id_number(spellings, None),
+        26,
+        "PMAT-025 is the highest id actually declared"
+    );
+}
+
+/// The validator itself: `Ok` on a clean roadmap, and on a broken one the
+/// exact line `pmat work validate` prints, one per duplicated id.
+#[test]
+fn work_add_refuses_invalid_check_roadmap_text_renders_validates_wording() {
+    use crate::services::roadmap_text::check_roadmap_text;
+
+    let path = Path::new("docs/roadmaps/roadmap.yaml");
+    assert!(
+        check_roadmap_text(CLEAN_FIXTURE, path).is_ok(),
+        "a roadmap with distinct ids is one `work add` may write to"
+    );
+
+    let first = line_of_nth_occurrence(DUPLICATE_FIXTURE, "- id: PMAT-011", 0);
+    let second = line_of_nth_occurrence(DUPLICATE_FIXTURE, "- id: PMAT-011", 1);
+    let error = check_roadmap_text(DUPLICATE_FIXTURE, path)
+        .expect_err("a roadmap declaring PMAT-011 twice must be refused");
+    assert_eq!(
+        error.to_string(),
+        format!(
+            "duplicate id PMAT-011 at docs/roadmaps/roadmap.yaml:{first}, \
+             docs/roadmaps/roadmap.yaml:{second}"
+        )
+    );
+    assert_eq!(
+        error.duplicates(),
+        [("PMAT-011".to_string(), vec![first, second])]
+    );
+}
