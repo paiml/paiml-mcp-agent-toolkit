@@ -32,6 +32,15 @@
 | clean-room doctests | `cargo test --doc --locked -- --test-threads=4` | 286 passed, 0 failed, 58 ignored [V] |
 | fleet clean-room gate (unified-gate) | probe run 34034967876 on v3.38.0 | `create-release` ✓, `gate / lint-gate` ✗ "Banned path scan" on pmat's own analyzer fixtures — **the fleet gate cannot pass pmat's tree until PMAT-687**; `clean_room=local-modeA` for this release |
 | `cargo publish --dry-run --locked` (detached worktree of the tag) | see above | exit 0 [V] |
+| `make dogfood-use BIN=./target/release/pmat` | release gate: pmat on its own tree | 13 checks, 0 failures, exit 0 [V] |
+| `make gate-artifact` | flag-efficacy + differential (default set) | exit 0, wall 681 s [V] |
+| `make gate-flag-efficacy-full` | whole command tree | **RED**, exit 2, wall 641 s: `summary: 584 effective, 4 refuses-honestly, 18 no-op, 4 error-out, 369 skipped` [V] — see "Phase-3 red" below |
+
+## Phase-3 red: flag-efficacy-full (jidoka)
+
+18 flags parse and change nothing (`pmat list --color`, `mcp manifest --color`, `prompt {comply,book,repo-image} --color`, `roadmap todos --color/--include-quality-gates`, `quality-gates {validate,show} --color`, `cuda-tdg {score,report,gate,kaizen} --color`, `cuda-tdg gate --fail-on-p0`, `validate-docs --fail-on-error`, `popper-score/demo-score/show-metrics --failures-only`, `analyze complexity --ml`, `analyze satd --evolution`, `analyze deep-context --full`, `analyze tdg --ml`) and 4 "error out": `analyze {reachability,unrun-tests} --write-ledger` (exit 1) / `--allow-dirty` (exit 2) — the ledger writers refusing the sweep's dirty corpus, which is their documented behaviour.
+
+Five whys: (1) the gate is red → (2) 18 report-style flags never reach their renderers and 4 ledger flags are judged by a harness that hands them a dirty tree → (3) none of the 22 was touched by 3.39.0 (the diff since v3.38.0 adds no flags; the same gate on the v3.38.0 tag is being re-run in a detached worktree to prove it — result in the post-publish receipt) → (4) the gate had not been run at 3.38.0 or 3.37.0 (their receipts carry no row for it), so the debt was never seen at a release → (5) "pre-existing" is not a disposition: **PMAT-688** is minted with the list and its falsifier, deferred to 3.40.0. The release verdict below names this red; the operator decides whether to publish over it.
 
 ## Fixture table — locally installed 3.39.0 (crates.io install is Noah's post-publish step)
 | step | result |
@@ -65,6 +74,6 @@ cot fallback removed → 3 fallback tests + the ten-contract fixture test RED, *
 ## Budget
 `K=240`, `K̂=302 [C]` (basis L11-L12); orchestrator turns ≈ 232 at receipt time (andon threshold 192 crossed during the URGENT pivot; the operator's second brief reset the scope); subagents: peak 1 live, 5 workers (2 resumed once), 5 delegates; denials 2 (hook: gh while a slot was held); `reruns` 2 (both #1202 flakes, on docs/workflow PRs; 0 on the release PRs).
 
-verdict: PUBLISH-READY — nothing published; tag and prerelease in place; Noah publishes from a detached worktree of `v3.39.0`.
+verdict: PUBLISH-READY with one named Phase-3 red (flag-efficacy-full, pre-existing, PMAT-688) — nothing published; tag and prerelease in place (12 assets, post-release green); Noah publishes from a detached worktree of `v3.39.0`.
 
 RELEASE-3.39.0-RECEIPT-END
