@@ -4239,3 +4239,187 @@ roadmap:
   - kind:code
   - bug
   notes: null
+- id: PMAT-675
+  github_issue: null
+  item_type: task
+  title: 'release path: restore release.yml (clean-room gate+verify → GitHub prerelease), demote docker-publish to workflow_dispatch with a secret preflight'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - 'A pmat tag runs no clean-room gate and creates no release. Restore .github/workflows/release.yml from release.yml.disabled keeping create-release → gate → verify on [self-hosted, clean-room] and creating a GitHub prerelease (prerelease: true); delete the publish, build-binaries and publish-release jobs (binary-release.yml on release: published supersedes them). No cargo publish, no CARGO_REGISTRY_TOKEN, no continue-on-error. docker-publish.yml: red on every tag since v3.32.0 (6 consecutive), hard-codes image tag 2.10.0, but docs/DOCKER.md documents paiml/pmat:2.12.0 (#1122) — a doc consumer exists, so it is demoted to workflow_dispatch with a secret-presence preflight that exits 1 with a named reason, not deleted; HRQ. Falsifier: a workflow_dispatch probe run with an injected failing verify step creates no release; the failure names verify, not create-release.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - release
+  notes: null
+- id: PMAT-676
+  github_issue: null
+  item_type: task
+  title: 'work add refuses what validate rejects: one raw-text id scanner, one validator, called by add/edit/validate inside the write lock'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - '3.38.0: work add refuses only unparseable roadmaps; a duplicated-id roadmap (validate exit 1) is accepted and written. Root: two scanners (roadmap_service_operations.rs::id_key_value vs ticket_validate_migrate.rs::collect_id_lines) and no shared validator. Fix: one scanner, one validator used by add, edit and validate, before any write, under the lock. Falsifier: fixture with PMAT-011 twice → work add exit 1 naming both file:line, roadmap.yaml byte-identical, lock unchanged; mutation removing the validator call in add → the new lib test RED while the validate test stays GREEN.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-677
+  github_issue: null
+  item_type: task
+  title: 'dogfood skill identity: rename to .claude/skills/pmat-dogfood with explicit name: pmat-dogfood so a user-scope dogfood skill cannot shadow it'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - '.claude/skills/dogfood/SKILL.md has no name: field; on a host with ~/.claude/skills/dogfood/ (this workstation has one) the user-scope skill wins and the repo skill never loads (aprender #2332 precedent). Fleet standard: dir .claude/skills/pmat-dogfood/, frontmatter name: pmat-dogfood, read-only, deterministic receipt, ≤3 read-only subagents, orchestrator sole receipt writer, Agent descriptions prefixed <ticket>/ph<i>; make dogfood-install symlink target updated. Falsifier: a make-level check asserting ^name: pmat-dogfood$ in the frontmatter; deleting the line → RED.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-678
+  github_issue: null
+  item_type: task
+  title: 'publish poka-yoke: make publish-from-tag TAG=vX.Y.Z publishes only from a detached worktree of the tag; .claude/agent-memory/ gitignored; --locked on release-verify'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - '3.38.0: cargo publish --dry-run --locked refused the tree because untracked .claude/agent-memory/ counts as dirty; the operator moved it aside by hand. Structural fix: Makefile target publish-from-tag TAG= that refuses when TAG is absent or not on master, git worktree add --detach, env -u CARGO_REGISTRY_TOKEN cargo publish --dry-run --locked then cargo publish --locked, worktree removed. Belt: .claude/agent-memory/ in .gitignore; --locked on release-verify''s cargo install. Falsifier: with an untracked file in the main tree the target still dry-runs clean from the worktree; a non-existent tag exits 2 before any cargo call; dropping --detach → the zero-untracked-files assertion RED.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-679
+  github_issue: null
+  item_type: task
+  title: 'roadmap re-serialisation (#1193/#1169 second half): work add appends and work edit patches the raw text; untouched rows are never re-emitted'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - 'Every work add/edit round-trips docs/roadmaps/roadmap.yaml through serde and rewrites the whole file (order, quoting, comments, unknown keys), which is why every concurrent branch conflicts on the roadmap (all five open PRs at 3.38.0 conflict there). Fix at the writer: append the raw row for add; targeted row edit for edit. Falsifier: byte-diff of work add on a fixture with comments, flow-style rows, a block scalar and an unknown key is exactly the appended row (+ lock); routing add through the serde writer → RED.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-680
+  github_issue: null
+  item_type: task
+  title: 'cross-checkout id union: mint max(lock, HEAD roadmap, roadmap blobs of every local ref)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - 'The lock file is per checkout; two worktrees mint the same id (3.38.0 receipt follow-up). Design: next = max(lock high-water, ids in the working roadmap, ids in git show <sha>:docs/roadmaps/roadmap.yaml for every ref from git for-each-ref refs/heads refs/remotes) + 1. Falsifier: two worktrees on different branches each work add → distinct ids; dropping the ref scan → collision RED. Implement only if the 3.39.0 budget allows; else deferred to 3.40.0 with this design.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-681
+  github_issue: null
+  item_type: task
+  title: 'harness gate declaration: a Makefile gate target running pmat verify so paiml-implement discovery yields gate_cmd_fallback=false'
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - 'paiml-implement discover.sh probes make -n gate; absent, it falls back to cargo test --workspace (gate_cmd_fallback=true on both 3.38.0 tickets) while the gate that actually runs is pmat verify. Add gate: target running pmat verify --format json. Falsifier: discovery on this repo yields gate_cmd_fallback=false and gate_cmd=make gate.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-682
+  github_issue: null
+  item_type: task
+  title: 'release cut 3.39.0: bump the five version carriers, CHANGELOG from merged PR bodies, tickets completed; tag, prerelease, manual publish from a detached worktree'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - Cargo.toml, Cargo.lock (pmat entry), README.md version line, mcp.json, CHANGELOG.md ([Unreleased] → [3.39.0]); pmat verify; PR; tag on the merge commit; prerelease; publish-from-tag; AD-01 release-check and AD-02 dogfood-published exit 0 on the published crate; docs.rs doc_status true; prerelease promoted.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - release
+  notes: null
+- id: PMAT-683
+  github_issue: null
+  item_type: task
+  title: 'blocking mutants: measure a runtime baseline from three master runs before making the mutants job a gate'
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - 'ci.yml''s mutants job is needs: [gate], continue-on-error: true, master-push only — audit, not gate (fleet-wide pattern). Converting it to blocking needs a measured runtime baseline first (basis= from three master runs), then a ratchet. Filed for 3.40.0.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:measurement
+  - deferred:3.40.0
+  notes: null
+- id: PMAT-684
+  github_issue: null
+  item_type: task
+  title: '3.40.0: revive the three closed 3.38-era PRs on post-3.39.0 master — #1177 (AD-05 quality-gate file-size/churn/lint, PMAT-657), #1184 (PMAT-666 hooks split), #1180 (PMAT-661 work link + CB-1340)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T07:56:01Z
+  spec: null
+  acceptance_criteria:
+  - 'All three were 40 commits behind master at 3.38.0 with conflicts in docs/roadmaps/roadmap.yaml (RS root cause) and the ledgers; #1177 and #1184 red on ci / test at their heads, #1180 conflicts in ticket_crud.rs with PMAT-673. Closed with five-whys lines in their bodies; the branches remain. Revive each on the new master, one PR per ticket.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - deferred:3.40.0
+  notes: null
