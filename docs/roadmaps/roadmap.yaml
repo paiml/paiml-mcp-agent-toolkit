@@ -4262,11 +4262,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'work add refuses what validate rejects: one raw-text id scanner, one validator, called by add/edit/validate inside the write lock'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T09:54:47.374929312+00:00
   spec: null
   acceptance_criteria:
   - '3.38.0: work add refuses only unparseable roadmaps; a duplicated-id roadmap (validate exit 1) is accepted and written. Root: two scanners (roadmap_service_operations.rs::id_key_value vs ticket_validate_migrate.rs::collect_id_lines) and no shared validator. Fix: one scanner, one validator used by add, edit and validate, before any write, under the lock. Falsifier: fixture with PMAT-011 twice → work add exit 1 naming both file:line, roadmap.yaml byte-identical, lock unchanged; mutation removing the validator call in add → the new lib test RED while the validate test stays GREEN.'
