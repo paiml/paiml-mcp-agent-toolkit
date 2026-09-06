@@ -48,6 +48,10 @@ pv lane: **Run**. Kani/probar/lean: NotRun (follow-up `pv generate`).
 
 ## Verdict
 
-verdict: DONE pending the green train's required checks on PR #1201 (auto-merge armed).
+## Scope widened by the operator ("URGENT FIX … Same PR")
+
+PR #1201 now also carries PMAT-676 (one scanner, one validator — receipt `impl-PMAT-676-receipt.md`), PMAT-679 (append-only writer — `impl-PMAT-679-receipt.md`) and PMAT-680 (single-authority mint — `impl-PMAT-680-receipt.md`), plus the fixture test `every_aprender_gh_663_to_672_contract_derives_zero_empty_statements` over aprender's ten real GH-663..672 contracts (RED under the 3.38.0 parse in the worktree: `GH-663: no hollow step` failed; GREEN on the fix).
+
+verdict: DONE pending the green train's required checks on PR #1201.
 
 IMPL-PMAT-685-RECEIPT-END
