@@ -328,6 +328,16 @@ withdrawn on a clean tree), so the next bundle revision makes the worker run the
 ### 9.9 AD-09 — single-orchestrator lock + effort assertion (S)
 **Problem.** §5.1. **Proposal.** `subagent-lock.sh` takes a host-level lock keyed by `repo_root` at Phase 0 (`SessionStart`), released at `SessionEnd`; Phase 0 prints the effort setting and refuses below `xhigh` unless `--effort-override` is named in the receipt. **Acceptance.** §5.1.
 
+*Implementation note (PMAT-663, 2026-09-04).* Bundle paiml-implement#9: `discover.sh` (Phase 0) takes
+`$XDG_RUNTIME_DIR/paiml-implement/orchestrator-<repo-hash>.lock` naming this session (the newest SessionStart
+registration for the cwd, or `CLAUDE_SESSION_ID` when the harness exports it); `hooks/subagent-lock.sh` refuses a
+second session's first `Agent` spawn in the same repository, naming the holder and its start time; a lock whose
+session has no registration, or older than 12 hours, is stale and taken over rather than honoured.
+`hooks/orchestrator-lock-selftest.sh` drives the real hook against a throwaway runtime dir — RED against the hook
+as shipped (a second orchestrator was allowed), GREEN now — and the bundle's `verify.sh` runs it. The "xhigh
+assertion" is not machine-checkable from a hook (effort is a session setting the hook cannot read) and stays
+`[U]`. pmat side: this note and `docs/audits/impl-PMAT-663-receipt.md`.
+
 ### 9.10 AD-10 — Goal and Grill-me as lane templates (S)
 **Problem.** §5.6. **Proposal.** Four named lane templates in the delegate; `goal` and `grillme` emulate through `/teamwork-preview` prompts with `"emulated": true` in the receipt until agy ships the commands; `plan` = `agy --mode plan`. **Acceptance.** §5.6.
 
