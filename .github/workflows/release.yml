@@ -48,6 +48,7 @@ jobs:
     outputs:
       version: ${{ steps.parse.outputs.version }}
       tag: ${{ steps.parse.outputs.tag }}
+      sha: ${{ steps.parse.outputs.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -72,14 +73,17 @@ jobs:
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$TAG_VER" >> "$GITHUB_OUTPUT"
-          echo "Version verified: $TAG_VER"
+          # The commit the tag points at — NOT github.sha, which on a
+          # workflow_dispatch is the branch the run was dispatched on.
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Version verified: $TAG_VER at $(git rev-parse --short HEAD)"
 
   gate:
     needs: create-release
     uses: paiml/.github/.github/workflows/unified-gate.yml@main
     with:
       repo: ${{ github.event.repository.name }}
-      pr_sha: ${{ github.sha }}
+      pr_sha: ${{ needs.create-release.outputs.sha }}
     secrets: inherit
 
   verify:
@@ -125,3 +129,14 @@ jobs:
             --verify-tag \
             --title "pmat ${TAG#v}" \
             --generate-notes
+      - name: Dispatch the release listeners
+        # A release created with GITHUB_TOKEN raises no `release: published`
+        # event for other workflows (GitHub suppresses runs caused by the
+        # default token); workflow_dispatch is the one trigger it may fire.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          set -uo pipefail
+          gh workflow run binary-release.yml -f tag="$TAG"
+          gh workflow run post-release.yml

@@ -87,6 +87,28 @@ fn release_workflow_gates_then_verifies_then_prereleases_and_never_publishes() {
         "the prerelease exists only after gate AND verify"
     );
 
+    assert!(
+        doc["jobs"]["prerelease"].get("if").is_none(),
+        "the prerelease job carries no `if:` — `needs` alone decides, an `if: always()` would prerelease on a red gate"
+    );
+    assert_eq!(
+        doc["jobs"]["gate"]["with"]["pr_sha"].as_str().unwrap_or_default(),
+        "${{ needs.create-release.outputs.sha }}",
+        "the gate validates the tag's own commit, not github.sha (the dispatch branch on workflow_dispatch)"
+    );
+    let dispatches = doc["jobs"]["prerelease"]["steps"]
+        .as_sequence()
+        .map(|s| {
+            s.iter()
+                .filter_map(|st| st["run"].as_str())
+                .collect::<Vec<_>>()
+                .join("\n")
+        })
+        .unwrap_or_default();
+    assert!(
+        dispatches.contains("gh workflow run binary-release.yml") && dispatches.contains("gh workflow run post-release.yml"),
+        "a GITHUB_TOKEN-created release fires no `release: published` event, so the listeners are dispatched explicitly: {dispatches}"
+    );
     let gate_uses = doc["jobs"]["gate"]["uses"].as_str().unwrap_or_default();
     assert!(
         gate_uses.starts_with("paiml/.github/.github/workflows/unified-gate.yml@"),
