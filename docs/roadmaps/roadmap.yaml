@@ -4423,3 +4423,22 @@ roadmap:
   - kind:code
   - deferred:3.40.0
   notes: null
+- id: PMAT-685
+  github_issue: null
+  item_type: task
+  title: 'work cot derive: read falsifiable_claim (v5.0 steps) or refuse a hollow obligation; CB-1658 refuses empty statement/hypothesis (#1200)'
+  status: planned
+  priority: critical
+  assigned_to: null
+  created: 2026-09-06T08:03:59Z
+  updated: 2026-09-06T08:03:59Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat 3.37/3.38: for a version 5.0 contract.json whose chain_of_thought[] steps carry falsifiable_claim (not assumption/implication), parse_step treats the step as structured, both texts come out empty, and render_derivation writes statement: '''' / hypothesis: '''' verbatim; pv refuses the artifact (SCHEMA-005) and CB-1658 passes it because it only compares counts and verbatim equality ('''' == ''''). Blocks aprender PP-066 row C0-3 (#2892). Fix: parse_steps reads falsifiable_claim (string or {claim|text}) and the top-level falsifiable_claims[] entry the step discharges when implication is absent; handle_work_cot_derive refuses with the step id and the missing field instead of writing a hollow artifact; CB-1658 fails an obligation with an empty statement or a claim with an empty hypothesis. Falsifier: the issue''s exact step JSON derives a non-empty statement equal to the claim; a step with neither field → derive exit 1, no artifact, no digest; a hand-written hollow .cot.yaml → CB-1658 Fail naming the ticket and obligation id; mutation restoring the old parse_step → RED.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - urgent
+  notes: null
