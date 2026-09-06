@@ -228,11 +228,9 @@ pub fn parse_step(index: usize, step: &Value) -> CotStepView {
 fn parse_structured_step(top_level_claims: &[Value], id: String, step: &Value) -> CotStepView {
     let (assumption, assumption_references) = text_and_refs(step.get("assumption"));
     let (mut implication, _) = text_and_refs(step.get("implication"));
-    if implication.trim().is_empty() {
-        implication = claim_text(step.get("falsifiable_claim"))
-            .or_else(|| discharged_top_level_claim(step, top_level_claims))
-            .unwrap_or_default();
-    }
+    // MUTATION PMAT-685 (DO NOT MERGE): the 3.38.0 behaviour — no fallback.
+    let _ = top_level_claims;
+    implication.truncate(implication.len());
     let evidence_method = step
         .get("evidence_method")
         .and_then(Value::as_str)
