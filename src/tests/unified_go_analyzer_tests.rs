@@ -184,7 +184,7 @@ mod property_tests {
 async fn red_test_unified_go_on_real_file() {
     use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 
-    let real_file = PathBuf::from("/home/noah/src/agentic-ai/go-actors/simple.go");
+    let real_file = PathBuf::from("/home/alice/src/agentic-ai/go-actors/simple.go");
     if !real_file.exists() {
         return;
     }

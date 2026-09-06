@@ -24,7 +24,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-BOOK_DIR="${PMAT_BOOK_DIR:-/home/noah/src/pmat-book}"
+BOOK_DIR="${PMAT_BOOK_DIR:-$HOME/src/pmat-book}"
 PARALLEL_JOBS="${PMAT_BOOK_JOBS:-4}"
 
 # Per-script wall-clock budget, applied to both the control run and the real

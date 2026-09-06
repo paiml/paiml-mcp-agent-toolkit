@@ -70,3 +70,8 @@ mod work_add_single_authority_tests;
 #[cfg(test)]
 #[path = "../../../tests/release_workflow_tests.rs"]
 mod release_workflow_tests;
+
+// PMAT-686: the fleet gate's banned-path scan, in-repo.
+#[cfg(test)]
+#[path = "../../../tests/fleet_banned_paths_tests.rs"]
+mod fleet_banned_paths_tests;

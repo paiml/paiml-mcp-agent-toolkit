@@ -335,7 +335,7 @@ surface_cli() {
     # ASK CARGO which executables it produced. Do NOT build a path from
     # `cargo metadata`'s target_directory: measured in a worktree of this repo,
     # metadata reports
-    #     /mnt/nvme-raid0/targets/aprender
+    #     <target-dir>/aprender
     # while the executables cargo actually wrote were at
     #     <worktree>/target/debug/
     # because .cargo/config.toml carries the target-dir redirect and is

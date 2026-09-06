@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.39.0] - 2026-09-06
+
+### Fixed
+
+- `pmat work cot derive` wrote hollow obligations (`statement: ""`, `hypothesis: ""`)
+  for `version: "5.0"` contracts whose steps carry `falsifiable_claim` instead of
+  `implication`; `pv` refused the artifact (SCHEMA-005) while CB-1658 passed it
+  (#1200, PMAT-685, PR #1201). The claim — or the top-level
+  `falsifiable_claims[]` entry the step discharges — is now the obligation; a step
+  that is still hollow is refused by name before any write; `cot check` warns;
+  CB-1658 fails an empty statement or hypothesis; the CoT digest covers borrowed
+  top-level claims (pre-existing digests unchanged). Pinned by aprender's ten real
+  `GH-663..672` contracts as fixtures.
+- `pmat work add` and `pmat work edit` accepted — and rewrote — a roadmap that
+  `pmat work validate` rejects (PMAT-676, PR #1201). One raw-text scanner and one
+  validator (`services::roadmap_text`) now serve `add`, `edit` and `validate`,
+  under the write lock, before any write.
+- `pmat work add` re-serialised the whole roadmap on every call (the 2,532-line
+  class; #1193 / #1169, aprender #2874; PMAT-679, PR #1201). `add` now appends
+  the raw row and `edit` replaces exactly one row's block; every untouched entry
+  stays byte-identical, including comments, flow-style rows, block scalars and
+  unknown keys. Rows start at every dash line, and the sequence ends at the next
+  top-level key.
+- Two checkouts of one repository minted the same id (#1193, PMAT-680, PR #1201).
+  Ids are minted from one authority per repository: a lock and high-water mark in
+  the git common dir (shared by every worktree) plus every ref's roadmap; outside
+  git the sibling lock still works.
+
+### Added
+
+- `.github/workflows/release.yml` restored (PMAT-675, PR #1203): a `v*` tag runs
+  the fleet clean-room gate and `cargo package --verify --locked`, then creates a
+  GitHub **prerelease**; binary-release and post-release are dispatched explicitly.
+  No workflow publishes the crate; no registry token; no `continue-on-error`. A
+  `workflow_dispatch` probe (`probe_fail_verify`) proves a red verify creates no
+  release. `docker-publish.yml` is dispatch-only with a secret preflight.
+- AD-09: one orchestrator per repository per host (PMAT-663, PR #1181).
+- pv work contracts `contracts/work/PMAT-{675,676,679,680,685}.yaml`; receipts under
+  `docs/audits/impl-PMAT-*-receipt.md`.
+
+### Known, not fixed
+
+- `work start` / `work complete` / `work sync` still round-trip the whole roadmap
+  through serde (`upsert_item`, `save`).
+- Two separate clones still race between fetches; the id authority is the union
+  of refs the clone knows (no server-side counter).
+- `ci / coverage` can kill lib tests that shell out to `cargo` under load
+  (#1202): two flake classes recorded; each job was rerun once.
+
 ## [3.38.0] - 2026-09-05
 
 ### Fixed

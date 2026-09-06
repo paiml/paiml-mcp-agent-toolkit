@@ -670,7 +670,7 @@ mod cap_disclosure_tests {
         let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
         for name in ["arxiv_entries.rs", "coursera_entries.rs"] {
             project.ungraded_files.push(crate::tdg::UngradedFile {
-                path: format!("/home/noah/src/aprender/crates/aprender-core/src/oracle/{name}"),
+                path: format!("/home/alice/src/aprender/crates/aprender-core/src/oracle/{name}"),
                 reason: "expected `;`".to_string(),
             });
         }

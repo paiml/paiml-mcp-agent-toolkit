@@ -31,7 +31,7 @@ if [ -z "${EPOCHREALTIME:-}" ]; then
 fi
 
 PMAT="pmat"
-PROJECT="/home/noah/src/paiml-mcp-agent-toolkit"
+PROJECT="$HOME/src/paiml-mcp-agent-toolkit"
 cd "$PROJECT"
 
 PASS=0

@@ -365,7 +365,7 @@ mod tests {
     fn a_long_path_keeps_its_tail() {
         let rows = ungraded_rows(
             &[f(
-                "/home/noah/src/aprender/crates/aprender-core/src/oracle/coursera/arxiv_entries.rs",
+                "/home/alice/src/aprender/crates/aprender-core/src/oracle/coursera/arxiv_entries.rs",
                 "expected `;`",
             )],
             Some(ENTRY_BUDGET),
@@ -451,7 +451,7 @@ mod tests {
     #[test]
     fn unbudgeted_rows_are_not_elided() {
         let long =
-            "/home/noah/src/aprender/crates/aprender-core/src/oracle/coursera/arxiv_entries.rs";
+            "/home/alice/src/aprender/crates/aprender-core/src/oracle/coursera/arxiv_entries.rs";
         let rows = ungraded_rows(&[f(long, "expected `;`")], None);
         assert!(rows[1].contains(long), "got: {rows:?}");
         assert!(rows[1].contains("expected `;`"), "got: {rows:?}");
