@@ -37,4 +37,6 @@ Not done, deliberately: merge of #1197, tag `v3.38.0`, `gh release create`, `car
 
 ## Verdict
 
-**STOPPED(publish-path-absent)** — release cut prepared on PR #1197 as a draft; nothing published, nothing tagged. — RELEASE-3.38.0-RECEIPT-END
+**STOPPED(publish-path-absent)** at the first pass — release cut prepared on PR #1197 as a draft; nothing published, nothing tagged.
+
+**Then SHIPPED by the operator's decision** ("merge and publish by hand"): #1197 merged 2026-09-06 (9e494f95f, required checks green on its head), tag `v3.38.0`, GitHub release, manual `cargo publish --locked` exit 0, crates.io 3.38.0, docs.rs `doc_status: true`, binary-release and post-release green, installed-crate dog-food green — see `docs/audits/release-3.38.0-dogfood.md`. — RELEASE-3.38.0-RECEIPT-END
