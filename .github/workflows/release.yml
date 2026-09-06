@@ -1,0 +1,127 @@
+# Release: a `v*` tag runs the fleet clean-room gate and a package verification
+# on [self-hosted, clean-room], and only then creates a GitHub PRERELEASE.
+#
+# PMAT-675 (3.39.0). Restored from release.yml.disabled (#382 disabled it), with
+# three jobs deliberately DELETED: `publish`, `build-binaries`, `publish-release`.
+# Policy (operator directive, standing): no workflow ever publishes the crate,
+# the crates.io token never enters GitHub secrets, `--allow-dirty` never.
+# The crate is published from a detached worktree of the tag on the release
+# workstation (`make publish-from-tag TAG=vX.Y.Z`, PMAT-678); binaries are built
+# by binary-release.yml, which fires on `release: published` — a prerelease
+# publishes too — and post-release.yml verifies tag == Cargo.toml.
+#
+# Falsifier (observed once on the PMAT-675 PR, then reverted): a
+# `workflow_dispatch` run with `probe_fail_verify=true` makes `verify` exit 1;
+# the run must end with NO release created and the failure named at `verify`,
+# not at `create-release`. No step in this file may continue on error, on
+# purpose; a gate that cannot fail is a warning.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to run the release gate against (e.g. v3.38.0)'
+        required: true
+        type: string
+      probe_fail_verify:
+        description: 'PROBE ONLY: make the verify step exit 1 to prove no release is created on a red gate'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write    # create the GitHub prerelease
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  create-release:
+    # Parses and checks the tag; creates NOTHING. The prerelease is created by
+    # the last job, after gate and verify have passed.
+    runs-on: [self-hosted, clean-room]
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      tag: ${{ steps.parse.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - name: Parse tag and verify version
+        id: parse
+        run: |
+          set -uo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
+            TAG_VER="${BASH_REMATCH[1]}"
+          else
+            echo "::error::Tag '$TAG' does not match vX.Y.Z"
+            exit 1
+          fi
+          CARGO_VER=$(cargo metadata --format-version 1 --no-deps \
+            | jq -r '.packages[] | select(.name == "pmat") | .version')
+          if [ "$TAG_VER" != "$CARGO_VER" ]; then
+            echo "::error::Tag version $TAG_VER != Cargo.toml version $CARGO_VER"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$TAG_VER" >> "$GITHUB_OUTPUT"
+          echo "Version verified: $TAG_VER"
+
+  gate:
+    needs: create-release
+    uses: paiml/.github/.github/workflows/unified-gate.yml@main
+    with:
+      repo: ${{ github.event.repository.name }}
+      pr_sha: ${{ github.sha }}
+    secrets: inherit
+
+  verify:
+    needs: [create-release, gate]
+    runs-on: [self-hosted, clean-room]
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - name: Verify the package builds from its own tarball
+        env:
+          CARGO_BUILD_JOBS: "2"   # clean-room container is 32 GB; pmat links wide
+        run: cargo package --verify --locked
+      - name: Probe — fail verify on request
+        if: ${{ github.event.inputs.probe_fail_verify == 'true' }}
+        run: |
+          echo "::error::probe_fail_verify=true: verify fails by request; no release may follow"
+          exit 1
+
+  prerelease:
+    # Created only after gate AND verify are green. A prerelease fires
+    # `release: published`, so binary-release.yml attaches the binaries and
+    # post-release.yml checks tag == Cargo.toml. Promotion to a full release
+    # happens after the crate is on crates.io (`gh release edit --prerelease=false`).
+    needs: [create-release, gate, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ needs.create-release.outputs.tag }}
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          set -uo pipefail
+          gh release create "$TAG" \
+            --prerelease \
+            --verify-tag \
+            --title "pmat ${TAG#v}" \
+            --generate-notes
