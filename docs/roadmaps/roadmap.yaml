@@ -4442,3 +4442,20 @@ roadmap:
   - kind:code
   - urgent
   notes: null
+- id: PMAT-663
+  github_issue: null
+  item_type: task
+  title: 'AD-09: one orchestrator per repository per host'
+  status: in_progress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-04T02:20:10Z
+  updated: 2026-09-04T02:20:10Z
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 6 / 9.9. Bundle: discover.sh takes an orchestrator lock per repository in the runtime dir; the hook refuses a second session''s first Agent spawn in the same repository naming the holder; stale locks (session gone, or older than 12h) are taken over; hooks/orchestrator-lock-selftest.sh drives the real hook. The xhigh assertion is not machine-checkable from a hook and stays [U]. pmat side: spec note and receipt. Controls: second orchestrator refused naming the first; holder may spawn; stale lock taken over.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
