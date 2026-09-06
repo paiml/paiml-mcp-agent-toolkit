@@ -19,8 +19,20 @@ pub struct ValidateDocsCmd {
     #[arg(short, long)]
     pub config: Option<PathBuf>,
 
-    /// Fail on broken links
-    #[arg(short, long, default_value = "true")]
+    /// Exit non-zero when a broken link is found (the default; bare
+    /// `--fail-on-error` says so explicitly). Pass `--fail-on-error false`
+    /// to report the links without failing the run.
+    ///
+    /// PMAT-688: this was a `bool` with `default_value = "true"`, a switch
+    /// that could never change anything.
+    #[arg(
+        short,
+        long,
+        action = clap::ArgAction::Set,
+        num_args = 0..=1,
+        default_value_t = true,
+        default_missing_value = "true"
+    )]
     pub fail_on_error: bool,
 
     /// Output format (text, json, junit)
