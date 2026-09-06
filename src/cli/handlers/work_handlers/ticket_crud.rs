@@ -279,12 +279,14 @@ pub async fn handle_work_edit(
     // Update timestamp
     updated_item.updated = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
-    // Save. PMAT-676 (#1199): through the CHECKED upsert, which re-reads the
-    // roadmap's raw text under the write lock and refuses one `pmat work
-    // validate` rejects — `edit` used to save through the plain `upsert_item`
-    // with no text check at all, so a duplicated id survived the round trip
-    // and everything the serde model drops went with it.
-    service.upsert_item_checked(updated_item)?;
+    // Save. PMAT-679 (#1193, #1169): by replacing THIS ROW'S raw text, under
+    // the write lock, after the PMAT-676 (#1199) check that refuses a roadmap
+    // `pmat work validate` rejects. `edit` used to save the whole serde model
+    // over the file, so editing one title rewrote every line: comments,
+    // unknown keys, flow-style rows and block scalars belonging to rows nobody
+    // edited were reformatted or dropped, and every concurrent branch
+    // conflicted on the roadmap.
+    service.replace_item_raw(&item.id, &updated_item)?;
 
     println!("{}", c::pass(&format!("Updated ticket: {}", c::path(&item.id))));
     for change in changes {

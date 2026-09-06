@@ -22,6 +22,7 @@
 //! `Roadmap` (two rows sharing an id are two well-formed rows), and a line
 //! number is what a reader needs in a 4,000-line file.
 
+use crate::models::roadmap::RoadmapItem;
 use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -291,4 +292,207 @@ pub fn check_roadmap_text(raw: &str, path: &Path) -> Result<(), RoadmapTextError
         path: path.to_path_buf(),
         duplicates,
     })
+}
+
+// ── PMAT-679: writing the raw text back, one row at a time ──────────────────
+//
+// `pmat work add` and `pmat work edit` used to serialise the whole `Roadmap`
+// model over the file. One added ticket therefore rewrote all 2,532 lines of
+// aprender's roadmap (#1193, #1169; aprender #2874): every concurrent branch
+// conflicted on the file, and everything the model does not carry — comments,
+// unknown keys, flow-style rows, the choice of block scalar, the key order a
+// human wrote — was reformatted or dropped in passing.
+//
+// The operations below are the whole fix, and they are pure text on purpose:
+// the parsed model is exactly the representation that cannot see the bytes
+// this defect destroys. `add` appends a rendered row and touches nothing else;
+// `edit` replaces the span of the one row it edits.
+
+/// One roadmap item, rendered as a single YAML sequence element.
+///
+/// The block starts with `- id:` at column `indent` and puts every
+/// continuation line at `indent + 2` (the shape `serde_yaml_ng` emits for a
+/// one-element sequence, shifted); it ends with exactly one newline, so
+/// appending it to a file that ends in a newline needs no glue.
+///
+/// Key order is the model's declaration order, unchanged — this is the row
+/// pmat writes, and it is the only row in the file pmat is entitled to format.
+#[must_use]
+pub fn render_item_block(item: &RoadmapItem, indent: usize) -> String {
+    let rendered = serde_yaml_ng::to_string(std::slice::from_ref(item))
+        .expect("a roadmap item is serialisable: it is plain data with no map keys but strings");
+    if indent == 0 {
+        return rendered;
+    }
+    let pad = " ".repeat(indent);
+    let mut out = String::with_capacity(rendered.len() + indent * 4);
+    for line in rendered.lines() {
+        if !line.is_empty() {
+            out.push_str(&pad);
+            out.push_str(line);
+        }
+        out.push('\n');
+    }
+    out
+}
+
+/// The column the roadmap's top-level rows start at — 0 or 2, both of which
+/// occur in the wild, because YAML lets a sequence sit at its key's indent.
+///
+/// The least-indented `- id:` line is the top level by construction: a subtask
+/// row is nested under one, and a block scalar's body must be indented deeper
+/// than the key that opened it. An empty sequence has no row to read, and 0 is
+/// what pmat itself writes.
+#[must_use]
+pub fn row_indent(raw: &str) -> usize {
+    raw.lines()
+        .filter(|line| line.trim_start().starts_with('-') && id_value_on_line(line).is_some())
+        .map(|line| line.len() - line.trim_start().len())
+        .min()
+        .unwrap_or(0)
+}
+
+/// Append one rendered row, leaving every other byte of `raw` identical.
+///
+/// The one exception, and the only line this function may rewrite: a roadmap
+/// whose sequence is the empty FLOW sequence `roadmap: []` — nothing can be
+/// appended after `[]`, so that single line becomes `roadmap:` and the row
+/// follows it. A roadmap with no `roadmap:` key at all gains one.
+#[must_use]
+pub fn append_item(raw: &str, block: &str) -> String {
+    match roadmap_key_line(raw) {
+        Some((span, true)) => {
+            let mut out = String::with_capacity(raw.len() + block.len() + 9);
+            out.push_str(&raw[..span.0]);
+            out.push_str("roadmap:\n");
+            out.push_str(block);
+            out.push_str(&raw[span.1..]);
+            out
+        }
+        Some((_, false)) => append_at_end(raw, block),
+        None => {
+            let mut out = append_at_end(raw, "roadmap:\n");
+            out.push_str(block);
+            out
+        }
+    }
+}
+
+/// `raw` with `tail` after its last line, adding the separating newline the
+/// file may lack.
+fn append_at_end(raw: &str, tail: &str) -> String {
+    if raw.is_empty() || raw.ends_with('\n') {
+        format!("{raw}{tail}")
+    } else {
+        format!("{raw}\n{tail}")
+    }
+}
+
+/// The span of the top-level `roadmap:` key line, and whether its value is the
+/// empty flow sequence `[]`.
+fn roadmap_key_line(raw: &str) -> Option<((usize, usize), bool)> {
+    line_spans(raw).into_iter().find_map(|span| {
+        let line = line_text(raw, span);
+        let value = line.strip_prefix("roadmap:")?;
+        Some((span, value.split('#').next().unwrap_or("").trim() == "[]"))
+    })
+}
+
+/// Replace the span of ONE row — the row declaring `id` — with `block`.
+///
+/// The span runs from that row's `- id:` line to the last line that belongs to
+/// it: blank lines and top-level comments before the next row belong to the
+/// NEXT row, not to this one, so a `# section heading` above a ticket survives
+/// an edit of the ticket above it.
+///
+/// Returns `None` when the id names no top-level row, and when it is declared
+/// more than once anywhere in the file — two rows sharing an id are two
+/// well-formed rows, and choosing between them would be a guess. (`work add`
+/// and `work edit` both run [`check_roadmap_text`] first, so in practice the
+/// duplicate has already been refused with a line number.)
+#[must_use]
+pub fn replace_item_block(raw: &str, id: &str, block: &str) -> Option<String> {
+    if id_lines(raw)
+        .iter()
+        .filter(|(_, found)| found == id)
+        .count()
+        != 1
+    {
+        return None;
+    }
+    let indent = row_indent(raw);
+    let spans = line_spans(raw);
+    let rows = top_level_rows(raw, &spans, indent);
+    let position = rows.iter().position(|(_, found)| found == id)?;
+    let start = rows[position].0;
+    let limit = rows
+        .get(position + 1)
+        .map_or(spans.len(), |(index, _)| *index);
+    let end = last_line_of_row(raw, &spans, start, limit, indent);
+    Some(format!(
+        "{}{}{}",
+        &raw[..spans[start].0],
+        block,
+        &raw[spans[end].1..]
+    ))
+}
+
+/// The byte span of every line of `raw`, its newline included.
+fn line_spans(raw: &str) -> Vec<(usize, usize)> {
+    let mut spans = Vec::new();
+    let mut start = 0usize;
+    for (index, byte) in raw.bytes().enumerate() {
+        if byte == b'\n' {
+            spans.push((start, index + 1));
+            start = index + 1;
+        }
+    }
+    if start < raw.len() {
+        spans.push((start, raw.len()));
+    }
+    spans
+}
+
+/// One line's text, without its line ending.
+fn line_text(raw: &str, span: (usize, usize)) -> &str {
+    raw[span.0..span.1].trim_end_matches(['\n', '\r'])
+}
+
+/// Every top-level row: the index of its `- id:` line, and the id it declares.
+fn top_level_rows(raw: &str, spans: &[(usize, usize)], indent: usize) -> Vec<(usize, String)> {
+    spans
+        .iter()
+        .enumerate()
+        .filter_map(|(index, &span)| {
+            let line = line_text(raw, span);
+            let trimmed = line.trim_start();
+            if !trimmed.starts_with('-') || line.len() - trimmed.len() != indent {
+                return None;
+            }
+            id_value_on_line(line).map(|id| (index, id))
+        })
+        .collect()
+}
+
+/// The last line index that belongs to the row starting at `start`: the last
+/// line before `limit` that is neither blank nor a comment at the rows' own
+/// indent. A deeper-indented `#` line is a block scalar's body, and stays.
+fn last_line_of_row(
+    raw: &str,
+    spans: &[(usize, usize)],
+    start: usize,
+    limit: usize,
+    indent: usize,
+) -> usize {
+    let mut last = start;
+    for index in start..limit {
+        let line = line_text(raw, spans[index]);
+        let trimmed = line.trim();
+        let column = line.len() - line.trim_start().len();
+        if trimmed.is_empty() || (trimmed.starts_with('#') && column <= indent) {
+            continue;
+        }
+        last = index;
+    }
+    last
 }

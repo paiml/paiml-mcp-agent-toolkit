@@ -22,6 +22,9 @@
 
 use crate::cli::commands::WorkPriority;
 use crate::models::roadmap::RoadmapItem;
+use crate::services::roadmap_text::{
+    append_item, render_item_block, replace_item_block, row_indent,
+};
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
@@ -54,6 +57,17 @@ const EMPTY_SEQUENCE_FIXTURE: &str = "roadmap_version: '1.0'
 github_enabled: false
 github_repo: null
 roadmap: []
+";
+
+/// A roadmap declaring PMAT-011 twice: `replace_item_block` must refuse it
+/// rather than guess which row the caller meant.
+const DUPLICATE_FIXTURE: &str = "roadmap:
+- id: PMAT-011
+  title: the first clash
+  status: planned
+- id: PMAT-011
+  title: the second clash
+  status: planned
 ";
 
 fn roadmap_path(project: &Path) -> PathBuf {
@@ -261,4 +275,55 @@ async fn work_add_append_only_edit_replaces_only_the_edited_block() {
     assert_eq!(reloaded.roadmap[0].title, "an edited title");
     assert_eq!(reloaded.roadmap[1].id, "PMAT-002", "order is preserved");
     assert_eq!(reloaded.roadmap[2].title, "third");
+}
+
+// ── A4: the pure text operations ────────────────────────────────────────────
+
+/// `replace_item_block` refuses what it cannot locate unambiguously, and
+/// `append_item` never joins two rows onto one line.
+#[test]
+fn work_add_append_only_pure_operations_refuse_what_they_cannot_locate() {
+    let item = parse_one_item("- id: PMAT-042\n  title: rendered\n  status: planned\n");
+    let block = render_item_block(&item, row_indent(LOSSY_FIXTURE));
+
+    assert_eq!(
+        replace_item_block(LOSSY_FIXTURE, "PMAT-404", &block),
+        None,
+        "an absent id must not be guessed at"
+    );
+    assert_eq!(
+        replace_item_block(DUPLICATE_FIXTURE, "PMAT-011", &block),
+        None,
+        "a duplicated id names two rows; replacing either is a guess"
+    );
+    assert!(
+        replace_item_block(LOSSY_FIXTURE, "PMAT-002", &block).is_some(),
+        "a flow-style row is a row, and is replaceable"
+    );
+
+    // Missing trailing newline: the row must still start on its own line.
+    let no_newline = "roadmap:\n- id: PMAT-001\n  title: a\n  status: planned";
+    let appended = append_item(no_newline, &block);
+    assert_eq!(
+        appended,
+        format!("{no_newline}\n{block}"),
+        "an append must add the separating newline the file lacks"
+    );
+    assert_eq!(
+        append_item(LOSSY_FIXTURE, &block),
+        format!("{LOSSY_FIXTURE}{block}"),
+        "a file that ends in a newline is appended to verbatim"
+    );
+
+    // A rendered block is one sequence element, at the file's own indent, and
+    // ends in exactly one newline.
+    assert!(block.starts_with("- id: PMAT-042"), "{block}");
+    assert!(block.ends_with('\n') && !block.ends_with("\n\n"), "{block}");
+    assert_eq!(row_indent(LOSSY_FIXTURE), 0);
+    assert_eq!(row_indent("roadmap:\n  - id: PMAT-001\n"), 2);
+    assert_eq!(
+        row_indent(EMPTY_SEQUENCE_FIXTURE),
+        0,
+        "an empty sequence has no indent to read"
+    );
 }
