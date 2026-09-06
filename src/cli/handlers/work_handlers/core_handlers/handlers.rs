@@ -1178,6 +1178,19 @@ pub async fn handle_work_cot_check(id: String, path: Option<PathBuf>) -> Result<
             steps.len() - structured
         ))
     );
+    // #1200 (PMAT-685): chain integrity says nothing about whether a step has
+    // anything to assert; `derive` will refuse these, so say so here first.
+    let hollow = crate::models::work_cot::hollow_steps(&steps);
+    if !hollow.is_empty() {
+        println!(
+            "{}",
+            c::warn(&format!(
+                "{} hollow step(s) ({}): no implication and no falsifiable_claim — `pmat work cot derive` will refuse them",
+                hollow.len(),
+                hollow.join(", ")
+            ))
+        );
+    }
     let violations = crate::models::work_cot::check_chain(&steps);
     if violations.is_empty() {
         println!(
