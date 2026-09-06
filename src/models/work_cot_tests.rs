@@ -510,3 +510,62 @@ fn inline_prose_efact_does_not_discharge() {
         "declared E-fact discharges"
     );
 }
+
+/// #1200 as filed: aprender's ten `GH-663..672` contracts (`version: "5.0"`,
+/// steps carrying `falsifiable_claim` + `discharged_by: ["FC-n"]`), copied
+/// verbatim into `src/tests/fixtures/aprender-cot/`. On 3.38.0 every one of
+/// them derived hollow. Now every step derives a non-empty obligation, and the
+/// rendered artifacts carry no `statement: ""` / `hypothesis: ""` at all.
+#[test]
+fn every_aprender_gh_663_to_672_contract_derives_zero_empty_statements() {
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("src/tests/fixtures/aprender-cot");
+    let mut seen = 0usize;
+    for id in 663..=672 {
+        let path = dir.join(format!("GH-{id}.contract.json"));
+        let text = std::fs::read_to_string(&path);
+        assert!(
+            text.is_ok(),
+            "{} must be readable: {:?}",
+            path.display(),
+            text.as_ref().err()
+        );
+        let contract: serde_json::Value =
+            serde_json::from_str(&text.unwrap_or_default()).expect("fixture is JSON");
+        let steps = parse_steps(&contract);
+        assert!(!steps.is_empty(), "GH-{id}: at least one step");
+        assert_eq!(
+            hollow_steps(&steps),
+            Vec::<String>::new(),
+            "GH-{id}: no hollow step"
+        );
+        let yaml = render_derivation(&format!("GH-{id}"), &steps, false);
+        assert_eq!(
+            yaml.matches("- id:").count(),
+            steps.len(),
+            "GH-{id}: one obligation per step"
+        );
+        assert_eq!(
+            yaml.matches("- hypothesis:").count(),
+            steps.len(),
+            "GH-{id}: one claim per step"
+        );
+        assert!(
+            !yaml.contains("statement: \"\""),
+            "GH-{id}: hollow obligation:\n{yaml}"
+        );
+        assert!(
+            !yaml.contains("hypothesis: \"\""),
+            "GH-{id}: hollow claim:\n{yaml}"
+        );
+        for step in &steps {
+            assert!(
+                yaml.contains(&yaml_quote(&step.implication)),
+                "GH-{id}/{}: the claim text is rendered verbatim",
+                step.id
+            );
+        }
+        seen += 1;
+    }
+    assert_eq!(seen, 10, "all ten aprender contracts were exercised");
+}
