@@ -47,3 +47,12 @@ mod work_add_allocator_tests;
 #[cfg(test)]
 #[path = "../../../tests/work_add_refuses_invalid_tests.rs"]
 mod work_add_refuses_invalid_tests;
+// PMAT-679: `work add` must APPEND the row it mints and `work edit` must
+// replace only the row it edits — every untouched byte identical. Registered
+// here for the same reason as its three siblings above: nothing reaches
+// `src/tests/lib.rs`, so a test file left there is never compiled and its
+// silence would read as a pass. `cargo test --lib -- work_add_append_only`
+// runs them.
+#[cfg(test)]
+#[path = "../../../tests/work_add_append_only_tests.rs"]
+mod work_add_append_only_tests;
