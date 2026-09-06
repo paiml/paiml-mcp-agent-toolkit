@@ -4501,11 +4501,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'flag-efficacy release gate is RED on the 3.39.0 tree: 18 no-op flags (14x --color on report commands, --fail-on-error, --failures-only x3, --include-quality-gates, --fail-on-p0) and 4 ''error-out'' entries that are the ledger writers refusing the sweep''s dirty corpus'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-06T14:59:43Z
-  updated: 2026-09-06T17:09:57.540360852+00:00
+  updated: 2026-09-06T20:14:38Z
   spec: null
   acceptance_criteria:
   - 'make gate-flag-efficacy-full on 62562ccd9: summary 584 effective, 4 refuses-honestly, 18 no-op, 4 error-out, 369 skipped; report /tmp/pmat-flag-efficacy-report.txt. None of the 22 flags was touched by 3.39.0 (verify: the same gate on v3.38.0 in a detached worktree, log gate-fe-3380). Falsifier: each no-op flag changes observable output on the corpus or refuses honestly; the two --write-ledger/--allow-dirty pairs are re-classified by the harness (a refusal on a dirty tree is the documented behaviour, not an error-out); the sweep then exits 0.'
