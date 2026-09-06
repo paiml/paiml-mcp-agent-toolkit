@@ -4239,32 +4239,15 @@ roadmap:
   - kind:code
   - bug
   notes: null
-- id: PMAT-663
-  github_issue: null
-  item_type: task
-  title: 'AD-09: one orchestrator per repository per host'
-  status: in_progress
-  priority: medium
-  assigned_to: null
-  created: 2026-09-04T02:20:10Z
-  updated: 2026-09-04T02:20:10Z
-  spec: null
-  acceptance_criteria:
-  - 'agentic-delivery-pmat.md section 6 / 9.9. Bundle: discover.sh takes an orchestrator lock per repository in the runtime dir; the hook refuses a second session''s first Agent spawn in the same repository naming the holder; stale locks (session gone, or older than 12h) are taken over; hooks/orchestrator-lock-selftest.sh drives the real hook. The xhigh assertion is not machine-checkable from a hook and stays [U]. pmat side: spec note and receipt. Controls: second orchestrator refused naming the first; holder may spawn; stale lock taken over.'
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
 - id: PMAT-675
   github_issue: null
   item_type: task
   title: 'release path: restore release.yml (clean-room gate+verify → GitHub prerelease), demote docker-publish to workflow_dispatch with a secret preflight'
-  status: inprogress
+  status: planned
   priority: high
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T09:31:18.781195456+00:00
+  updated: 2026-09-06T07:56:01Z
   spec: null
   acceptance_criteria:
   - 'A pmat tag runs no clean-room gate and creates no release. Restore .github/workflows/release.yml from release.yml.disabled keeping create-release → gate → verify on [self-hosted, clean-room] and creating a GitHub prerelease (prerelease: true); delete the publish, build-binaries and publish-release jobs (binary-release.yml on release: published supersedes them). No cargo publish, no CARGO_REGISTRY_TOKEN, no continue-on-error. docker-publish.yml: red on every tag since v3.32.0 (6 consecutive), hard-codes image tag 2.10.0, but docs/DOCKER.md documents paiml/pmat:2.12.0 (#1122) — a doc consumer exists, so it is demoted to workflow_dispatch with a secret-presence preflight that exits 1 with a named reason, not deleted; HRQ. Falsifier: a workflow_dispatch probe run with an injected failing verify step creates no release; the failure names verify, not create-release.'
@@ -4279,11 +4262,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'work add refuses what validate rejects: one raw-text id scanner, one validator, called by add/edit/validate inside the write lock'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T09:54:47.374929312+00:00
   spec: null
   acceptance_criteria:
   - '3.38.0: work add refuses only unparseable roadmaps; a duplicated-id roadmap (validate exit 1) is accepted and written. Root: two scanners (roadmap_service_operations.rs::id_key_value vs ticket_validate_migrate.rs::collect_id_lines) and no shared validator. Fix: one scanner, one validator used by add, edit and validate, before any write, under the lock. Falsifier: fixture with PMAT-011 twice → work add exit 1 naming both file:line, roadmap.yaml byte-identical, lock unchanged; mutation removing the validator call in add → the new lib test RED while the validate test stays GREEN.'
@@ -4444,11 +4427,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'work cot derive: read falsifiable_claim (v5.0 steps) or refuse a hollow obligation; CB-1658 refuses empty statement/hypothesis (#1200)'
-  status: planned
+  status: inprogress
   priority: critical
   assigned_to: null
   created: 2026-09-06T08:03:59Z
-  updated: 2026-09-06T08:03:59Z
+  updated: 2026-09-06T08:04:39.626986847+00:00
   spec: null
   acceptance_criteria:
   - 'pmat 3.37/3.38: for a version 5.0 contract.json whose chain_of_thought[] steps carry falsifiable_claim (not assumption/implication), parse_step treats the step as structured, both texts come out empty, and render_derivation writes statement: '''' / hypothesis: '''' verbatim; pv refuses the artifact (SCHEMA-005) and CB-1658 passes it because it only compares counts and verbatim equality ('''' == ''''). Blocks aprender PP-066 row C0-3 (#2892). Fix: parse_steps reads falsifiable_claim (string or {claim|text}) and the top-level falsifiable_claims[] entry the step discharges when implication is absent; handle_work_cot_derive refuses with the step id and the missing field instead of writing a hollow artifact; CB-1658 fails an obligation with an empty statement or a claim with an empty hypothesis. Falsifier: the issue''s exact step JSON derives a non-empty statement equal to the claim; a step with neither field → derive exit 1, no artifact, no digest; a hand-written hollow .cot.yaml → CB-1658 Fail naming the ticket and obligation id; mutation restoring the old parse_step → RED.'
@@ -4458,4 +4441,21 @@ roadmap:
   labels:
   - kind:code
   - urgent
+  notes: null
+- id: PMAT-663
+  github_issue: null
+  item_type: task
+  title: 'AD-09: one orchestrator per repository per host'
+  status: in_progress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-04T02:20:10Z
+  updated: 2026-09-04T02:20:10Z
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 6 / 9.9. Bundle: discover.sh takes an orchestrator lock per repository in the runtime dir; the hook refuses a second session''s first Agent spawn in the same repository naming the holder; stale locks (session gone, or older than 12h) are taken over; hooks/orchestrator-lock-selftest.sh drives the real hook. The xhigh assertion is not machine-checkable from a hook and stays [U]. pmat side: spec note and receipt. Controls: second orchestrator refused naming the first; holder may spawn; stale lock taken over.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
   notes: null

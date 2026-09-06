@@ -1,0 +1,39 @@
+# Hand-authored work contract for PMAT-680 (cross-checkout id union; #1193 'N worktrees minting concurrently collide by construction'). Every evidence_method is a command
+# run on this tree by the orchestrator; the lib tests are compiled from
+# src/cli/handlers/work_handlers/mod.rs (#[path]) under CI's cargo test --lib.
+name: "PMAT-680"
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  description: "ids are minted from one authority per repository: a lock and high-water mark in the git common dir plus every ref's roadmap, so concurrent checkouts mint distinct ids"
+  references:
+    - "src/services/roadmap_id_authority.rs"
+    - "src/services/roadmap_service_io.rs"
+    - "src/services/roadmap_service_operations.rs"
+    - "src/tests/work_add_single_authority_tests.rs"
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1193"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 3
+proof_obligations:
+- id: "PO-1"
+  statement: "Two checkouts (worktrees) of one repository running work add concurrently, three rounds, mint six distinct ids; each checkout's roadmap holds exactly its own new rows and new_text == old_text + its appended blocks."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_single_authority_tests::work_add_single_authority_two_checkouts_mint_distinct_ids"
+- id: "PO-2"
+  statement: "An id spent on another ref (PMAT-020 committed on branch feature) is respected: the next mint on the first branch (max 010) is PMAT-021; the lock and high-water mark live at <git-common-dir>/pmat/roadmap-id.lock and no roadmap.yaml.lock sibling is created; outside git the sibling lock still works."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_single_authority_counts_ids_on_other_refs work_add_single_authority_lock_lives_in_the_git_common_dir work_add_single_authority_falls_back_to_the_sibling_lock_outside_git"
+- id: "PO-3"
+  statement: "Discrimination: with the every-ref term dropped from the mint, the other-refs test fails while the two-checkout, common-dir and fallback tests stay green (observed on the branch, restored; re-observed by the orchestrator)."
+  evidence_method: "! git log --format=%s | grep -q 'MUTATION PMAT-680'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+falsifiable_claims:
+- hypothesis: "Two checkouts (worktrees) of one repository running work add concurrently, three rounds, mint six distinct ids; each checkout's roadmap holds exactly its own new rows and new_text == old_text + its appended blocks."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_single_authority_tests::work_add_single_authority_two_checkouts_mint_distinct_ids"
+  from_step: "1"
+- hypothesis: "An id spent on another ref (PMAT-020 committed on branch feature) is respected: the next mint on the first branch (max 010) is PMAT-021; the lock and high-water mark live at <git-common-dir>/pmat/roadmap-id.lock and no roadmap.yaml.lock sibling is created; outside git the sibling lock still works."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_single_authority_counts_ids_on_other_refs work_add_single_authority_lock_lives_in_the_git_common_dir work_add_single_authority_falls_back_to_the_sibling_lock_outside_git"
+  from_step: "2"
+- hypothesis: "Discrimination: with the every-ref term dropped from the mint, the other-refs test fails while the two-checkout, common-dir and fallback tests stay green (observed on the branch, restored; re-observed by the orchestrator)."
+  method: "! git log --format=%s | grep -q 'MUTATION PMAT-680'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+  from_step: "3"

@@ -39,7 +39,7 @@ proof_obligations:
   evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_writes_nothing_when_the_roadmap_does_not_parse"
 - id: "PO-A6"
   statement: "The tests discriminate: with the pre-fix allocator planted back into add_item_with_next_id (parsed-model max, no high-water mark), PO-A3 and PO-A4 fail. Observed locally in a worktree and once in CI on the PR branch (the commit is reverted; see docs/audits/impl-PMAT-673-receipt.md)."
-  evidence_method: "git log --format=%s | grep -c 'MUTATION PMAT-673'   # 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+  evidence_method: "! git log --format=%s | grep -q 'MUTATION PMAT-673'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
 falsifiable_claims:
 - hypothesis: "Two sequential adds on an empty roadmap mint PMAT-001 then PMAT-002 and both rows are present with their own titles; the first is not replaced by the second."
   method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_sequential_adds_mint_001_then_002"
@@ -57,5 +57,5 @@ falsifiable_claims:
   method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_allocator_tests::work_add_allocator_writes_nothing_when_the_roadmap_does_not_parse"
   from_step: "A5"
 - hypothesis: "The tests discriminate: with the pre-fix allocator planted back into add_item_with_next_id (parsed-model max, no high-water mark), PO-A3 and PO-A4 fail. Observed locally in a worktree and once in CI on the PR branch (the commit is reverted; see docs/audits/impl-PMAT-673-receipt.md)."
-  method: "git log --format=%s | grep -c 'MUTATION PMAT-673'   # 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+  method: "! git log --format=%s | grep -q 'MUTATION PMAT-673'   # exit 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
   from_step: "A6"

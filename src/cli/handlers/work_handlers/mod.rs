@@ -40,6 +40,31 @@ mod work_validate_duplicate_ids_tests;
 #[cfg(test)]
 #[path = "../../../tests/work_add_allocator_tests.rs"]
 mod work_add_allocator_tests;
+// PMAT-676: `work add` and `work edit` must refuse a roadmap `work validate`
+// rejects. Registered here for the same reason as its two siblings above —
+// `src/tests/lib.rs` reaches nothing, so a test file left there is never
+// compiled. `cargo test --lib -- work_add_refuses_invalid` runs them.
+#[cfg(test)]
+#[path = "../../../tests/work_add_refuses_invalid_tests.rs"]
+mod work_add_refuses_invalid_tests;
+// PMAT-679: `work add` must APPEND the row it mints and `work edit` must
+// replace only the row it edits — every untouched byte identical. Registered
+// here for the same reason as its three siblings above: nothing reaches
+// `src/tests/lib.rs`, so a test file left there is never compiled and its
+// silence would read as a pass. `cargo test --lib -- work_add_append_only`
+// runs them.
+#[cfg(test)]
+#[path = "../../../tests/work_add_append_only_tests.rs"]
+mod work_add_append_only_tests;
+// PMAT-680: `work add` must mint from ONE authority per repository — the git
+// common dir's lock plus every ref's roadmap — so two checkouts of the same
+// repository cannot mint the same id. Registered here for the same reason as
+// its four siblings above: nothing reaches `src/tests/lib.rs`, so a test file
+// left there is never compiled and its silence would read as a pass.
+// `cargo test --lib -- work_add_single_authority` runs them.
+#[cfg(test)]
+#[path = "../../../tests/work_add_single_authority_tests.rs"]
+mod work_add_single_authority_tests;
 
 // PMAT-675: the release path a tag takes, pinned as data (see the file header).
 #[cfg(test)]
