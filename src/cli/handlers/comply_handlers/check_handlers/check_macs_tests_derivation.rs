@@ -70,6 +70,50 @@ mod tests_macs_derivation {
         assert!(check.message.contains("paraphrase drift"), "{}", check.message);
     }
 
+    /// #1200 (PMAT-685): a v5.0 step carries `falsifiable_claim`, not
+    /// `implication`; 3.38.0 derived `statement: ""` / `hypothesis: ""` and
+    /// CB-1658 passed the hollow artifact because `"" == ""` is verbatim.
+    /// A hollow obligation is a violation in its own right, named by ticket
+    /// and obligation id.
+    #[test]
+    fn cb1658_red_on_hollow_obligation() {
+        let project = tempdir().unwrap();
+        let dir = project.path().join(".pmat-work").join("T-D4");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("contract.json"),
+            serde_json::to_string_pretty(&json!({
+                "version": "5.0",
+                "work_item_id": "T-D4",
+                "chain_of_thought": [
+                    {"step": 1, "evidence_method": "Falsification",
+                     "falsifiable_claim": "apr compare-hf --offline hangs — must not occur after fix",
+                     "discharged_by": ["FC-1"]}
+                ]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        std::fs::write(dir.join("cot-digest.json"), r#"{"sha": "irrelevant-here"}"#).unwrap();
+        write_artifact(
+            project.path(),
+            "T-D4",
+            "proof_obligations:\n- id: \"PO-CoT-1\"\n  statement: \"\"\n  evidence_method: \"Falsification\"\nfalsifiable_claims:\n- hypothesis: \"\"\n  method: \"Falsification\"\n  from_step: \"CoT-1\"\n",
+        );
+        let check = check_derivation_completeness(project.path());
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
+        assert!(
+            check.message.contains("T-D4") && check.message.contains("PO-CoT-1"),
+            "the violation names the ticket and the hollow obligation: {}",
+            check.message
+        );
+        assert!(
+            check.message.to_lowercase().contains("empty"),
+            "the violation says what is wrong: {}",
+            check.message
+        );
+    }
+
     #[test]
     fn cb1658_green_on_faithful_derivation() {
         let project = tempdir().unwrap();

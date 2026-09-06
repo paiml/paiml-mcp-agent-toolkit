@@ -245,6 +245,17 @@ pub fn parse_steps(contract: &Value) -> Vec<CotStepView> {
         .unwrap_or_default()
 }
 
+/// Ids of the steps whose implication is empty — a derivation would render
+/// them as `statement: ""` / `hypothesis: ""`, which `pv` refuses
+/// (SCHEMA-005) and which says nothing anyone could falsify (#1200).
+pub fn hollow_steps(steps: &[CotStepView]) -> Vec<String> {
+    steps
+        .iter()
+        .filter(|s| s.implication.trim().is_empty())
+        .map(|s| s.id.clone())
+        .collect()
+}
+
 /// A CB-1640 chain-integrity violation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Cb1640Violation {
