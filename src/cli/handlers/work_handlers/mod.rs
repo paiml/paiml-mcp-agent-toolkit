@@ -56,3 +56,12 @@ mod work_add_refuses_invalid_tests;
 #[cfg(test)]
 #[path = "../../../tests/work_add_append_only_tests.rs"]
 mod work_add_append_only_tests;
+// PMAT-680: `work add` must mint from ONE authority per repository — the git
+// common dir's lock plus every ref's roadmap — so two checkouts of the same
+// repository cannot mint the same id. Registered here for the same reason as
+// its four siblings above: nothing reaches `src/tests/lib.rs`, so a test file
+// left there is never compiled and its silence would read as a pass.
+// `cargo test --lib -- work_add_single_authority` runs them.
+#[cfg(test)]
+#[path = "../../../tests/work_add_single_authority_tests.rs"]
+mod work_add_single_authority_tests;
