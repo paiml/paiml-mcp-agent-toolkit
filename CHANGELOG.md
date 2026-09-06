@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AD-09: one orchestrator per repository per host (PMAT-663, PR #1181).
 - pv work contracts `contracts/work/PMAT-{675,676,679,680,685}.yaml`; receipts under
   `docs/audits/impl-PMAT-*-receipt.md`.
+- Fleet clean-room gate readiness (PMAT-686): the banned-path literals the
+  fleet lint-gate greps for (`/home/noah`, `/mnt/nvme-raid0`) are scrubbed from
+  17 `*.rs`/`*.toml`/`*.sh` files (analyzer fixtures use a neutral home, script
+  defaults use `$HOME`, `pmat.toml` `project_path` is `.`), pinned by an
+  in-repo scan test; two files stay pinned at their current count for PMAT-687.
 
 ### Known, not fixed
 

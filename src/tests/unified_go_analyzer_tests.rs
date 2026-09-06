@@ -184,10 +184,8 @@ mod property_tests {
 async fn red_test_unified_go_on_real_file() {
     use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
 
-    let real_file = PathBuf::from("/home/alice/src/agentic-ai/go-actors/simple.go");
-    if !real_file.exists() {
-        return;
-    }
+    let real_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/tests/fixtures/analyzer/simple.go");
+    assert!(real_file.exists(), "in-repo fixture {} must exist", real_file.display());
 
     let analyzer = UnifiedGoAnalyzer::new(real_file);
     let result = analyzer.analyze().await;

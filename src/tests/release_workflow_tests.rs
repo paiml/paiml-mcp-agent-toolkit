@@ -129,6 +129,14 @@ fn release_workflow_gates_then_verifies_then_prereleases_and_never_publishes() {
         "verify runs in the clean room"
     );
 
+    let verify_run = doc["jobs"]["verify"]["steps"]
+        .as_sequence()
+        .and_then(|s| s.iter().find_map(|st| st["run"].as_str()))
+        .unwrap_or_default();
+    assert!(
+        verify_run.contains("cargo package") && verify_run.contains("--locked") && !verify_run.contains("--verify"),
+        "verify packages with --locked; `--verify` is not a cargo flag (Usage: cargo package --no-verify) and would fail the job: {verify_run}"
+    );
     let mut coe = Vec::new();
     continue_on_error_keys(&doc, "", &mut coe);
     assert!(coe.is_empty(), "no step may continue on error: {coe:?}");

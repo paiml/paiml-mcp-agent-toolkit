@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4444 tracked `.rs` files: 3955 reachable from 137 target root(s), 407 orphaned (126922 lines, 6294 `#[test]` fns), 82 quarantined (35891 lines, 2021 `#[test]` fns).
+4444 tracked `.rs` files: 3955 reachable from 137 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35891 lines, 2021 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -448,7 +448,7 @@ same change; do not edit counts by hand.
 | `src/tests/test_include_patterns.rs` | pending-#1017 | 2 | 65 |
 | `src/tests/tools.rs` | pending-#1017 | 15 | 399 |
 | `src/tests/unified_bash_analyzer_tests.rs` | pending-#1017 | 10 | 294 |
-| `src/tests/unified_go_analyzer_tests.rs` | pending-#1017 | 10 | 293 |
+| `src/tests/unified_go_analyzer_tests.rs` | pending-#1017 | 10 | 291 |
 | `src/tests/unified_protocol_tests.rs` | pending-#1017 | 13 | 212 |
 | `src/tests/unified_python_analyzer_tests.rs` | pending-#1017 | 10 | 288 |
 | `src/tests/unified_rust_analyzer_tests.rs` | pending-#1017 | 10 | 311 |
