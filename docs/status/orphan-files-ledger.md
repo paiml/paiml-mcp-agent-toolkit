@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4444 tracked `.rs` files: 3955 reachable from 137 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35891 lines, 2021 `#[test]` fns).
+4444 tracked `.rs` files: 3955 reachable from 137 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35910 lines, 2022 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -149,7 +149,7 @@ same change; do not edit counts by hand.
 | `src/qdd/generator_core.rs` | pending-#1017 | 2 | 343 |
 | `src/qdd/generator_doc.rs` | pending-#1017 | 0 | 123 |
 | `src/qdd/generator_tests.rs` | pending-#1017 | 33 | 819 |
-| `src/roadmap/commands/tests.rs` | quarantined-#1023 | 9 | 178 |
+| `src/roadmap/commands/tests.rs` | quarantined-#1023 | 10 | 197 |
 | `src/roadmap/commands/tests_basic.rs` | pending-#1017 | 9 | 170 |
 | `src/roadmap/commands/tests_part2.rs` | quarantined-#1023 | 22 | 470 |
 | `src/roadmap/commands/tests_part3.rs` | quarantined-#1023 | 19 | 490 |
