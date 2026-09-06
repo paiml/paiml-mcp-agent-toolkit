@@ -14,9 +14,9 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-23784 of 27012 lib tests are executed; 3228 are compiled by no leg.
+23797 of 27026 lib tests are executed; 3229 are compiled by no leg.
 
-## `<unsatisfiable>` — 2199 test(s)
+## `<unsatisfiable>` — 2200 test(s)
 
 NOT a clean bill of health — the strongest finding in this ledger, and it grew from 18 to 2199 without a single test changing. #1023 moved the `broken-tests` quarantine from a Cargo FEATURE to the cfg flag `pmat_broken_tests`, and that reclassified 2181 tests out of five `broken-tests,*` buckets into this one. The old buckets read as 'enable this feature and they run', which was never true — the bodies do not compile. `<unsatisfiable>` says what is actually the case. Of the original 18: 14 are `#[cfg(all(feature = "F", not(feature = "F")))]` — a `test_..._without_feature` body written to cover the feature-OFF branch, placed inside a module already gated ON that feature — and 4 are `#[cfg(any())]`, which is `false` by definition. No `--features` invocation can compile any of these; only moving the bodies out of the gated module can. The 2181 quarantined ones need their tests repaired or deleted, which is #1023's remaining work.
 
@@ -1426,6 +1426,7 @@ crate::roadmap::commands::tests::tests::test_priority_from_str
 crate::roadmap::commands::tests::tests::test_roadmap_command_parsing
 crate::roadmap::commands::tests::tests::test_start_subcommand_parsing
 crate::roadmap::commands::tests::tests::test_todos_subcommand_parsing
+crate::roadmap::commands::tests::tests::todos_written_line_names_the_format_and_count
 crate::roadmap::commands::tests_part2::coverage_tests_part1::test_complete_subcommand_defaults
 crate::roadmap::commands::tests_part2::coverage_tests_part1::test_complete_task_with_skip_quality_check
 crate::roadmap::commands::tests_part2::coverage_tests_part1::test_init_sprint_adds_to_existing_roadmap
