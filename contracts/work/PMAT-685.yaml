@@ -1,0 +1,48 @@
+# Hand-authored work contract for PMAT-685 (#1200): `pmat work cot derive` wrote
+# hollow obligations (statement: "") for version-5.0 contract.json steps that
+# carry `falsifiable_claim` instead of `implication`; pv refused the artifact
+# (SCHEMA-005) while CB-1658 passed it. Every evidence_method below was run on
+# this tree by the orchestrator; the lib tests run under CI's `cargo test --lib`.
+name: "PMAT-685"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "work cot derive reads a v5.0 step's falsifiable_claim or refuses a hollow step by name; CB-1658 fails an empty statement or hypothesis"
+  references:
+    - "src/models/work_cot.rs"
+    - "src/models/work_cot_tests.rs"
+    - "src/cli/handlers/work_handlers/core_handlers/handlers.rs"
+    - "src/cli/handlers/comply_handlers/check_handlers/check_macs_derivation.rs"
+    - "src/cli/handlers/comply_handlers/check_handlers/check_macs_tests_derivation.rs"
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1200"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 4
+proof_obligations:
+- id: "PO-C1"
+  statement: "The exact v5.0 step of aprender's GH-663 contract (falsifiable_claim, evidence_method, discharged_by: [FC-1]; no assumption, no implication) parses with implication == the claim text, and the rendered derivation carries it verbatim with no `statement: \"\"` or `hypothesis: \"\"`."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact models::work_cot::tests::v5_step_falsifiable_claim_becomes_the_implication"
+- id: "PO-C2"
+  statement: "A step with no claim of its own reads the top-level falsifiable_claims[] entry its discharged_by names (by id); a claim object may spell its text as claim, text or hypothesis."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact models::work_cot::tests::v5_step_without_its_own_claim_reads_the_top_level_claim_it_discharges"
+- id: "PO-C3"
+  statement: "A step that is still empty after both fallbacks is named by hollow_steps(), and `pmat work cot derive` refuses it: non-zero exit, the step id and the fields (implication, falsifiable_claim) in the error, and neither contracts/work/<ID>.cot.yaml nor .pmat-work/<ID>/cot-digest.json written."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- hollow_step_is_named_not_rendered cot_derive_refuses_a_hollow_step_and_writes_nothing"
+- id: "PO-C4"
+  statement: "CB-1658 fails a derivation artifact whose obligation has an empty statement or whose claim has an empty hypothesis, naming the ticket, the index, the id and the word empty — the verbatim rule alone accepted '' == ''."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_derivation::cb1658_red_on_hollow_obligation"
+falsifiable_claims:
+- hypothesis: "The exact v5.0 step of aprender's GH-663 contract (falsifiable_claim, evidence_method, discharged_by: [FC-1]; no assumption, no implication) parses with implication == the claim text, and the rendered derivation carries it verbatim with no `statement: \"\"` or `hypothesis: \"\"`."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact models::work_cot::tests::v5_step_falsifiable_claim_becomes_the_implication"
+  from_step: "C1"
+- hypothesis: "A step with no claim of its own reads the top-level falsifiable_claims[] entry its discharged_by names (by id); a claim object may spell its text as claim, text or hypothesis."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact models::work_cot::tests::v5_step_without_its_own_claim_reads_the_top_level_claim_it_discharges"
+  from_step: "C2"
+- hypothesis: "A step that is still empty after both fallbacks is named by hollow_steps(), and `pmat work cot derive` refuses it: non-zero exit, the step id and the fields (implication, falsifiable_claim) in the error, and neither contracts/work/<ID>.cot.yaml nor .pmat-work/<ID>/cot-digest.json written."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- hollow_step_is_named_not_rendered cot_derive_refuses_a_hollow_step_and_writes_nothing"
+  from_step: "C3"
+- hypothesis: "CB-1658 fails a derivation artifact whose obligation has an empty statement or whose claim has an empty hypothesis, naming the ticket, the index, the id and the word empty — the verbatim rule alone accepted '' == ''."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_derivation::cb1658_red_on_hollow_obligation"
+  from_step: "C4"
