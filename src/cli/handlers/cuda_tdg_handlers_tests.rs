@@ -175,8 +175,8 @@ mod coverage_tests {
     fn gate_text_names_the_p0_policy_in_force() {
         let temp_dir = TempDir::new().expect("tempdir");
         let result = create_mock_result(temp_dir.path());
-        let strict = format_gate_text(&result, true, 85.0, true);
-        let advisory = format_gate_text(&result, true, 85.0, false);
+        let strict = format_gate_text(&result, true, 85.0, true, false);
+        let advisory = format_gate_text(&result, true, 85.0, false, false);
         assert!(
             strict.contains("P0 policy") && strict.contains("--fail-on-p0"),
             "the gate report must say which P0 policy was applied:\n{strict}"
@@ -198,10 +198,17 @@ mod coverage_tests {
             let _on = crate::cli::colors::ForcedColor::on();
             let summary = format_score_summary(&result.score, &config).expect("summary");
             assert!(summary.contains("\x1b["), "score summary: {summary:?}");
-            let gate = format_gate_text(&result, true, 85.0, false);
+            let gate = format_gate_text(&result, true, 85.0, false, true);
             assert!(gate.contains("\x1b["), "gate: {gate:?}");
-            let kaizen = format_kaizen_text(&result);
+            let kaizen = format_kaizen_text(&result, true);
             assert!(kaizen.contains("\x1b["), "kaizen: {kaizen:?}");
+            // A document format never carries an escape, colours forced or not.
+            let sarif = create_config_with_format(CudaTdgOutputFormat::Sarif);
+            assert!(!format_score_summary(&result.score, &sarif)
+                .expect("summary")
+                .contains("\x1b["));
+            assert!(!format_gate_text(&result, true, 85.0, false, false).contains("\x1b["));
+            assert!(!format_kaizen_text(&result, false).contains("\x1b["));
         }
         let _off = crate::cli::colors::ForcedColor::off();
         let summary = format_score_summary(&result.score, &config).expect("summary");
@@ -209,8 +216,8 @@ mod coverage_tests {
             !summary.contains("\x1b["),
             "plain when colours are off: {summary:?}"
         );
-        assert!(!format_gate_text(&result, true, 85.0, false).contains("\x1b["));
-        assert!(!format_kaizen_text(&result).contains("\x1b["));
+        assert!(!format_gate_text(&result, true, 85.0, false, true).contains("\x1b["));
+        assert!(!format_kaizen_text(&result, true).contains("\x1b["));
     }
 
     // Tests for format_result

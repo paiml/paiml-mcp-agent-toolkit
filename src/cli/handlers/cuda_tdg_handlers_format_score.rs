@@ -58,7 +58,9 @@ fn format_analysis(result: &CudaSimdTdgResult, config: &CudaTdgCommandConfig) ->
 fn format_score_summary(score: &PopperScore, config: &CudaTdgCommandConfig) -> Result<String> {
     match config.format {
         CudaTdgOutputFormat::Json => Ok(serde_json::to_string_pretty(score)?),
-        _ => {
+        // Only the terminal format may carry colour; markdown and sarif are
+        // documents and stay plain whatever `--color` says (PMAT-688 quorum).
+        CudaTdgOutputFormat::Terminal => {
             use crate::cli::colors as c;
             Ok(format!(
                 "{:.1}/100 (Grade: {}, Gateway: {})",
@@ -71,6 +73,16 @@ fn format_score_summary(score: &PopperScore, config: &CudaTdgCommandConfig) -> R
                 }
             ))
         }
+        _ => Ok(format!(
+            "{:.1}/100 (Grade: {}, Gateway: {})",
+            score.total,
+            score.grade,
+            if score.gateway_passed {
+                "PASSED"
+            } else {
+                "FAILED"
+            }
+        )),
     }
 }
 

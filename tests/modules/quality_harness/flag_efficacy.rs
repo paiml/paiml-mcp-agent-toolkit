@@ -466,6 +466,13 @@ const PROBE_CONTEXT: &[(&str, &str, &[&str])] = &[
         "--convergence-threshold",
         &["--format", "json"],
     ),
+    // PMAT-688: `--allow-dirty` has clap `requires = "write_ledger"` on both
+    // ledger writers; probed alone it is a usage error, which is the sweep's
+    // omission, not the flag's. With the companion the probe is real: on a
+    // dirty tree the control refuses (exit 1, empty stdout ⇒ "not a control",
+    // an honest skip) and on a clean one both write the ledger.
+    ("analyze reachability", "--allow-dirty", &["--write-ledger"]),
+    ("analyze unrun-tests", "--allow-dirty", &["--write-ledger"]),
 ];
 
 /// Probe values that must straddle the fixture for a specific option.
@@ -842,11 +849,12 @@ fn is_honest_refusal(stderr: &str) -> bool {
         || s.contains("no longer supported")
         // PMAT-688: a documented precondition, named in the refusal — the
         // ledger writers' "refusing to write … from a dirty git tree … or pass
-        // --allow-dirty", and clap's "the following required arguments were
-        // not provided" for a flag that `requires` a companion. Both say what
-        // the flag needs; neither is a flag breaking a working command.
+        // --allow-dirty". The flag did not silently do nothing; it said what
+        // it needs. Clap's "required arguments were not provided" is NOT in
+        // this list (quorum, 2 of 3 lanes): that is the sweep failing to
+        // supply a `requires` companion, and PROBE_CONTEXT is where the
+        // companion belongs — a harness omission must never read as a pass.
         || s.contains("refusing to")
-        || s.contains("required arguments were not provided")
 }
 
 #[test]
@@ -2183,12 +2191,13 @@ fn small_corpora_stay_poor_so_the_contrast_survives() {
     );
 }
 
-/// PMAT-688: the 3.39.0 sweep booked four "errors out" rows that were the
-/// ledger writers refusing a dirty tree (documented: "Commit or stash first,
-/// or pass --allow-dirty") and clap refusing `--allow-dirty` without the
-/// `--write-ledger` it `requires`. A refusal that names its precondition is
-/// the honest alternative to silently doing nothing — the same class as
-/// "--ml is not implemented", not the "flag broke a working command" class.
+/// PMAT-688: the 3.39.0 sweep booked four "errors out" rows: the ledger
+/// writers refusing a dirty tree (documented: "Commit or stash first, or pass
+/// --allow-dirty") and clap refusing `--allow-dirty` without the
+/// `--write-ledger` it `requires`. The first is a refusal that names its
+/// precondition — the honest alternative to silently doing nothing, the same
+/// class as "--ml is not implemented". The second is the sweep's own
+/// omission and is answered with a probe context, never with a pass.
 #[test]
 fn precondition_refusals_are_honest() {
     let dirty = "Error: refusing to write .pmat/reachability-ledger.json from a dirty git \
@@ -2203,8 +2212,17 @@ fn precondition_refusals_are_honest() {
         "a documented precondition refusal is honest"
     );
     assert!(
-        is_honest_refusal(requires),
-        "clap naming the missing companion flag is honest"
+        !is_honest_refusal(requires),
+        "clap naming a missing companion flag is the sweep's omission, not a refusal: \
+         PROBE_CONTEXT must supply the companion so the flag is actually exercised"
+    );
+    assert_eq!(
+        probe_context("analyze reachability", "--allow-dirty"),
+        ["--write-ledger"]
+    );
+    assert_eq!(
+        probe_context("analyze unrun-tests", "--allow-dirty"),
+        ["--write-ledger"]
     );
     assert!(
         !is_honest_refusal("Error: called `Option::unwrap()` on a `None` value"),

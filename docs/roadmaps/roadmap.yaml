@@ -4533,3 +4533,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-689
+  github_issue: null
+  item_type: task
+  title: 'documentation_scorer tests score the temp dir''s PARENT: score_changelog looks at project_path.parent()/CHANGELOG.md, so a stray /tmp/CHANGELOG.md (216 KB, left by another session 2026-09-06 19:17 local) fails test_changelog_missing, test_changelog_minimal and test_recommendations_empty_project on every tree; isolate the tests (TMPDIR-independent fixture root) or scope the workspace lookup to a real Cargo workspace'
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-06T19:21:25Z
+  updated: 2026-09-06T19:21:25Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

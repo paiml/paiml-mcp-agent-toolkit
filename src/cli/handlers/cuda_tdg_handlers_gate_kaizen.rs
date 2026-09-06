@@ -37,7 +37,12 @@ async fn handle_gate(
                 .count(),
             "fail_on_p0": fail_on_p0,
         }))?,
-        _ => format_gate_text(&result, passes, min_score, fail_on_p0),
+        // Only the terminal format may carry colour; markdown and sarif stay
+        // plain whatever `--color` says (PMAT-688 quorum).
+        CudaTdgOutputFormat::Terminal => {
+            format_gate_text(&result, passes, min_score, fail_on_p0, true)
+        }
+        _ => format_gate_text(&result, passes, min_score, fail_on_p0, false),
     };
 
     write_output(&output, config)?;
@@ -65,8 +70,18 @@ fn format_gate_text(
     passes: bool,
     min_score: f64,
     fail_on_p0: bool,
+    colour: bool,
 ) -> String {
     use crate::cli::colors as c;
+    // `colour` is the format's say (terminal only); the helpers still defer
+    // to `--color` / NO_COLOR / the tty through `colors_enabled()`.
+    let paint = |sgr: c::Sgr, text: &str| {
+        if colour {
+            c::colored(sgr, text)
+        } else {
+            text.to_string()
+        }
+    };
     let mut output = String::new();
     output.push_str("CUDA-TDG Quality Gate\n");
     output.push_str("=====================\n\n");
@@ -80,9 +95,9 @@ fn format_gate_text(
     output.push_str(&format!(
         "Gateway (Falsifiability): {}\n",
         if result.score.gateway_passed {
-            c::colored(c::GREEN, "PASSED")
+            paint(c::GREEN, "PASSED")
         } else {
-            c::colored(c::RED, "FAILED")
+            paint(c::RED, "FAILED")
         }
     ));
 
@@ -94,7 +109,11 @@ fn format_gate_text(
     output.push_str(&format!("P0 Critical Defects: {}\n\n", p0_count));
     output.push_str(&format!(
         "Result: {}\n",
-        if passes { c::colored(c::GREEN, "PASSED") } else { c::colored(c::RED, "FAILED") }
+        if passes {
+            paint(c::GREEN, "PASSED")
+        } else {
+            paint(c::RED, "FAILED")
+        }
     ));
     output
 }
@@ -137,7 +156,8 @@ async fn handle_kaizen(
     let output = match config.format {
         CudaTdgOutputFormat::Json => serde_json::to_string_pretty(&result.kaizen)?,
         CudaTdgOutputFormat::Markdown => format_kaizen_markdown(&result),
-        _ => format_kaizen_text(&result),
+        CudaTdgOutputFormat::Terminal => format_kaizen_text(&result, true),
+        _ => format_kaizen_text(&result, false),
     };
 
     write_output(&output, config)?;
@@ -179,11 +199,14 @@ fn format_kaizen_markdown(result: &CudaSimdTdgResult) -> String {
     md
 }
 
-fn format_kaizen_text(result: &CudaSimdTdgResult) -> String {
+fn format_kaizen_text(result: &CudaSimdTdgResult, colour: bool) -> String {
     let mut output = String::new();
-    output.push_str(&crate::cli::colors::header(
-        "Kaizen Continuous Improvement Report",
-    ));
+    let title = "Kaizen Continuous Improvement Report";
+    if colour {
+        output.push_str(&crate::cli::colors::header(title));
+    } else {
+        output.push_str(title);
+    }
     output.push('\n');
     output.push_str("====================================\n\n");
     output.push_str(&format!(
@@ -229,7 +252,7 @@ mod kaizen_honesty_tests {
         std::fs::write(dir.path().join("lib.rs"), "pub fn f() {}\n").unwrap();
 
         let result = CudaSimdAnalyzer::new().analyze(dir.path()).unwrap();
-        let text = format_kaizen_text(&result);
+        let text = format_kaizen_text(&result, false);
 
         assert!(
             text.contains("Mean Time to Detect: not measured"),
