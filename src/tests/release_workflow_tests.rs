@@ -17,9 +17,14 @@ fn workflow(name: &str) -> (PathBuf, String) {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(".github/workflows")
         .join(name);
-    let text = std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("{} must be readable: {e}", path.display()));
-    (path, text)
+    let text = std::fs::read_to_string(&path);
+    assert!(
+        text.is_ok(),
+        "{} must be readable: {:?}",
+        path.display(),
+        text.as_ref().err()
+    );
+    (path, text.unwrap_or_default())
 }
 
 fn yaml(text: &str) -> serde_yaml_ng::Value {
