@@ -182,7 +182,7 @@ async fn red_test_unified_typescript_on_real_file() {
     use crate::services::unified_typescript_analyzer::UnifiedTypeScriptAnalyzer;
 
     // Use actual file from agentic-ai project
-    let real_file = PathBuf::from("/home/noah/src/agentic-ai/deno-actors/simple.ts");
+    let real_file = PathBuf::from("/home/alice/src/agentic-ai/deno-actors/simple.ts");
 
     if !real_file.exists() {
         // Skip if file doesn't exist

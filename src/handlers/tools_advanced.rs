@@ -466,14 +466,14 @@ mod part1_pure_helpers_tests {
 
     #[test]
     fn test_get_relative_path_strips_prefix() {
-        let base = std::path::Path::new("/home/noah/project");
-        let file = std::path::Path::new("/home/noah/project/src/main.rs");
+        let base = std::path::Path::new("/home/alice/project");
+        let file = std::path::Path::new("/home/alice/project/src/main.rs");
         assert_eq!(get_relative_path(file, base), "src/main.rs");
     }
 
     #[test]
     fn test_get_relative_path_no_prefix_match_returns_original() {
-        let base = std::path::Path::new("/home/noah/project");
+        let base = std::path::Path::new("/home/alice/project");
         let file = std::path::Path::new("/tmp/other.rs");
         // strip_prefix returns Err → unwrap_or(path) → original.
         assert_eq!(get_relative_path(file, base), "/tmp/other.rs");
