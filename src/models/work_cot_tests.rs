@@ -14,6 +14,194 @@ fn step(id: &str, assumption: &str, evidence: &str) -> CotStepView {
     }
 }
 
+/// #1200 (PMAT-685): the exact v5.0 step aprender's `.pmat-work/GH-663/contract.json`
+/// carries — `falsifiable_claim`, no `assumption`, no `implication`. 3.38.0 parsed it
+/// as a structured step with an empty implication and rendered `statement: ""`.
+const V5_CLAIM: &str =
+    "apr compare-hf --offline hangs instead of rejecting network operation — must not occur after fix";
+
+fn v5_contract(step: serde_json::Value, top_level_claims: serde_json::Value) -> serde_json::Value {
+    serde_json::json!({
+        "version": "5.0",
+        "work_item_id": "GH-663",
+        "chain_of_thought": [step],
+        "falsifiable_claims": top_level_claims
+    })
+}
+
+/// Quorum lane 3 on PMAT-685: a step carrying nothing but `falsifiable_claim`
+/// used to parse as legacy prose (structured=false) and be refused as hollow.
+#[test]
+fn a_step_with_only_a_falsifiable_claim_is_structured_and_derives_it() {
+    let contract = v5_contract(
+        serde_json::json!({"step": 1, "falsifiable_claim": V5_CLAIM}),
+        serde_json::json!([]),
+    );
+    let steps = parse_steps(&contract);
+    assert!(steps[0].structured, "a claim is a structured field");
+    assert_eq!(steps[0].implication, V5_CLAIM);
+    assert!(hollow_steps(&steps).is_empty());
+}
+
+/// Quorum lane 1 on PMAT-685: the digest must cover every text the derivation
+/// reads. A contract that never borrows a top-level claim keeps its 3.38.0
+/// digest byte-for-byte; one that does moves when — and only when — the
+/// borrowed claim changes.
+#[test]
+fn digest_covers_borrowed_top_level_claims_and_nothing_else() {
+    // (a) a pre-#1200 contract: top-level claims are not read, so they are not hashed.
+    let v2 = serde_json::json!({
+        "chain_of_thought": [{"id": "CoT-1", "assumption": "root (E1)", "implication": "alpha holds",
+                              "evidence_method": "cargo test alpha"}],
+        "falsifiable_claims": [{"id": "FC-1", "claim": "unused"}]
+    });
+    let mut v2_edited = v2.clone();
+    v2_edited["falsifiable_claims"][0]["claim"] = serde_json::json!("unused, edited");
+    assert_eq!(
+        canonical_cot_sha(&v2),
+        canonical_cot_sha(&v2_edited),
+        "unread text is not hashed"
+    );
+    let mut v2_without = v2.clone();
+    v2_without
+        .as_object_mut()
+        .expect("object")
+        .remove("falsifiable_claims");
+    assert_eq!(
+        canonical_cot_sha(&v2),
+        canonical_cot_sha(&v2_without),
+        "3.38.0 digests are unchanged"
+    );
+
+    // (b) a v5.0 step that borrows FC-1's text: editing FC-1 moves the digest, editing FC-2 does not.
+    let borrowed = v5_contract(
+        serde_json::json!({"step": 1, "evidence_method": "Falsification", "discharged_by": ["FC-1"]}),
+        serde_json::json!([{"id": "FC-1", "claim": "exits 2 within 1s"}, {"id": "FC-2", "claim": "other"}]),
+    );
+    let mut fc1_edited = borrowed.clone();
+    fc1_edited["falsifiable_claims"][0]["claim"] = serde_json::json!("exits 2 within 10s");
+    let mut fc2_edited = borrowed.clone();
+    fc2_edited["falsifiable_claims"][1]["claim"] = serde_json::json!("other, edited");
+    assert_ne!(
+        canonical_cot_sha(&borrowed),
+        canonical_cot_sha(&fc1_edited),
+        "the borrowed text is hashed"
+    );
+    assert_eq!(
+        canonical_cot_sha(&borrowed),
+        canonical_cot_sha(&fc2_edited),
+        "an unborrowed sibling is not"
+    );
+    assert_eq!(
+        canonical_cot_sha(&borrowed),
+        canonical_cot_sha(&borrowed),
+        "deterministic"
+    );
+}
+
+#[test]
+fn v5_step_falsifiable_claim_becomes_the_implication() {
+    let contract = v5_contract(
+        serde_json::json!({"step": 1, "evidence_method": "Falsification",
+                           "falsifiable_claim": V5_CLAIM, "discharged_by": ["FC-1"]}),
+        serde_json::json!([]),
+    );
+    let steps = parse_steps(&contract);
+    assert_eq!(steps.len(), 1);
+    assert_eq!(steps[0].id, "CoT-1");
+    assert_eq!(
+        steps[0].implication, V5_CLAIM,
+        "the claim IS the obligation text"
+    );
+    assert_eq!(steps[0].evidence_method, "Falsification");
+    assert!(hollow_steps(&steps).is_empty(), "nothing hollow here");
+    let yaml = render_derivation("GH-663", &steps, false);
+    assert!(yaml.contains(V5_CLAIM), "rendered verbatim: {yaml}");
+    assert!(
+        !yaml.contains("statement: \"\""),
+        "no hollow obligation: {yaml}"
+    );
+    assert!(
+        !yaml.contains("hypothesis: \"\""),
+        "no hollow claim: {yaml}"
+    );
+}
+
+#[test]
+fn v5_step_without_its_own_claim_reads_the_top_level_claim_it_discharges() {
+    let contract = v5_contract(
+        serde_json::json!({"step": 1, "evidence_method": "Falsification", "discharged_by": ["FC-1"]}),
+        serde_json::json!([{"id": "FC-1", "claim": "apr compare-hf --offline exits 2 within 1s",
+                            "method": "cargo test offline_refuses"}]),
+    );
+    let steps = parse_steps(&contract);
+    assert_eq!(
+        steps[0].implication, "apr compare-hf --offline exits 2 within 1s",
+        "the discharged top-level claim fills an absent implication"
+    );
+    // A claim object may spell its text as `text` or `hypothesis` too.
+    let contract = v5_contract(
+        serde_json::json!({"step": 1, "evidence_method": "Falsification",
+                           "falsifiable_claim": {"text": "object form", "references": ["E1"]}}),
+        serde_json::json!([]),
+    );
+    assert_eq!(parse_steps(&contract)[0].implication, "object form");
+}
+
+#[test]
+fn hollow_step_is_named_not_rendered() {
+    let contract = v5_contract(
+        serde_json::json!({"step": 1, "evidence_method": "Falsification", "discharged_by": ["FC-9"]}),
+        serde_json::json!([{"id": "FC-1", "claim": "unrelated"}]),
+    );
+    let steps = parse_steps(&contract);
+    assert_eq!(
+        steps[0].implication, "",
+        "nothing to read: FC-9 does not exist"
+    );
+    assert_eq!(hollow_steps(&steps), vec!["CoT-1".to_string()]);
+}
+
+/// The CLI refuses a hollow derivation: exit non-zero, the step and the missing
+/// fields named, and NOTHING written — neither the artifact nor the digest.
+#[tokio::test]
+async fn cot_derive_refuses_a_hollow_step_and_writes_nothing() {
+    let project = tempfile::tempdir().expect("temp project");
+    let dir = project.path().join(".pmat-work").join("GH-663");
+    std::fs::create_dir_all(&dir).expect("work dir");
+    let contract = v5_contract(
+        serde_json::json!({"step": 1, "evidence_method": "Falsification", "discharged_by": ["FC-9"]}),
+        serde_json::json!([]),
+    );
+    std::fs::write(dir.join("contract.json"), contract.to_string()).expect("contract");
+
+    let result = crate::cli::handlers::work_handlers::core_handlers::handle_work_cot_derive(
+        "GH-663".to_string(),
+        false,
+        Some(project.path().to_path_buf()),
+    )
+    .await;
+
+    let err = result.err().map_or_else(String::new, |e| format!("{e:#}"));
+    assert!(!err.is_empty(), "a hollow step must not derive");
+    assert!(err.contains("CoT-1"), "names the step: {err}");
+    assert!(
+        err.contains("falsifiable_claim") && err.contains("implication"),
+        "names the fields that could have filled it: {err}"
+    );
+    assert!(
+        !project
+            .path()
+            .join("contracts/work/GH-663.cot.yaml")
+            .exists(),
+        "no hollow artifact on disk"
+    );
+    assert!(
+        !dir.join("cot-digest.json").exists(),
+        "no digest for a derivation that did not happen"
+    );
+}
+
 #[test]
 fn v2_roundtrip_prop() {
     // serde roundtrip across all DischargeRef wire forms.
@@ -321,4 +509,63 @@ fn inline_prose_efact_does_not_discharge() {
         check_chain(&declared).is_empty(),
         "declared E-fact discharges"
     );
+}
+
+/// #1200 as filed: aprender's ten `GH-663..672` contracts (`version: "5.0"`,
+/// steps carrying `falsifiable_claim` + `discharged_by: ["FC-n"]`), copied
+/// verbatim into `src/tests/fixtures/aprender-cot/`. On 3.38.0 every one of
+/// them derived hollow. Now every step derives a non-empty obligation, and the
+/// rendered artifacts carry no `statement: ""` / `hypothesis: ""` at all.
+#[test]
+fn every_aprender_gh_663_to_672_contract_derives_zero_empty_statements() {
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("src/tests/fixtures/aprender-cot");
+    let mut seen = 0usize;
+    for id in 663..=672 {
+        let path = dir.join(format!("GH-{id}.contract.json"));
+        let text = std::fs::read_to_string(&path);
+        assert!(
+            text.is_ok(),
+            "{} must be readable: {:?}",
+            path.display(),
+            text.as_ref().err()
+        );
+        let contract: serde_json::Value =
+            serde_json::from_str(&text.unwrap_or_default()).expect("fixture is JSON");
+        let steps = parse_steps(&contract);
+        assert!(!steps.is_empty(), "GH-{id}: at least one step");
+        assert_eq!(
+            hollow_steps(&steps),
+            Vec::<String>::new(),
+            "GH-{id}: no hollow step"
+        );
+        let yaml = render_derivation(&format!("GH-{id}"), &steps, false);
+        assert_eq!(
+            yaml.matches("- id:").count(),
+            steps.len(),
+            "GH-{id}: one obligation per step"
+        );
+        assert_eq!(
+            yaml.matches("- hypothesis:").count(),
+            steps.len(),
+            "GH-{id}: one claim per step"
+        );
+        assert!(
+            !yaml.contains("statement: \"\""),
+            "GH-{id}: hollow obligation:\n{yaml}"
+        );
+        assert!(
+            !yaml.contains("hypothesis: \"\""),
+            "GH-{id}: hollow claim:\n{yaml}"
+        );
+        for step in &steps {
+            assert!(
+                yaml.contains(&yaml_quote(&step.implication)),
+                "GH-{id}/{}: the claim text is rendered verbatim",
+                step.id
+            );
+        }
+        seen += 1;
+    }
+    assert_eq!(seen, 10, "all ten aprender contracts were exercised");
 }

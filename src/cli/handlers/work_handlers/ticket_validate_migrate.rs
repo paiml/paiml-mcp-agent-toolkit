@@ -141,15 +141,83 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
 
     match serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>(&content) {
         Ok(roadmap) => {
+            // A duplicated id survives the strict parse: `roadmap` is a
+            // sequence, so two rows sharing an id are two well-formed rows and
+            // serde has nothing to complain about. Only the raw text can see
+            // the collision, and only the raw text can locate it.
+            //
+            // PMAT-676: through `check_roadmap_text`, the one validator that
+            // `work add` and `work edit` also run before they write, so the
+            // three commands cannot disagree about what a valid roadmap is.
+            if let Err(invalid) = crate::services::roadmap_text::check_roadmap_text(
+                &content,
+                &roadmap_path,
+            ) {
+                return Err(report_duplicate_ids(invalid.duplicates(), &roadmap_path));
+            }
             print_valid_roadmap(&roadmap, verbose, fix);
             Ok(())
         }
         Err(e) => {
             print_yaml_error_context(&format!("{}", e), &content);
             print_row_violations(&collect_row_violations(&content));
-            anyhow::bail!("Roadmap validation failed")
+            Err(locate_parse_error(&e, &roadmap_path))
         }
     }
+}
+
+/// Print every duplicated id and return the error `work validate` fails with.
+///
+/// Both carry the same text: the stdout lines are for a human reading the run,
+/// the error is what a caller that only captures stderr (or a `?` chain) gets.
+fn report_duplicate_ids(duplicates: &[(String, Vec<usize>)], roadmap_path: &Path) -> anyhow::Error {
+    let file = roadmap_path.display().to_string();
+    let mut located = Vec::with_capacity(duplicates.len());
+    for (id, lines) in duplicates {
+        // PMAT-676: the one renderer, so the line a reader sees here and the
+        // line `work add`/`work edit` refuse with are the same string.
+        let at = crate::services::roadmap_text::located(&file, lines);
+        println!("error: duplicate id {id} at {at}");
+        located.push(format!("{id} at {at}"));
+    }
+    anyhow::anyhow!(
+        "Roadmap validation failed: {} duplicate id(s): {}",
+        duplicates.len(),
+        located.join("; ")
+    )
+}
+
+/// Prefix a YAML parse failure with the position it happened at.
+///
+/// `serde_yaml_ng` knows the line and column; the previous bail threw them away
+/// and returned the bare string "Roadmap validation failed", so the only copy
+/// of the position was in the context block printed to stdout.
+fn locate_parse_error(error: &serde_yaml_ng::Error, roadmap_path: &Path) -> anyhow::Error {
+    let file = roadmap_path.display();
+    match error.location() {
+        Some(at) => anyhow::anyhow!("{file}:{}:{}: {error}", at.line(), at.column()),
+        None => anyhow::anyhow!("{file}: {error}"),
+    }
+}
+
+/// Every `id` key line of the raw roadmap text, 1-based, in file order.
+///
+/// PMAT-676: a thin wrapper over `services::roadmap_text::id_lines`, which is
+/// now the ONE scanner. It used to live here, beside a second, laxer copy in
+/// the `work add` allocator (PMAT-673); the two disagreed about what an id
+/// line is, and that disagreement is exactly how `add` came to accept a
+/// roadmap this function's caller rejects. Kept as a name at this path because
+/// the PMAT-674 tests address it here.
+pub(crate) fn collect_id_lines(raw: &str) -> Vec<(usize, String)> {
+    crate::services::roadmap_text::id_lines(raw)
+}
+
+/// Ids declared on more than one line, ordered by first occurrence, each with
+/// every line it was declared on.
+///
+/// PMAT-676: a thin wrapper over `services::roadmap_text::duplicate_ids`.
+pub(crate) fn duplicate_ids(raw: &str) -> Vec<(String, Vec<usize>)> {
+    crate::services::roadmap_text::duplicate_ids(raw)
 }
 
 /// A schema violation in a single roadmap row, located by index and id.

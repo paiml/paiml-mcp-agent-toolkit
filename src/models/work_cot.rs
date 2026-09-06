@@ -172,10 +172,13 @@ fn text_and_refs(value: Option<&Value>) -> (String, Vec<String>) {
 /// legacy prose steps migrate with `structured: false` (annotated, not
 /// dropped — `cot::legacy_prose_migrates_annotated_L0`).
 pub fn parse_step(index: usize, step: &Value) -> CotStepView {
+    // #1200 (PMAT-685), quorum lane 3: a v5.0 step may carry nothing but
+    // `falsifiable_claim`; that is a structured step, not legacy prose.
     let structured = step.get("assumption").is_some()
         || step.get("implication").is_some()
         || step.get("evidence_method").is_some()
-        || step.get("discharged_by").is_some();
+        || step.get("discharged_by").is_some()
+        || step.get("falsifiable_claim").is_some();
 
     let id = step
         .get("id")
@@ -210,8 +213,26 @@ pub fn parse_step(index: usize, step: &Value) -> CotStepView {
         };
     }
 
+    parse_structured_step(&[], id, step)
+}
+
+/// The structured tail of [`parse_step`], with the contract's top-level
+/// `falsifiable_claims[]` available for the v5.0 shape.
+///
+/// #1200 (PMAT-685): a `version: "5.0"` step carries `falsifiable_claim`
+/// (string or `{claim|text|hypothesis}`) and `discharged_by: ["FC-n"]`, not
+/// `implication`. 3.38.0 read only `implication`, so the derivation rendered
+/// `statement: ""`. An absent implication now falls back to the step's own
+/// claim, then to the top-level claim it discharges; what is still empty is
+/// reported by [`hollow_steps`] and refused by `pmat work cot derive`.
+fn parse_structured_step(top_level_claims: &[Value], id: String, step: &Value) -> CotStepView {
     let (assumption, assumption_references) = text_and_refs(step.get("assumption"));
-    let (implication, _) = text_and_refs(step.get("implication"));
+    let (mut implication, _) = text_and_refs(step.get("implication"));
+    if implication.trim().is_empty() {
+        implication = claim_text(step.get("falsifiable_claim"))
+            .or_else(|| discharged_top_level_claim(step, top_level_claims))
+            .unwrap_or_default();
+    }
     let evidence_method = step
         .get("evidence_method")
         .and_then(Value::as_str)
@@ -230,8 +251,44 @@ pub fn parse_step(index: usize, step: &Value) -> CotStepView {
     }
 }
 
-/// Parse a contract's `chain_of_thought` array into checkable views.
-pub fn parse_steps(contract: &Value) -> Vec<CotStepView> {
+/// The text of a claim in any wire form: a plain string, or an object that
+/// spells it `claim`, `text` or `hypothesis`. Whitespace-only is no text.
+fn claim_text(value: Option<&Value>) -> Option<String> {
+    let text = match value? {
+        Value::String(s) => s.as_str(),
+        Value::Object(map) => ["claim", "text", "hypothesis"]
+            .iter()
+            .find_map(|key| map.get(*key).and_then(Value::as_str))?,
+        _ => return None,
+    };
+    (!text.trim().is_empty()).then(|| text.to_string())
+}
+
+/// The top-level `falsifiable_claims[]` entry a step's `discharged_by` names
+/// (`"FC-1"` or `["FC-1", …]`), matched on `id`, as text.
+fn discharged_top_level_claim(step: &Value, top_level_claims: &[Value]) -> Option<String> {
+    let refs: Vec<&str> = match step.get("discharged_by")? {
+        Value::String(s) => vec![s.as_str()],
+        Value::Array(items) => items.iter().filter_map(Value::as_str).collect(),
+        _ => Vec::new(),
+    };
+    refs.iter().find_map(|wanted| {
+        top_level_claims
+            .iter()
+            .find(|claim| claim.get("id").and_then(Value::as_str) == Some(wanted))
+            .and_then(|claim| claim_text(Some(claim)))
+    })
+}
+
+/// `[{step, claim}]` for every step whose implication was borrowed from a
+/// top-level `falsifiable_claims[]` entry — the digest input that
+/// [`canonical_cot_sha`] must cover and the raw `chain_of_thought` does not.
+fn resolved_top_level_claims(contract: &Value) -> Vec<Value> {
+    let top_level_claims: Vec<Value> = contract
+        .get("falsifiable_claims")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
     contract
         .get("chain_of_thought")
         .and_then(Value::as_array)
@@ -239,10 +296,55 @@ pub fn parse_steps(contract: &Value) -> Vec<CotStepView> {
             steps
                 .iter()
                 .enumerate()
-                .map(|(i, s)| parse_step(i, s))
+                .filter_map(|(i, s)| {
+                    let own = parse_step(i, s);
+                    if !own.structured || !own.implication.trim().is_empty() {
+                        return None;
+                    }
+                    let claim = discharged_top_level_claim(s, &top_level_claims)?;
+                    Some(serde_json::json!({"step": own.id, "claim": claim}))
+                })
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// Parse a contract's `chain_of_thought` array into checkable views.
+pub fn parse_steps(contract: &Value) -> Vec<CotStepView> {
+    let top_level_claims: Vec<Value> = contract
+        .get("falsifiable_claims")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    contract
+        .get("chain_of_thought")
+        .and_then(Value::as_array)
+        .map(|steps| {
+            steps
+                .iter()
+                .enumerate()
+                .map(|(i, s)| {
+                    let view = parse_step(i, s);
+                    if view.structured && view.implication.trim().is_empty() {
+                        parse_structured_step(&top_level_claims, view.id, s)
+                    } else {
+                        view
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Ids of the steps whose implication is empty — a derivation would render
+/// them as `statement: ""` / `hypothesis: ""`, which `pv` refuses
+/// (SCHEMA-005) and which says nothing anyone could falsify (#1200).
+pub fn hollow_steps(steps: &[CotStepView]) -> Vec<String> {
+    steps
+        .iter()
+        .filter(|s| s.implication.trim().is_empty())
+        .map(|s| s.id.clone())
+        .collect()
 }
 
 /// A CB-1640 chain-integrity violation.
@@ -514,6 +616,16 @@ pub fn canonical_cot_sha(contract: &Value) -> String {
         .unwrap_or(Value::Null);
     let mut buf = String::new();
     canonicalize_value(&cot, &mut buf);
+    // #1200 (PMAT-685), quorum lane 1: a step may take its implication from a
+    // top-level `falsifiable_claims[]` entry, which this digest never covered,
+    // so an edit there would change the derivation and not the digest. The
+    // texts a step actually borrowed are appended to the digest input — only
+    // when one was borrowed, so every pre-existing digest is unchanged.
+    let borrowed = resolved_top_level_claims(contract);
+    if !borrowed.is_empty() {
+        buf.push_str("|resolved_top_level_claims:");
+        canonicalize_value(&Value::Array(borrowed), &mut buf);
+    }
     let mut hasher = Sha256::new();
     hasher.update(buf.as_bytes());
     hasher

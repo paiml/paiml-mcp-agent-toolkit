@@ -387,7 +387,7 @@ pub enum AnalyzeCommands {
 
     /// Find machine-specific absolute paths baked into source
     ///
-    /// aprender shipped binaries containing `/home/noah/…`: correct on the
+    /// aprender shipped binaries containing `/home/alice/…`: correct on the
     /// machine that built them, inert everywhere else, and invisible to every
     /// gate — the code compiled, clippy was clean, and the path was just a
     /// string literal. Flags a path only when it names a specific user, nix

@@ -403,6 +403,10 @@ pub enum WorkCommands {
     },
 
     /// Validate roadmap.yaml syntax and content (Part B: UX Improvements)
+    ///
+    /// Exit codes: 0 — the roadmap is valid (warnings such as missing acceptance
+    /// criteria do not fail); 1 — invalid (a duplicated id, a schema violation,
+    /// a YAML parse error) or unreadable (missing file).
     #[command(visible_aliases = &["check", "lint", "v"])]
     Validate {
         /// Project path (default: current directory)

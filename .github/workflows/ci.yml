@@ -27,7 +27,8 @@ jobs:
   # a red gate rather than a missing one.
   gate:
     runs-on: ubuntu-latest
-    needs: [ci, windows-check, reusable-pin-drift]
+    timeout-minutes: 15
+    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate]
     if: always()
     steps:
       - name: Check required jobs
@@ -35,7 +36,8 @@ jobs:
           rc=0
           for j in "ci:${{ needs.ci.result }}" \
                    "windows-check:${{ needs.windows-check.result }}" \
-                   "reusable-pin-drift:${{ needs.reusable-pin-drift.result }}"; do
+                   "reusable-pin-drift:${{ needs.reusable-pin-drift.result }}" \
+                   "roadmap-validate:${{ needs.roadmap-validate.result }}"; do
             name=${j%%:*}
             result=${j#*:}
             if [ "$result" != "success" ]; then
@@ -47,6 +49,41 @@ jobs:
             exit 1
           fi
           echo "All required jobs passed"
+
+  # PMAT-674: docs/roadmaps/roadmap.yaml is the data every `pmat work` command
+  # trusts, and `pmat work validate` 3.37.0 printed "Validation passed" on a
+  # roadmap that carried PMAT-654 twice (#1194). A validator whose verdict
+  # reaches nothing is a warning, so this job is in `gate`'s `needs` AND in its
+  # result loop: a red roadmap fails the required `ci / gate` check.
+  #
+  # It runs the validator FROM THIS TREE, not the published crate (which is the
+  # old code), and first proves the validator can fail: a fixture with a
+  # duplicated id must exit 1, or the gate is measuring nothing. Exit codes are
+  # documented in `pmat work validate --help`: 0 valid, 1 invalid or unreadable.
+  roadmap-validate:
+    name: roadmap validates
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: build pmat from this tree
+        run: cargo build --bin pmat --locked
+      - name: control — a duplicated id must be refused (exit 1)
+        shell: bash
+        run: |
+          set -uo pipefail
+          f=$(mktemp -d)
+          mkdir -p "$f/docs/roadmaps"
+          printf 'roadmap_version: "1.0"\nroadmap:\n  - id: PMAT-001\n    title: a\n    status: planned\n  - id: PMAT-001\n    title: b\n    status: planned\n' > "$f/docs/roadmaps/roadmap.yaml"
+          if ./target/debug/pmat work validate --path "$f"; then
+            echo "::error::pmat work validate exited 0 on a duplicated id — this gate cannot fail; fix the validator before trusting it"
+            exit 1
+          fi
+          echo "control: a duplicated id is refused"
+      - name: pmat work validate (0 = valid, 1 = invalid or unreadable)
+        run: ./target/debug/pmat work validate
 
   # Two consumers of one reusable workflow on two different refs is drift, and
   # what it silently drifts is the GATES.
@@ -201,7 +238,7 @@ jobs:
   #   5. ratchet from the measured baseline, not the absolute 80.0
   #   6. only then remove both `continue-on-error`
   mutants:
-    runs-on: [self-hosted, X64, Linux]
+    runs-on: [self-hosted, clean-room]
     continue-on-error: true
     container:
       image: localhost:5000/sovereign-ci:stable

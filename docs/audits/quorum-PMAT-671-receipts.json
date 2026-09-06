@@ -1,0 +1,34 @@
+{
+ "ticket": "PMAT-671",
+ "base": "origin/master",
+ "head": "dae3603f8071272ce706c04fac80d0f3efe4feeb",
+ "diff_sha256": "6d747500e745dbf001272529d350475c093e76c74de96ac5e4066f388a39345a",
+ "width": 3,
+ "executor": "agy",
+ "prompt_mode": "inline",
+ "prompt_bytes": 9540,
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff correctly implements the requested document changes for the PMAT-671 release receipt. The diff accurately matches the receipt's own claims about its scope: it adds the main receipt, the dogfood receipt, and flips the three relevant roadmap rows (for PMAT-669, PMAT-670, and PMAT-671) from in_progress to completed. The issue and PR numbers referenced (PRs 1187 and 1188 carrying issues 1185 and 1186) align perfectly with the titles in the roadmap. No gates are weakened and the changes introduce exactly what is stated without asserting undocumented modifications.",
+   "findings": [],
+   "raw_bytes": 2191
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff correctly implements the ticket PMAT-671. It adds the release receipt (`docs/audits/impl-PMAT-671-receipt.md`), the post-publish dog-food receipt (`docs/audits/release-3.37.0-dogfood-published.md`), and flips the status to 'completed' for the three corresponding roadmap items. The receipt's stated scope exactly matches the diff's contents. The Jidoka logs show strict adherence to user rules (replacing python3 scripts with shell, adding --self-test to CI scripts). No contradictions or unauthorized changes were found.",
+   "findings": [],
+   "raw_bytes": 2112
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff correctly adds the post-publish dog-food receipt, the release receipt, and marks the corresponding release and fix tasks as completed in the roadmap. All claims in the receipt regarding the scope of the diff are fully backed by the changes. The PR corresponds to the administrative wrap-up after a release cut and publish. No tests are broken, no gates are weakened, and no unrequested changes are introduced.",
+   "findings": [],
+   "raw_bytes": 1879
+  }
+ ]
+}

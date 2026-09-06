@@ -1,6 +1,6 @@
 [system]
 project_name = "pmat"
-project_path = "/home/noah/src/paiml-mcp-agent-toolkit"
+project_path = "."
 output_dir = "target/pmat"
 max_concurrent_operations = 48
 verbose = false

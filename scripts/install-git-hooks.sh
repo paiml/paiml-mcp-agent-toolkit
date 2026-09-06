@@ -185,7 +185,7 @@ fi
 
 # === 2. pmat-book Sync Status ===
 # Check pmat-book sync status
-BOOK_DIR="${PMAT_BOOK_DIR:-/home/noah/src/pmat-book}"
+BOOK_DIR="${PMAT_BOOK_DIR:-$HOME/src/pmat-book}"
 if [[ "${BOOK_DIR}" == *".."* ]] || [ ! -d "${BOOK_DIR}/.git" ]; then
     BOOK_DIR=""  # unusable or traversal-bearing: skip the book check entirely
 fi
@@ -316,7 +316,7 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-BOOK_DIR="${PMAT_BOOK_DIR:-/home/noah/src/pmat-book}"
+BOOK_DIR="${PMAT_BOOK_DIR:-$HOME/src/pmat-book}"
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${CYAN}📚 Checking pmat-book sync status...${NC}"

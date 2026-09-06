@@ -1,8 +1,8 @@
 #!/bin/bash
 S=/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/e1ae0d23-4b84-4273-be07-926cd668e2d3/scratchpad/research
 M=$S/m
-BIN=/mnt/nvme-raid0/coverage/paiml-mcp-agent-toolkit/release/pmat
-REPO=/home/noah/src/paiml-mcp-agent-toolkit
+BIN="${PMAT_BIN:-$(cargo metadata --format-version 1 --no-deps | jq -r .target_directory)/release/pmat}"
+REPO="${REPO:-$HOME/src/paiml-mcp-agent-toolkit}"
 run() {
   local name=$1; shift; local dir=$1; shift
   cd "$dir" || return

@@ -1,0 +1,50 @@
+{
+ "ticket": "PMAT-663",
+ "base": "origin/master",
+ "head": "d136a53f4341bd1f27907baba1ee8a56143dbe63",
+ "width": 3,
+ "executor": "agy",
+ "agreed": true,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "PASS",
+   "summary": "The diff accurately implements the PMAT-663 ticket requirements on the `pmat` repository side. It correctly adds the implementation receipt and updates the `agentic-delivery-pmat.md` spec with the corresponding implementation note explaining the bundle side of the change, without violating any ticket constraints. No refutations were found.",
+   "findings": [],
+   "raw_bytes": 1729
+  },
+  {
+   "lane": 2,
+   "verdict": "PASS",
+   "summary": "The diff implements exactly what is requested for the 'pmat side' in PMAT-663: it adds the implementation receipt and the note in the specification documenting the hook implementation in the bundle side and the constraints around the effort assertion. No conflicting claims or forbidden changes were found.",
+   "findings": [
+    {
+     "claim": "Adds task PMAT-663 to roadmap",
+     "file": "docs/roadmaps/roadmap.yaml",
+     "grounding": "cited",
+     "line": 4030
+    },
+    {
+     "claim": "Creates the implementation receipt for PMAT-663 as required by the AC",
+     "file": "docs/audits/impl-PMAT-663-receipt.md",
+     "grounding": "cited",
+     "line": 1
+    },
+    {
+     "claim": "Adds the implementation note to the specification as required by the AC",
+     "file": "docs/specifications/agentic-delivery-pmat.md",
+     "grounding": "cited",
+     "line": 304
+    }
+   ],
+   "raw_bytes": 2565
+  },
+  {
+   "lane": 3,
+   "verdict": "PASS",
+   "summary": "The diff accurately satisfies the acceptance criteria for PMAT-663 on the pmat side. It successfully adds the ticket to the roadmap, provides the implementation receipt, and updates the spec note in section 9.9. The receipt claims match the controls requested in the ticket, and there are no signs of weakened gates, unsupported claims, or actions forbidden by the ticket.",
+   "findings": [],
+   "raw_bytes": 1777
+  }
+ ]
+}

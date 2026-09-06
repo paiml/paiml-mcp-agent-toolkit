@@ -2,29 +2,61 @@
 // Included by roadmap_service.rs - shares parent module scope.
 
 impl RoadmapService {
-    /// Get lock file path
-    fn lock_file_path(&self) -> PathBuf {
-        let mut lock_path = self.roadmap_path.clone();
-        lock_path.set_extension("yaml.lock");
-        lock_path
+    /// Where this roadmap's ids are minted from.
+    ///
+    /// PMAT-680: one authority per REPOSITORY. Inside git that is
+    /// `<git-common-dir>/pmat/roadmap-id.lock`, which every worktree shares;
+    /// outside git it is the sibling `<roadmap>.yaml.lock` of PMAT-673.
+    fn id_authority(&self) -> IdAuthority {
+        IdAuthority::discover(&self.roadmap_path)
     }
 
-    /// Acquire exclusive lock for writing
-    fn acquire_write_lock(&self) -> Result<File> {
-        let lock_path = self.lock_file_path();
+    /// Get lock file path
+    ///
+    /// PMAT-680: this used to be `<roadmap>.yaml.lock` unconditionally — a file
+    /// PER CHECKOUT. Two worktrees of one repository therefore locked two
+    /// different files and read two different high-water marks, so they minted
+    /// the same id without ever contending. Readers and writers of every
+    /// checkout now agree on the authority's single path.
+    fn lock_file_path(&self) -> PathBuf {
+        self.id_authority().lock_path
+    }
 
-        // Create parent directory if needed
+    /// Open (creating) the lock file, with its directory.
+    fn open_lock_file(lock_path: &Path) -> Result<File> {
         if let Some(parent) = lock_path.parent() {
             fs::create_dir_all(parent)
                 .with_context(|| format!("Failed to create lock directory: {:?}", parent))?;
         }
 
-        let lock_file = OpenOptions::new()
+        OpenOptions::new()
             .create(true)
-            .write(true)
-            .truncate(true)
-            .open(&lock_path)
-            .with_context(|| format!("Failed to open lock file: {:?}", lock_path))?;
+            .read(true)
+            .write(true) // Need write permission to create the file
+            .truncate(false) // Never truncate: the file carries the high-water mark
+            .open(lock_path)
+            .with_context(|| format!("Failed to open lock file: {:?}", lock_path))
+    }
+
+    /// Acquire exclusive lock for writing
+    ///
+    /// PMAT-673: opened `read(true)` and `truncate(false)`. It used to be
+    /// `truncate(true)`, which emptied the file on every acquisition, so the
+    /// lock file could hold nothing but its own existence. It now carries the
+    /// id high-water mark that [`RoadmapService::add_item_with_next_id`] reads
+    /// and advances, and truncating on open would have destroyed that before
+    /// the first read.
+    fn acquire_write_lock(&self) -> Result<File> {
+        Self::acquire_write_lock_at(&self.lock_file_path())
+    }
+
+    /// Acquire the exclusive lock on an authority path already resolved.
+    ///
+    /// PMAT-680: [`RoadmapService::add_item_with_next_id`] needs the authority
+    /// itself (it reads every ref through it), and resolving it twice would
+    /// run `git rev-parse` twice for one mint.
+    fn acquire_write_lock_at(lock_path: &Path) -> Result<File> {
+        let lock_file = Self::open_lock_file(lock_path)?;
 
         lock_file
             .lock_exclusive()
@@ -36,20 +68,7 @@ impl RoadmapService {
     /// Acquire shared lock for reading
     fn acquire_read_lock(&self) -> Result<File> {
         let lock_path = self.lock_file_path();
-
-        // Create parent directory if needed
-        if let Some(parent) = lock_path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create lock directory: {:?}", parent))?;
-        }
-
-        let lock_file = OpenOptions::new()
-            .create(true)
-            .read(true)
-            .write(true) // Need write permission to create file
-            .truncate(false) // Don't truncate lock file
-            .open(&lock_path)
-            .with_context(|| format!("Failed to open lock file: {:?}", lock_path))?;
+        let lock_file = Self::open_lock_file(&lock_path)?;
 
         #[allow(clippy::incompatible_msrv)] // lock_shared() available in Rust 1.89.0
         lock_file

@@ -1,0 +1,983 @@
+[
+  {
+    "kind": "issue",
+    "id": "#999",
+    "title": "Agent integration: pmat \u2194 Claude Code ultracode \u2194 Google Antigravity (EV-0..EV-6)",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement epic (Agent integration EV-0..EV-6); explicitly still being re-verified against current master by its own text, not delivered.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1014",
+    "title": "pmat comply check asks for ~4 GB x CPU-count of RAM \u2014 192 GB on a 48-core box",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Author states the acute RAM spike was fixed in bddb239f3, but explicitly files this because \"the underlying cause is not fully addressed\" \u2014 kept open per the issue's own framing.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1017",
+    "title": "pmat cannot see unreachable code: ~475 tracked .rs files, >320k lines, ~8,900 tests that have never compiled",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement epic (unreachable code, ~475 files fleet-wide); children (#1141, #1142) still open, no completion evidence.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1018",
+    "title": "~933 tests across the fleet cannot fail, because line coverage is the only metric with a floor",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement epic (~933 vacuous tests fleet-wide); floor established, detector-capability children (#1139) still open.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1019",
+    "title": "Config and contracts that nothing reads: 99/99 keys dead in wos, 2,093 zero-assertion macros in duende",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Stack-wide enhancement epic (99/99 dead keys in wos, etc.); only this repo's .pmat-gates.toml slice was touched (PR #1022, itself now regressed per #1137), broader epic remains open.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1029",
+    "title": "MCP tool list is hand-curated, so new analyze subcommands are CLI-only by omission (3 in 3.32.0)",
+    "disposition": "complete",
+    "rationale": "Per #1135's own text (\"Split out of #1029, whose literal asks are delivered\"), #1029's MCP-registry-for-analyze-family ask shipped in 3.32.0; residual gaps live on in #1135/#1136.",
+    "hrq": true,
+    "links": [
+      "#1135",
+      "#1136"
+    ]
+  },
+  {
+    "kind": "issue",
+    "id": "#1031",
+    "title": "Complete AGY (Antigravity 2.0) Support & Comply Integration",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement epic; rescoped per its own later comments to the .agents/plugins.json schema question only, still open.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1034",
+    "title": "pmat comply: evidence-derived feature backlog (T0 done; 4 source premises corrected)",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement backlog tracking issue; T0 preflight done but the bulk of the comply backlog remains unimplemented (children split off, e.g. #1132).",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1035",
+    "title": "Root cause: pmat renders 'not measured' as 'measured and clean' \u2014 12-repo stack audit, 5 clusters",
+    "disposition": "reject",
+    "rationale": "Superseded: this is the 12-repo stack-audit root-cause umbrella whose clusters are already filed as individual issues in this batch (#1124/#1127/#1128/#1129/#1130/#1131/#1132); no separate action on the umbrella.",
+    "hrq": true,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1074",
+    "title": "cargo deny reports 'advisories ok' on a tree with an open moderate vulnerability \u2014 GHSA-only advisories are invisible to the only blocking security gate",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Bug-labeled; owner action (provision DEPENDABOT_TOKEN) still pending, cleanup half split to #1128.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1090",
+    "title": "[EPIC] PMAT Deep MCP Capability Improvements & Defect Hardening",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Large EPIC (Deep MCP Capability Improvements & Defect Hardening); many of its Task-level children are tracked/landing individually (e.g. #1127, #1125), epic itself remains open.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1118",
+    "title": "Commands is a 1,822-line enum with 71 variants \u2014 every new subcommand edits one file",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Commands enum still large (2,367 lines per src/cli/commands/commands_enum/definition.rs); no split found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1119",
+    "title": "Four independent McpRequest / McpResponse definitions",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Four independent McpRequest/McpResponse definitions; no consolidation commit found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1120",
+    "title": "Blocking std::fs calls on two async hot paths (discover_project_structure, CargoDeadCodeAnalyzer::analyze)",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Blocking std::fs calls on async hot paths (discover_project_structure, CargoDeadCodeAnalyzer::analyze) not verified fixed.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1121",
+    "title": "pmat analyze complexity is quadratic in functions-per-file on every heuristic path (measured 4x per doubling)",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Quadratic complexity in pmat analyze complexity's heuristic path (src/cli/language_analyzer/mod.rs:235) not verified fixed.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1122",
+    "title": "Docker artifacts publish paiml/pmat:2.10.0 from a 3.35.0 crate; docs pin 2.12.0",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Only partially addressed: #1203 demoted docker-publish to workflow_dispatch and made the tag come from Cargo.toml, but the stale published paiml/pmat:2.10.0 image and docs pin (2.12.0) still need a corrective publish/doc update.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1123",
+    "title": "resolve_import_to_node is O(imports x nodes) with a fresh allocation per candidate",
+    "disposition": "defer(3.40.0)",
+    "rationale": "resolve_import_to_node's O(imports x nodes) allocation-per-candidate shape not verified fixed; no matching commit found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1124",
+    "title": "quality_proxy: gates_run claims complexity ran for bash, C and TypeScript, where the heuristic returns a constant",
+    "disposition": "defer(3.40.0)",
+    "rationale": "gates_run still reported for quality_proxy with no per-language (bash/C/TS) distinction found in src/services/quality_proxy_operations.rs.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1125",
+    "title": "#1090 Task 3: decide, in writing, whether pmat ships a tamper-evident MCP audit ledger",
+    "disposition": "defer(3.40.0)",
+    "rationale": "#1090 Task 3 (tamper-evident MCP audit ledger) still undecided; no mcp-audit.jsonl or verify-audit-log surface found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1127",
+    "title": "quality_proxy's child compilers have a deadline and a process group but no memory bound",
+    "disposition": "defer(3.40.0)",
+    "rationale": "quality_proxy child compilers still have no address-space (memory) bound per the issue; only timeout + process-group kill shipped.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1128",
+    "title": "Two Dependabot advisory gates ship; only one is wired, the orphan is RED, and 24 lines of quality-gate.yml describe files that do not exist",
+    "disposition": "defer(3.40.0)",
+    "rationale": "No evidence the orphan Dependabot advisory gate was wired or the stale quality-gate.yml lines removed.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1129",
+    "title": "quality-gate --checks security: scope is now disclosed, breadth is not \u2014 an AWS-key-shaped literal is not detected",
+    "disposition": "defer(3.40.0)",
+    "rationale": "quality-gate --checks security breadth gap (AWS-key-shaped literal undetected); no evidence of a detector-breadth fix.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1130",
+    "title": "Verify #1035 Cluster 2's three never-independently-checked comply-ladder rows (whisper.apr CB-1206, infra CB-1308, rmedia CB-1210 vs CB-1339)",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Verification task for #1035 Cluster 2's three ladder rows; no receipt found confirming it was carried out.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1131",
+    "title": "quality-gate reports two different denominators for one tree inside one JSON document",
+    "disposition": "defer(3.40.0)",
+    "rationale": "quality-gate's files_examined vs files_not_read.<check>.discovered denominators still coexist (src/mcp_pmcp/tool_functions/analysis_tools.rs) with no reconciliation found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1132",
+    "title": "Enforcement metadata claims a required check that does not exist \u2014 mutation-diff.yml and required-status-checks.txt contradict each other and both contradict live protection (CRUX-14a leg 7)",
+    "disposition": "defer(3.40.0)",
+    "rationale": "CRUX-14a leg 7: no evidence mutation-diff.yml / required-status-checks.txt were reconciled with live branch protection.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1133",
+    "title": "pmat init --target agy writes one skill, not \"progressive skills\" (PMAT-INIT-002 claim 3, PO-C13)",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement: pmat init --target agy writing genuinely progressive skills is unbuilt; rescoped per #1031 to the plugins.json schema question.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1134",
+    "title": "pmat init prints a next: verification command that returns a JSON-RPC error",
+    "disposition": "defer(3.40.0)",
+    "rationale": "No evidence `pmat init`'s printed next: verification command was fixed to avoid a JSON-RPC error.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1135",
+    "title": "Two dead MCP tool inventories still advertise analyzers the exposure registry marks Backlog",
+    "disposition": "defer(3.40.0)",
+    "rationale": "No evidence the two dead MCP tool inventories (advertising Backlog analyzers) were pruned on master.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1136",
+    "title": "70 of 71 top-level Commands variants have no MCP exposure declaration \u2014 decide it or write the decision down",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Decision/registry-expansion enhancement (MCP exposure declaration for 70 of 71 Commands variants); not built.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1137",
+    "title": "The #1019 fix deleted the one .pmat-gates.toml section its own default reader consumes, and its guard test now pins that out",
+    "disposition": "defer(3.40.0)",
+    "rationale": "The #1019 fix (PR #1022, merged) is the cited regression source; no follow-up commit restores the deleted .pmat-gates.toml section.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1138",
+    "title": "pmat config --show is labelled \"Raw Configuration (TOML)\" but drops keys pmat honours",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Confirmed unfixed: src/cli/handlers/configuration_handlers_display.rs:137 still prints \"Raw Configuration (TOML):\" for the deserialized/lossy view.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1139",
+    "title": "analyze vacuous-tests misses two classes, both live in pmat's own suite: assert-over-an-empty-set, and expect()-on-the-harness with no assertion on the subject",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Detector-capability gap in analyze vacuous-tests (assert-over-empty-set, expect-on-harness); not addressed.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1140",
+    "title": "pmat analyze vacuous-tests --help prints the 802 / ~933 figures the author of #1018 retracted",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Small stale-help-text defect (802/~933 figures); no evidence of a fix on master.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1141",
+    "title": "Two root pub mods nothing calls: src/protocol/ (2,047 lines) and src/state/ (3,896 lines) compile into every binary and no pmat check can see them",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Confirmed unfixed: src/lib.rs still declares `pub mod protocol;` and `pub mod state;` at top level, still uncallable-detector-blind.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1142",
+    "title": "Manifest/target parity is unenforced: no gate checks criterion_main! against [[bench]], and nothing would notice the next benchmark that never runs",
+    "disposition": "defer(3.41.0)",
+    "rationale": "New-gate enhancement (manifest/target parity check for criterion_main! vs [[bench]]); no such gate exists on master.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1143",
+    "title": "comply check has no peak-RSS measurement, so #1014's memory criteria cannot be judged either way",
+    "disposition": "defer(3.40.0)",
+    "rationale": "No peak-RSS measurement exists anywhere in the tree (grep for peak_rss/max_rss finds nothing); still unfalsifiable per the issue's own evidence.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1144",
+    "title": "The simulated refactor.* MCP surface EV-0 removed is still compiled in, on an unconstructed builder",
+    "disposition": "defer(3.40.0)",
+    "rationale": "No evidence of removal on master; the simulated refactor.* engine remains compiled in behind an unconstructed builder per #999 EV-0.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1145",
+    "title": "mcp_integration::MCP_VERSION is frozen at \"2024-11-05\" and pmat-agent prints it as the protocol version",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Confirmed still true: src/mcp_integration/types.rs:8 pins MCP_VERSION = \"2024-11-05\" verbatim, printed twice by pmat-agent.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1153",
+    "title": "CRUX audit tracking: 25 verified defects whose acceptance tests are still draft",
+    "disposition": "reject",
+    "rationale": "Superseded: the 25 verified defects this tracking issue references are already filed individually in this same batch (#1118-#1145); no separate action needed on the umbrella issue.",
+    "hrq": true,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1156",
+    "title": "build.rs downloads four assets from unpkg.com at build time, two pinned to @latest, into a gitignored directory it then watches",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Not fixed: build.rs:185-196 still fetches gridjs/mermaid@latest/d3@latest from unpkg.com into the gitignored assets/vendor/ it watches.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1159",
+    "title": "pmat comply check --format json aborts: 'byte index 1000 is not a char boundary; it is inside '\u2500''",
+    "disposition": "complete",
+    "rationale": "Fixed by commit 45481aaac (PMAT-649): the lean_theorem slice is bounded at a line start, never inside a multi-byte char.",
+    "hrq": true,
+    "links": [
+      "PMAT-649"
+    ]
+  },
+  {
+    "kind": "issue",
+    "id": "#1162",
+    "title": "tdg check-regression compares a cached baseline score (with entropy) against a recompute that omits entropy \u2014 every edited file reads as a regression",
+    "disposition": "defer(3.40.0)",
+    "rationale": "No fix found on master for the entropy-omitted recompute vs cached baseline in tdg check-regression; still a live defect.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1169",
+    "title": "pmat work add: minted an id that is live on another branch (PMAT-744) and rewrote 2046 lines of docs/roadmaps/roadmap.yaml",
+    "disposition": "complete",
+    "rationale": "Same root cause and fix as #1193 (PMAT-680 single-authority mint + PMAT-679 append-only writer + PMAT-676 shared validator, all in PR #1201).",
+    "hrq": true,
+    "links": [
+      "#1201",
+      "PMAT-679",
+      "PMAT-680",
+      "PMAT-676"
+    ]
+  },
+  {
+    "kind": "issue",
+    "id": "#1193",
+    "title": "work add on 3.37.0 re-serializes roadmap.yaml (2,532 lines) and mints colliding ids across concurrent checkouts",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1201: PMAT-680 mints ids from one authority (lock + high-water mark, e79f0014e) and PMAT-679 makes the roadmap writer append-only (f9cedb962/b14fbc6e1), closing the re-serialize/collide defect.",
+    "hrq": true,
+    "links": [
+      "#1201",
+      "PMAT-679",
+      "PMAT-680",
+      "PMAT-676"
+    ]
+  },
+  {
+    "kind": "issue",
+    "id": "#1198",
+    "title": "release-check: 3.38.0 is declared in Cargo.toml but not fully released",
+    "disposition": "complete",
+    "rationale": "Stale bot report: 3.38.0 shipped (commit b233e7911, chore(release) 3.38.0) and 3.39.0 is now tagged on master; bot-authored, no human close decision needed.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "issue",
+    "id": "#1200",
+    "title": "work cot derive: empty statement/hypothesis for v5.0 contract.json steps (falsifiable_claim not read); CB-1658 passes the hollow file",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1201 (PMAT-685, commit 19802626f): cot derive now reads a v5.0 step's falsifiable_claim and refuses hollow steps (CB-1658).",
+    "hrq": true,
+    "links": [
+      "#1201",
+      "PMAT-685"
+    ]
+  },
+  {
+    "kind": "issue",
+    "id": "#1202",
+    "title": "flake: ci / coverage kills quality_proxy tests whose nested cargo clippy exceeds 600s under llvm-cov",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Still open: nested `cargo clippy` under llvm-cov exceeds the 600s lint budget in ci/coverage; not addressed on master.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-502",
+    "title": "Build batuta-template to replace handlebars and minijinja",
+    "disposition": "reject",
+    "rationale": "Roadmap status is already 'cancelled'; no further action needed.",
+    "hrq": true,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-619",
+    "title": "DEBT: Pre-commit complexity hook false-negative on zero-code repos",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Defect (pre-commit complexity hook false-negative on zero-code repos); no fix found on master.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-620",
+    "title": "Spec 27: Work Contract Binding \u2014 implements[] field + bind/unbind CLI + CB-1600..1609",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (Spec 27: Work Contract Binding, CB-1600..1609); unimplemented, no matching commits.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-621",
+    "title": "Spec 28: Work Verification Ladder \u2014 typed VerificationLevel enum + L0-L5 gates + CB-1610..1619",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (Spec 28: Work Verification Ladder, CB-1610..1619); unimplemented, no matching commits.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-622",
+    "title": "Spec 29: Falsification Unification \u2014 ProvableContract variant + unified roster + CB-1620..1629",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (Spec 29: Falsification Unification, CB-1620..1629); unimplemented, no matching commits.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-623",
+    "title": "Spec 30: Work Compile-Time Codegen \u2014 #[pmat_work_contract] proc macro + CB-1630..1639",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (Spec 30: Work Compile-Time Codegen, CB-1630..1639); unimplemented, no matching commits.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-624",
+    "title": "Spec 31: Work CoT Proof Derivation \u2014 structured ChainOfThoughtStep + CB-1640..1649",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (Spec 31: Work CoT Proof Derivation, CB-1640..1649); unimplemented, no matching commits.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-629",
+    "title": "Phase 1: cover rust_wasm_analyzer::analyze_impl_method branches",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Coverage-gap task (rust_wasm_analyzer::analyze_impl_method branches); no matching test-addition commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-004",
+    "title": "MACS-004 VerificationLevel typed enum + strict parse + ticket migration",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (typed VerificationLevel enum + strict parse); no matching commits found on master.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-005",
+    "title": "MACS-005 Ladder completion gate: achieved_level >= claimed",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (ladder completion gate achieved_level >= claimed); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-006",
+    "title": "MACS-006 CB-1653 ladder drift check + receipts record claimed/achieved",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (CB-1653 ladder drift check); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-007",
+    "title": "MACS-007 ChainOfThoughtStep v2 schema + parser + legacy migration",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (ChainOfThoughtStep v2 schema + migration); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-008",
+    "title": "MACS-008 Chain-integrity checker implementing CB-1640",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (CB-1640 chain-integrity checker); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-009",
+    "title": "MACS-009 CoT auto-derivation: obligations + falsifiable claims + CB-1658",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (CoT auto-derivation, CB-1658); superseded in scope by PMAT-685/#1200's landed fix but this ticket's own broader scope (obligations+claims registry) is unimplemented.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-010",
+    "title": "MACS-010 Effort frontmatter pinning across skills + CB-1650 lint",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (effort frontmatter pinning + CB-1650 lint); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-011",
+    "title": "MACS-011 pmat qa mcp-sweep: LLM-free deterministic MCP harness",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (pmat qa mcp-sweep deterministic harness); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-012",
+    "title": "MACS-012 Committed ultracode judgment workflow with provenance stamping",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (ultracode judgment workflow with provenance stamping); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-013",
+    "title": "MACS-013 pmat roadmap sync: canonical ROADMAP.yaml + CB-1655 freshness",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (roadmap sync + CB-1655 freshness); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-014",
+    "title": "MACS-014 pmat mcp manifest --write + CB-1656 drift check",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (pmat mcp manifest --write + CB-1656 drift check); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-015",
+    "title": "MACS-015 Doc drift purge + docs/agent-models.md registry + CB-1657",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (doc drift purge + agent-models.md registry); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-016",
+    "title": "MACS-016 pmat work ledger verify: hashes, provenance report, R1 order",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (work ledger verify: hashes/provenance/R1 order); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-010",
+    "title": "New task: MACS-010 macs-skill-effort-v1/skill_effort_pinned",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (effort frontmatter pinning + CB-1650 lint); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-011",
+    "title": "New task: MACS-011 macs-sweep-v1/sweep_deterministic",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (pmat qa mcp-sweep deterministic harness); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-013",
+    "title": "New task: MACS-013 macs-artifacts-v1/roadmap_canonical",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (roadmap sync + CB-1655 freshness); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-014",
+    "title": "New task: MACS-014 macs-artifacts-v1/manifest_faithful",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Enhancement (pmat mcp manifest --write + CB-1656 drift check); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-017",
+    "title": "MACS-017 Anti-Gravity Customizations Translator",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Planned enhancement (Anti-Gravity Customizations Translator); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-018",
+    "title": "MACS-018 Cross-System Provenance Unification (AGY + Fable)",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Planned enhancement (Cross-System Provenance Unification, AGY + Fable); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "MACS-019",
+    "title": "MACS-019 Hybrid Orchestration Bridge (Ultracode + AGY)",
+    "disposition": "defer(3.41.0)",
+    "rationale": "Planned enhancement (Hybrid Orchestration Bridge, Ultracode + AGY); no matching commits found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-630",
+    "title": "CB-2100: assert every error-severity rule is reachable from the required status checks",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1038 (commit 849d4852e, ancestor of HEAD): CB-2100 ships, generating docs/status/comply-enforcement-ledger.md and asserting reachability from required checks.",
+    "hrq": true,
+    "links": [
+      "#1038"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-632",
+    "title": "paiml-implement discover.sh: gate_cmd fell back to ''cargo test --workspace'' on pmat although ''make gate-artifact'' and the CLAUDE.md-mandated ''pmat verify'' exist",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Defect (discover.sh gate_cmd fallback); no matching fix commit found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-633",
+    "title": "binary size: no per-crate ratchet \u2014 .text grew ~3.4 MiB since ece3baf11 (pmat +1.9 MiB, pmcp +0.7, reqwest/h2/tokio ~+0.3, clap usage/error-context/suggestions +85 KiB); .pmat-metrics.toml''s ''42 MB'' is a 2025-11-23 comment nothing reads; add cargo-bloat --crates to nightly with a per-crate baseline (CRUX-05 five-whys)",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Tech-debt/defect (no per-crate binary-size ratchet); no matching commit found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-635",
+    "title": "pmat work add allocates ids from the tracked docs/roadmaps/roadmap.yaml of the CURRENT checkout, so two branches off the same base both mint the same id (PMAT-631 twice today); allocate from the highest id across refs, or from .pmat/ state",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1201 (PMAT-680, commit e79f0014e, ancestor of HEAD): ids now minted from one authority (lock + high-water mark) so concurrent checkouts cannot collide.",
+    "hrq": true,
+    "links": [
+      "#1201",
+      "PMAT-680"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-636",
+    "title": "CB-200: the lib test the_committed_baseline_is_the_measured_count is Unmeasurable in CI (no .pmat/context.db there) and passes; locally, a cold index of master by the 3.35.0 binary reads 1709 below-A vs the 1688 banked 2026-08-22 \u2014 the ratchet drifted 21 with no leg able to see it",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Defect (CB-200 lib test Unmeasurable in CI, ratchet drift); no matching fix commit found on master beyond the older, unrelated CB-200 commits.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-638",
+    "title": "pmat work complete runs quality gates that hang past 2 min on this repo and the only documented bypass is --skip-quality; a ticket whose PR merged green cannot be closed without a skip \u2014 separate the state transition from the gate, or bound the gate",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Defect (pmat work complete hangs, only bypass is --skip-quality); no matching fix commit found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-639",
+    "title": "TDG dead_code component is hardcoded 0.0 while carrying weight 0.20 (CB-128 ''6th dimension''): every TDG grade includes a 20% term that was never measured \u2014 integrate CargoDeadCodeAnalyzer or mark the component not-measured and stop weighting it (found by CRUX-01''s strict SATD stage, tdg_calculator_core.rs:110)",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Defect (TDG dead_code component hardcoded 0.0 at 20% weight); no matching fix commit found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-642",
+    "title": "CRUX-02: quality-gate renders three unmeasured dimensions as clean (dead-code not_measured vs not_applicable; coverage cache guards; duplicate_violations \u2192 identical_files; --help names cargo check)",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1164 (merged, ancestor of HEAD): quality-gate's dead-code/coverage-cache/duplicate-violations/help legs addressed per CRUX-02.",
+    "hrq": true,
+    "links": [
+      "#1164"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-645",
+    "title": "CRUX-03: config --validate certified the defaults it had silently fallen back to (PR #1155, open, auto-merge armed)",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1155 (merged, commit 627fb6a85, ancestor of HEAD): config --validate no longer certifies silently-fallen-back defaults.",
+    "hrq": true,
+    "links": [
+      "#1155"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-646",
+    "title": "CI: pull_request synchronize/ready_for_review events on PR #1164 created no workflow runs (3 events, 07:41\u201307:51Z); workflow_dispatch on the same head did",
+    "disposition": "defer(3.40.0)",
+    "rationale": "CI-investigation defect (pull_request synchronize/ready_for_review created no runs on #1164); no matching fix commit found.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-647",
+    "title": "models::quality_gate::QualityGateResults still carries duplicate_violations after CRUX-02 renamed the CLI gate's field to identical_files",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Confirmed still true: src/models/quality_gate.rs:24 still declares `duplicate_violations`, not renamed to identical_files as PMAT-642/CRUX-02 did for the CLI gate.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-648",
+    "title": "CRUX-04: the dead-code cache is keyed on the committed tree \u2014 key on git write-tree, disclose cache.hit and compiler-lint-cached, add --no-cache",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1165 (merged, ancestor of HEAD): dead-code cache now keyed on git write-tree of the working tree per CRUX-04.",
+    "hrq": true,
+    "links": [
+      "#1165"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-652",
+    "title": "AD-02: post-publish dog-food \u2014 install the version crates.io serves and run the release gate against it, writing a receipt",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1174 (merged, ancestor of HEAD): post-publish dog-food installs the crates.io version and writes a receipt (AD-02).",
+    "hrq": true,
+    "links": [
+      "#1174"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-654",
+    "title": "git_context tests fail in any git worktree: the repo-path helper requires .git/HEAD, but a worktree''s .git is a file",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Confirmed NOT merged: the git_context worktree fix (commit beee475ce, PMAT-654) is not an ancestor of HEAD.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-653",
+    "title": "the_cargo_engine_attributes_the_decision_to_rustc hits the analyzer''s 600 s dead-code timeout on a coverage-instrumented shared runner (red ci/coverage on docs-only #1173; green on master minutes apart)",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Confirmed still open: the_cargo_engine_attributes_the_decision_to_rustc test still exists (src/cli/handlers/dead_code_library_disclosure_tests.rs:210); the only related fix (2906c55a1) predates this report and made a different test non-fatal, not this one.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-655",
+    "title": "AD-03: commit enforcement \u2014 the generated hook''s SATD and task-ID checks block under strict mode, and a commit-msg hook requires a Pmat-Ticket trailer",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1175 (merged, ancestor of HEAD): strict-mode SATD/task-ID checks and commit-msg Pmat-Ticket trailer shipped (AD-03).",
+    "hrq": true,
+    "links": [
+      "#1175"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-659",
+    "title": "hooks install --stack has no strict mode: the stack installer writes its own lightweight pre-commit hook and no commit-msg hook",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Confirmed still open: command_dispatch.rs:50 only refuses `--strict --stack` together rather than implementing strict mode for the stack installer.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-660",
+    "title": "AD-06: the worker receipt carries the gate verdict and the orchestrator re-runs and diffs it",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1178 (merged, ancestor of HEAD): worker receipts carry the gate verdict, receipt-lint.sh diffs it (AD-06).",
+    "hrq": true,
+    "links": [
+      "#1178"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-664",
+    "title": "AD-10: the four lane modes \u2014 goal, teamwork, grill-me, plan \u2014 as one calling form",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1182 (merged, ancestor of HEAD): agy-lane.sh composes the four lane modes as one calling form (AD-10).",
+    "hrq": true,
+    "links": [
+      "#1182"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-656",
+    "title": "AD-04: Quorum Review Skill \u2014 three lanes review the diff against the ticket and receipt; the merge helper refuses auto-merge without three PASS verdicts",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1176 (merged, ancestor of HEAD): the Quorum Review Skill ships and the merge helper refuses without three PASS verdicts (AD-04).",
+    "hrq": true,
+    "links": [
+      "#1176"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-665",
+    "title": "CRUX-07: the index is a faithful, reproducible view of the tree",
+    "disposition": "complete",
+    "rationale": "Fixed by PR #1183 (merged, ancestor of HEAD): index faithfulness legs (fast-path staleness, sort order, atomic manifest) shipped (CRUX-07).",
+    "hrq": true,
+    "links": [
+      "#1183"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-672",
+    "title": "BSE-05/06: timeout-minutes on every job; one pool label per runs-on; mutation-diff off the PR path (BSE-001 wave 1)",
+    "disposition": "complete",
+    "rationale": "Fixed by commit 914fe6246 / PR #1192 (merged, ancestor of HEAD): timeout-minutes on every job, one pool label per runs-on, mutation-diff off the PR path (BSE-001 wave 1).",
+    "hrq": true,
+    "links": [
+      "#1192"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-677",
+    "title": "dogfood skill identity: rename to .claude/skills/pmat-dogfood with explicit name: pmat-dogfood so a user-scope dogfood skill cannot shadow it",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Tag cut before them (URGENT #1200 pivot); by design.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-678",
+    "title": "publish poka-yoke: make publish-from-tag TAG=vX.Y.Z publishes only from a detached worktree of the tag; .claude/agent-memory/ gitignored; --locked on release-verify",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Tag cut before them (URGENT #1200 pivot); by design.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-681",
+    "title": "harness gate declaration: a Makefile gate target running pmat verify so paiml-implement discovery yields gate_cmd_fallback=false",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Tag cut before them (URGENT #1200 pivot); by design.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-682",
+    "title": "release cut 3.39.0: bump the five version carriers, CHANGELOG from merged PR bodies, tickets completed; tag, prerelease, manual publish from a detached worktree",
+    "disposition": "complete",
+    "rationale": "Fixed by commit 7b53fd55b and PR #1204 (merged, ancestor of HEAD): 3.39.0 release cut, version carriers bumped to 3.39.0 (Cargo.toml confirms), tagged.",
+    "hrq": true,
+    "links": [
+      "#1204"
+    ]
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-683",
+    "title": "blocking mutants: measure a runtime baseline from three master runs before making the mutants job a gate",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Already deferred(3.40.0) by design (blocking-mutants baseline needs three master runs first).",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-684",
+    "title": "3.40.0: revive the three closed 3.38-era PRs on post-3.39.0 master \u2014 #1177 (AD-05 quality-gate file-size/churn/lint, PMAT-657), #1184 (PMAT-666 hooks split), #1180 (PMAT-661 work link + CB-1340)",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Already deferred(3.40.0) by design (revive #1177/#1184/#1180 on post-3.39.0 master); this is the current triage ticket itself.",
+    "hrq": false,
+    "links": []
+  },
+  {
+    "kind": "ticket",
+    "id": "PMAT-687",
+    "title": "fleet lint-gate: hardcoded_paths.rs fixtures and check.rs comment still carry /home/noah; pay the complexity debt (classify cognitive 33, check.rs helpers 25 fns) or land a per-repo EXCLUDE in paiml/.github unified-gate.yml",
+    "disposition": "defer(3.40.0)",
+    "rationale": "Already deferred(3.40.0) by design (fleet-gate remaining two files + per-repo EXCLUDE).",
+    "hrq": false,
+    "links": []
+  }
+]

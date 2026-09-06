@@ -165,7 +165,7 @@ fn percent_of(count: usize, total: usize) -> f32 {
 mod ungraded_disclosure_tests {
     //! REGRESSION (#983): the table named the unmeasured files by pasting the
     //! raw path into a 47-column row, so every entry was clipped to the prefix
-    //! the paths share — `/home/noah/src/aprender/crates/aprender-…` for all of
+    //! the paths share — `/home/alice/src/aprender/crates/aprender-…` for all of
     //! them. Naming a file with a string that cannot identify it is the same
     //! defect as not naming it.
     use super::*;
@@ -186,8 +186,8 @@ mod ungraded_disclosure_tests {
     #[test]
     fn long_paths_are_named_by_their_tail_and_stay_distinct() {
         let rendered = format_project(&project_with(&[
-            "/home/noah/src/aprender/crates/aprender-core/src/oracle/arxiv_entries.rs",
-            "/home/noah/src/aprender/crates/aprender-core/src/oracle/coursera_entries.rs",
+            "/home/alice/src/aprender/crates/aprender-core/src/oracle/arxiv_entries.rs",
+            "/home/alice/src/aprender/crates/aprender-core/src/oracle/coursera_entries.rs",
         ]));
         assert!(rendered.contains("Not Graded: 2 file(s)"), "{rendered}");
         assert!(rendered.contains("arxiv_entries.rs"), "got:\n{rendered}");
@@ -198,7 +198,7 @@ mod ungraded_disclosure_tests {
     #[test]
     fn named_rows_stay_inside_the_frame() {
         let rendered = format_project(&project_with(&[
-            "/home/noah/src/aprender/crates/aprender-core/src/oracle/coursera/arxiv_entries.rs",
+            "/home/alice/src/aprender/crates/aprender-core/src/oracle/coursera/arxiv_entries.rs",
         ]));
         let widths: Vec<usize> = rendered
             .lines()

@@ -1,0 +1,38 @@
+{
+  "version": "5.0",
+  "work_item_id": "GH-672",
+  "verification_level": "L1",
+  "falsifiable_claims": [
+    {
+      "id": "FC-1",
+      "claim": "apr serve returns empty body for unknown routes instead of 404 JSON \u2014 must not occur after fix",
+      "falsification_method": "Reproduce the original bug scenario and verify it no longer occurs"
+    },
+    {
+      "id": "FC-2",
+      "claim": "No regression in existing apr test suite",
+      "falsification_method": "cargo test --workspace 2>&1 | grep 'test result:'"
+    }
+  ],
+  "references": [
+    "https://github.com/paiml/aprender/issues/672"
+  ],
+  "chain_of_thought": [
+    {
+      "step": 1,
+      "evidence_method": "Falsification",
+      "falsifiable_claim": "apr serve returns empty body for unknown routes instead of 404 JSON \u2014 must not occur after fix",
+      "discharged_by": [
+        "FC-1"
+      ]
+    },
+    {
+      "step": 2,
+      "evidence_method": "Falsification",
+      "falsifiable_claim": "No regression in existing apr test suite",
+      "discharged_by": [
+        "FC-2"
+      ]
+    }
+  ]
+}

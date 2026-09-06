@@ -1,0 +1,60 @@
+# Hand-authored work contract for PMAT-674: `pmat work validate` 3.37.0 printed
+# "Validation passed" on a roadmap carrying PMAT-654 twice (master 914fe6246,
+# docs/roadmaps/roadmap.yaml:4001 and :4035). Every `evidence_method` below is a
+# command that was run on this tree by the orchestrator; the lib tests it names
+# are compiled from src/cli/handlers/work_handlers/mod.rs (#[path] to
+# src/tests/work_validate_duplicate_ids_tests.rs) and run under CI's `cargo test --lib`.
+name: "PMAT-674"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "pmat work validate refuses a duplicated id and an unparseable roadmap with file:line, documents its exit codes, and runs as a required CI gate"
+  references:
+    - "src/cli/handlers/work_handlers/ticket_validate_migrate.rs"
+    - "src/cli/commands/work_commands_work.rs"
+    - "src/tests/work_validate_duplicate_ids_tests.rs"
+    - ".github/workflows/ci.yml"
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/pull/1194"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 6
+proof_obligations:
+- id: "PO-V1"
+  statement: "Two rows declaring the same id are an error: validate returns Err, exit 1, and the message names the id and BOTH file:line positions (computed from the fixture, not hard-coded)."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_validate_duplicate_ids_tests::work_validate_duplicate_ids_are_refused_and_both_lines_reported"
+- id: "PO-V2"
+  statement: "An unparseable roadmap is an error whose message carries `<path>/roadmap.yaml:<line>:<column>: <error>` — the position is in the error itself, not only in the context block printed to stdout."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_validate_duplicate_ids_tests::work_validate_duplicate_unparseable_roadmap_is_located_by_line"
+- id: "PO-V3"
+  statement: "A clean roadmap still validates: a fixture with distinct ids (subtasks included) and this repository's own docs/roadmaps/roadmap.yaml both return Ok, so the new check manufactures no failure."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- work_validate_duplicate_distinct_ids_still_validate work_validate_duplicate_this_repositorys_roadmap_validates"
+- id: "PO-V4"
+  statement: "The raw-text scanner reads every YAML spelling of the key at any depth (`- id:`, `-   id:`, bare `id:`, quoted keys, `id:X`, flow `{id: X}`), skips the body of a block scalar (`notes: |`, `- >-`), and ignores `identity:`, `# - id:` and `-id:`. Both quorum findings (false red from block scalars, false green from flow style) were reproduced RED before the fix."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- work_validate_duplicate_collect_id_lines_reads_every_spelling work_validate_duplicate_scanner_skips_block_scalars_and_reads_flow_mappings work_validate_duplicate_ids_are_ordered_by_first_occurrence work_validate_duplicate_subtask_id_matching_an_item_id_counts work_validate_duplicate_ids_is_empty_when_every_id_is_distinct"
+- id: "PO-V5"
+  statement: "Exit codes are documented where a user looks: `pmat work validate --help` states 0 = valid (warnings do not fail) and 1 = invalid (duplicated id, schema violation, YAML parse error) or unreadable (missing file); the built binary measured 0/1/1/1 on valid/duplicate/unparseable/missing-file fixtures."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_validate_duplicate_ids_tests::work_validate_duplicate_help_documents_the_exit_codes"
+- id: "PO-V6"
+  statement: "The verdict reaches the required check: .github/workflows/ci.yml declares a `roadmap-validate` job that builds pmat from the tree, first proves the validator can fail (a duplicated-id fixture must exit 1), then runs `pmat work validate`; the job is in `gate`'s `needs` AND in its result loop under the exact compared string, so a red roadmap fails `ci / gate` rather than printing a warning."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_validate_duplicate_ids_tests::work_validate_duplicate_ci_runs_validate_as_a_gated_job"
+falsifiable_claims:
+- hypothesis: "Two rows declaring the same id are an error: validate returns Err, exit 1, and the message names the id and BOTH file:line positions (computed from the fixture, not hard-coded)."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_validate_duplicate_ids_tests::work_validate_duplicate_ids_are_refused_and_both_lines_reported"
+  from_step: "V1"
+- hypothesis: "An unparseable roadmap is an error whose message carries `<path>/roadmap.yaml:<line>:<column>: <error>` — the position is in the error itself, not only in the context block printed to stdout."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_validate_duplicate_ids_tests::work_validate_duplicate_unparseable_roadmap_is_located_by_line"
+  from_step: "V2"
+- hypothesis: "A clean roadmap still validates: a fixture with distinct ids (subtasks included) and this repository's own docs/roadmaps/roadmap.yaml both return Ok, so the new check manufactures no failure."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- work_validate_duplicate_distinct_ids_still_validate work_validate_duplicate_this_repositorys_roadmap_validates"
+  from_step: "V3"
+- hypothesis: "The raw-text scanner reads every YAML spelling of the key at any depth (`- id:`, `-   id:`, bare `id:`, quoted keys, `id:X`, flow `{id: X}`), skips the body of a block scalar (`notes: |`, `- >-`), and ignores `identity:`, `# - id:` and `-id:`. Both quorum findings (false red from block scalars, false green from flow style) were reproduced RED before the fix."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- work_validate_duplicate_collect_id_lines_reads_every_spelling work_validate_duplicate_scanner_skips_block_scalars_and_reads_flow_mappings work_validate_duplicate_ids_are_ordered_by_first_occurrence work_validate_duplicate_subtask_id_matching_an_item_id_counts work_validate_duplicate_ids_is_empty_when_every_id_is_distinct"
+  from_step: "V4"
+- hypothesis: "Exit codes are documented where a user looks: `pmat work validate --help` states 0 = valid (warnings do not fail) and 1 = invalid (duplicated id, schema violation, YAML parse error) or unreadable (missing file); the built binary measured 0/1/1/1 on valid/duplicate/unparseable/missing-file fixtures."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_validate_duplicate_ids_tests::work_validate_duplicate_help_documents_the_exit_codes"
+  from_step: "V5"
+- hypothesis: "The verdict reaches the required check: .github/workflows/ci.yml declares a `roadmap-validate` job that builds pmat from the tree, first proves the validator can fail (a duplicated-id fixture must exit 1), then runs `pmat work validate`; the job is in `gate`'s `needs` AND in its result loop under the exact compared string, so a red roadmap fails `ci / gate` rather than printing a warning."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_validate_duplicate_ids_tests::work_validate_duplicate_ci_runs_validate_as_a_gated_job"
+  from_step: "V6"
