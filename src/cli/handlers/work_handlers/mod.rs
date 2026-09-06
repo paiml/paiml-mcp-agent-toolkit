@@ -65,3 +65,8 @@ mod work_add_append_only_tests;
 #[cfg(test)]
 #[path = "../../../tests/work_add_single_authority_tests.rs"]
 mod work_add_single_authority_tests;
+
+// PMAT-675: the release path a tag takes, pinned as data (see the file header).
+#[cfg(test)]
+#[path = "../../../tests/release_workflow_tests.rs"]
+mod release_workflow_tests;
