@@ -77,9 +77,9 @@ mod tests_macs_derivation {
     /// and obligation id.
     #[test]
     fn cb1658_red_on_hollow_obligation() {
-        let project = tempdir().unwrap();
+        let project = tempdir().expect("temp project");
         let dir = project.path().join(".pmat-work").join("T-D4");
-        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(&dir).expect("work dir");
         std::fs::write(
             dir.join("contract.json"),
             serde_json::to_string_pretty(&json!({
@@ -91,10 +91,10 @@ mod tests_macs_derivation {
                      "discharged_by": ["FC-1"]}
                 ]
             }))
-            .unwrap(),
+            .expect("contract json"),
         )
-        .unwrap();
-        std::fs::write(dir.join("cot-digest.json"), r#"{"sha": "irrelevant-here"}"#).unwrap();
+        .expect("write contract");
+        std::fs::write(dir.join("cot-digest.json"), r#"{"sha": "irrelevant-here"}"#).expect("write digest");
         write_artifact(
             project.path(),
             "T-D4",
