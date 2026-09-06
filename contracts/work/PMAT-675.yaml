@@ -1,0 +1,45 @@
+# Hand-authored work contract for PMAT-675 (3.39.0 release path). Every
+# evidence_method is a command run on this tree by the orchestrator; the lib
+# tests are compiled from src/cli/handlers/work_handlers/mod.rs (#[path]).
+name: "PMAT-675"
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  description: "A v* tag runs the fleet clean-room gate and a package verification, then creates a GitHub prerelease; no workflow publishes the crate; docker-publish is dispatch-only with a secret preflight"
+  references:
+    - ".github/workflows/release.yml"
+    - ".github/workflows/docker-publish.yml"
+    - "src/tests/release_workflow_tests.rs"
+    - "docs/DOCKER.md"
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1122"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 4
+proof_obligations:
+- id: "PO-R1"
+  statement: "release.yml has exactly the jobs create-release, gate, verify, prerelease; gate is paiml/.github unified-gate.yml; verify runs on [self-hosted, clean-room]; prerelease needs all three and runs `gh release create --prerelease --verify-tag`; the file carries no publish job, no registry token, no crates.io auth action, and no continue-on-error key anywhere; release.yml.disabled is gone."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::release_workflow_tests::release_workflow_gates_then_verifies_then_prereleases_and_never_publishes"
+- id: "PO-R2"
+  statement: "The structure test can fail: with `continue-on-error: true` planted on the verify job it reports `no step may continue on error: [/jobs/verify/continue-on-error]` (observed, then restored)."
+  evidence_method: "python3 - <<'PY'\nimport re,subprocess;p='.github/workflows/release.yml';s=open(p).read();open(p,'w').write(s.replace('    timeout-minutes: 60\\n','    timeout-minutes: 60\\n    continue-on-error: true\\n',1))\nPY\nenv -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::release_workflow_tests::release_workflow_gates_then_verifies_then_prereleases_and_never_publishes; git checkout -- .github/workflows/release.yml"
+- id: "PO-R3"
+  statement: "docker-publish.yml has no push/tag trigger, only workflow_dispatch; a preflight step before any login exits 1 naming DOCKER_USERNAME/DOCKER_PASSWORD when they are absent; the image tag is the Cargo.toml version, not a literal 2.10.0."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::release_workflow_tests::docker_publish_is_dispatch_only_and_refuses_without_secrets"
+- id: "PO-R4"
+  statement: "Live falsifier, run once after the workflow is on master: `gh workflow run release.yml -f tag=v3.38.0 -f probe_fail_verify=true` ends with the failure at the verify job and `gh release view v3.38.0-rp-probe` / no new release object for that run; recorded in docs/audits/impl-PMAT-675-receipt.md with the run id."
+  evidence_method: "gh run list --workflow release.yml --limit 1 --json conclusion,event -q '.[0]'   # event=workflow_dispatch conclusion=failure, verify is the failed job"
+falsifiable_claims:
+- hypothesis: "release.yml has exactly the jobs create-release, gate, verify, prerelease; gate is paiml/.github unified-gate.yml; verify runs on [self-hosted, clean-room]; prerelease needs all three and runs `gh release create --prerelease --verify-tag`; the file carries no publish job, no registry token, no crates.io auth action, and no continue-on-error key anywhere; release.yml.disabled is gone."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::release_workflow_tests::release_workflow_gates_then_verifies_then_prereleases_and_never_publishes"
+  from_step: "R1"
+- hypothesis: "The structure test can fail: with `continue-on-error: true` planted on the verify job it reports `no step may continue on error: [/jobs/verify/continue-on-error]` (observed, then restored)."
+  method: "python3 - <<'PY'\nimport re,subprocess;p='.github/workflows/release.yml';s=open(p).read();open(p,'w').write(s.replace('    timeout-minutes: 60\\n','    timeout-minutes: 60\\n    continue-on-error: true\\n',1))\nPY\nenv -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::release_workflow_tests::release_workflow_gates_then_verifies_then_prereleases_and_never_publishes; git checkout -- .github/workflows/release.yml"
+  from_step: "R2"
+- hypothesis: "docker-publish.yml has no push/tag trigger, only workflow_dispatch; a preflight step before any login exits 1 naming DOCKER_USERNAME/DOCKER_PASSWORD when they are absent; the image tag is the Cargo.toml version, not a literal 2.10.0."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::release_workflow_tests::docker_publish_is_dispatch_only_and_refuses_without_secrets"
+  from_step: "R3"
+- hypothesis: "Live falsifier, run once after the workflow is on master: `gh workflow run release.yml -f tag=v3.38.0 -f probe_fail_verify=true` ends with the failure at the verify job and `gh release view v3.38.0-rp-probe` / no new release object for that run; recorded in docs/audits/impl-PMAT-675-receipt.md with the run id."
+  method: "gh run list --workflow release.yml --limit 1 --json conclusion,event -q '.[0]'   # event=workflow_dispatch conclusion=failure, verify is the failed job"
+  from_step: "R4"
