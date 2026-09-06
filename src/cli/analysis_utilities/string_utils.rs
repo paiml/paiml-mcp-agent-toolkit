@@ -313,17 +313,16 @@ pub fn render_table(items: &[std::sync::Arc<crate::models::template::TemplateRes
         "─".repeat(category_width),
         "─".repeat(desc_width)
     );
+    // Pad first, then colour: an escape inside the `{:^width$}` cell would
+    // count against the width and move the box (PMAT-688).
+    let cell = |text: &str, width: usize| crate::cli::colors::label(&format!("{text:^width$}"));
     let _ = writeln!(
         out,
-        "│{:^name_width$}│{:^toolchain_width$}│{:^category_width$}│{:^desc_width$}│",
-        "Name",
-        "Toolchain",
-        "Category",
-        "Description",
-        name_width = name_width,
-        toolchain_width = toolchain_width,
-        category_width = category_width,
-        desc_width = desc_width
+        "│{}│{}│{}│{}│",
+        cell("Name", name_width),
+        cell("Toolchain", toolchain_width),
+        cell("Category", category_width),
+        cell("Description", desc_width)
     );
     let _ = writeln!(
         out,

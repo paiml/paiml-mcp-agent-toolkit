@@ -73,9 +73,10 @@ mod manifest {
 /// #1029: the tool count alone reads as a complete surface, which is how
 /// three analyzers shipped CLI-only without anyone noticing.
 fn manifest_notice(written: Option<usize>) -> String {
+    use crate::cli::colors as c;
     let first = match written {
-        Some(tools) => format!("Generated mcp.json with {tools} tools"),
-        None => "Run with --write to generate the manifest".to_string(),
+        Some(tools) => c::colored(c::GREEN, &format!("Generated mcp.json with {tools} tools")),
+        None => c::dim("Run with --write to generate the manifest"),
     };
     format!(
         "{first}\n{}",

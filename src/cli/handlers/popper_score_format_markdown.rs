@@ -71,7 +71,7 @@ fn format_markdown_recommendations(output: &mut String, score: &PopperScore) {
 }
 
 /// Format score as Markdown
-fn format_markdown(score: &PopperScore, verbose: bool, _failures_only: bool) -> String {
+fn format_markdown(score: &PopperScore, verbose: bool, failures_only: bool) -> String {
     let mut output = String::new();
 
     // Header
@@ -106,6 +106,10 @@ fn format_markdown(score: &PopperScore, verbose: bool, _failures_only: bool) -> 
     output.push_str("|----------|-------|------------|--------|\n");
 
     for (name, category, is_gateway) in popper_category_entries(score) {
+        // PMAT-688: the same display filter as the text formatter.
+        if failures_only && !category.is_not_applicable && category.percentage() >= 80.0 {
+            continue;
+        }
         format_markdown_category_row(&mut output, name, category, is_gateway);
     }
     output.push('\n');

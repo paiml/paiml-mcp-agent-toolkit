@@ -35,8 +35,9 @@ async fn handle_gate(
             "p0_defects": result.defects.iter()
                 .filter(|d| d.defect_class.severity == DefectSeverity::P0Critical)
                 .count(),
+            "fail_on_p0": fail_on_p0,
         }))?,
-        _ => format_gate_text(&result, passes, min_score),
+        _ => format_gate_text(&result, passes, min_score, fail_on_p0),
     };
 
     write_output(&output, config)?;
@@ -48,7 +49,24 @@ async fn handle_gate(
     Ok(())
 }
 
-fn format_gate_text(result: &CudaSimdTdgResult, passes: bool, min_score: f64) -> String {
+/// The P0 policy the gate applied, named so the report explains its own
+/// verdict (PMAT-688): on a tree that already fails, `--fail-on-p0` changes
+/// nothing else the reader can see.
+fn p0_policy_line(fail_on_p0: bool) -> &'static str {
+    if fail_on_p0 {
+        "P0 policy: fail on any P0 defect (--fail-on-p0)"
+    } else {
+        "P0 policy: advisory (P0 defects are reported, not gated)"
+    }
+}
+
+fn format_gate_text(
+    result: &CudaSimdTdgResult,
+    passes: bool,
+    min_score: f64,
+    fail_on_p0: bool,
+) -> String {
+    use crate::cli::colors as c;
     let mut output = String::new();
     output.push_str("CUDA-TDG Quality Gate\n");
     output.push_str("=====================\n\n");
@@ -57,12 +75,14 @@ fn format_gate_text(result: &CudaSimdTdgResult, passes: bool, min_score: f64) ->
         result.score.total, result.score.grade
     ));
     output.push_str(&format!("Minimum Required: {:.1}\n", min_score));
+    output.push_str(p0_policy_line(fail_on_p0));
+    output.push('\n');
     output.push_str(&format!(
         "Gateway (Falsifiability): {}\n",
         if result.score.gateway_passed {
-            "PASSED"
+            c::colored(c::GREEN, "PASSED")
         } else {
-            "FAILED"
+            c::colored(c::RED, "FAILED")
         }
     ));
 
@@ -74,7 +94,7 @@ fn format_gate_text(result: &CudaSimdTdgResult, passes: bool, min_score: f64) ->
     output.push_str(&format!("P0 Critical Defects: {}\n\n", p0_count));
     output.push_str(&format!(
         "Result: {}\n",
-        if passes { "PASSED" } else { "FAILED" }
+        if passes { c::colored(c::GREEN, "PASSED") } else { c::colored(c::RED, "FAILED") }
     ));
     output
 }
@@ -161,7 +181,10 @@ fn format_kaizen_markdown(result: &CudaSimdTdgResult) -> String {
 
 fn format_kaizen_text(result: &CudaSimdTdgResult) -> String {
     let mut output = String::new();
-    output.push_str("Kaizen Continuous Improvement Report\n");
+    output.push_str(&crate::cli::colors::header(
+        "Kaizen Continuous Improvement Report",
+    ));
+    output.push('\n');
     output.push_str("====================================\n\n");
     output.push_str(&format!(
         "Tickets Resolved: {}\n",

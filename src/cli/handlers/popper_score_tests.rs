@@ -312,12 +312,14 @@ mod tests {
     #[test]
     fn failures_only_verbose_keeps_only_failing_sub_scores() {
         // A1 8/10 and A2 12/15 both sit on the pass line inside a passing category;
-        // B has no sub-scores, so add one that fails.
+        // B (18/25) has no sub-scores, so add one that fails. `add_sub_score`
+        // adds the sub-score's points to the category, so it must earn 0 for
+        // B to stay below the line.
         let mut score = create_test_score_passed();
         score
             .categories
             .reproducibility
-            .add_sub_score(PopperSubScore::new("B1", "Lockfile", 2.0, 10.0, "no lockfile"));
+            .add_sub_score(PopperSubScore::new("B1", "Lockfile", 0.0, 10.0, "no lockfile"));
         let all = format_text(&score, true, false);
         let failing = format_text(&score, true, true);
         assert!(all.contains("A1") && all.contains("B1"), "{all}");

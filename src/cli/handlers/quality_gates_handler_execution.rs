@@ -111,10 +111,11 @@ fn handle_validate_config(path: &Path) -> Result<()> {
 /// The verdict `quality-gates validate` prints: one line when the file is
 /// valid, a headline plus one line per error otherwise.
 fn validation_verdict(errors: &[String]) -> String {
+    use crate::cli::colors as c;
     if errors.is_empty() {
-        return "✅ Configuration is valid".to_string();
+        return c::colored(c::GREEN, "✅ Configuration is valid");
     }
-    let mut out = format!("❌ Configuration has {} error(s):", errors.len());
+    let mut out = c::colored(c::RED, &format!("❌ Configuration has {} error(s):", errors.len()));
     for error in errors {
         out.push_str(&format!("\n  - {error}"));
     }

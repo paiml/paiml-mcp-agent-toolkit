@@ -58,16 +58,19 @@ fn format_analysis(result: &CudaSimdTdgResult, config: &CudaTdgCommandConfig) ->
 fn format_score_summary(score: &PopperScore, config: &CudaTdgCommandConfig) -> Result<String> {
     match config.format {
         CudaTdgOutputFormat::Json => Ok(serde_json::to_string_pretty(score)?),
-        _ => Ok(format!(
-            "{:.1}/100 (Grade: {}, Gateway: {})",
-            score.total,
-            score.grade,
-            if score.gateway_passed {
-                "PASSED"
-            } else {
-                "FAILED"
-            }
-        )),
+        _ => {
+            use crate::cli::colors as c;
+            Ok(format!(
+                "{:.1}/100 (Grade: {}, Gateway: {})",
+                score.total,
+                c::colored(grade_color(&score.grade), &score.grade.to_string()),
+                if score.gateway_passed {
+                    c::colored(c::GREEN, "PASSED")
+                } else {
+                    c::colored(c::RED, "FAILED")
+                }
+            ))
+        }
     }
 }
 

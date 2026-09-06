@@ -185,11 +185,6 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "colours the clean-result confirmation (lint_hotspot_handlers/mod.rs:206-220 report_measured_clean -> c::pass); on a clean crate `--color always` emits an ANSI-green tick and `--color auto` does not — the corpus is dirty by construction so that branch is unreachable",
     ),
     (
-        "analyze proof-annotations",
-        "--color",
-        "sets CLICOLOR_FORCE/NO_COLOR; proof_annotation_helpers_format.rs emits no colour in any of its five formats (summary/full/json/markdown/sarif all verified at 0 escape bytes)",
-    ),
-    (
         "comply cross-crate",
         "--color",
         "sets CLICOLOR_FORCE/NO_COLOR; nothing under cross_crate_handlers/ references crate::cli::colors, and the reachable output here is the plain single-crate discovery notice (handler.rs:81)",
@@ -250,11 +245,6 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "emits only the Known Defects Report on stdout (3661B, exit 1) and nothing on stderr; src/cli/handlers/analyze_defects_handler/ contains no stderr macro at all",
     ),
     (
-        "analyze deep-context",
-        "--quiet",
-        "the swept default format uses SimpleDeepContext, which prints no progress — stdout report only, stderr 0B. The flag's effect is demonstrable one format over: `--format sarif` runs the full DeepContextAnalyzer and emitted 62B of spinner text, now 62B -> 0B under --quiet with this round's progress-primitive fix",
-    ),
-    (
         "analyze entropy",
         "--quiet",
         "emits only the Entropy Analysis Summary on stdout (571B), stderr 0B. The four progress banners in its file (entropy_semantic.rs) belong to `analyze semantic`'s route, not to route_entropy_analysis",
@@ -288,11 +278,6 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "comply init",
         "--quiet",
         "on the corpus the command has already been initialised by an earlier sweep invocation and prints its 'Project already initialized at ./.pmat/project.toml' refusal on stdout, which is the result. On a fresh directory the banner and next-steps block are status_println! and --quiet takes stdout 378B -> 101B (measured), leaving only the created-artifact lines",
-    ),
-    (
-        "comply report",
-        "--quiet",
-        "the swept invocation writes the compliance report itself to stdout (511B), and a report is a result. The flag's effect is on the --output branch: `comply report --output F` prints '✓ Compliance report written to F' via status_println! (43B), and --quiet suppresses it (measured: 43B -> 0B, file still written)",
     ),
     (
         "comply asset-validate",
@@ -373,10 +358,33 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "--stack",
         "appends the 'Stack Quality (CB-150)' block listing sovereign dependencies found in Cargo.toml (score_handler_display.rs:5-31); adding `aprender`/`trueno` to the fixture's Cargo.toml makes it appear. The corpus has an empty [dependencies] section, and the function early-returns when none are found",
     ),
+    // PMAT-688: five commands whose stdout IS the artifact. Verified on the
+    // dumped Large corpus with 3.39.0 (`--color auto` vs `--color always`):
+    // byte-identical, and there is no human-facing line to colour.
     (
-        "comply check",
-        "--strict",
-        "escalates warnings to a failing exit and nothing else — exit_policy (comply_handlers/check_handlers/check.rs:229-256) returns code 2 only when `is_compliant && warn > 0 && fail == 0`; a report with failures already exits 1 and the flag has nothing left to escalate. Demonstrated on this corpus: give it a `deny.toml` naming all four families and a `.github/workflows/ci.yml` whose `gate` job runs the CB-reaching commands, then `PMAT_REQUIRED_STATUS_CHECKS=gate pmat comply check` exits 0 and the same run with --strict exits 2 with 'the report is COMPLIANT (0 failures), but --strict treats warnings as errors: 9 warning(s)'. The swept corpus fails CB-1701 and CB-2100, so both runs exit 1 with byte-identical stdout (15,773B). Pinned as a tri-state by check_readonly_and_exemption_tests.rs::strict_exit_codes_are_a_documented_tri_state",
+        "prompt comply",
+        "--color",
+        "stdout is the generated YAML prompt itself (prompt_handlers_generators.rs write_prompt_output; 21,724 B on the corpus with no --output) for an LLM to consume — an ANSI escape inside it would corrupt the prompt, and there is no status line to colour",
+    ),
+    (
+        "prompt book",
+        "--color",
+        "stdout is the generated YAML prompt itself (prompt_handlers_generators.rs write_prompt_output; 25,057 B on the corpus with no --output) for an LLM to consume — an ANSI escape inside it would corrupt the prompt, and there is no status line to colour",
+    ),
+    (
+        "prompt repo-image",
+        "--color",
+        "stdout is the generated YAML prompt itself (prompt_handlers_generators.rs write_prompt_output; 14,166 B on the corpus with no --output) for an LLM to consume — an ANSI escape inside it would corrupt the prompt, and there is no status line to colour",
+    ),
+    (
+        "quality-gates show",
+        "--color",
+        "prints the gate config verbatim as TOML (misc_commands_spec_debug.rs:221 default) or JSON through quality_gates_handler_execution.rs handle_show_config — a config artifact meant to be redirected into .pmat-gates.toml, which an escape would corrupt",
+    ),
+    (
+        "cuda-tdg report",
+        "--color",
+        "default `--format markdown` (misc_commands_cuda_oracle.rs:47) renders a Markdown document through format_markdown_report, and html/json are documents too; colour is live only in the terminal formatter reached by `score --breakdown`, `gate` and `kaizen`, which the sweep checks separately",
     ),
 ];
 
@@ -541,7 +549,9 @@ enum Verdict {
     /// not silently do nothing, and exiting non-zero with "--ml is not
     /// implemented ... this flag would relabel them without changing them" is
     /// the honest alternative. Classifying it as a failure penalised precisely
-    /// the fix that earlier rounds landed.
+    /// the fix that earlier rounds landed. A refusal that names an unmet
+    /// precondition — a dirty tree, a missing companion flag — is the same
+    /// class (PMAT-688): the flag did not silently do nothing.
     Refuses,
     /// The flag turned a working command into a failing one.
     Errors { code: Option<i32> },
@@ -830,6 +840,13 @@ fn is_honest_refusal(stderr: &str) -> bool {
         || s.contains("does not implement")
         || s.contains("would be accepted and ignored")
         || s.contains("no longer supported")
+        // PMAT-688: a documented precondition, named in the refusal — the
+        // ledger writers' "refusing to write … from a dirty git tree … or pass
+        // --allow-dirty", and clap's "the following required arguments were
+        // not provided" for a flag that `requires` a companion. Both say what
+        // the flag needs; neither is a flag breaking a working command.
+        || s.contains("refusing to")
+        || s.contains("required arguments were not provided")
 }
 
 #[test]
