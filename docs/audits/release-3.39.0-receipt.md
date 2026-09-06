@@ -74,6 +74,6 @@ cot fallback removed → 3 fallback tests + the ten-contract fixture test RED, *
 ## Budget
 `K=240`, `K̂=302 [C]` (basis L11-L12); orchestrator turns ≈ 232 at receipt time (andon threshold 192 crossed during the URGENT pivot; the operator's second brief reset the scope); subagents: peak 1 live, 5 workers (2 resumed once), 5 delegates; denials 2 (hook: gh while a slot was held); `reruns` 2 (both #1202 flakes, on docs/workflow PRs; 0 on the release PRs).
 
-verdict: PUBLISH-READY with one named Phase-3 red (flag-efficacy-full, pre-existing, PMAT-688) — nothing published; tag and prerelease in place (12 assets, post-release green); Noah publishes from a detached worktree of `v3.39.0`.
+verdict: SHIPPED — published by this session from a detached worktree of `v3.39.0` on the operator's "proceed"; AD-01 exit 0, AD-02 GO (13/13), docs.rs `doc_status: true`, prerelease promoted, infra#458 merged; one named Phase-3 red (flag-efficacy-full, identical on v3.38.0, PMAT-688). Post-publish evidence: `docs/audits/release-3.39.0-dogfood.md`.
 
 RELEASE-3.39.0-RECEIPT-END
