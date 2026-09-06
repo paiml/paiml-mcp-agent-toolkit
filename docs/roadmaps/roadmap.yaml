@@ -4459,3 +4459,41 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-686
+  github_issue: null
+  item_type: task
+  title: 'fleet lint-gate: scrub the banned-path literals the unified-gate greps for (/home/noah, /mnt/nvme-raid0) from *.rs *.toml *.sh; in-repo scan test'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-06T13:26:04Z
+  updated: 2026-09-06T13:26:04Z
+  spec: null
+  acceptance_criteria:
+  - The v3.38.0 release-path probe failed at the fleet gate's Banned path scan (40 lines of pmat's own tree). Scrubbed in 4211f0bf7 except two files pinned for PMAT-687; src/tests/fleet_banned_paths_tests.rs mirrors the fleet scan over tracked *.rs *.toml *.sh.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - release
+  notes: null
+- id: PMAT-687
+  github_issue: null
+  item_type: task
+  title: 'fleet lint-gate: hardcoded_paths.rs fixtures and check.rs comment still carry /home/noah; pay the complexity debt (classify cognitive 33, check.rs helpers 25 fns) or land a per-repo EXCLUDE in paiml/.github unified-gate.yml'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-06T13:26:05Z
+  updated: 2026-09-06T13:26:05Z
+  spec: null
+  acceptance_criteria:
+  - 'Until one of the two lands, a pmat tag fails the fleet gate at lint-gate (probe run 34034967876) and the prerelease is created by hand. Also: pmat analyze hardcoded-paths reports 45 machine-specific paths in shipped code on this tree — audit them in the same ticket.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - deferred:3.40.0
+  notes: null
