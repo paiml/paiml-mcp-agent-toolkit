@@ -166,6 +166,60 @@ mod coverage_tests {
         }
     }
 
+    /// PMAT-688: on the sweep corpus the gate already fails (gateway FAILED,
+    /// zero P0 defects), so `--fail-on-p0` could change neither the verdict
+    /// nor a byte of the report and was booked as a no-op. A CI gate report
+    /// must name the policy that produced its verdict, exactly as it already
+    /// names `Minimum Required`.
+    #[test]
+    fn gate_text_names_the_p0_policy_in_force() {
+        let temp_dir = TempDir::new().expect("tempdir");
+        let result = create_mock_result(temp_dir.path());
+        let strict = format_gate_text(&result, true, 85.0, true, false);
+        let advisory = format_gate_text(&result, true, 85.0, false, false);
+        assert!(
+            strict.contains("P0 policy") && strict.contains("--fail-on-p0"),
+            "the gate report must say which P0 policy was applied:\n{strict}"
+        );
+        assert!(advisory.contains("P0 policy"), "{advisory}");
+        assert_ne!(strict, advisory, "the policy line must reflect the flag");
+    }
+
+    /// PMAT-688: `cuda-tdg score|gate|kaizen --color always` emitted the same
+    /// bytes as `--color auto` — none of the three text formatters went
+    /// through crate::cli::colors. With colours forced for this thread each
+    /// must carry an escape sequence, and none may when colours are off.
+    #[test]
+    fn score_gate_and_kaizen_text_carry_colour_when_forced() {
+        let temp_dir = TempDir::new().expect("tempdir");
+        let result = create_mock_result(temp_dir.path());
+        let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
+        {
+            let _on = crate::cli::colors::ForcedColor::on();
+            let summary = format_score_summary(&result.score, &config).expect("summary");
+            assert!(summary.contains("\x1b["), "score summary: {summary:?}");
+            let gate = format_gate_text(&result, true, 85.0, false, true);
+            assert!(gate.contains("\x1b["), "gate: {gate:?}");
+            let kaizen = format_kaizen_text(&result, true);
+            assert!(kaizen.contains("\x1b["), "kaizen: {kaizen:?}");
+            // A document format never carries an escape, colours forced or not.
+            let sarif = create_config_with_format(CudaTdgOutputFormat::Sarif);
+            assert!(!format_score_summary(&result.score, &sarif)
+                .expect("summary")
+                .contains("\x1b["));
+            assert!(!format_gate_text(&result, true, 85.0, false, false).contains("\x1b["));
+            assert!(!format_kaizen_text(&result, false).contains("\x1b["));
+        }
+        let _off = crate::cli::colors::ForcedColor::off();
+        let summary = format_score_summary(&result.score, &config).expect("summary");
+        assert!(
+            !summary.contains("\x1b["),
+            "plain when colours are off: {summary:?}"
+        );
+        assert!(!format_gate_text(&result, true, 85.0, false, true).contains("\x1b["));
+        assert!(!format_kaizen_text(&result, true).contains("\x1b["));
+    }
+
     // Tests for format_result
 
     #[test]

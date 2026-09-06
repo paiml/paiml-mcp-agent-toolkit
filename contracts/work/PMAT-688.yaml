@@ -1,0 +1,58 @@
+# Hand-authored work contract for PMAT-688: `make gate-flag-efficacy-full` was
+# RED on the 3.39.0 tree — 18 flags parsed and changed nothing, 4 rows were the
+# ledger writers refusing a dirty tree. Every evidence_method below was run on
+# this tree by the orchestrator; the lib tests run under CI's `cargo test --lib`,
+# the harness tests under `cargo test --test all`, and the sweep itself is the
+# release gate (artifact-level, ignored in CI).
+name: "PMAT-688"
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  description: "Every CLI flag the flag-efficacy sweep exercises changes observable output on the corpus or refuses honestly; the four ledger-writer rows are documented precondition refusals, not error-outs"
+  references:
+    - "tests/modules/quality_harness/flag_efficacy.rs"
+    - "tests/modules/quality_harness/mod.rs"
+    - "src/cli/handlers/popper_score_format_text.rs"
+    - "src/cli/handlers/demo_score_handlers.rs"
+    - "src/roadmap/commands/commands_todos.rs"
+    - "src/cli/handlers/cuda_tdg_handlers_gate_kaizen.rs"
+    - "src/cli/analysis_utilities/string_utils.rs"
+    - "src/cli/handlers/mcp_manifest.rs"
+    - "src/cli/handlers/quality_gates_handler_execution.rs"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 5
+proof_obligations:
+- id: "PO-F1"
+  statement: "--failures-only on popper-score and demo-score is the display filter its sibling score commands implement: a category or subcategory at or above the 80% pass line is not rendered in text or markdown, everything below it is, and popper's recommendations stay whatever the gateway said"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- failures_only_text_keeps_only_failing_checks failures_only_verbose_keeps_only_failing_sub_scores failures_only_markdown_keeps_only_failing_checks failures_only_hides_passing_subcategories_in_text failures_only_hides_passing_subcategories_in_markdown"
+- id: "PO-F2"
+  statement: "roadmap todos names the format it wrote and the todo count on its confirmation line, and cuda-tdg gate names the P0 policy in force in its text report, so --include-quality-gates and --fail-on-p0 are visible on stdout and not only in a file or a verdict that already fails"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- todos_written_line_names_the_format_and_count gate_text_names_the_p0_policy_in_force"
+- id: "PO-F3"
+  statement: "With colours forced for the thread, the list table header, the mcp manifest notice, the quality-gates validate verdict and the cuda-tdg score, gate and kaizen text carry an ANSI escape, and with colours off they are byte-identical to the pre-fix output"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- table_header_carries_colour_when_forced manifest_notice_carries_colour_when_forced manifest_notice_is_plain_when_colours_are_off validation_verdict_carries_colour_when_forced validation_verdict_is_plain_when_colours_are_off score_gate_and_kaizen_text_carry_colour_when_forced"
+- id: "PO-F4"
+  statement: "The sweep classifies a refusal that names its precondition (the ledger writers' dirty-tree refusal, clap's missing-companion-flag error) as Refuses, and the Large corpus carries a broken relative link, an ADR directory, a two-task current sprint and a seeded trend store with one rising and one falling series inside the 30-day window"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --test all -- precondition_refusals_are_honest large_corpus_carries_the_flag_fixtures allowed_noops_name_a_real_effect"
+- id: "PO-F5"
+  statement: "make gate-flag-efficacy-full exits 0 on this tree with 0 no-op and 0 error-out rows in its summary line; the RED side is the same sweep on 62562ccd9 (v3.39.0): 18 no-op, 4 error-out, exit 1"
+  evidence_method: "make gate-flag-efficacy-full && grep -E '^summary: .* 0 no-op, 0 error-out' /tmp/pmat-flag-efficacy-report.txt"
+falsifiable_claims:
+- hypothesis: "--failures-only on popper-score and demo-score is the display filter its sibling score commands implement: a category or subcategory at or above the 80% pass line is not rendered in text or markdown, everything below it is, and popper's recommendations stay whatever the gateway said"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- failures_only_text_keeps_only_failing_checks failures_only_verbose_keeps_only_failing_sub_scores failures_only_markdown_keeps_only_failing_checks failures_only_hides_passing_subcategories_in_text failures_only_hides_passing_subcategories_in_markdown"
+  from_step: "F1"
+- hypothesis: "roadmap todos names the format it wrote and the todo count on its confirmation line, and cuda-tdg gate names the P0 policy in force in its text report, so --include-quality-gates and --fail-on-p0 are visible on stdout and not only in a file or a verdict that already fails"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- todos_written_line_names_the_format_and_count gate_text_names_the_p0_policy_in_force"
+  from_step: "F2"
+- hypothesis: "With colours forced for the thread, the list table header, the mcp manifest notice, the quality-gates validate verdict and the cuda-tdg score, gate and kaizen text carry an ANSI escape, and with colours off they are byte-identical to the pre-fix output"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- table_header_carries_colour_when_forced manifest_notice_carries_colour_when_forced manifest_notice_is_plain_when_colours_are_off validation_verdict_carries_colour_when_forced validation_verdict_is_plain_when_colours_are_off score_gate_and_kaizen_text_carry_colour_when_forced"
+  from_step: "F3"
+- hypothesis: "The sweep classifies a refusal that names its precondition (the ledger writers' dirty-tree refusal, clap's missing-companion-flag error) as Refuses, and the Large corpus carries a broken relative link, an ADR directory, a two-task current sprint and a seeded trend store with one rising and one falling series inside the 30-day window"
+  method: "env -u RUST_MIN_STACK cargo test --test all -- precondition_refusals_are_honest large_corpus_carries_the_flag_fixtures allowed_noops_name_a_real_effect"
+  from_step: "F4"
+- hypothesis: "make gate-flag-efficacy-full exits 0 on this tree with 0 no-op and 0 error-out rows in its summary line; the RED side is the same sweep on 62562ccd9 (v3.39.0): 18 no-op, 4 error-out, exit 1"
+  method: "make gate-flag-efficacy-full && grep -E '^summary: .* 0 no-op, 0 error-out' /tmp/pmat-flag-efficacy-report.txt"
+  from_step: "F5"

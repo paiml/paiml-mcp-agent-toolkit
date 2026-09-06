@@ -4501,11 +4501,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'flag-efficacy release gate is RED on the 3.39.0 tree: 18 no-op flags (14x --color on report commands, --fail-on-error, --failures-only x3, --include-quality-gates, --fail-on-p0) and 4 ''error-out'' entries that are the ledger writers refusing the sweep''s dirty corpus'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-06T14:59:43Z
-  updated: 2026-09-06T14:59:43Z
+  updated: 2026-09-06T20:14:38Z
   spec: null
   acceptance_criteria:
   - 'make gate-flag-efficacy-full on 62562ccd9: summary 584 effective, 4 refuses-honestly, 18 no-op, 4 error-out, 369 skipped; report /tmp/pmat-flag-efficacy-report.txt. None of the 22 flags was touched by 3.39.0 (verify: the same gate on v3.38.0 in a detached worktree, log gate-fe-3380). Falsifier: each no-op flag changes observable output on the corpus or refuses honestly; the two --write-ledger/--allow-dirty pairs are re-classified by the harness (a refusal on a dirty tree is the documented behaviour, not an error-out); the sweep then exits 0.'
@@ -4528,6 +4528,38 @@ roadmap:
   spec: null
   acceptance_criteria:
   - 'agentic-delivery-pmat.md section 6 / 9.8. Bundle: quorum-review.sh --executor agy|claude|kimi (PAIML_EXECUTOR), --width bounded by PAIML_MAX_WIDTH (default 20, was a constant 10), --dry-run, --self-test; the delegate brief carries the same. pmat side: spec note and receipt. Controls: an unknown executor is refused (exit 2); width 21 refused, width 20 accepted; PAIML_MAX_WIDTH=5 refuses 6.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-689
+  github_issue: null
+  item_type: task
+  title: 'documentation_scorer tests score the temp dir''s PARENT: score_changelog looks at project_path.parent()/CHANGELOG.md, so a stray /tmp/CHANGELOG.md (216 KB, left by another session 2026-09-06 19:17 local) fails test_changelog_missing, test_changelog_minimal and test_recommendations_empty_project on every tree; isolate the tests (TMPDIR-independent fixture root) or scope the workspace lookup to a real Cargo workspace'
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-06T19:21:25Z
+  updated: 2026-09-06T19:21:25Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-690
+  github_issue: null
+  item_type: task
+  title: 'flag-efficacy sweep: show-metrics and comply report baselines are intermittently nondeterministic — skipped whole as [nondeterministic baseline] in the 3.39.0 sweep and in PMAT-688 sweep 3, but checked flag-by-flag in PMAT-688 sweep 2 (show-metrics --failures-only Effective there); by hand two consecutive show-metrics runs on the dumped corpus are byte-identical. Find what changes between the harness''s two baseline runs (a concurrent writer to .pmat-metrics/trends, or PageRank hotness) and pin it, so the two commands'' 21 flags are measured every sweep'
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-06T19:45:30Z
+  updated: 2026-09-06T19:45:30Z
+  spec: null
+  acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null

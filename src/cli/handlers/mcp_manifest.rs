@@ -16,14 +16,9 @@ pub async fn handle_mcp_command(cmd: McpCommands, project_path: &Path) -> Result
                 let manifest =
                     crate::mcp_pmcp::tool_manifest::render_manifest(env!("CARGO_PKG_VERSION"));
                 std::fs::write(&manifest_path, manifest)?;
-                println!("Generated mcp.json with {} tools", canonical_tools.len());
-                // #1029: say what the manifest does NOT cover. The tool count
-                // alone reads as a complete surface, which is how three
-                // analyzers shipped CLI-only without anyone noticing.
-                println!("{}", crate::cli::analyze_mcp_exposure::parity_summary());
+                println!("{}", manifest_notice(Some(canonical_tools.len())));
             } else {
-                println!("Run with --write to generate the manifest");
-                println!("{}", crate::cli::analyze_mcp_exposure::parity_summary());
+                println!("{}", manifest_notice(None));
             }
         }
         McpCommands::Connect => crate::cli::handlers::mcp_onboarding::handle_mcp(false)?,
@@ -69,5 +64,55 @@ mod manifest {
                 expected_string
             );
         }
+    }
+}
+
+/// The two lines `mcp manifest` prints: what happened (or how to make it
+/// happen), then what the manifest does NOT cover.
+///
+/// #1029: the tool count alone reads as a complete surface, which is how
+/// three analyzers shipped CLI-only without anyone noticing.
+fn manifest_notice(written: Option<usize>) -> String {
+    use crate::cli::colors as c;
+    let first = match written {
+        Some(tools) => c::colored(c::GREEN, &format!("Generated mcp.json with {tools} tools")),
+        None => c::dim("Run with --write to generate the manifest"),
+    };
+    format!(
+        "{first}\n{}",
+        crate::cli::analyze_mcp_exposure::parity_summary()
+    )
+}
+
+#[cfg(test)]
+mod notice_tests {
+    use super::manifest_notice;
+
+    /// PMAT-688: `mcp manifest --color always` emitted the same bytes as
+    /// `--color auto`; both lines were plain `println!`s.
+    #[test]
+    fn manifest_notice_carries_colour_when_forced() {
+        let _on = crate::cli::colors::ForcedColor::on();
+        let hint = manifest_notice(None);
+        assert!(
+            hint.contains("--write") && hint.contains("\x1b["),
+            "{hint:?}"
+        );
+        let written = manifest_notice(Some(12));
+        assert!(
+            written.contains("12 tools") && written.contains("\x1b["),
+            "{written:?}"
+        );
+    }
+
+    #[test]
+    fn manifest_notice_is_plain_when_colours_are_off() {
+        let _off = crate::cli::colors::ForcedColor::off();
+        let hint = manifest_notice(None);
+        assert!(!hint.contains("\x1b["), "{hint:?}");
+        assert!(
+            hint.lines().count() >= 2,
+            "hint, then the parity summary:\n{hint}"
+        );
     }
 }

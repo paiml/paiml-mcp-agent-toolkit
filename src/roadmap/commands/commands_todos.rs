@@ -41,7 +41,28 @@ async fn generate_todos(
     };
 
     std::fs::write(output_path, output)?;
-    println!("✅ Todos written to: {}", output_path.display());
+    println!(
+        "{}",
+        todos_written_line(output_path, todos.len(), include_quality_gates)
+    );
 
     Ok(())
+}
+
+/// The confirmation line `roadmap todos` prints after writing its file.
+///
+/// Names the format and the count (PMAT-688): `--include-quality-gates`
+/// changes the file, and the terminal must show which document was written.
+fn todos_written_line(output_path: &Path, count: usize, include_quality_gates: bool) -> String {
+    use crate::cli::colors as c;
+    let format = if include_quality_gates {
+        "PDMT with quality gates"
+    } else {
+        "simple checklist"
+    };
+    format!(
+        "{} Todos written to: {} ({format}, {count} todos)",
+        c::colored(c::GREEN, "✅"),
+        output_path.display()
+    )
 }

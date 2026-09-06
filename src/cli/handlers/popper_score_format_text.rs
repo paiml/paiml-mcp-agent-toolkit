@@ -18,6 +18,11 @@ fn format_text_category(
     }
 
     let percentage = category.percentage();
+    // PMAT-688: `--failures-only` is the display filter its sibling score
+    // commands implement — a row at or above the pass line is not shown.
+    if failures_only && percentage >= 80.0 {
+        return;
+    }
     let icon = percentage_icon(percentage);
     let gateway_marker = if is_gateway {
         format!(" {}[GATEWAY]{}", c::seq(c::BOLD_YELLOW), c::seq(c::RESET))
@@ -34,8 +39,11 @@ fn format_text_category(
         gateway_marker
     ));
 
-    if verbose && !failures_only {
+    if verbose {
         for sub in &category.sub_scores {
+            if failures_only && sub.earned >= sub.max * 0.8 {
+                continue;
+            }
             let sub_icon = if sub.earned >= sub.max * 0.8 {
                 format!("  {}✓{}", c::seq(c::GREEN), c::seq(c::RESET))
             } else if sub.earned >= sub.max * 0.5 {
@@ -55,10 +63,12 @@ fn format_text_category(
 }
 
 /// Append text-formatted recommendations to the output
-fn format_text_recommendations(output: &mut String, score: &PopperScore, failures_only: bool) {
+/// The recommendations are the actionable failures: they stay under
+/// `--failures-only` whatever the gateway said (PMAT-688).
+fn format_text_recommendations(output: &mut String, score: &PopperScore) {
     use crate::cli::colors as c;
 
-    if score.recommendations.is_empty() || (failures_only && score.gateway_passed) {
+    if score.recommendations.is_empty() {
         return;
     }
     output.push_str(&format!("{}\n", c::label("Recommendations")));
@@ -149,7 +159,7 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
     output.push('\n');
 
     // Recommendations
-    format_text_recommendations(&mut output, score, failures_only);
+    format_text_recommendations(&mut output, score);
 
     // Footer
     output.push_str(&format!("{}\n", c::rule()));

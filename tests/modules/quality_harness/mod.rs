@@ -524,6 +524,86 @@ jobs:
     .expect("write docs");
 
     write_hygiene_debt(root);
+    write_flag_fixtures(root);
+}
+
+/// PMAT-688: inputs the flag-efficacy sweep needs so that four flags have
+/// something to act on. Each block names the flag it unsticks.
+fn write_flag_fixtures(root: &Path) {
+    // `validate-docs --fail-on-error`: exit 1 needs a broken link. The
+    // validator resolves a relative link against the file and asks
+    // `normalized_path.exists()` (doc_validator_validation.rs).
+    std::fs::write(
+        root.join("docs/links.md"),
+        "# Links\n\nSee the [architecture](architecture.md) and the [design notes](design-notes.md).\n",
+    )
+    .expect("write docs/links.md");
+
+    // `popper-score --failures-only` hides a category at or above its 80%
+    // pass line; Transparency sat at 70% and an ADR directory is the
+    // scorer's 4-point lever (popper_score/scorers/transparency.rs, C3).
+    std::fs::create_dir_all(root.join("docs/adr")).expect("mkdir docs/adr");
+    std::fs::write(
+        root.join("docs/adr/0001-record-architecture-decisions.md"),
+        "# 1. Record architecture decisions\n\nStatus: accepted\n\nWe keep ADRs in this directory.\n",
+    )
+    .expect("write docs/adr");
+
+    // `roadmap todos`: the command failed on the corpus before reading any
+    // flag (no docs/execution/roadmap.md) with its 🔄 banner already on
+    // stdout, so every flag on it was booked against a failing command.
+    std::fs::create_dir_all(root.join("docs/execution")).expect("mkdir docs/execution");
+    std::fs::write(
+        root.join("docs/execution/roadmap.md"),
+        "# Corpus Roadmap\n\n## Current Sprint: v0.1.0 Corpus Sprint\n\
+         - **Priority**: P0 - HIGH PRIORITY\n\
+         - **Duration**: 2026-09-01 to 2026-09-08\n\
+         - **Status**: Active\n\n\
+         ### Tasks\n\
+         | ID | Description | Priority | Status | Estimate |\n\
+         |----|-------------|----------|--------|----------|\n\
+         | PMAT-0001 | Wire the flag | High | Open | 2h |\n\
+         | PMAT-0002 | Cover the branch | Medium | In Progress | 4h |\n",
+    )
+    .expect("write docs/execution/roadmap.md");
+
+    // `show-metrics --failures-only` drops every trend that is not
+    // Regressing (metric_trends_core.rs: p < 0.05 and a positive slope).
+    // Eight daily observations, strictly rising for `lint` and strictly
+    // falling for `test-fast`, inside the 30-day window the command reads.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock")
+        .as_secs() as i64;
+    std::fs::create_dir_all(root.join(".pmat-metrics/trends")).expect("mkdir trends");
+    let series: [(&str, [f64; 8]); 2] = [
+        (
+            "lint",
+            [100.0, 130.0, 160.0, 190.0, 220.0, 250.0, 280.0, 310.0],
+        ),
+        (
+            "test-fast",
+            [800.0, 760.0, 720.0, 680.0, 640.0, 600.0, 560.0, 520.0],
+        ),
+    ];
+    for (metric, values) in series {
+        let observations: Vec<String> = values
+            .iter()
+            .enumerate()
+            .map(|(i, v)| {
+                let age_days = values.len() as i64 - i as i64;
+                format!(
+                    "{{\"metric\":\"{metric}\",\"value\":{v:.1},\"timestamp\":{}}}",
+                    now - 86_400 * age_days
+                )
+            })
+            .collect();
+        std::fs::write(
+            root.join(format!(".pmat-metrics/trends/{metric}.json")),
+            format!("[{}]\n", observations.join(",")),
+        )
+        .expect("write trend series");
+    }
 }
 
 /// The *repository-level* defects, as distinct from the source-level ones.

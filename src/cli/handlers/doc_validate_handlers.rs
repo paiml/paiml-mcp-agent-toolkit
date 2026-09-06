@@ -19,8 +19,20 @@ pub struct ValidateDocsCmd {
     #[arg(short, long)]
     pub config: Option<PathBuf>,
 
-    /// Fail on broken links
-    #[arg(short, long, default_value = "true")]
+    /// Exit non-zero when a broken link is found (the default; bare
+    /// `--fail-on-error` says so explicitly). Pass `--fail-on-error false`
+    /// to report the links without failing the run.
+    ///
+    /// PMAT-688: this was a `bool` with `default_value = "true"`, a switch
+    /// that could never change anything.
+    #[arg(
+        short,
+        long,
+        action = clap::ArgAction::Set,
+        num_args = 0..=1,
+        default_value_t = true,
+        default_missing_value = "true"
+    )]
     pub fail_on_error: bool,
 
     /// Output format (text, json, junit)
@@ -506,5 +518,22 @@ mod tests {
                 "target".to_string(),
             ]
         );
+    }
+
+    /// PMAT-688: `--fail-on-error` was a `bool` with `default_value = "true"`,
+    /// so the switch could never change anything — the flag-efficacy sweep
+    /// booked it as a no-op on a corpus with a broken link. It is a real
+    /// switch now: bare `--fail-on-error` and its absence both mean fail
+    /// (the safe default), and `--fail-on-error false` opts out.
+    #[test]
+    fn fail_on_error_is_a_switch_that_can_be_turned_off() {
+        let absent = ValidateDocsCmd::try_parse_from(["validate-docs"]).expect("parses");
+        assert!(absent.fail_on_error, "fail by default");
+        let bare = ValidateDocsCmd::try_parse_from(["validate-docs", "--fail-on-error"])
+            .expect("bare switch parses");
+        assert!(bare.fail_on_error);
+        let off = ValidateDocsCmd::try_parse_from(["validate-docs", "--fail-on-error", "false"])
+            .expect("`--fail-on-error false` parses");
+        assert!(!off.fail_on_error, "the explicit value turns the gate off");
     }
 }

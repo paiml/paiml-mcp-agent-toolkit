@@ -185,11 +185,6 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "colours the clean-result confirmation (lint_hotspot_handlers/mod.rs:206-220 report_measured_clean -> c::pass); on a clean crate `--color always` emits an ANSI-green tick and `--color auto` does not — the corpus is dirty by construction so that branch is unreachable",
     ),
     (
-        "analyze proof-annotations",
-        "--color",
-        "sets CLICOLOR_FORCE/NO_COLOR; proof_annotation_helpers_format.rs emits no colour in any of its five formats (summary/full/json/markdown/sarif all verified at 0 escape bytes)",
-    ),
-    (
         "comply cross-crate",
         "--color",
         "sets CLICOLOR_FORCE/NO_COLOR; nothing under cross_crate_handlers/ references crate::cli::colors, and the reachable output here is the plain single-crate discovery notice (handler.rs:81)",
@@ -250,11 +245,6 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "emits only the Known Defects Report on stdout (3661B, exit 1) and nothing on stderr; src/cli/handlers/analyze_defects_handler/ contains no stderr macro at all",
     ),
     (
-        "analyze deep-context",
-        "--quiet",
-        "the swept default format uses SimpleDeepContext, which prints no progress — stdout report only, stderr 0B. The flag's effect is demonstrable one format over: `--format sarif` runs the full DeepContextAnalyzer and emitted 62B of spinner text, now 62B -> 0B under --quiet with this round's progress-primitive fix",
-    ),
-    (
         "analyze entropy",
         "--quiet",
         "emits only the Entropy Analysis Summary on stdout (571B), stderr 0B. The four progress banners in its file (entropy_semantic.rs) belong to `analyze semantic`'s route, not to route_entropy_analysis",
@@ -288,11 +278,6 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "comply init",
         "--quiet",
         "on the corpus the command has already been initialised by an earlier sweep invocation and prints its 'Project already initialized at ./.pmat/project.toml' refusal on stdout, which is the result. On a fresh directory the banner and next-steps block are status_println! and --quiet takes stdout 378B -> 101B (measured), leaving only the created-artifact lines",
-    ),
-    (
-        "comply report",
-        "--quiet",
-        "the swept invocation writes the compliance report itself to stdout (511B), and a report is a result. The flag's effect is on the --output branch: `comply report --output F` prints '✓ Compliance report written to F' via status_println! (43B), and --quiet suppresses it (measured: 43B -> 0B, file still written)",
     ),
     (
         "comply asset-validate",
@@ -373,10 +358,33 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "--stack",
         "appends the 'Stack Quality (CB-150)' block listing sovereign dependencies found in Cargo.toml (score_handler_display.rs:5-31); adding `aprender`/`trueno` to the fixture's Cargo.toml makes it appear. The corpus has an empty [dependencies] section, and the function early-returns when none are found",
     ),
+    // PMAT-688: five commands whose stdout IS the artifact. Verified on the
+    // dumped Large corpus with 3.39.0 (`--color auto` vs `--color always`):
+    // byte-identical, and there is no human-facing line to colour.
     (
-        "comply check",
-        "--strict",
-        "escalates warnings to a failing exit and nothing else — exit_policy (comply_handlers/check_handlers/check.rs:229-256) returns code 2 only when `is_compliant && warn > 0 && fail == 0`; a report with failures already exits 1 and the flag has nothing left to escalate. Demonstrated on this corpus: give it a `deny.toml` naming all four families and a `.github/workflows/ci.yml` whose `gate` job runs the CB-reaching commands, then `PMAT_REQUIRED_STATUS_CHECKS=gate pmat comply check` exits 0 and the same run with --strict exits 2 with 'the report is COMPLIANT (0 failures), but --strict treats warnings as errors: 9 warning(s)'. The swept corpus fails CB-1701 and CB-2100, so both runs exit 1 with byte-identical stdout (15,773B). Pinned as a tri-state by check_readonly_and_exemption_tests.rs::strict_exit_codes_are_a_documented_tri_state",
+        "prompt comply",
+        "--color",
+        "stdout is the generated YAML prompt itself (prompt_handlers_generators.rs write_prompt_output; 21,724 B on the corpus with no --output) for an LLM to consume — an ANSI escape inside it would corrupt the prompt, and there is no status line to colour",
+    ),
+    (
+        "prompt book",
+        "--color",
+        "stdout is the generated YAML prompt itself (prompt_handlers_generators.rs write_prompt_output; 25,057 B on the corpus with no --output) for an LLM to consume — an ANSI escape inside it would corrupt the prompt, and there is no status line to colour",
+    ),
+    (
+        "prompt repo-image",
+        "--color",
+        "stdout is the generated YAML prompt itself (prompt_handlers_generators.rs write_prompt_output; 14,166 B on the corpus with no --output) for an LLM to consume — an ANSI escape inside it would corrupt the prompt, and there is no status line to colour",
+    ),
+    (
+        "quality-gates show",
+        "--color",
+        "prints the gate config verbatim as TOML (misc_commands_spec_debug.rs:221 default) or JSON through quality_gates_handler_execution.rs handle_show_config — a config artifact meant to be redirected into .pmat-gates.toml, which an escape would corrupt",
+    ),
+    (
+        "cuda-tdg report",
+        "--color",
+        "default `--format markdown` (misc_commands_cuda_oracle.rs:47) renders a Markdown document through format_markdown_report, and html/json are documents too; colour is live only in the terminal formatter reached by `score --breakdown`, `gate` and `kaizen`, which the sweep checks separately",
     ),
 ];
 
@@ -458,6 +466,13 @@ const PROBE_CONTEXT: &[(&str, &str, &[&str])] = &[
         "--convergence-threshold",
         &["--format", "json"],
     ),
+    // PMAT-688: `--allow-dirty` has clap `requires = "write_ledger"` on both
+    // ledger writers; probed alone it is a usage error, which is the sweep's
+    // omission, not the flag's. With the companion the probe is real: on a
+    // dirty tree the control refuses (exit 1, empty stdout ⇒ "not a control",
+    // an honest skip) and on a clean one both write the ledger.
+    ("analyze reachability", "--allow-dirty", &["--write-ledger"]),
+    ("analyze unrun-tests", "--allow-dirty", &["--write-ledger"]),
 ];
 
 /// Probe values that must straddle the fixture for a specific option.
@@ -541,7 +556,9 @@ enum Verdict {
     /// not silently do nothing, and exiting non-zero with "--ml is not
     /// implemented ... this flag would relabel them without changing them" is
     /// the honest alternative. Classifying it as a failure penalised precisely
-    /// the fix that earlier rounds landed.
+    /// the fix that earlier rounds landed. A refusal that names an unmet
+    /// precondition — a dirty tree, a missing companion flag — is the same
+    /// class (PMAT-688): the flag did not silently do nothing.
     Refuses,
     /// The flag turned a working command into a failing one.
     Errors { code: Option<i32> },
@@ -830,6 +847,14 @@ fn is_honest_refusal(stderr: &str) -> bool {
         || s.contains("does not implement")
         || s.contains("would be accepted and ignored")
         || s.contains("no longer supported")
+        // PMAT-688: a documented precondition, named in the refusal — the
+        // ledger writers' "refusing to write … from a dirty git tree … or pass
+        // --allow-dirty". The flag did not silently do nothing; it said what
+        // it needs. Clap's "required arguments were not provided" is NOT in
+        // this list (quorum, 2 of 3 lanes): that is the sweep failing to
+        // supply a `requires` companion, and PROBE_CONTEXT is where the
+        // companion belongs — a harness omission must never read as a pass.
+        || s.contains("refusing to")
 }
 
 #[test]
@@ -2164,4 +2189,120 @@ fn small_corpora_stay_poor_so_the_contrast_survives() {
         !tiny.path().join(".pmat-metrics/coverage.json").exists(),
         "tiny must stay reportless, or the not-measured branch is never exercised"
     );
+}
+
+/// PMAT-688: the 3.39.0 sweep booked four "errors out" rows: the ledger
+/// writers refusing a dirty tree (documented: "Commit or stash first, or pass
+/// --allow-dirty") and clap refusing `--allow-dirty` without the
+/// `--write-ledger` it `requires`. The first is a refusal that names its
+/// precondition — the honest alternative to silently doing nothing, the same
+/// class as "--ml is not implemented". The second is the sweep's own
+/// omission and is answered with a probe context, never with a pass.
+#[test]
+fn precondition_refusals_are_honest() {
+    let dirty = "Error: refusing to write .pmat/reachability-ledger.json from a dirty git \
+                 tree: it would record whatever these uncommitted, possibly-unrelated changes \
+                 happen to add or remove, not the tree at HEAD. Commit or stash first, or pass \
+                 --allow-dirty.\n M src/lib.rs\n";
+    let requires = "error: the following required arguments were not provided:\n  \
+                    --write-ledger\n\nUsage: pmat analyze reachability --write-ledger \
+                    --allow-dirty\n";
+    assert!(
+        is_honest_refusal(dirty),
+        "a documented precondition refusal is honest"
+    );
+    assert!(
+        !is_honest_refusal(requires),
+        "clap naming a missing companion flag is the sweep's omission, not a refusal: \
+         PROBE_CONTEXT must supply the companion so the flag is actually exercised"
+    );
+    assert_eq!(
+        probe_context("analyze reachability", "--allow-dirty"),
+        ["--write-ledger"]
+    );
+    assert_eq!(
+        probe_context("analyze unrun-tests", "--allow-dirty"),
+        ["--write-ledger"]
+    );
+    assert!(
+        !is_honest_refusal("Error: called `Option::unwrap()` on a `None` value"),
+        "a crash is not a refusal"
+    );
+    assert!(
+        !is_honest_refusal("error: failed to parse config: missing field `gates`"),
+        "an unrelated error: line is not a refusal"
+    );
+}
+
+/// PMAT-688: three flags were booked as no-ops because the corpus carried
+/// nothing for them to act on. `validate-docs --fail-on-error` needs a broken
+/// link; `roadmap todos` needs a roadmap with a current sprint (its baseline
+/// failed on the corpus with the 🔄 banner already on stdout, so the
+/// "not a control" guard never fired and both `--color` and
+/// `--include-quality-gates` were booked against a failing command);
+/// `show-metrics --failures-only` needs a trend store holding one regressing
+/// and one improving series inside its 30-day window.
+#[test]
+fn large_corpus_carries_the_flag_fixtures() {
+    let corpus = build_corpus(CorpusSize::Large);
+    let root = corpus.path();
+
+    let links = std::fs::read_to_string(root.join("docs/links.md")).expect("docs/links.md");
+    assert!(
+        links.contains("](design-notes.md)") && !root.join("docs/design-notes.md").exists(),
+        "one relative link to a file that does not exist:\n{links}"
+    );
+
+    // `popper-score --failures-only` hides a category at or above its 80% pass
+    // line; the corpus had none (best: Transparency at 70%). An ADR directory
+    // is the scorer's 4-point lever (transparency.rs C3) and lifts it to 90%.
+    let adr = root.join("docs/adr");
+    assert!(
+        adr.is_dir() && std::fs::read_dir(&adr).expect("docs/adr").next().is_some(),
+        "docs/adr/ with at least one decision record"
+    );
+
+    let roadmap = std::fs::read_to_string(root.join("docs/execution/roadmap.md"))
+        .expect("docs/execution/roadmap.md");
+    assert!(
+        roadmap.contains("## Current Sprint:") && roadmap.contains("| ID | Description |"),
+        "a current sprint with the task table the parser reads:\n{roadmap}"
+    );
+    assert_eq!(
+        roadmap.matches("| PMAT-").count(),
+        2,
+        "two sprint tasks:\n{roadmap}"
+    );
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock")
+        .as_secs() as i64;
+    for (metric, rising) in [("lint", true), ("test-fast", false)] {
+        let raw = std::fs::read_to_string(root.join(format!(".pmat-metrics/trends/{metric}.json")))
+            .unwrap_or_else(|e| panic!(".pmat-metrics/trends/{metric}.json: {e}"));
+        let obs: Vec<serde_json::Value> = serde_json::from_str(&raw).expect("observations");
+        assert!(obs.len() >= 6, "{metric}: {} observations", obs.len());
+        let vals: Vec<f64> = obs
+            .iter()
+            .map(|o| o["value"].as_f64().expect("value"))
+            .collect();
+        let monotone = vals
+            .windows(2)
+            .all(|w| if rising { w[1] > w[0] } else { w[1] < w[0] });
+        assert!(
+            monotone,
+            "{metric} must be strictly {}: {vals:?}",
+            if rising { "rising" } else { "falling" }
+        );
+        let newest = obs
+            .iter()
+            .map(|o| o["timestamp"].as_i64().expect("timestamp"))
+            .max()
+            .expect("at least one observation");
+        assert!(
+            now - newest < 86_400 * 30,
+            "{metric}: the newest observation must fall inside show-metrics' 30-day window"
+        );
+    }
 }

@@ -175,4 +175,23 @@ mod tests {
         // This tests the branch creation code path
         assert!(result.is_ok() || result.is_err()); // Either outcome acceptable in test
     }
+
+    /// PMAT-688: `roadmap todos --include-quality-gates` changed the file it
+    /// wrote (a 222 B checklist became a 3.6 KB PDMT document on the sweep
+    /// corpus) and nothing on stdout, so the flag-efficacy sweep booked it as
+    /// a no-op. The confirmation line names the format and the count, so the
+    /// terminal shows what the flag did.
+    #[test]
+    fn todos_written_line_names_the_format_and_count() {
+        let path = std::path::Path::new("todos.md");
+        let simple = todos_written_line(path, 4, false);
+        let pdmt = todos_written_line(path, 4, true);
+        assert!(
+            simple.contains("todos.md") && simple.contains("4 todos"),
+            "{simple}"
+        );
+        assert!(simple.to_lowercase().contains("checklist"), "{simple}");
+        assert!(pdmt.to_lowercase().contains("quality gates"), "{pdmt}");
+        assert_ne!(simple, pdmt);
+    }
 }

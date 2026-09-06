@@ -116,7 +116,11 @@ fn render_task_details(task: &Task) -> String {
     use std::fmt::Write as _;
 
     let mut out = String::new();
-    let _ = writeln!(out, "Task {}: {}", task.id, task.status.to_emoji());
+    let _ = writeln!(
+        out,
+        "{}",
+        crate::cli::colors::header(&format!("Task {}: {}", task.id, task.status.to_emoji()))
+    );
     let _ = writeln!(out, "  Description: {}", task.description);
     let _ = writeln!(out, "  Complexity: {:?}", task.complexity);
     let _ = write!(out, "  Priority: {:?}", task.priority);
@@ -215,7 +219,14 @@ fn render_sprint_details(sprint: &Sprint) -> String {
     let (completed, in_progress, total) = calculate_sprint_progress(sprint);
 
     let mut out = String::new();
-    let _ = writeln!(out, "Sprint {}: {}", sprint.version, sprint.title);
+    // PMAT-688: the human table is the one format that may carry colour;
+    // the header goes through the env-aware helper so `--color always`
+    // is observable and `--color never` leaves the bytes untouched.
+    let _ = writeln!(
+        out,
+        "{}",
+        crate::cli::colors::header(&format!("Sprint {}: {}", sprint.version, sprint.title))
+    );
     let _ = writeln!(
         out,
         "  Duration: {} to {}",
