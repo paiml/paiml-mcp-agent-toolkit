@@ -29,6 +29,76 @@ fn v5_contract(step: serde_json::Value, top_level_claims: serde_json::Value) -> 
     })
 }
 
+/// Quorum lane 3 on PMAT-685: a step carrying nothing but `falsifiable_claim`
+/// used to parse as legacy prose (structured=false) and be refused as hollow.
+#[test]
+fn a_step_with_only_a_falsifiable_claim_is_structured_and_derives_it() {
+    let contract = v5_contract(
+        serde_json::json!({"step": 1, "falsifiable_claim": V5_CLAIM}),
+        serde_json::json!([]),
+    );
+    let steps = parse_steps(&contract);
+    assert!(steps[0].structured, "a claim is a structured field");
+    assert_eq!(steps[0].implication, V5_CLAIM);
+    assert!(hollow_steps(&steps).is_empty());
+}
+
+/// Quorum lane 1 on PMAT-685: the digest must cover every text the derivation
+/// reads. A contract that never borrows a top-level claim keeps its 3.38.0
+/// digest byte-for-byte; one that does moves when — and only when — the
+/// borrowed claim changes.
+#[test]
+fn digest_covers_borrowed_top_level_claims_and_nothing_else() {
+    // (a) a pre-#1200 contract: top-level claims are not read, so they are not hashed.
+    let v2 = serde_json::json!({
+        "chain_of_thought": [{"id": "CoT-1", "assumption": "root (E1)", "implication": "alpha holds",
+                              "evidence_method": "cargo test alpha"}],
+        "falsifiable_claims": [{"id": "FC-1", "claim": "unused"}]
+    });
+    let mut v2_edited = v2.clone();
+    v2_edited["falsifiable_claims"][0]["claim"] = serde_json::json!("unused, edited");
+    assert_eq!(
+        canonical_cot_sha(&v2),
+        canonical_cot_sha(&v2_edited),
+        "unread text is not hashed"
+    );
+    let mut v2_without = v2.clone();
+    v2_without
+        .as_object_mut()
+        .expect("object")
+        .remove("falsifiable_claims");
+    assert_eq!(
+        canonical_cot_sha(&v2),
+        canonical_cot_sha(&v2_without),
+        "3.38.0 digests are unchanged"
+    );
+
+    // (b) a v5.0 step that borrows FC-1's text: editing FC-1 moves the digest, editing FC-2 does not.
+    let borrowed = v5_contract(
+        serde_json::json!({"step": 1, "evidence_method": "Falsification", "discharged_by": ["FC-1"]}),
+        serde_json::json!([{"id": "FC-1", "claim": "exits 2 within 1s"}, {"id": "FC-2", "claim": "other"}]),
+    );
+    let mut fc1_edited = borrowed.clone();
+    fc1_edited["falsifiable_claims"][0]["claim"] = serde_json::json!("exits 2 within 10s");
+    let mut fc2_edited = borrowed.clone();
+    fc2_edited["falsifiable_claims"][1]["claim"] = serde_json::json!("other, edited");
+    assert_ne!(
+        canonical_cot_sha(&borrowed),
+        canonical_cot_sha(&fc1_edited),
+        "the borrowed text is hashed"
+    );
+    assert_eq!(
+        canonical_cot_sha(&borrowed),
+        canonical_cot_sha(&fc2_edited),
+        "an unborrowed sibling is not"
+    );
+    assert_eq!(
+        canonical_cot_sha(&borrowed),
+        canonical_cot_sha(&borrowed),
+        "deterministic"
+    );
+}
+
 #[test]
 fn v5_step_falsifiable_claim_becomes_the_implication() {
     let contract = v5_contract(

@@ -172,10 +172,13 @@ fn text_and_refs(value: Option<&Value>) -> (String, Vec<String>) {
 /// legacy prose steps migrate with `structured: false` (annotated, not
 /// dropped — `cot::legacy_prose_migrates_annotated_L0`).
 pub fn parse_step(index: usize, step: &Value) -> CotStepView {
+    // #1200 (PMAT-685), quorum lane 3: a v5.0 step may carry nothing but
+    // `falsifiable_claim`; that is a structured step, not legacy prose.
     let structured = step.get("assumption").is_some()
         || step.get("implication").is_some()
         || step.get("evidence_method").is_some()
-        || step.get("discharged_by").is_some();
+        || step.get("discharged_by").is_some()
+        || step.get("falsifiable_claim").is_some();
 
     let id = step
         .get("id")
@@ -275,6 +278,35 @@ fn discharged_top_level_claim(step: &Value, top_level_claims: &[Value]) -> Optio
             .find(|claim| claim.get("id").and_then(Value::as_str) == Some(wanted))
             .and_then(|claim| claim_text(Some(claim)))
     })
+}
+
+/// `[{step, claim}]` for every step whose implication was borrowed from a
+/// top-level `falsifiable_claims[]` entry — the digest input that
+/// [`canonical_cot_sha`] must cover and the raw `chain_of_thought` does not.
+fn resolved_top_level_claims(contract: &Value) -> Vec<Value> {
+    let top_level_claims: Vec<Value> = contract
+        .get("falsifiable_claims")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    contract
+        .get("chain_of_thought")
+        .and_then(Value::as_array)
+        .map(|steps| {
+            steps
+                .iter()
+                .enumerate()
+                .filter_map(|(i, s)| {
+                    let own = parse_step(i, s);
+                    if !own.structured || !own.implication.trim().is_empty() {
+                        return None;
+                    }
+                    let claim = discharged_top_level_claim(s, &top_level_claims)?;
+                    Some(serde_json::json!({"step": own.id, "claim": claim}))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Parse a contract's `chain_of_thought` array into checkable views.
@@ -584,6 +616,16 @@ pub fn canonical_cot_sha(contract: &Value) -> String {
         .unwrap_or(Value::Null);
     let mut buf = String::new();
     canonicalize_value(&cot, &mut buf);
+    // #1200 (PMAT-685), quorum lane 1: a step may take its implication from a
+    // top-level `falsifiable_claims[]` entry, which this digest never covered,
+    // so an edit there would change the derivation and not the digest. The
+    // texts a step actually borrowed are appended to the digest input — only
+    // when one was borrowed, so every pre-existing digest is unchanged.
+    let borrowed = resolved_top_level_claims(contract);
+    if !borrowed.is_empty() {
+        buf.push_str("|resolved_top_level_claims:");
+        canonicalize_value(&Value::Array(borrowed), &mut buf);
+    }
     let mut hasher = Sha256::new();
     hasher.update(buf.as_bytes());
     hasher
