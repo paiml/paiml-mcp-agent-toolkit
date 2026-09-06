@@ -15,7 +15,10 @@
 
 use crate::cli::commands::WorkPriority;
 use crate::models::roadmap::Roadmap;
-use crate::services::roadmap_service::{next_id_number, RoadmapService};
+use crate::services::roadmap_service::RoadmapService;
+// PMAT-676: the allocator's scanner moved to `services::roadmap_text`, which is
+// now the ONE scanner — the same one `pmat work validate` reads ids with.
+use crate::services::roadmap_text::next_id_number;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;

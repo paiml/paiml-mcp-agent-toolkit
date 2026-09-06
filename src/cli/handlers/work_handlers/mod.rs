@@ -40,3 +40,10 @@ mod work_validate_duplicate_ids_tests;
 #[cfg(test)]
 #[path = "../../../tests/work_add_allocator_tests.rs"]
 mod work_add_allocator_tests;
+// PMAT-676: `work add` and `work edit` must refuse a roadmap `work validate`
+// rejects. Registered here for the same reason as its two siblings above —
+// `src/tests/lib.rs` reaches nothing, so a test file left there is never
+// compiled. `cargo test --lib -- work_add_refuses_invalid` runs them.
+#[cfg(test)]
+#[path = "../../../tests/work_add_refuses_invalid_tests.rs"]
+mod work_add_refuses_invalid_tests;

@@ -1,0 +1,45 @@
+# Hand-authored work contract for PMAT-676: one raw-text id scanner and one
+# validator (services::roadmap_text), used by work add, work edit and work
+# validate — a roadmap validate rejects can no longer be written by add/edit.
+name: "PMAT-676"
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  description: "work add and work edit refuse a roadmap that work validate rejects, before any write, through one shared scanner and one shared validator"
+  references:
+    - "src/services/roadmap_text.rs"
+    - "src/services/roadmap_service_operations.rs"
+    - "src/cli/handlers/work_handlers/ticket_crud.rs"
+    - "src/cli/handlers/work_handlers/ticket_validate_migrate.rs"
+    - "src/tests/work_add_refuses_invalid_tests.rs"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 4
+proof_obligations:
+- id: "PO-W1"
+  statement: "On a roadmap that declares PMAT-011 twice, `work add` returns Err naming the id and both file:line positions, the roadmap bytes are identical before and after, and the lock file's high-water mark is unchanged."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_refuses_invalid_tests::work_add_refuses_invalid_add_refuses_a_duplicated_id_and_writes_nothing"
+- id: "PO-W2"
+  statement: "The same roadmap through `work edit` (editing a distinct row) is refused with the same wording and nothing is written; the edit path carries its own check, so the two write paths are pinned independently."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_refuses_invalid_tests::work_add_refuses_invalid_edit_refuses_a_duplicated_id_and_writes_nothing"
+- id: "PO-W3"
+  statement: "A clean roadmap still mints the next id exactly as 3.38.0 did and validates; the shared scanner settles the two 3.38.0 readings towards the stricter one (a flow-style row counts, an id quoted inside a block-scalar body does not) and check_roadmap_text renders validate's wording verbatim."
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_refuses_invalid_clean_roadmap_still_mints_and_still_validates work_add_refuses_invalid_one_scanner_settles_both_readings work_add_refuses_invalid_check_roadmap_text_renders_validates_wording work_add_allocator work_validate_duplicate"
+- id: "PO-W4"
+  statement: "Discrimination: with the check_roadmap_text call removed from add_item_with_next_id, PO-W1 fails while every work_validate_duplicate_* test and PO-W2 stay green (observed on the branch, then restored; re-observed once in CI on the PR branch and reverted)."
+  evidence_method: "git log --format=%s | grep -c 'MUTATION PMAT-676'   # 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+falsifiable_claims:
+- hypothesis: "On a roadmap that declares PMAT-011 twice, `work add` returns Err naming the id and both file:line positions, the roadmap bytes are identical before and after, and the lock file's high-water mark is unchanged."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_refuses_invalid_tests::work_add_refuses_invalid_add_refuses_a_duplicated_id_and_writes_nothing"
+  from_step: "W1"
+- hypothesis: "The same roadmap through `work edit` (editing a distinct row) is refused with the same wording and nothing is written; the edit path carries its own check, so the two write paths are pinned independently."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact cli::handlers::work_handlers::work_add_refuses_invalid_tests::work_add_refuses_invalid_edit_refuses_a_duplicated_id_and_writes_nothing"
+  from_step: "W2"
+- hypothesis: "A clean roadmap still mints the next id exactly as 3.38.0 did and validates; the shared scanner settles the two 3.38.0 readings towards the stricter one (a flow-style row counts, an id quoted inside a block-scalar body does not) and check_roadmap_text renders validate's wording verbatim."
+  method: "env -u RUST_MIN_STACK cargo test --lib -- work_add_refuses_invalid_clean_roadmap_still_mints_and_still_validates work_add_refuses_invalid_one_scanner_settles_both_readings work_add_refuses_invalid_check_roadmap_text_renders_validates_wording work_add_allocator work_validate_duplicate"
+  from_step: "W3"
+- hypothesis: "Discrimination: with the check_roadmap_text call removed from add_item_with_next_id, PO-W1 fails while every work_validate_duplicate_* test and PO-W2 stay green (observed on the branch, then restored; re-observed once in CI on the PR branch and reverted)."
+  method: "git log --format=%s | grep -c 'MUTATION PMAT-676'   # 0 on the merged branch: the mutation commit and its revert are both in history, the tree carries neither"
+  from_step: "W4"
