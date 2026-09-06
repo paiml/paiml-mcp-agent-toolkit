@@ -166,4 +166,31 @@ mod status_format_tests {
         let csv = format_task_status(&t, OutputFormat::Csv).unwrap();
         assert!(csv.contains("\"fix a, b and \"\"c\"\"\""), "{csv}");
     }
+
+    /// PMAT-688: once the sweep corpus carried a roadmap, `roadmap status
+    /// --color always` became reachable and emitted the same bytes as
+    /// `--color auto` — the human table went through no colour helper. The
+    /// table (the default and `text` format) must carry an escape when
+    /// colours are forced, and none when they are off; machine formats stay
+    /// untouched either way.
+    #[test]
+    fn sprint_table_carries_colour_when_forced() {
+        let sprint = sprint();
+        let plain = {
+            let _off = crate::cli::colors::ForcedColor::off();
+            format_sprint_status(&sprint, OutputFormat::Table).expect("table")
+        };
+        let _on = crate::cli::colors::ForcedColor::on();
+        let coloured = format_sprint_status(&sprint, OutputFormat::Table).expect("table");
+        assert!(!plain.contains("\x1b["), "{plain}");
+        assert!(coloured.contains("\x1b["), "{coloured}");
+        let stripped = regex::Regex::new("\x1b\\[[0-9;]*m")
+            .expect("static regex must compile")
+            .replace_all(&coloured, "");
+        assert_eq!(stripped, plain, "colour must add escapes only");
+        for machine in [OutputFormat::Json, OutputFormat::Csv, OutputFormat::Markdown] {
+            let out = format_sprint_status(&sprint, machine).expect("machine format");
+            assert!(!out.contains("\x1b["), "{machine:?} must never carry an escape");
+        }
+    }
 }
