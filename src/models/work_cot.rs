@@ -210,8 +210,26 @@ pub fn parse_step(index: usize, step: &Value) -> CotStepView {
         };
     }
 
+    parse_structured_step(&[], id, step)
+}
+
+/// The structured tail of [`parse_step`], with the contract's top-level
+/// `falsifiable_claims[]` available for the v5.0 shape.
+///
+/// #1200 (PMAT-685): a `version: "5.0"` step carries `falsifiable_claim`
+/// (string or `{claim|text|hypothesis}`) and `discharged_by: ["FC-n"]`, not
+/// `implication`. 3.38.0 read only `implication`, so the derivation rendered
+/// `statement: ""`. An absent implication now falls back to the step's own
+/// claim, then to the top-level claim it discharges; what is still empty is
+/// reported by [`hollow_steps`] and refused by `pmat work cot derive`.
+fn parse_structured_step(top_level_claims: &[Value], id: String, step: &Value) -> CotStepView {
     let (assumption, assumption_references) = text_and_refs(step.get("assumption"));
-    let (implication, _) = text_and_refs(step.get("implication"));
+    let (mut implication, _) = text_and_refs(step.get("implication"));
+    if implication.trim().is_empty() {
+        implication = claim_text(step.get("falsifiable_claim"))
+            .or_else(|| discharged_top_level_claim(step, top_level_claims))
+            .unwrap_or_default();
+    }
     let evidence_method = step
         .get("evidence_method")
         .and_then(Value::as_str)
@@ -230,8 +248,42 @@ pub fn parse_step(index: usize, step: &Value) -> CotStepView {
     }
 }
 
+/// The text of a claim in any wire form: a plain string, or an object that
+/// spells it `claim`, `text` or `hypothesis`. Whitespace-only is no text.
+fn claim_text(value: Option<&Value>) -> Option<String> {
+    let text = match value? {
+        Value::String(s) => s.as_str(),
+        Value::Object(map) => ["claim", "text", "hypothesis"]
+            .iter()
+            .find_map(|key| map.get(*key).and_then(Value::as_str))?,
+        _ => return None,
+    };
+    (!text.trim().is_empty()).then(|| text.to_string())
+}
+
+/// The top-level `falsifiable_claims[]` entry a step's `discharged_by` names
+/// (`"FC-1"` or `["FC-1", …]`), matched on `id`, as text.
+fn discharged_top_level_claim(step: &Value, top_level_claims: &[Value]) -> Option<String> {
+    let refs: Vec<&str> = match step.get("discharged_by")? {
+        Value::String(s) => vec![s.as_str()],
+        Value::Array(items) => items.iter().filter_map(Value::as_str).collect(),
+        _ => Vec::new(),
+    };
+    refs.iter().find_map(|wanted| {
+        top_level_claims
+            .iter()
+            .find(|claim| claim.get("id").and_then(Value::as_str) == Some(wanted))
+            .and_then(|claim| claim_text(Some(claim)))
+    })
+}
+
 /// Parse a contract's `chain_of_thought` array into checkable views.
 pub fn parse_steps(contract: &Value) -> Vec<CotStepView> {
+    let top_level_claims: Vec<Value> = contract
+        .get("falsifiable_claims")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
     contract
         .get("chain_of_thought")
         .and_then(Value::as_array)
@@ -239,7 +291,14 @@ pub fn parse_steps(contract: &Value) -> Vec<CotStepView> {
             steps
                 .iter()
                 .enumerate()
-                .map(|(i, s)| parse_step(i, s))
+                .map(|(i, s)| {
+                    let view = parse_step(i, s);
+                    if view.structured && view.implication.trim().is_empty() {
+                        parse_structured_step(&top_level_claims, view.id, s)
+                    } else {
+                        view
+                    }
+                })
                 .collect()
         })
         .unwrap_or_default()

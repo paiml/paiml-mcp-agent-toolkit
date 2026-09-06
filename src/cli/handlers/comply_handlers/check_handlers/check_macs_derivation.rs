@@ -68,6 +68,10 @@ pub(crate) fn check_derivation_completeness(project_path: &Path) -> ComplianceCh
             ));
             continue;
         }
+        // #1200 (PMAT-685): an obligation with nothing to prove, or a claim
+        // with nothing to falsify, is hollow — `"" == ""` passed the verbatim
+        // rule below while `pv` refused the same file (SCHEMA-005).
+        violations.extend(hollow_artifact_violations(&ticket, &doc));
         // Verbatim fields: every claim hypothesis/method must equal the
         // corresponding step's implication/evidence_method.
         if let Some(claim_list) = doc
@@ -114,4 +118,40 @@ pub(crate) fn check_derivation_completeness(project_path: &Path) -> ComplianceCh
         ),
         severity: Severity::Error,
     }
+}
+
+/// #1200 (PMAT-685): every `proof_obligations[]` entry with an empty
+/// `statement` and every `falsifiable_claims[]` entry with an empty
+/// `hypothesis` in a derivation artifact, as violations naming the ticket,
+/// the index and the id. Whitespace-only counts as empty.
+fn hollow_artifact_violations(ticket: &str, doc: &serde_json::Value) -> Vec<String> {
+    let mut out = Vec::new();
+    let entries = |key: &str| {
+        doc.get(key)
+            .and_then(serde_json::Value::as_array)
+            .cloned()
+            .unwrap_or_default()
+    };
+    for (index, obligation) in entries("proof_obligations").iter().enumerate() {
+        if text_field(obligation, "statement").trim().is_empty() {
+            let id = text_field(obligation, "id");
+            out.push(format!(
+                "{ticket}: proof_obligations[{index}] {id} has an empty statement (hollow obligation — nothing to prove)"
+            ));
+        }
+    }
+    for (index, claim) in entries("falsifiable_claims").iter().enumerate() {
+        if text_field(claim, "hypothesis").trim().is_empty() {
+            let from = text_field(claim, "from_step");
+            out.push(format!(
+                "{ticket}: falsifiable_claims[{index}] from {from} has an empty hypothesis (hollow claim — nothing to falsify)"
+            ));
+        }
+    }
+    out
+}
+
+/// A string field of a YAML/JSON mapping, or `""` when absent or not a string.
+fn text_field<'a>(entry: &'a serde_json::Value, key: &str) -> &'a str {
+    entry.get(key).and_then(serde_json::Value::as_str).unwrap_or_default()
 }
