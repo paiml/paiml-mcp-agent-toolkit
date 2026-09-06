@@ -98,7 +98,7 @@ jobs:
       - name: Verify the package builds from its own tarball
         env:
           CARGO_BUILD_JOBS: "2"   # clean-room container is 32 GB; pmat links wide
-        run: cargo package --verify --locked
+        run: cargo package --locked   # verification is the default; --verify is not a flag
       - name: Probe — fail verify on request
         if: ${{ github.event.inputs.probe_fail_verify == 'true' }}
         run: |
