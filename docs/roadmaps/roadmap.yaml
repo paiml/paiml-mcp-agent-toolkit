@@ -3621,11 +3621,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CB-2100: assert every error-severity rule is reachable from the required status checks'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-08-18T10:28:38Z
-  updated: 2026-08-18T10:28:46.330253107+00:00
+  updated: 2026-09-06T14:47:51Z
   spec: null
   acceptance_criteria:
   - 'Union all four required contexts as reachability roots, read from the branch-protection API — no gate name is hardcoded. Fail on unreachable error-severity rules and on invocations neutered by continue-on-error, || true, an uncompared exit code, a printed failure verdict beside exit 0, an invocation that can never succeed, or a compile mistaken for an execution. Generates docs/status/comply-enforcement-ledger.md. Shipped as CB-2100: every id the backlog proposed (CB-1400/1403/1404/1211/1300/1302/1305) collides with a live rule. Refs #1034.'
@@ -3702,11 +3702,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: pmat work add allocates ids from the tracked docs/roadmaps/roadmap.yaml of the CURRENT checkout, so two branches off the same base both mint the same id (PMAT-631 twice today); allocate from the highest id across refs, or from .pmat/ state
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-02T16:40:04Z
-  updated: 2026-09-02T16:40:04Z
+  updated: 2026-09-06T14:47:51Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3815,11 +3815,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-02: quality-gate renders three unmeasured dimensions as clean (dead-code not_measured vs not_applicable; coverage cache guards; duplicate_violations → identical_files; --help names cargo check)'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-03T06:48:23Z
-  updated: 2026-09-03T06:52:02.354106699+00:00
+  updated: 2026-09-06T14:47:51Z
   spec: null
   acceptance_criteria:
   - 'spec 8.2, epic 1153. Legs: (1) dead-code Err arm distinguishes ''could not compile'' (not_measured) from ''no Cargo.toml'' (not_applicable); (2) coverage cache accepted only if git_hash is HEAD-or-ancestor, mtime newer than the newest tracked source, breadth >= N% of files_examined — reason names the guard; (3) duplicate_violations renamed identical_files with a not_measured entry naming the block-level detector as a separate item; (4) quality-gate --help says it runs cargo check.'
@@ -3866,11 +3866,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-03: config --validate certified the defaults it had silently fallen back to (PR #1155, open, auto-merge armed)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-03T07:43:24Z
-  updated: 2026-09-03T07:43:24.375699801+00:00
+  updated: 2026-09-06T14:47:51Z
   spec: null
   acceptance_criteria:
   - 'Retroactive ticket: implemented before the paiml-implement pass via agy workers; receipt written from the PR''s own evidence. Epic #1153.'
@@ -3917,11 +3917,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-04: the dead-code cache is keyed on the committed tree — key on git write-tree, disclose cache.hit and compiler-lint-cached, add --no-cache'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-03T08:36:40Z
-  updated: 2026-09-03T08:36:40Z
+  updated: 2026-09-06T14:47:51Z
   spec: null
   acceptance_criteria:
   - 'spec 8.4, epic 1153, precedent #748. P1 key = git write-tree (temp index) with HEAD^{tree} fallback, schema bump (old cache = miss); P2 cache object {hit, tree_hash, written_at, pmat_version} and reason compiler-lint-ran|compiler-lint-cached in CLI JSON and the MCP analyze_dead_code mirror, --no-cache flag; P3 quality-gate --checks dead-code sees an uncommitted dead fn; P4 shim-based acceptance script A-G, pv contract, mutation.'
@@ -3985,11 +3985,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-02: post-publish dog-food — install the version crates.io serves and run the release gate against it, writing a receipt'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-03T13:22:47Z
-  updated: 2026-09-03T13:22:47.738403253+00:00
+  updated: 2026-09-06T14:47:51Z
   spec: null
   acceptance_criteria:
   - 'agentic-delivery-pmat.md section 3.6 / 9.2. scripts/dogfood-published.sh <version>: cargo install pmat --version <v> --locked into a temp root; the binary must report the version; scripts/dogfood-use.sh runs with BIN= that binary; the registry entry is checked (P7); receipt docs/audits/release-<v>-dogfood.md names the installed commit. Control: a fabricated version fails at the install leg, exit 1.'
@@ -4036,11 +4036,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-03: commit enforcement — the generated hook''s SATD and task-ID checks block under strict mode, and a commit-msg hook requires a Pmat-Ticket trailer'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-03T22:07:13Z
-  updated: 2026-09-04T00:41:54Z
+  updated: 2026-09-06T14:47:51Z
   spec: null
   acceptance_criteria:
   - 'agentic-delivery-pmat.md section 4.7 / 9.3. [hooks] strict = true / pmat hooks install --strict make the pre-commit SATD check exit 1 and install a commit-msg hook that requires a Pmat-Ticket trailer (or the ticket pattern); non-strict keeps warning. Includes: strict resolved once for both hooks and kept across automatic rewrites (found by the AD-04 quorum); --strict with --stack refused rather than dropped (PMAT-659 closes the gap); and the refactor of two touched functions over pmat verify''s cognitive ceiling (handle_run, report_settings_provenance) that the complexity gate on changed files requires.'
@@ -4070,11 +4070,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-06: the worker receipt carries the gate verdict and the orchestrator re-runs and diffs it'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-04T00:46:54Z
-  updated: 2026-09-04T00:46:54Z
+  updated: 2026-09-06T14:47:51Z
   spec: null
   acceptance_criteria:
   - 'agentic-delivery-pmat.md section 5.3 / 9.6. Bundle: the worker runs gate_cmd once and reports gate {cmd, ok, stages_measured, not_measured}; a receipt without gate is partial=true; scripts/receipt-lint.sh compares the claim with the orchestrator''s rerun and exits 1 on disagreement (self-test proves both directions). pmat side: spec note, receipt, and the lint applied to the PMAT-657 worker''s real receipt.'
@@ -4087,11 +4087,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-10: the four lane modes — goal, teamwork, grill-me, plan — as one calling form'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-04T02:30:46Z
-  updated: 2026-09-04T02:30:46Z
+  updated: 2026-09-06T14:47:51Z
   spec: null
   acceptance_criteria:
   - 'agentic-delivery-pmat.md section 6 / 9.10. Bundle: scripts/agy-lane.sh --mode goal|teamwork|grillme|plan composes the agy call per mode (teamwork prefixes /teamwork-preview and refuses under 20m; plan passes --mode plan; goal and grillme are prompt templates with agy/goal-schema.json and agy/grillme-schema.json until agy ships them, AIS-006); lanes sandboxed unless --writes; --self-test; the delegate names the mode in its receipt. pmat side: spec note and receipt. Controls: unknown mode refused; each mode''s dry run prints its calling form.'
@@ -4104,11 +4104,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-04: Quorum Review Skill — three lanes review the diff against the ticket and receipt; the merge helper refuses auto-merge without three PASS verdicts'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-03T22:48:05Z
-  updated: 2026-09-03T22:48:05Z
+  updated: 2026-09-06T14:47:52Z
   spec: null
   acceptance_criteria:
   - 'agentic-delivery-pmat.md section 3.1 / 5.2 / 9.4. Skill in the paiml-implement bundle: quorum-review.sh builds the prompt from git diff base...HEAD plus the ticket and receipt, runs three agy lanes under agy/quorum-schema.json, writes docs/audits/quorum-<ticket>.json and posts it as a PR comment; pmat-merge --auto refuses without three PASS. Controls: a planted contradiction gets at least one FAIL naming file:line; a clean diff gets three PASS; the helper refuses without the artifact.'
@@ -4121,11 +4121,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-07: the index is a faithful, reproducible view of the tree'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-04T02:51:57Z
-  updated: 2026-09-04T05:04:52Z
+  updated: 2026-09-06T14:47:52Z
   spec: null
   acceptance_criteria:
   - 'pmat-architecture-crux-audit.md section 8.7. (a) the incremental index fast path compares len and ctime (unix) besides mtime, plus a rotating 1/64 verify slice with a persisted run counter, so a content change with a backdated mtime is seen; (b) every walk that defines persisted order is sorted and the ranker (query/engine_query.rs) tie-breaks on (file_path, start_line); (c) analyze churn serialises author_contributions as a BTreeMap and the markdown path tie-breaks on author; (d) manifest.json is written atomically, a torn or unparsable manifest is named and rebuilt, and a manifest-older-than-db detector fires on a seeded stale pair; (e) a failed index save is reported as a failure and the success message printed only after a successful save; persist_score returns Result; the FTS DELETE propagates. Includes the refactor of the nine touched functions over pmat verify''s cognitive ceiling (build, get_file_metrics, compute_pv_lint, compute_pipeline_depth, compute_contract_drift, cross_validate, handle_score, compute_evoscore, one test whose raw-string fixture the analyzer counts as nesting) that the complexity gate on changed files requires. Controls: leg (a) fast-path survival (mtime-skipped > 0, 0 re-parsed on a quiescent tree); leg (c) c1 raw order-preserving hash stable AND c2 sorted hash stable AND author set equals git shortlog (counts: PMAT-667); leg (d) not firing on a clean pair; leg (e) silent with .pmat writable.'
@@ -4188,11 +4188,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'BSE-05/06: timeout-minutes on every job; one pool label per runs-on; mutation-diff off the PR path (BSE-001 wave 1)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-05T08:42:03Z
-  updated: 2026-09-05T08:42:03Z
+  updated: 2026-09-06T14:47:52Z
   spec: null
   acceptance_criteria:
   - 'spec: paiml/infra docs/specifications/build-system-enhancement.md §4 wave 1'

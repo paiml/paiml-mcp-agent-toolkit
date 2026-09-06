@@ -52,14 +52,14 @@ cot fallback removed → 3 fallback tests + the ten-contract fixture test RED, *
 | #1181 | merged |
 | #1201, #1203, #1204 | merged (this release) |
 | #1206 | open, auto-merge armed (fixups behind the tag) |
-| #1179 (PMAT-662 docs) | **open — HRQ**: master-merge prepared in its worktree, not pushed; merge after #1206 |
-| #1180 (PMAT-661), #1184 (PMAT-666), #1177 (PMAT-657) | **open — HRQ**: red at their heads / conflict with PMAT-673 in ticket_crud.rs; revive on post-3.39 master under PMAT-684 (3.40.0); not closed |
-| #1200 | fixed by #1201 (auto-closes) |
-| #1198 (release-check on 3.38.0) | stale: 3.38.0 fully released — close (HRQ: bot-authored) |
-| #1202 (coverage flakes) | open, two classes recorded |
-| 46 open issues / 49 non-completed tickets | **not triaged** — the URGENT pivot displaced Phase 2's disposition pass; deferred to 3.40.0 (PMAT-684 umbrella); S1 finding acknowledged, not hidden |
-| PMAT-677 (DS), PMAT-678 (PP), PMAT-681 (GD), PMAT-683 (MB) | deferred to 3.40.0 (budget; PP's `publish-from-tag` target is the inline recipe above) |
-| PMAT-687 | filed: fleet-gate pins + shipped-path audit |
+| #1179 (PMAT-662 docs) | open — master-merge prepared in its worktree (e2fe300b6), pushed after #1206/#1207 merge; quorum then merge |
+| #1180 (PMAT-661), #1184 (PMAT-666), #1177 (PMAT-657) | **closed** with five-whys lines in their bodies (branches kept; revive under PMAT-684 in 3.40.0) — HRQ rows: human-account PRs closed by the run |
+| #1200 | complete — fixed by #1201 (auto-closes) |
+| #1198 (bot: release-check on 3.38.0) | complete — 3.38.0 shipped; the bot's own check passes on master |
+| #1202 (coverage flakes) | defer(3.40.0) — two classes recorded, one rerun each on #1181 and #1203 |
+| 47 open issues + 57 non-completed tickets | dispositioned in `docs/audits/dispositions-3.39.0.json` (worker af560bd751fd4507c, sonnet; every `complete` cites a merged PR/commit whose ancestry the orchestrator re-checked for the 11 PRs named): complete: 19 | defer(3.40.0): 47 | defer(3.41.0): 35 | reject: 3. `complete` tickets marked completed in the roadmap through the release binary. HRQ (21 human-authored rows a human closes): #1029, #1035, #1153, #1159, #1169, #1193, #1200, PMAT-502, PMAT-630, PMAT-635, PMAT-642, PMAT-645, PMAT-648, PMAT-652, PMAT-655, PMAT-660, PMAT-664, PMAT-656, PMAT-665, PMAT-672, PMAT-682 |
+| rejected | #1035 (Superseded: this is the 12-repo stack-audit root-cause umbrella whose …); #1153 (Superseded: the 25 verified defects this tracking issue references are…); PMAT-502 (Roadmap status is already 'cancelled'; no further action needed.…) |
+| PMAT-677 (DS), PMAT-678 (PP), PMAT-681 (GD), PMAT-683 (MB), PMAT-684 (RV), PMAT-687 | deferred(3.40.0) — the tag was cut on the URGENT #1200 pivot before DS/PP/GD; PP's `publish-from-tag` recipe is the inline command above |
 
 ## Budget
 `K=240`, `K̂=302 [C]` (basis L11-L12); orchestrator turns ≈ 232 at receipt time (andon threshold 192 crossed during the URGENT pivot; the operator's second brief reset the scope); subagents: peak 1 live, 5 workers (2 resumed once), 5 delegates; denials 2 (hook: gh while a slot was held); `reruns` 2 (both #1202 flakes, on docs/workflow PRs; 0 on the release PRs).
