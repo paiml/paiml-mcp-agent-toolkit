@@ -98,18 +98,54 @@ fn handle_validate_config(path: &Path) -> Result<()> {
 
     match validate_config(&config) {
         Ok(()) => {
-            println!("✅ Configuration is valid");
+            println!("{}", validation_verdict(&[]));
             Ok(())
         }
         Err(errors) => {
-            println!("❌ Configuration has {} error(s):", errors.len());
-            for error in errors {
-                println!("  - {}", error);
-            }
+            println!("{}", validation_verdict(&errors));
             std::process::exit(1);
         }
     }
 }
+
+/// The verdict `quality-gates validate` prints: one line when the file is
+/// valid, a headline plus one line per error otherwise.
+fn validation_verdict(errors: &[String]) -> String {
+    if errors.is_empty() {
+        return "✅ Configuration is valid".to_string();
+    }
+    let mut out = format!("❌ Configuration has {} error(s):", errors.len());
+    for error in errors {
+        out.push_str(&format!("\n  - {error}"));
+    }
+    out
+}
+
+#[cfg(test)]
+mod verdict_tests {
+    use super::validation_verdict;
+
+    /// PMAT-688: `quality-gates validate --color always` emitted the same
+    /// bytes as `--color auto`; the verdict was a plain `println!`.
+    #[test]
+    fn validation_verdict_carries_colour_when_forced() {
+        let _on = crate::cli::colors::ForcedColor::on();
+        let ok = validation_verdict(&[]);
+        assert!(ok.contains("Configuration is valid") && ok.contains("\x1b["), "{ok:?}");
+        let bad = validation_verdict(&["gates.max_complexity must be positive".to_string()]);
+        assert!(bad.contains("1 error(s)") && bad.contains("\x1b["), "{bad:?}");
+        assert!(bad.contains("  - gates.max_complexity must be positive"), "{bad}");
+    }
+
+    #[test]
+    fn validation_verdict_is_plain_when_colours_are_off() {
+        let _off = crate::cli::colors::ForcedColor::off();
+        assert_eq!(validation_verdict(&[]), "✅ Configuration is valid");
+        let bad = validation_verdict(&["a".to_string(), "b".to_string()]);
+        assert_eq!(bad, "❌ Configuration has 2 error(s):\n  - a\n  - b");
+    }
+}
+
 
 /// Show configuration (TICKET-PMAT-5024)
 ///

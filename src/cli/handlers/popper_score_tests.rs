@@ -284,4 +284,55 @@ mod tests {
 
     // Include format-specific tests
     include!("popper_score_tests_format.rs");
+
+    /// PMAT-688: on the 3.39.0 tree `--failures-only` was read in two places
+    /// only (`verbose && !failures_only` and `failures_only && gateway_passed`),
+    /// so the swept `popper-score --failures-only` reproduced the baseline byte
+    /// for byte. The flag is the same display filter its siblings implement
+    /// (`repo-score`, `infra-score`, `rust-project-score`): a row at or above
+    /// the pass line is not shown, everything else is untouched, and the
+    /// recommendations — the actionable failures — stay even when the gateway
+    /// passed.
+    #[test]
+    fn failures_only_text_keeps_only_failing_checks() {
+        // Falsifiability 20/25 sits on the 80% pass line; the other four are below it.
+        let score = create_test_score_passed();
+        let all = format_text(&score, false, false);
+        let failing = format_text(&score, false, true);
+        assert!(all.contains("Falsifiability & Testability"), "{all}");
+        assert!(
+            !failing.contains("Falsifiability & Testability"),
+            "a category at the pass line is not a failing check:\n{failing}"
+        );
+        for kept in ["Reproducibility Infrastructure", "Summary", "Verdict", "Recommendations"] {
+            assert!(failing.contains(kept), "{kept} must survive the filter:\n{failing}");
+        }
+    }
+
+    #[test]
+    fn failures_only_verbose_keeps_only_failing_sub_scores() {
+        // A1 8/10 and A2 12/15 both sit on the pass line inside a passing category;
+        // B has no sub-scores, so add one that fails.
+        let mut score = create_test_score_passed();
+        score
+            .categories
+            .reproducibility
+            .add_sub_score(PopperSubScore::new("B1", "Lockfile", 2.0, 10.0, "no lockfile"));
+        let all = format_text(&score, true, false);
+        let failing = format_text(&score, true, true);
+        assert!(all.contains("A1") && all.contains("B1"), "{all}");
+        assert!(!failing.contains("A1"), "a passing sub-score is not a failure:\n{failing}");
+        assert!(failing.contains("B1"), "a failing sub-score stays:\n{failing}");
+    }
+
+    #[test]
+    fn failures_only_markdown_keeps_only_failing_checks() {
+        let score = create_test_score_passed();
+        let all = format_markdown(&score, false, false);
+        let failing = format_markdown(&score, false, true);
+        assert!(all.contains("Falsifiability & Testability"), "{all}");
+        assert!(!failing.contains("Falsifiability & Testability"), "{failing}");
+        assert!(failing.contains("Reproducibility Infrastructure"), "{failing}");
+        assert!(failing.contains("Verdict"), "{failing}");
+    }
 }

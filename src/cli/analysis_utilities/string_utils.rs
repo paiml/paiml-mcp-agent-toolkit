@@ -272,9 +272,16 @@ pub fn params_to_json(
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 /// Print table.
 pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateResource>]) {
+    print!("{}", render_table(items));
+}
+
+/// Render the `pmat list` table exactly as `print_table` prints it (every
+/// line newline-terminated), so the bytes can be asserted on.
+pub fn render_table(items: &[std::sync::Arc<crate::models::template::TemplateResource>]) -> String {
+    use std::fmt::Write as _;
+
     if items.is_empty() {
-        println!("No templates found.");
-        return;
+        return "No templates found.\n".to_string();
     }
 
     // Calculate column widths
@@ -296,16 +303,18 @@ pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateReso
     category_width += 2;
     desc_width += 2;
 
-    // Print header
-    println!(
+    let mut out = String::new();
+    // Header
+    let _ = writeln!(
+        out,
         "┌{}┬{}┬{}┬{}┐",
         "─".repeat(name_width),
         "─".repeat(toolchain_width),
         "─".repeat(category_width),
         "─".repeat(desc_width)
     );
-
-    println!(
+    let _ = writeln!(
+        out,
         "│{:^name_width$}│{:^toolchain_width$}│{:^category_width$}│{:^desc_width$}│",
         "Name",
         "Toolchain",
@@ -316,8 +325,8 @@ pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateReso
         category_width = category_width,
         desc_width = desc_width
     );
-
-    println!(
+    let _ = writeln!(
+        out,
         "├{}┼{}┼{}┼{}┤",
         "─".repeat(name_width),
         "─".repeat(toolchain_width),
@@ -325,7 +334,7 @@ pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateReso
         "─".repeat(desc_width)
     );
 
-    // Print rows
+    // Rows
     for item in items {
         let toolchain = item.toolchain.as_str();
         let category = format!("{:?}", item.category);
@@ -336,7 +345,8 @@ pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateReso
             description
         };
 
-        println!(
+        let _ = writeln!(
+            out,
             "│{:<name_width$}│{:<toolchain_width$}│{:<category_width$}│{:<desc_width$}│",
             format!(" {} ", item.name),
             format!(" {} ", toolchain),
@@ -349,14 +359,80 @@ pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateReso
         );
     }
 
-    // Print footer
-    println!(
+    // Footer
+    let _ = writeln!(
+        out,
         "└{}┴{}┴{}┴{}┘",
         "─".repeat(name_width),
         "─".repeat(toolchain_width),
         "─".repeat(category_width),
         "─".repeat(desc_width)
     );
+    out
+}
+
+#[cfg(test)]
+mod render_table_tests {
+    use super::render_table;
+    use crate::models::template::{
+        ParameterSpec, ParameterType, TemplateCategory, TemplateResource, Toolchain,
+    };
+    use std::sync::Arc;
+
+    fn template() -> Arc<TemplateResource> {
+        Arc::new(TemplateResource {
+            uri: "template://makefile/rust/cli".to_string(),
+            category: TemplateCategory::Makefile,
+            toolchain: Toolchain::RustCli {
+                cargo_features: vec![],
+            },
+            name: "Rust CLI Binary Makefile".to_string(),
+            description: "Makefile for Rust CLI applications".to_string(),
+            parameters: vec![ParameterSpec {
+                name: "project_name".to_string(),
+                param_type: ParameterType::String,
+                required: true,
+                default_value: None,
+                description: "Project name".to_string(),
+                validation_pattern: None,
+            }],
+            content_hash: "hash123".to_string(),
+            semantic_version: semver::Version::new(1, 0, 0),
+            dependency_graph: vec![],
+            s3_object_key: "templates/makefile/rust/cli.hbs".to_string(),
+        })
+    }
+
+    /// PMAT-688: `pmat list --color always` emitted the same bytes as
+    /// `--color auto` — the box table had no colourable element. The header
+    /// cells are the colourable element; the box characters and the cell
+    /// widths must not move when colour is on.
+    #[test]
+    fn table_header_carries_colour_when_forced() {
+        let items = [template()];
+        let plain = {
+            let _off = crate::cli::colors::ForcedColor::off();
+            render_table(&items)
+        };
+        let coloured = {
+            let _on = crate::cli::colors::ForcedColor::on();
+            render_table(&items)
+        };
+        assert!(!plain.contains("\x1b["), "{plain}");
+        assert!(coloured.contains("\x1b["), "{coloured}");
+        let header = coloured.lines().nth(1).expect("header row");
+        assert!(header.contains("Name") && header.contains("\x1b["), "{header:?}");
+        // Strip the escapes and the two renderings must agree byte for byte.
+        let stripped = regex::Regex::new("\x1b\\[[0-9;]*m")
+            .expect("static regex must compile")
+            .replace_all(&coloured, "");
+        assert_eq!(stripped, plain, "colour must add escapes only");
+    }
+
+    #[test]
+    fn empty_table_says_so() {
+        assert_eq!(render_table(&[]), "No templates found.\n");
+    }
 }
 
 // Deleted estimate_cyclomatic_complexity - using proper AST analysis instead

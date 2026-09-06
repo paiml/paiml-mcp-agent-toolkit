@@ -41,7 +41,16 @@ async fn generate_todos(
     };
 
     std::fs::write(output_path, output)?;
-    println!("✅ Todos written to: {}", output_path.display());
+    println!(
+        "{}",
+        todos_written_line(output_path, todos.len(), include_quality_gates)
+    );
 
     Ok(())
+}
+
+/// The confirmation line `roadmap todos` prints after writing its file.
+fn todos_written_line(output_path: &Path, count: usize, include_quality_gates: bool) -> String {
+    let _ = (count, include_quality_gates);
+    format!("✅ Todos written to: {}", output_path.display())
 }

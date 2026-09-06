@@ -375,4 +375,74 @@ mod tests {
         assert_eq!(grade_from_percentage(55.0), "C");
         assert_eq!(grade_from_percentage(30.0), "F");
     }
+
+    fn mixed_category() -> CategoryScore {
+        use crate::services::repo_score::models::{
+            Finding, ScoreStatus, Severity, SubcategoryScore,
+        };
+        let sub = |id: &str, name: &str, score: f64, max: f64, severity: Severity, msg: &str| {
+            SubcategoryScore {
+                id: id.to_string(),
+                name: name.to_string(),
+                score,
+                max_score: max,
+                findings: vec![Finding {
+                    severity,
+                    category: "G".to_string(),
+                    message: msg.to_string(),
+                    location: None,
+                    impact_points: 0.0,
+                }],
+            }
+        };
+        CategoryScore {
+            score: 4.0,
+            max_score: 6.0,
+            percentage: 66.7,
+            status: ScoreStatus::Fail,
+            subcategories: vec![
+                sub(
+                    "G1",
+                    "Time-to-Interaction",
+                    1.0,
+                    3.0,
+                    Severity::Error,
+                    "no quick start",
+                ),
+                sub(
+                    "G2",
+                    "Error Gracefulness",
+                    3.0,
+                    3.0,
+                    Severity::Success,
+                    "errors are handled",
+                ),
+            ],
+            findings: Vec::new(),
+        }
+    }
+
+    /// PMAT-688: `--failures-only` only filtered findings, and only under
+    /// `--verbose`, so the swept `demo-score --failures-only` reproduced the
+    /// baseline. A subcategory at or above the 80% pass line is not a failure
+    /// and must not be listed.
+    #[test]
+    fn failures_only_hides_passing_subcategories_in_text() {
+        let score = mixed_category();
+        let all = format_text(&score, false, false);
+        let failing = format_text(&score, false, true);
+        assert!(all.contains("Error Gracefulness"), "{all}");
+        assert!(!failing.contains("Error Gracefulness"), "{failing}");
+        assert!(failing.contains("Time-to-Interaction"), "{failing}");
+    }
+
+    #[test]
+    fn failures_only_hides_passing_subcategories_in_markdown() {
+        let score = mixed_category();
+        let all = format_markdown(&score, false, false);
+        let failing = format_markdown(&score, false, true);
+        assert!(all.contains("Error Gracefulness"), "{all}");
+        assert!(!failing.contains("Error Gracefulness"), "{failing}");
+        assert!(failing.contains("Time-to-Interaction"), "{failing}");
+    }
 }

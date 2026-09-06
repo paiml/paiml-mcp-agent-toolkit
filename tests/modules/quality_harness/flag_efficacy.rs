@@ -2165,3 +2165,109 @@ fn small_corpora_stay_poor_so_the_contrast_survives() {
         "tiny must stay reportless, or the not-measured branch is never exercised"
     );
 }
+
+/// PMAT-688: the 3.39.0 sweep booked four "errors out" rows that were the
+/// ledger writers refusing a dirty tree (documented: "Commit or stash first,
+/// or pass --allow-dirty") and clap refusing `--allow-dirty` without the
+/// `--write-ledger` it `requires`. A refusal that names its precondition is
+/// the honest alternative to silently doing nothing — the same class as
+/// "--ml is not implemented", not the "flag broke a working command" class.
+#[test]
+fn precondition_refusals_are_honest() {
+    let dirty = "Error: refusing to write .pmat/reachability-ledger.json from a dirty git \
+                 tree: it would record whatever these uncommitted, possibly-unrelated changes \
+                 happen to add or remove, not the tree at HEAD. Commit or stash first, or pass \
+                 --allow-dirty.\n M src/lib.rs\n";
+    let requires = "error: the following required arguments were not provided:\n  \
+                    --write-ledger\n\nUsage: pmat analyze reachability --write-ledger \
+                    --allow-dirty\n";
+    assert!(
+        is_honest_refusal(dirty),
+        "a documented precondition refusal is honest"
+    );
+    assert!(
+        is_honest_refusal(requires),
+        "clap naming the missing companion flag is honest"
+    );
+    assert!(
+        !is_honest_refusal("Error: called `Option::unwrap()` on a `None` value"),
+        "a crash is not a refusal"
+    );
+    assert!(
+        !is_honest_refusal("error: failed to parse config: missing field `gates`"),
+        "an unrelated error: line is not a refusal"
+    );
+}
+
+/// PMAT-688: three flags were booked as no-ops because the corpus carried
+/// nothing for them to act on. `validate-docs --fail-on-error` needs a broken
+/// link; `roadmap todos` needs a roadmap with a current sprint (its baseline
+/// failed on the corpus with the 🔄 banner already on stdout, so the
+/// "not a control" guard never fired and both `--color` and
+/// `--include-quality-gates` were booked against a failing command);
+/// `show-metrics --failures-only` needs a trend store holding one regressing
+/// and one improving series inside its 30-day window.
+#[test]
+fn large_corpus_carries_the_flag_fixtures() {
+    let corpus = build_corpus(CorpusSize::Large);
+    let root = corpus.path();
+
+    let links = std::fs::read_to_string(root.join("docs/links.md")).expect("docs/links.md");
+    assert!(
+        links.contains("](design-notes.md)") && !root.join("docs/design-notes.md").exists(),
+        "one relative link to a file that does not exist:\n{links}"
+    );
+
+    // `popper-score --failures-only` hides a category at or above its 80% pass
+    // line; the corpus had none (best: Transparency at 70%). An ADR directory
+    // is the scorer's 4-point lever (transparency.rs C3) and lifts it to 90%.
+    let adr = root.join("docs/adr");
+    assert!(
+        adr.is_dir() && std::fs::read_dir(&adr).expect("docs/adr").next().is_some(),
+        "docs/adr/ with at least one decision record"
+    );
+
+    let roadmap = std::fs::read_to_string(root.join("docs/execution/roadmap.md"))
+        .expect("docs/execution/roadmap.md");
+    assert!(
+        roadmap.contains("## Current Sprint:") && roadmap.contains("| ID | Description |"),
+        "a current sprint with the task table the parser reads:\n{roadmap}"
+    );
+    assert_eq!(
+        roadmap.matches("| PMAT-").count(),
+        2,
+        "two sprint tasks:\n{roadmap}"
+    );
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock")
+        .as_secs() as i64;
+    for (metric, rising) in [("lint", true), ("test-fast", false)] {
+        let raw = std::fs::read_to_string(root.join(format!(".pmat-metrics/trends/{metric}.json")))
+            .unwrap_or_else(|e| panic!(".pmat-metrics/trends/{metric}.json: {e}"));
+        let obs: Vec<serde_json::Value> = serde_json::from_str(&raw).expect("observations");
+        assert!(obs.len() >= 6, "{metric}: {} observations", obs.len());
+        let vals: Vec<f64> = obs
+            .iter()
+            .map(|o| o["value"].as_f64().expect("value"))
+            .collect();
+        let monotone = vals
+            .windows(2)
+            .all(|w| if rising { w[1] > w[0] } else { w[1] < w[0] });
+        assert!(
+            monotone,
+            "{metric} must be strictly {}: {vals:?}",
+            if rising { "rising" } else { "falling" }
+        );
+        let newest = obs
+            .iter()
+            .map(|o| o["timestamp"].as_i64().expect("timestamp"))
+            .max()
+            .expect("at least one observation");
+        assert!(
+            now - newest < 86_400 * 30,
+            "{metric}: the newest observation must fall inside show-metrics' 30-day window"
+        );
+    }
+}
