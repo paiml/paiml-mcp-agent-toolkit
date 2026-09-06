@@ -211,8 +211,8 @@ pmat comply check --checks CB-TRACE --format json | jq -e '.checks[] | select(.n
 | 15 | Quorum as a vote | 3 | MISSING | AD-04 |
 | 16 | Concurrency cap ≤ 3 | 3 | PRESENT | — |
 | 17 | Fan out to Antigravity | 3 | PARTIAL | AD-08, AD-10 |
-| 18 | Swappable executor | 3 | MISSING | AD-08 |
-| 19 | 2–20 workers | 3 | PARTIAL | AD-08 |
+| 18 | Swappable executor | 3 | PRESENT | AD-08 |
+| 19 | 2–20 workers | 3 | PRESENT | AD-08 |
 | 20 | Goal / Grill-me modes | 3 | MISSING | AD-10 |
 | 21 | Teamwork / Plan modes | 3 | PRESENT / PARTIAL | AD-10 |
 

@@ -1,44 +1,31 @@
 {
  "ticket": "PMAT-662",
  "base": "origin/master",
- "head": "881dd443793e34935f91d115bfa57c5c0073dc51",
+ "head": "762505a3dd9ef99d891d42ba63b0eb02da4a8011",
  "width": 3,
  "executor": "agy",
- "agreed": true,
+ "agreed": false,
  "lanes": [
   {
    "lane": 1,
-   "verdict": "PASS",
-   "summary": "The diff perfectly matches the acceptance criteria for PMAT-662 on the 'pmat side'. It adds the required implementation note to `agentic-delivery-pmat.md` section 9.8, provides the implementation receipt in `docs/audits/impl-PMAT-662-receipt.md`, and accurately reflects the expected controls and testing claims for the bundle side (which resides in `paiml-implement#8`). No claims in the receipt contradict the diff, and the diff makes no unasked-for changes.",
-   "findings": [],
-   "raw_bytes": 1964
+   "verdict": "FAIL",
+   "summary": "needs-changes: every technical assertion of the 9.8 note verifies against the bundle's quorum-review.sh; the shipped quorum artifact cited head 881dd443, an ancestor of the reviewed head.",
+   "conversation": "a6e320f0-78aa-41a3-abfc-46f3aa534e4a"
   },
   {
    "lane": 2,
    "verdict": "PASS",
-   "summary": "The diff successfully implements the pmat side of PMAT-662. It adds the required receipt documenting the bundle-side implementation, adds the spec implementation note to section 9.8, and adds the ticket to the roadmap. No criteria from the ticket were missed or contradicted on the pmat side.",
-   "findings": [
-    {
-     "claim": "Implementation note added to section 9.8 as required by the ticket's 'pmat side: spec note' criteria.",
-     "file": "docs/specifications/agentic-delivery-pmat.md",
-     "grounding": "cited",
-     "line": 301
-    },
-    {
-     "claim": "Implementation receipt created as required by the ticket's 'pmat side: receipt' criteria.",
-     "file": "docs/audits/impl-PMAT-662-receipt.md",
-     "grounding": "cited",
-     "line": 1
-    }
-   ],
-   "raw_bytes": 2408
+   "summary": "merge-as-is: docs only, 5.4/5.5 say what 9.8 attributes, note placed under 9.8, roadmap keeps every id and appends PMAT-662.",
+   "conversation": "9c65cd39-61b7-42f4-b95b-1f30b4475049"
   },
   {
    "lane": 3,
-   "verdict": "PASS",
-   "summary": "The diff fulfills the ticket's requirements for the pmat repository. It adds the implementation receipt, updates the roadmap, and adds the specified implementation note to `agentic-delivery-pmat.md` section 9.8. The bundle-side script changes are correctly documented as belonging to `paiml/paiml-implement#8`. No contradictions, unbacked claims, or weakened gates were found.",
-   "findings": [],
-   "raw_bytes": 1811
+   "verdict": "FAIL",
+   "summary": "needs-changes: section-6 rows 18/19 still MISSING/PARTIAL; roadmap row in_progress on the implementing PR; the 9.8 note abstracts the AC's exact controls. Merge losslessness confirmed (249 -> 250 ids, symmetric difference exactly PMAT-662).",
+   "conversation": "b14d6ff2-45b2-4dbb-b9a7-dba9787c0fd2"
   }
- ]
+ ],
+ "reviewed_diff": "git diff origin/master...762505a3d (4 docs files, +88/-0), 3.39.0 board-clearing run",
+ "post_review_fixes": "section-6 rows 18/19 -> PRESENT; roadmap PMAT-662 -> completed; this artifact re-pointed at the reviewed head. Lane 3's minor finding (the note abstracts the exact width controls) is left as written: the controls live in the bundle's self-test, which the note names.",
+ "consensus": "2 FAIL / 1 PASS on completeness, not on the text's correctness; both FAIL findings fixed in the commit that carries this artifact."
 }
