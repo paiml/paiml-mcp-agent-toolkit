@@ -1,9 +1,13 @@
 name: Docker Build and Publish
 
+# PMAT-675 (3.39.0): DEMOTED from a tag trigger to workflow_dispatch only.
+# It had failed on every tag since v3.32.0 ("Username and password required":
+# DOCKER_USERNAME / DOCKER_PASSWORD are not configured) and hard-coded the image
+# tag 2.10.0 (#1122). docs/DOCKER.md still documents `paiml/pmat:<version>`, so
+# the workflow is kept for a manual, credentialed run rather than deleted; the
+# preflight below turns the missing secrets into a named exit 1 instead of a
+# stack trace, and the image is tagged with the crate version from Cargo.toml.
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 env:
@@ -25,6 +29,19 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
+    - name: Preflight — registry credentials must be configured
+      env:
+        HAS_USER: ${{ secrets.DOCKER_USERNAME != '' }}
+        HAS_PASS: ${{ secrets.DOCKER_PASSWORD != '' }}
+      run: |
+        if [ "$HAS_USER" != "true" ] || [ "$HAS_PASS" != "true" ]; then
+          echo "::error::DOCKER_USERNAME and/or DOCKER_PASSWORD are not configured as repository secrets; nothing can be pushed to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}. Configure them, then re-run this workflow_dispatch."
+          exit 1
+        fi
+        echo "registry credentials present"
+    - name: Read the crate version
+      id: ver
+      run: echo "version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
     - name: Log in to Docker Hub
       uses: docker/login-action@v4
       with:
@@ -40,6 +57,6 @@ jobs:
         push: "true"
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:2.10.0
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.version }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
