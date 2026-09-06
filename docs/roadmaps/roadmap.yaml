@@ -4243,11 +4243,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'release path: restore release.yml (clean-room gate+verify → GitHub prerelease), demote docker-publish to workflow_dispatch with a secret preflight'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-06T09:31:18.781195456+00:00
   spec: null
   acceptance_criteria:
   - 'A pmat tag runs no clean-room gate and creates no release. Restore .github/workflows/release.yml from release.yml.disabled keeping create-release → gate → verify on [self-hosted, clean-room] and creating a GitHub prerelease (prerelease: true); delete the publish, build-binaries and publish-release jobs (binary-release.yml on release: published supersedes them). No cargo publish, no CARGO_REGISTRY_TOKEN, no continue-on-error. docker-publish.yml: red on every tag since v3.32.0 (6 consecutive), hard-codes image tag 2.10.0, but docs/DOCKER.md documents paiml/pmat:2.12.0 (#1122) — a doc consumer exists, so it is demoted to workflow_dispatch with a secret-presence preflight that exits 1 with a named reason, not deleted; HRQ. Falsifier: a workflow_dispatch probe run with an injected failing verify step creates no release; the failure names verify, not create-release.'
