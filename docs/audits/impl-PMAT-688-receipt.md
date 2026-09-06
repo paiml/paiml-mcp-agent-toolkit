@@ -69,12 +69,32 @@ Reports kept: sweep 1 and sweep 2 under the session scratchpad (`report-sweep1.t
 
 `make gate-differential` (the other gate sharing `build_corpus`): `test result: ok` (57 s, 18:45–18:53Z) — the seeded fixtures did not move any constant-leaf classification.
 
-## Quorum
+## Quorum (agy, `--mode plan`, width 3, review-only) on 4be6be1e8
 
-QUORUM_PLACEHOLDER
+Lanes 5a29c43b-abc7-4c34-9d44-162a797f260a, 4260e6cf-4562-4ca2-b37b-f9a8bd9eaae0, 7e26446c-345f-476f-a979-7bc5871801a9 — **3/3 needs-changes**, no lane said merge-as-is. Findings and what happened to each:
+
+| # | finding | lanes | disposition |
+|---|---|---|---|
+| 1 | **BLOCKER** — the `_` arms of cuda-tdg score, gate and kaizen were now coloured, so `--format markdown` and `--format sarif` gained ANSI escapes whenever colour was on (`cuda_tdg_handlers_format_score.rs`, `cuda_tdg_handlers_gate_kaizen.rs`); the receipt's own "no machine format gained an escape" row was false | 2 + delegate's own check | **fixed fffcc8845**: colour scoped to `CudaTdgOutputFormat::Terminal`; the test asserts a Sarif config never carries an escape |
+| 2 | **MAJOR** — classifying clap's "required arguments were not provided" as an honest refusal converts a sweep that never supplied the `requires` companion into a PASS | 2 of 3 (lane 1 dissented: `baseline.succeeded()` is the control) | **fixed fffcc8845**: phrase dropped; `--allow-dirty` on both ledger writers gets a `PROBE_CONTEXT` of `--write-ledger`, so the flag is probed in context (dirty tree ⇒ the control refuses ⇒ an honest skip; clean ⇒ both write); "refusing to" stays, the ledger writers name `--allow-dirty` in it |
+| 3 | "a new `unwrap()` at commands_status_tests.rs:166" | 2 | **refuted by the delegate**: an unchanged context line; 0 added `unwrap(`/`panic!(` under src/ |
+| 4 | the `P0 policy:` line and the todos format line are "echoes" that exist to satisfy the sweep | 2 of 3 on the P0 line | kept: `fail_on_p0` does change `passes_quality_gate` (scoring_calculation.rs:172-188); on a tree that already fails the only honest observable is to say which policy was applied, exactly as `Minimum Required` is printed. The todos line is the one place the terminal can show which document was written |
+| 5 | Q4(b): no lane opened the trend-store *reader* | delegate | measured before the quorum: `metric_trends_io.rs::load` parses `Vec<MetricObservation>` from `<metric>.json`, and `show-metrics --failures-only` on the seeded corpus copy dropped the improving series by hand |
+
+Agreed sound across all three lanes: the `--failures-only` display-filter semantics match `keep_category`; `--fail-on-error false` is a backwards-compatible `ArgAction::Set` switch with no positional to swallow; the five allow-list entries are artifact outputs; `render_table` pads before colouring; the corpus fixtures are gated to `CorpusSize::Large`. The delegate also verified every changed test file is compiled (no orphan risk).
+
+Third full sweep after the fixes (18503f90f): `make gate-flag-efficacy-full` 19:27–19:44Z, 637 s, exit 0:
+
+```
+summary: 595 effective, 6 refuses-honestly, 0 no-op, 0 error-out, 371 skipped
+```
+
+Row for row against sweep 2: the two `--allow-dirty` flags moved from REFUSES HONESTLY to SKIPPED with the reason the probe context predicts (`probe context ["--write-ledger"]: baseline exited 1 with empty stdout; the command failed before any flag was read, so it is not a control` — the tree is dirty by then, so the control refuses), and `comply report *` / `show-metrics *` flipped back to whole-command `[nondeterministic baseline]` skips, exactly as in the 3.39.0 sweep; that removes their 21 per-flag rows (hence 612 → 595 effective) and means `show-metrics --failures-only` was measured Effective in sweep 2 only. By hand two consecutive `show-metrics` runs on the dumped corpus are byte-identical, so the flip is between the harness's two baseline runs, not in the command; filed as **PMAT-690**. No sweep since the fix has booked a no-op or an error-out.
 
 ## Gate
 
-GATE_PLACEHOLDER
+`pmat verify --format json` on 4be6be1e8 read `ok: false`: the `tests` stage failed on three `documentation_scorer` tests and the unrun-tests ledger drift. The ledger was regenerated with the branch binary (18503f90f; the first regeneration used the installed 3.39.0 before two tests were added). The three scorer tests fail on **every** tree right now: `score_changelog` also reads `project_path.parent()/CHANGELOG.md`, and another session left a 216 KB `/tmp/CHANGELOG.md` at 19:17 local, so a `TempDir` under `/tmp` scores it. Not this branch's file to delete; filed as **PMAT-689** (test isolation). The gate below was re-run with `TMPDIR` pointed at an empty directory so the tests measure their own fixture.
+
+`TMPDIR=/tmp/tmpx pmat verify --format json` on 18503f90f: `ok: null` (no verdict — complexity declined: "no Rust files changed vs HEAD, so nothing was measured" on a clean tree), `stages_measured: 4`, format ✓ satd ✓ clippy ✓ tests ✓ (`cargo test --lib`: 21,255 passed, 0 failed, 154 ignored, 359 s). The same gate with the session scratchpad as TMPDIR failed two other tests on the path alone (`comprehensive_refusal_names_the_quality_score` sees digits in the temp path as a score; `test_collect_files_with_include_filter` matches a path component) — both pass under the neutral directory and neither is touched by this branch. Complexity for the branch is CI's `pmat score` / `ci / gate` to judge; PR #1209.
 
 IMPL-PMAT-688-RECEIPT-END
