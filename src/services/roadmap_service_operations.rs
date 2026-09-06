@@ -90,6 +90,14 @@ impl RoadmapService {
     /// runs — is now applied to the same bytes, under the same lock, before
     /// any write.
     ///
+    /// PMAT-680 (#1193). Both fixes above reasoned about ONE checkout, and a
+    /// repository is not one checkout: the id came from this worktree's text
+    /// and this worktree's sibling lock, so two worktrees minted the same id
+    /// without ever contending, and an id spent on a branch this worktree has
+    /// not checked out was minted twice. The lock and its high-water mark now
+    /// live in the git common directory — shared by every worktree — and
+    /// [`IdAuthority::max_id_across_refs`] adds what every ref has spent.
+    ///
     /// # Errors
     ///
     /// Returns the strict parse error (which already names the file and the
@@ -102,7 +110,10 @@ impl RoadmapService {
         &self,
         build: impl FnOnce(String) -> RoadmapItem,
     ) -> Result<String> {
-        let mut lock = self.acquire_write_lock()?;
+        // PMAT-680: the authority is resolved ONCE — it supplies both the lock
+        // to hold and the refs to read, and they must be the same repository's.
+        let authority = self.id_authority();
+        let mut lock = Self::acquire_write_lock_at(&authority.lock_path)?;
 
         // (a) the RAW text, which is also what the allocator scans.
         let raw = if self.roadmap_path.exists() {
@@ -130,9 +141,21 @@ impl RoadmapService {
         // (d) every id line in the raw text, plus the persisted high-water
         // mark, beats the parsed model: subtask ids and rows the model drops
         // are ids in use too.
+        //
+        // PMAT-680: and every REF's roadmap beats both. The text and the mark
+        // are what one checkout can see, and a repository is not one checkout:
+        // an id spent on a branch this worktree has never checked out is spent
+        // all the same, and without this term it is minted a second time. The
+        // mark is now shared by every worktree (it lives in the git common
+        // dir), so the three terms together are the whole repository's opinion.
         let next = crate::services::roadmap_text::next_id_number(
             &raw,
-            read_high_water_mark(&mut lock),
+            roadmap_id_authority::high_water_mark(&mut lock),
+        )
+        .max(
+            authority
+                .max_id_across_refs()
+                .map_or(1, |spent| spent.saturating_add(1)),
         );
         let id = format!("PMAT-{next:03}");
 
@@ -161,7 +184,7 @@ impl RoadmapService {
                 self.write_roadmap_unlocked(&roadmap)?;
             }
         }
-        write_high_water_mark(&mut lock, next)?;
+        roadmap_id_authority::write_high_water_mark(&mut lock, next)?;
 
         Ok(id)
         // Lock released automatically
@@ -299,23 +322,8 @@ impl RoadmapService {
 #[cfg(test)]
 pub(crate) use crate::services::roadmap_text::next_id_number;
 
-/// The id high-water mark persisted in an already-held lock file, if it holds
-/// one. A fresh (or hand-emptied) lock file simply has no opinion.
-fn read_high_water_mark(lock: &mut File) -> Option<u32> {
-    lock.seek(SeekFrom::Start(0)).ok()?;
-    let mut text = String::new();
-    lock.read_to_string(&mut text).ok()?;
-    text.trim().parse::<u32>().ok()
-}
-
-/// Record the id just minted in the already-held lock file.
-fn write_high_water_mark(lock: &mut File, next: u32) -> Result<()> {
-    lock.seek(SeekFrom::Start(0))
-        .with_context(|| "Failed to rewind roadmap lock file")?;
-    lock.set_len(0)
-        .with_context(|| "Failed to clear roadmap lock file")?;
-    write!(lock, "{next}").with_context(|| "Failed to write roadmap id high-water mark")?;
-    lock.flush()
-        .with_context(|| "Failed to flush roadmap lock file")?;
-    Ok(())
-}
+// PMAT-680: `read_high_water_mark` and `write_high_water_mark` moved to
+// `crate::services::roadmap_id_authority`, beside the code that decides WHICH
+// file they act on. The mark used to be a fact about this checkout's sibling
+// lock; it is now a fact about the repository, and the two halves of that
+// claim — the path and the number — must not live apart.

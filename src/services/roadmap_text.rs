@@ -195,7 +195,23 @@ pub fn duplicate_ids(raw: &str) -> Vec<(String, Vec<usize>)> {
 /// it is not an id, and `work validate` has never treated it as one).
 #[must_use]
 pub fn next_id_number(raw: &str, lock_high_water: Option<u32>) -> u32 {
-    let mut max = lock_high_water.unwrap_or(0);
+    max_id_number(raw)
+        .unwrap_or(0)
+        .max(lock_high_water.unwrap_or(0))
+        .saturating_add(1)
+}
+
+/// The greatest numeric suffix any id line of `raw` carries, or `None` when it
+/// declares no id with one.
+///
+/// PMAT-680 split this out of [`next_id_number`]: the id authority scans the
+/// roadmap as it stands on OTHER refs, where "one past the greatest" is the
+/// wrong question — those numbers are candidates to be maximised over, not a
+/// mint. One scanner still, so a ref's roadmap and this checkout's are read by
+/// exactly the same rules.
+#[must_use]
+pub fn max_id_number(raw: &str) -> Option<u32> {
+    let mut max: Option<u32> = None;
     for (_, id) in id_lines(raw) {
         let Some(token) = id.split_whitespace().next() else {
             continue;
@@ -203,11 +219,11 @@ pub fn next_id_number(raw: &str, lock_high_water: Option<u32>) -> u32 {
         let bare = token.trim_matches(|c| c == '"' || c == '\'');
         if let Some(number) = bare.rsplit('-').next() {
             if let Ok(parsed) = number.parse::<u32>() {
-                max = max.max(parsed);
+                max = Some(max.map_or(parsed, |seen: u32| seen.max(parsed)));
             }
         }
     }
-    max.saturating_add(1)
+    max
 }
 
 /// Everything a roadmap's raw text can be rejected for.

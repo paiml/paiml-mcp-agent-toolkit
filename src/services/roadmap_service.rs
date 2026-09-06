@@ -5,12 +5,12 @@
 // Split into submodules via include!() for maintainability.
 
 use crate::models::roadmap::{Roadmap, RoadmapItem};
+// PMAT-680: WHICH lock file, and what every ref of the repository has already
+// spent. The mint is a fact about the repository, not about this checkout.
+use crate::services::roadmap_id_authority::{self, IdAuthority};
 use anyhow::{Context, Result};
 use fs2::FileExt;
 use std::fs::{self, File, OpenOptions};
-// PMAT-673: the lock file stores the id high-water mark, so it is read, seeked
-// and written in place rather than merely held.
-use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 /// Default roadmap file location
