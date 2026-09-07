@@ -53,20 +53,10 @@ fn scanned_files(root: &Path) -> Vec<PathBuf> {
 #[test]
 fn fleet_banned_path_scan_is_clean() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    // PMAT-687: two files still carry the literals — the hardcoded-path
-    // analyzer's own fixtures and one comment in check.rs. Both owe complexity
-    // debt that `pmat verify` measures the moment a line in them changes
-    // (classify: cognitive 33 > 25; check.rs's included helpers: 25 functions
-    // over), so their scrub rides with that refactor. Until then the fleet
-    // gate fails on them and the tag's prerelease is created by hand. The
-    // debt is PINNED AS A COUNT (quorum lane 2 on #1204): it may only go down.
-    const PINNED_DEBT: [(&str, usize); 2] = [
-        ("src/services/hardcoded_paths.rs", 14),
-        (
-            "src/cli/handlers/comply_handlers/check_handlers/check.rs",
-            1,
-        ),
-    ];
+    // PMAT-687: nothing is excluded and nothing is pinned. The analyzer's own
+    // source once carried 14 of the banned literals (comments and fixtures);
+    // its fixtures now name a user the fleet does not ban, and its doc comments
+    // say `<user>`. The fleet gate scans this file like any other.
     let files = scanned_files(&root);
     assert!(
         files.len() > 100,
@@ -74,41 +64,24 @@ fn fleet_banned_path_scan_is_clean() {
         files.len()
     );
     let mut hits = Vec::new();
-    let mut pinned_seen = 0usize;
     for file in &files {
-        let Ok(text) = std::fs::read_to_string(file) else {
-            continue;
-        };
+        // The fleet gate is `git grep`, which reads bytes; a file that is not
+        // UTF-8 must not be skipped silently (quorum lane 1 on PMAT-687).
+        let bytes = std::fs::read(file).expect("a tracked file is readable");
+        let text = String::from_utf8_lossy(&bytes).into_owned();
         let rel = file
             .strip_prefix(&root)
             .unwrap_or(file)
             .display()
             .to_string();
-        let pin = PINNED_DEBT.iter().find(|(name, _)| *name == rel);
-        let mut count = 0usize;
         for (n, line) in text.lines().enumerate() {
             for banned in BANNED {
                 if line.contains(banned) {
-                    count += 1;
-                    if pin.is_none() {
-                        hits.push(format!("{rel}:{}: {banned}", n + 1));
-                    }
+                    hits.push(format!("{rel}:{}: {banned}", n + 1));
                 }
             }
         }
-        if let Some((name, allowed)) = pin {
-            pinned_seen += 1;
-            assert!(
-                count <= *allowed,
-                "{name}: {count} banned-path line(s), pinned at {allowed} — the debt may only go down (PMAT-687)"
-            );
-        }
     }
-    assert_eq!(
-        pinned_seen,
-        PINNED_DEBT.len(),
-        "every pinned file is still tracked"
-    );
     assert!(
         hits.is_empty(),
         "the fleet gate would fail on {} line(s):\n{}",
