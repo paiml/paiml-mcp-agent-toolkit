@@ -86,7 +86,7 @@ mutation_matrix:
   - id: end_to_end_the_hook_allows_the_o11_case_and_refuses_growth
     rule: "a minimal git repo (no Cargo.toml, so the hook's fmt and clippy gates are inert), fixture.rs with `debted` at cyclomatic 36 and `innocent` at 1, committed BEFORE `pmat hooks install` so the debt is pre-existing; thresholds read back out of the installed hook (30/25); no --no-verify"
     prediction: "a one-line edit inside `innocent` commits cleanly (rc 0, HEAD moves) although the whole-file measurement of the same file reports `Errors: 2` / `Max Cyclomatic: 36`; growing `innocent` itself to 36 is refused (rc 1, HEAD unchanged) printing `innocent - Cyclomatic 36 > 30 (was 1)` and `innocent - Cognitive 35 > 25 (was 0)`, with the untouched `debted` absent from the refusal"
-    test: "manual, recorded under wiring_status.end_to_end"
+    test: "cargo test -p pmat --test hook_debt_scope_e2e"
     if_fails: "report O11 is still reproducible in the field: a developer is charged for debt the commit did not write"
 wiring_status:
   measured_on: "2026-09-08, PMAT-707 phase 3"
@@ -125,11 +125,12 @@ wiring_status:
       cyclomatic 36, is ABSENT from the refusal — which is what distinguishes
       the scoped verdict from the whole-file one.
   remaining: >
-    One compiler-mandated site is unpatched and it blocks the crate's `tests`
-    target: tests/modules/analysis_timeout_test.rs:261 constructs
-    AnalyzeCommands::Complexity and needs `diff_scope: false`. It lies OUTSIDE
-    this ticket's scope_paths — the phase brief measured 23 E0063 sites across
-    six files under src/, and the integration-test target contributes a 24th —
-    so it was deliberately NOT edited. `cargo check -p pmat --lib --bins` is
-    clean; `--all-targets` is not, and the repo's own pre-commit clippy stage
-    therefore refuses to let the change be committed at all.
+    Every AnalyzeCommands::Complexity struct literal in the crate (24 sites, the last
+    at tests/modules/analysis_timeout_test.rs, outside PMAT-707's scope and added by
+    the orchestrator at commit 3842c57e4) carries `diff_scope: false`; the pre-commit
+    clippy stage (--all-targets) is the check that refuses a missing site.
+    
+    LIMITATION: Rename-to-a-deleted-name. A touched function renamed to the name of a
+    DELETED function inherits the deleted one's baseline. This is an accepted
+    limitation of name-keyed pairing and is out of scope for this PR. It must be
+    fixed in a follow-up PR when AST-based identity tracking is introduced.

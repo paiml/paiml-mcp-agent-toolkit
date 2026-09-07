@@ -23,6 +23,11 @@
 //!   judged against the threshold alone, never as growth.
 //! * Untouched functions never affect the verdict, over threshold or not.
 //!
+//! # Known Limitations
+//! * Rename-to-a-deleted-name: A touched function renamed to the name of a
+//!   DELETED function inherits the deleted one's baseline. This is an accepted
+//!   limitation of name-keyed pairing (to be fixed in a later PR).
+//!
 //! Function boundaries and metrics come from the one existing measurement path
 //! ([`collect_functions`] + [`measure_block`] + [`FunctionSpans`]); this module
 //! adds no second parser.
@@ -234,9 +239,36 @@ pub fn diff_scoped_verdict(
     let ranges = parse_touched_ranges(diff);
 
     let mut growths = Vec::new();
-    for func in touched_functions(&new_functions, &ranges) {
-        let previous = old_functions.iter().find(|old| old.name == func.name);
-        growths.extend(growth_for(func, previous, thresholds));
+    for (new_idx, func) in new_functions.iter().enumerate() {
+        if !func.overlaps(&ranges) {
+            continue;
+        }
+        let new_count = new_functions.iter().filter(|f| f.name == func.name).count();
+        let old_namesakes: Vec<_> = old_functions
+            .iter()
+            .filter(|f| f.name == func.name)
+            .collect();
+
+        let previous = if old_namesakes.is_empty() {
+            None
+        } else if new_count == old_namesakes.len() {
+            let ordinal = new_functions[..new_idx]
+                .iter()
+                .filter(|f| f.name == func.name)
+                .count();
+            Some(old_namesakes[ordinal].clone())
+        } else {
+            let min_cyc = old_namesakes.iter().map(|f| f.cyclomatic).min().unwrap();
+            let min_cog = old_namesakes.iter().map(|f| f.cognitive).min().unwrap();
+            Some(MeasuredFn {
+                name: func.name.clone(),
+                cyclomatic: min_cyc,
+                cognitive: min_cog,
+                line_start: 0,
+                line_end: 0,
+            })
+        };
+        growths.extend(growth_for(func, previous.as_ref(), thresholds));
     }
 
     if growths.is_empty() {
@@ -328,7 +360,37 @@ pub fn staged_verdict(
              diff-scoped check has nothing to judge"
         )
     })?;
-    let old_source = git_read(repo_root, &["show", &format!("HEAD:{spec}")])?;
+
+    let old_spec = match git_read(
+        repo_root,
+        &["diff", "--cached", "-M", "--name-status", "-z"],
+    )? {
+        Some(output) => {
+            let mut resolved = spec.clone();
+            let mut parts = output.split('\0').peekable();
+            while let Some(status) = parts.next() {
+                if status.is_empty() {
+                    break;
+                }
+                if status.starts_with('R') || status.starts_with('C') {
+                    let old_path = parts.next();
+                    let new_path = parts.next();
+                    if let (Some(o), Some(n)) = (old_path, new_path) {
+                        if n == spec {
+                            resolved = o.to_string();
+                            break;
+                        }
+                    }
+                } else {
+                    parts.next(); // skip path
+                }
+            }
+            resolved
+        }
+        None => spec.clone(),
+    };
+
+    let old_source = git_read(repo_root, &["show", &format!("HEAD:{old_spec}")])?;
     // A failed diff read is an error, never an empty range list: no ranges
     // means no touched functions means Allowed, which would be a pass this
     // code never measured.

@@ -1064,3 +1064,7 @@ lto = "thin"
 # selecting by name is correct regardless of how many members exist.
 [workspace]
 resolver = "2"
+
+[[test]]
+name = "hook_debt_scope_e2e"
+path = "tests/hook_debt_scope_e2e.rs"

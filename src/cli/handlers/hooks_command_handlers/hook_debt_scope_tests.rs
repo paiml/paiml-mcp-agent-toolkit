@@ -415,7 +415,6 @@ mod staged_repo {
     #[test]
     fn staged_verdict_allows_a_one_line_fix_beside_pre_existing_debt() {
         let repo = repo_with_committed_debt();
-        stage(repo.path(), ONE_LINE_IN_INNOCENT);
 
         let verdict =
             staged_verdict(repo.path(), Path::new("src/lib.rs"), LIMITS).expect("verdict");
@@ -469,7 +468,6 @@ mod staged_repo {
     #[test]
     fn staged_verdict_reads_the_index_not_the_working_tree() {
         let repo = repo_with_committed_debt();
-        stage(repo.path(), ONE_LINE_IN_INNOCENT);
         std::fs::write(repo.path().join("src/lib.rs"), GROWTH_IN_INNOCENT).expect("write");
 
         let verdict =
@@ -507,7 +505,6 @@ mod staged_repo {
     #[test]
     fn staged_verdict_for_file_resolves_the_repo_from_the_path() {
         let repo = repo_with_committed_debt();
-        stage(repo.path(), ONE_LINE_IN_INNOCENT);
 
         let verdict =
             staged_verdict_for_file(&repo.path().join("src/lib.rs"), LIMITS).expect("verdict");
@@ -533,4 +530,279 @@ mod staged_repo {
             "the error names the path: {err}"
         );
     }
+    #[test]
+    fn staged_verdict_allows_one_line_fix_after_git_mv() {
+        let repo = repo_with_committed_debt();
+        git(repo.path(), &["mv", "src/lib.rs", "src/renamed.rs"]);
+        // Wait, stage() function writes to src/lib.rs hardcoded!
+        // So I'll do it manually
+        std::fs::write(repo.path().join("src/renamed.rs"), ONE_LINE_IN_INNOCENT).expect("write");
+        git(repo.path(), &["add", "src/renamed.rs"]);
+
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/renamed.rs"), LIMITS).expect("verdict");
+        assert!(
+            verdict.is_allowed(),
+            "file was renamed and edited, should keep its old baseline and be allowed: {:?}",
+            verdict
+        );
+    }
+
+    #[test]
+    fn staged_verdict_mutant_no_rename_resolution_refuses() {
+        let repo = repo_with_committed_debt();
+        git(repo.path(), &["mv", "src/lib.rs", "src/renamed.rs"]);
+        std::fs::write(repo.path().join("src/renamed.rs"), ONE_LINE_IN_INNOCENT).expect("write");
+        git(repo.path(), &["add", "src/renamed.rs"]);
+
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/renamed.rs"), LIMITS).expect("verdict");
+        assert!(verdict.is_allowed(), "real code allows");
+
+        // Mutant logic (old behaviour without -M name status)
+        let spec = "src/renamed.rs";
+        let staged = format!(":{spec}");
+        let new_source = super::super::git_read(repo.path(), &["show", &staged])
+            .unwrap()
+            .unwrap();
+        let old_source =
+            super::super::git_read(repo.path(), &["show", &format!("HEAD:{spec}")]).unwrap(); // This will be None because src/renamed.rs doesn't exist in HEAD!
+        let diff = super::super::git_read(repo.path(), &["diff", "--cached", "-U0", "--", spec])
+            .unwrap()
+            .unwrap();
+
+        let mutant_verdict =
+            super::super::diff_scoped_verdict(old_source.as_deref(), &new_source, &diff, LIMITS)
+                .unwrap();
+        assert!(
+            !mutant_verdict.is_allowed(),
+            "mutant without rename resolution loses baseline and refuses pre-existing debt"
+        );
+    }
+}
+const TWO_IMPLS_HEAD: &str = "\
+struct A;
+impl A {
+    fn new() -> Self { 
+        let mut x = 1;
+        if x > 0 { x += 1; }
+        if x > 1 { x += 1; }
+        if x > 2 { x += 1; }
+        if x > 3 { x += 1; }
+        if x > 4 { x += 1; }
+        if x > 5 { x += 1; }
+        A
+    }
+}
+struct B;
+impl B {
+    fn new() -> Self { B }
+}
+";
+
+const TWO_IMPLS_SECOND_GROWS: &str = "\
+struct A;
+impl A {
+    fn new() -> Self { 
+        let mut x = 1;
+        if x > 0 { x += 1; }
+        if x > 1 { x += 1; }
+        if x > 2 { x += 1; }
+        if x > 3 { x += 1; }
+        if x > 4 { x += 1; }
+        if x > 5 { x += 1; }
+        A
+    }
+}
+struct B;
+impl B {
+    fn new() -> Self { 
+        let mut x = 1;
+        if x > 0 { x += 1; }
+        if x > 1 { x += 1; }
+        if x > 2 { x += 1; }
+        if x > 3 { x += 1; }
+        if x > 4 { x += 1; }
+        B
+    }
+}
+";
+
+const TWO_IMPLS_SECOND_DEBTED_HEAD: &str = "\
+struct A;
+impl A {
+    fn new() -> Self { A }
+}
+struct B;
+impl B {
+    fn new() -> Self { 
+        let mut x = 1;
+        if x > 0 { x += 1; }
+        if x > 1 { x += 1; }
+        if x > 2 { x += 1; }
+        if x > 3 { x += 1; }
+        if x > 4 { x += 1; }
+        if x > 5 { x += 1; }
+        B
+    }
+}
+";
+
+const TWO_IMPLS_SECOND_DEBTED_TOUCHED: &str = "\
+struct A;
+impl A {
+    fn new() -> Self { A }
+}
+struct B;
+impl B {
+    fn new() -> Self { 
+        let mut x = 2; // touched
+        if x > 0 { x += 1; }
+        if x > 1 { x += 1; }
+        if x > 2 { x += 1; }
+        if x > 3 { x += 1; }
+        if x > 4 { x += 1; }
+        if x > 5 { x += 1; }
+        B
+    }
+}
+";
+
+const THREE_IMPLS_INSERTED_BEFORE: &str = "\
+struct AA;
+impl AA {
+    fn new() -> Self { AA } // Inserted
+}
+struct A;
+impl A {
+    fn new() -> Self { A }
+}
+struct B;
+impl B {
+    fn new() -> Self { 
+        let mut x = 2; // touched
+        if x > 0 { x += 1; }
+        if x > 1 { x += 1; }
+        if x > 2 { x += 1; }
+        if x > 3 { x += 1; }
+        if x > 4 { x += 1; }
+        if x > 5 { x += 1; }
+        B
+    }
+}
+";
+
+#[test]
+fn hook_debt_scope_pairing_two_impls_growth_in_second_refused() {
+    let diff = "@@ -17 +17,7 @@\n";
+    let verdict = diff_scoped_verdict(Some(TWO_IMPLS_HEAD), TWO_IMPLS_SECOND_GROWS, diff, LIMITS)
+        .expect("parse");
+    assert!(!verdict.is_allowed(), "growth must be refused");
+    let rendered = verdict.rendered().join("\n");
+    assert!(rendered.contains("new"), "must name 'new'");
+    assert!(
+        rendered.contains("6 > 5"),
+        "must contain measured and limit"
+    );
+    assert!(rendered.contains("(was 1)"), "must contain previous");
+}
+
+#[test]
+fn hook_debt_scope_pairing_two_impls_touched_second_debted_allowed() {
+    let diff = "@@ -8 +8 @@\n-        let mut x = 1;\n+        let mut x = 2; // touched\n";
+    let verdict = diff_scoped_verdict(
+        Some(TWO_IMPLS_SECOND_DEBTED_HEAD),
+        TWO_IMPLS_SECOND_DEBTED_TOUCHED,
+        diff,
+        LIMITS,
+    )
+    .expect("parse");
+    assert!(verdict.is_allowed(), "touched without growing -> allowed");
+}
+
+#[test]
+fn hook_debt_scope_pairing_inserted_before_differs_min_baseline_refused() {
+    let diff = "@@ -0,0 +1,4 @@\n@@ -8 +12 @@\n-        let mut x = 1;\n+        let mut x = 2; // touched\n";
+    let verdict = diff_scoped_verdict(
+        Some(TWO_IMPLS_SECOND_DEBTED_HEAD),
+        THREE_IMPLS_INSERTED_BEFORE,
+        diff,
+        LIMITS,
+    )
+    .expect("parse");
+    assert!(
+        !verdict.is_allowed(),
+        "count differs, min baseline used, so debted is refused"
+    );
+    let rendered = verdict.rendered().join("\n");
+    assert!(
+        rendered.contains("new - Cyclomatic 7 > 5 (was 1)"),
+        "must use the min baseline (1) from the first 'new'"
+    );
+}
+
+#[test]
+fn hook_debt_scope_pairing_mutant_bare_name_find() {
+    let new_functions = measure_source(TWO_IMPLS_SECOND_GROWS).unwrap();
+    let old_functions = measure_source(TWO_IMPLS_HEAD).unwrap();
+    let ranges = parse_touched_ranges("@@ -17 +17,7 @@\n");
+
+    let mut growths = Vec::new();
+    for func in touched_functions(&new_functions, &ranges) {
+        let previous = old_functions.iter().find(|old| old.name == func.name);
+        growths.extend(super::growth_for(func, previous, LIMITS));
+    }
+
+    let mutant_verdict = if growths.is_empty() {
+        DebtVerdict::Allowed
+    } else {
+        DebtVerdict::Refused(growths)
+    };
+
+    assert!(mutant_verdict.is_allowed(), "the mutant allows the growth because it matches against the first 'new' (cyc=7), hiding the growth of the second 'new' (cyc=6)");
+}
+#[test]
+fn hook_debt_scope_rename_to_deleted_name_inherits_baseline_pin() {
+    // PIN: This asserts the CURRENT (wrong) behaviour where a touched function renamed to the name of a
+    // DELETED function inherits the deleted one's baseline. This is an accepted limitation of name-keyed pairing.
+
+    let old_source = "\
+fn deleted_debted(x: i32) -> i32 {
+    let mut n = x;
+    if x > 0 { n += 1; }
+    if x > 1 { n += 1; }
+    if x > 2 { n += 1; }
+    if x > 3 { n += 1; }
+    if x > 4 { n += 1; }
+    if x > 5 { n += 1; }
+    if x > 6 { n += 1; }
+    if x > 7 { n += 1; }
+    if x > 8 { n += 1; }
+    n
+}
+fn will_rename(x: i32) -> i32 {
+    x + 1
+}
+";
+
+    let new_source = "\
+fn deleted_debted(x: i32) -> i32 {
+    let mut n = x + 1; // touched
+    if x > 0 { n += 1; }
+    if x > 1 { n += 1; }
+    if x > 2 { n += 1; }
+    if x > 3 { n += 1; }
+    if x > 4 { n += 1; }
+    if x > 5 { n += 1; }
+    n
+}
+";
+    let diff = "@@ -1,14 +1,9 @@\n";
+    let verdict = diff_scoped_verdict(Some(old_source), new_source, diff, LIMITS).expect("parse");
+    // Under correct identity tracking (it's actually `will_rename`), it grew from cyc=1 to cyc=7, limit=5. Should be REFUSED.
+    // However, it pairs with `deleted_debted` (cyc=10), sees 7 <= 10, and ALLOWS.
+    assert!(
+        verdict.is_allowed(),
+        "PIN: wrongly inherits deleted baseline and passes"
+    );
 }
