@@ -541,7 +541,7 @@ mod child_process_isolation_tests {
     //!
     //! These four tests are the guard: a fixture crate the child can lint in
     //! seconds, an environment the child cannot inherit instrumentation
-    //! through, an address-space cap on the child, and a wall-clock bound on
+    //! through, an heap cap on the child, and a wall-clock bound on
     //! the two tests that failed.
     use super::*;
     use std::ffi::OsStr;
@@ -640,7 +640,7 @@ mod child_process_isolation_tests {
         );
     }
 
-    /// (c) The child has an address-space cap — #1127's ask.
+    /// (c) The child has an heap cap — #1127's ask.
     ///
     /// The deadline and the process-group kill bound how long a child runs and
     /// guarantee it dies; neither bounds how much memory it takes with it.
@@ -652,8 +652,8 @@ mod child_process_isolation_tests {
             &std::env::temp_dir(),
         ));
         assert!(
-            line.contains("prlimit --as=") || line.contains("ulimit -v"),
-            "the child compiler must run under an address-space cap; command line was: {line}"
+            line.contains("prlimit --data=") || line.contains("ulimit -d"),
+            "the child compiler must run under an heap cap; command line was: {line}"
         );
     }
 

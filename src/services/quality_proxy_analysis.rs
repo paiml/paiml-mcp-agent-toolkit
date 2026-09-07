@@ -80,7 +80,17 @@ name = \"quality_proxy_fixture\"
 version = \"0.1.0\"
 ";
 
-/// Address space a child compiler may map before the kernel refuses it.
+/// Heap (`RLIMIT_DATA`) a child compiler may allocate before the kernel
+/// refuses it.
+///
+/// NOT `RLIMIT_AS`: address space counts every *reservation* rustc makes, and
+/// rustc reserves far more virtual address space than it ever touches, so an
+/// 8 GiB `--as` killed the child on a GitHub-hosted runner while passing on
+/// this workstation — `the_wrapped_child_still_reports_clippy_findings`, the
+/// control that fails when the wrapper never execs cargo, caught it on
+/// PR #1218 (run job 101801711338, lint findings `[]`). Since Linux 4.7
+/// `RLIMIT_DATA` covers brk and anonymous mmap, which is the memory a runaway
+/// child actually consumes.
 ///
 /// The deadline bounds how long a child runs and the process-group kill
 /// guarantees it dies; neither bounds how much memory it takes with it on the
@@ -88,7 +98,7 @@ version = \"0.1.0\"
 /// dependency-free file needs — measured in hundreds of megabytes — and far
 /// below what a runaway child can cost a CI box, so it converts an OOM that
 /// takes the whole job down into a compile error in one child.
-const CHILD_ADDRESS_SPACE_LIMIT_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+const CHILD_HEAP_LIMIT_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 
 /// Variables a child compiler must never inherit from this process.
 ///
@@ -120,7 +130,7 @@ fn prlimit_on_path() -> bool {
 ///
 /// One constructor for every child this service starts, so that no spawn site
 /// can be added later that misses any of the three things a spawn here has to
-/// do: run under an address-space cap, own its target directory, and inherit
+/// do: run under a heap cap, own its target directory, and inherit
 /// none of the parent's coverage instrumentation. The deadline and the
 /// process-group kill stay where they were, in `run_with_timeout`, which every
 /// caller of this function passes the command to.
@@ -131,7 +141,7 @@ pub(crate) fn child_command(
 ) -> std::process::Command {
     let mut cmd = if prlimit_on_path() {
         let mut cmd = std::process::Command::new("prlimit");
-        cmd.arg(format!("--as={CHILD_ADDRESS_SPACE_LIMIT_BYTES}"))
+        cmd.arg(format!("--data={CHILD_HEAP_LIMIT_BYTES}"))
             .arg("--")
             .arg(program);
         cmd
@@ -145,8 +155,8 @@ pub(crate) fn child_command(
         let mut cmd = std::process::Command::new("sh");
         cmd.arg("-c")
             .arg(format!(
-                "ulimit -v {} 2>/dev/null; exec \"$0\" \"$@\"",
-                CHILD_ADDRESS_SPACE_LIMIT_BYTES / 1024
+                "ulimit -d {} 2>/dev/null; exec \"$0\" \"$@\"",
+                CHILD_HEAP_LIMIT_BYTES / 1024
             ))
             .arg(program);
         cmd

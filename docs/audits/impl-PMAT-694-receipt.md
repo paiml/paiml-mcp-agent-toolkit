@@ -164,6 +164,16 @@ Regenerated on a clean tree with the repo-built binary and committed separately:
 `docs/status/orphan-files-ledger.md` (b04840239, 4444 → 4445 tracked `.rs`
 files, 407 → 408 orphaned).
 
+## What CI caught that this box could not
+
+Two rounds, both by a control rather than by a reviewer:
+
+1. **The fixture could not be packaged.** The manifest and lock were `include_str!` of `tests/fixtures/quality_proxy/`, but a directory with its own `Cargo.toml` is a nested package and `cargo package` drops it — 0 of the fixture's files in `--list`. The published crate would not have compiled. Found by the quorum delegate; fixed by making the manifest and lock string constants and deleting the directory, which also returned the `orphan_files` ratchet to 407.
+
+2. **The heap cap killed the child on a GitHub-hosted runner.** `prlimit --as=8GiB` passed here and failed in `run the tests / unified-protocol` (job 101801711338): `the_wrapped_child_still_reports_clippy_findings` — the control that fails when the wrapper never execs cargo — reported an empty findings list. `RLIMIT_AS` counts every virtual reservation rustc makes, and rustc reserves far more than it touches. The cap is `RLIMIT_DATA` now (`prlimit --data`, `ulimit -d` in the shim), which since Linux 4.7 covers brk and anonymous mmap — the memory a runaway child actually consumes, which is what #1127 asked for.
+
+The second is the whole reason the control exists: without it the wrapper would have silently linted nothing in CI and the gate would have reported a clean proxy.
+
 verdict: PARTIAL — the defect is fixed and every guard is green (acceptance exit 0), but `pmat verify` is red at `ok: false` on four tests: three pre-existing documentation_scorer failures this branch does not touch, and the `orphan_files` ratchet baseline in `.pmat-ratchet.toml`, which is outside scope_paths and needs a justified raise from 407 to 408.
 
 IMPL-PMAT-694-RECEIPT-END
