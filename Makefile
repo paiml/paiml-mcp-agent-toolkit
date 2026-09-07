@@ -185,6 +185,14 @@ gate-differential: ## Every metric must differ between an empty and a large proj
 gate-artifact: gate-differential gate-flag-efficacy ## Both falsification gates
 	@echo "✅ artifact falsification gates passed"
 
+.PHONY: board-check board-check-selftest
+
+board-check: ## the board is cleared: every open PR/issue/ticket has an enacted disposition (exit 1 lists the gaps)
+	@bash scripts/board-check.sh
+
+board-check-selftest: ## Offline self-test for scripts/board-check.sh (planted-gap + covered fixtures)
+	@bash scripts/board-check-selftest.sh
+
 # ── Release gates the dogfood protocol looks for by name.
 #
 # All three were ABSENT, and their absence reported as WARN — which the protocol

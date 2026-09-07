@@ -1,0 +1,46 @@
+# Hand-authored work contract for PMAT-693 ([train/BC]): the release train's
+# "cleared board" definition had no instrument — 3.39.0 produced a 104-row
+# disposition ledger and nothing enforced it. `make board-check` is that
+# instrument: read-only, run from the session (never as a PR check), exit 1
+# listing every gap. Every evidence_method below was run on this tree.
+name: "PMAT-693"
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  description: "make board-check exits 1 naming every open PR without a disposition row, every open issue without exactly one milestone or an evidence closure, and every non-completed roadmap ticket absent from the newest dispositions ledger; exit 0 only when there are no gaps"
+  references:
+    - "scripts/board-check.sh"
+    - "scripts/board-check-selftest.sh"
+    - "Makefile"
+    - "docs/audits/dispositions-3.39.0.json"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 4
+proof_obligations:
+- id: "PO-B1"
+  statement: "On a fixture roadmap with one completed ticket, one planned ticket covered by a fixture ledger (defer(3.41.0)) and one planted planned ticket absent from that ledger, board-check --offline exits 1 naming exactly the planted id and nothing else"
+  evidence_method: "make board-check-selftest"
+- id: "PO-B2"
+  statement: "On a fixture where every non-completed ticket is covered, board-check --offline exits 0 with 'board-check: 0 gap(s)'"
+  evidence_method: "make board-check-selftest"
+- id: "PO-B3"
+  statement: "On this repository's live board the three legs run (PRs, issues, tickets) and the summary line reports the gap count; the count is non-zero until Phase E of the release train enacts every disposition"
+  evidence_method: "make board-check; test $? -eq 1 && bash scripts/board-check.sh | grep -qE '^board-check: [0-9]+ gap\\(s\\)$'"
+- id: "PO-B4"
+  statement: "Both scripts are bashrs-clean (0 errors)"
+  evidence_method: "bashrs lint scripts/board-check.sh scripts/board-check-selftest.sh"
+falsifiable_claims:
+- hypothesis: "On a fixture roadmap with one completed ticket, one planned ticket covered by a fixture ledger (defer(3.41.0)) and one planted planned ticket absent from that ledger, board-check --offline exits 1 naming exactly the planted id and nothing else"
+  method: "make board-check-selftest"
+  from_step: "B1"
+- hypothesis: "On a fixture where every non-completed ticket is covered, board-check --offline exits 0 with 'board-check: 0 gap(s)'"
+  method: "make board-check-selftest"
+  from_step: "B2"
+- hypothesis: "On this repository's live board the three legs run (PRs, issues, tickets) and the summary line reports the gap count; the count is non-zero until Phase E of the release train enacts every disposition"
+  method: "make board-check; test $? -eq 1 && bash scripts/board-check.sh | grep -qE '^board-check: [0-9]+ gap\\(s\\)$'"
+  from_step: "B3"
+- hypothesis: "Both scripts are bashrs-clean (0 errors)"
+  method: "bashrs lint scripts/board-check.sh scripts/board-check-selftest.sh"
+  from_step: "B4"

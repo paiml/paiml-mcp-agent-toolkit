@@ -690,7 +690,7 @@ fn build_sarif(report: &ComplianceReport, project_path: &Path) -> serde_json::Va
     // Every result is about the project as a whole: `ComplianceCheck` carries a
     // name, status, message and severity, and no file. This used to be encoded
     // as `project_path` verbatim, which put the ABSOLUTE path of whoever ran it
-    // into the document — "/home/noah/src/paiml-mcp-agent-toolkit". That output
+    // into the document — "/home/<user>/src/<checkout>". That output
     // is uploaded to code scanning, so it published a developer's home
     // directory, and it made the document differ between two checkouts of the
     // same commit. `%SRCROOT%` is the standard base id for repository-relative
