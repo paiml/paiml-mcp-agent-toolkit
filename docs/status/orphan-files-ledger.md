@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4444 tracked `.rs` files: 3955 reachable from 137 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35910 lines, 2022 `#[test]` fns).
+4445 tracked `.rs` files: 3955 reachable from 137 target root(s), 408 orphaned (126935 lines, 6294 `#[test]` fns), 82 quarantined (35910 lines, 2022 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -491,6 +491,7 @@ same change; do not edit counts by hand.
 | `tests/fixtures/numeric_claims/innocent/site6.rs` | pending-#1017 | 0 | 6 |
 | `tests/fixtures/numeric_claims/innocent/site7.rs` | pending-#1017 | 0 | 6 |
 | `tests/fixtures/numeric_claims/planted/binary_size.rs` | pending-#1017 | 0 | 9 |
+| `tests/fixtures/quality_proxy/src/lib.rs` | pending-#1017 | 0 | 15 |
 | `tests/fixtures/sample.rs` | pending-#1017 | 0 | 14 |
 | `tests/fixtures/test.rs` | pending-#1017 | 0 | 9 |
 | `tests/fixtures/test_artifacts.rs` | pending-#1017 | 0 | 854 |
