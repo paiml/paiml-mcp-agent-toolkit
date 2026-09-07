@@ -53,12 +53,10 @@ fn scanned_files(root: &Path) -> Vec<PathBuf> {
 #[test]
 fn fleet_banned_path_scan_is_clean() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    // PMAT-687: the fleet scan excludes exactly one pmat file, the
-    // hardcoded-path analyzer's own source (paiml/.github#65 — its recognisers
-    // and fixtures name the strings the scan bans). Everything else is scanned,
-    // and the tree must be clean: the debt pinned here at 3.39.0 (14 lines in
-    // the analyzer, one comment in check.rs) is paid or excluded.
-    const FLEET_EXCLUDED: [&str; 1] = ["src/services/hardcoded_paths.rs"];
+    // PMAT-687: nothing is excluded and nothing is pinned. The analyzer's own
+    // source once carried 14 of the banned literals (comments and fixtures);
+    // its fixtures now name a user the fleet does not ban, and its doc comments
+    // say `<user>`. The fleet gate scans this file like any other.
     let files = scanned_files(&root);
     assert!(
         files.len() > 100,
@@ -66,20 +64,16 @@ fn fleet_banned_path_scan_is_clean() {
         files.len()
     );
     let mut hits = Vec::new();
-    let mut excluded_seen = 0usize;
     for file in &files {
-        let Ok(text) = std::fs::read_to_string(file) else {
-            continue;
-        };
+        // The fleet gate is `git grep`, which reads bytes; a file that is not
+        // UTF-8 must not be skipped silently (quorum lane 1 on PMAT-687).
+        let bytes = std::fs::read(file).expect("a tracked file is readable");
+        let text = String::from_utf8_lossy(&bytes).into_owned();
         let rel = file
             .strip_prefix(&root)
             .unwrap_or(file)
             .display()
             .to_string();
-        if FLEET_EXCLUDED.contains(&rel.as_str()) {
-            excluded_seen += 1;
-            continue;
-        }
         for (n, line) in text.lines().enumerate() {
             for banned in BANNED {
                 if line.contains(banned) {
@@ -88,11 +82,6 @@ fn fleet_banned_path_scan_is_clean() {
             }
         }
     }
-    assert_eq!(
-        excluded_seen,
-        FLEET_EXCLUDED.len(),
-        "every fleet-excluded file is still tracked (an exclusion for a file that no longer exists is dead)"
-    );
     assert!(
         hits.is_empty(),
         "the fleet gate would fail on {} line(s):\n{}",
