@@ -4833,3 +4833,20 @@ roadmap:
   - deferred:3.41.0
   - kind:code
   notes: null
+- id: PMAT-705
+  github_issue: null
+  item_type: task
+  title: 'dead-code outcome tests: crate_with() builds a fixture with no Cargo.lock, so check_dead_code_outcome refuses for the MISSING LOCKFILE, not the syntax error the test names — it passes locally for the wrong reason and fails in ci/test (run 34123854548, a_crate_that_does_not_compile_is_reported_as_not_measured: not_measured was None). Give the fixture a lockfile via write_fixture_lockfile so each of the three legs measures what it claims'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T14:07:36Z
+  updated: 2026-09-07T14:07:36Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null

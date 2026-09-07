@@ -923,5 +923,14 @@
   "hrq": false,
   "enacted": "roadmap-label:deferred:3.41.0",
   "rationale": "S3 finding from the PMAT-694 quorum (lane 3, pre-existing site, not in the diff); no code this train"
+ },
+ {
+  "id": "PMAT-705",
+  "kind": "ticket",
+  "title": "dead-code outcome fixture has no Cargo.lock, so each leg refuses for the wrong reason",
+  "disposition": "complete",
+  "hrq": false,
+  "enacted": "pending:phase-2",
+  "rationale": "S1 absorbed into the 3.40.0 train: the missing lockfile made a_crate_that_does_not_compile_is_reported_as_not_measured pass locally for the wrong reason and fail ci/test on every PR of the train (run 34123854548), blocking ci/gate."
  }
 ]
