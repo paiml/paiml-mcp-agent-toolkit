@@ -2,19 +2,32 @@
 # board-check.sh — the board is cleared: every open PR/issue/ticket has an
 # enacted disposition. READ-ONLY: never mutates GitHub or the roadmap.
 # Prints one `GAP <kind> <id> <reason>` line per gap found, then a summary
-# line `board-check: <n> gap(s)`. Exits 1 iff n>0, 0 otherwise. (PMAT-693)
+# line `board-check: <n> gap(s)`. Exit 0 only when every leg ran and n=0;
+# 1 when n>0; 2 when the board could not be measured; 3 clean-but-partial.
+# (PMAT-693)
 set -euo pipefail
 
 usage() {
   cat <<'USAGE'
 Usage: board-check.sh [--ledger PATH] [--repo OWNER/NAME] [--roadmap PATH] [--offline]
+                      [--prs-json PATH] [--issues-json PATH]
 
   --ledger PATH      use this dispositions ledger instead of the lexically
                       newest ledger under docs/audits
   --repo OWNER/NAME  GitHub repo to query (default: taken from `gh repo view`)
   --roadmap PATH     roadmap.yaml to read tickets from (default:
                       docs/roadmaps/roadmap.yaml)
-  --offline          skip every `gh` call; only the ticket leg runs
+  --offline          skip every `gh` call; only the ticket leg runs. A clean
+                      partial run exits 3, never 0: one leg of three is not a
+                      cleared board
+  --prs-json PATH    read open PRs from this JSON file instead of `gh pr list`
+                      (the self-test's seam; same shape as gh's --json output)
+  --issues-json PATH read open issues from this JSON file instead of
+                      `gh issue list` (same shape as gh's --json output)
+
+Exit codes: 0 no gap and every leg ran · 1 at least one gap · 2 the run could
+not measure the board (a leg was truncated, the roadmap parsed to zero tickets,
+no ledger) · 3 clean but partial (--offline)
 USAGE
 }
 
@@ -22,6 +35,11 @@ ledger_path=""
 repo=""
 roadmap_path="docs/roadmaps/roadmap.yaml"
 offline=0
+prs_json=""
+issues_json=""
+# gh pages at 30 by default; a silently truncated listing reads as "no gap",
+# so both legs ask for this many and refuse a page that is exactly full.
+readonly GH_LIMIT=200
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -40,6 +58,14 @@ while [ $# -gt 0 ]; do
     --offline)
       offline=1
       shift
+      ;;
+    --prs-json)
+      prs_json="$2"
+      shift 2
+      ;;
+    --issues-json)
+      issues_json="$2"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -64,7 +90,7 @@ find_newest_ledger() {
   if [ "${#candidates[@]}" -eq 0 ]; then
     return 1
   fi
-  printf '%s\n' "${candidates[@]}" | sort | tail -n 1
+  printf '%s\n' "${candidates[@]}" | sort -V | tail -n 1
 }
 
 if [ -z "${ledger_path}" ]; then
@@ -150,6 +176,10 @@ is_enactable_disposition() {
   esac
 }
 
+if [ -z "${ticket_table}" ]; then
+  echo "board-check: ${roadmap_path} parsed to zero tickets — refusing to report a board it could not read" >&2
+  exit 2
+fi
 if [ -n "${ticket_table}" ]; then
   while IFS=$'\t' read -r ticket_id ticket_status; do
     [ -n "${ticket_id}" ] || continue
@@ -175,15 +205,23 @@ fi
 
 if [ "${offline}" -eq 1 ]; then
   echo "board-check: --offline set — PR and issue legs skipped, only the ticket leg ran"
-  echo "board-check: ${gap_count} gap(s)"
+  echo "board-check: ${gap_count} gap(s) (partial: 1 of 3 legs)"
   if [ "${gap_count}" -gt 0 ]; then
     exit 1
   fi
-  exit 0
+  exit 3
 fi
 
 # ── PR leg: one jq pass over open PRs against the ledger's "pr" rows.
-open_pr_table="$(gh pr list --repo "${repo}" --state open --json number,title,headRefName)"
+if [ -n "${prs_json}" ]; then
+  open_pr_table="$(cat "${prs_json}")"
+else
+  open_pr_table="$(gh pr list --repo "${repo}" --state open --limit "${GH_LIMIT}" --json number,title,headRefName)"
+fi
+if [ "$(jq 'length' <<<"${open_pr_table}")" -ge "${GH_LIMIT}" ]; then
+  echo "board-check: the PR listing is exactly ${GH_LIMIT} long — truncated, not measured" >&2
+  exit 2
+fi
 pr_gap_text="$(jq -r \
   --argjson prs "${open_pr_table}" \
   --slurpfile ledger_rows "${ledger_path}" \
@@ -198,13 +236,23 @@ pr_gap_text="$(jq -r \
 report_gap_lines "${pr_gap_text}"
 
 # ── Issue leg: one jq pass over open issues against the ledger's "issue" rows.
-# A newer ledger row may carry an `evidence` or `evidenced` key; a non-null
-# value there is treated as an evidence-closure that changes the missing-
-# milestone wording (see PMAT-693 brief). A `reject` row with `hrq: true` whose
+# A newer ledger row may carry an `evidence` or `evidenced` key. Evidence is
+# how a `complete` row gets CLOSED (release brief §0.3); an open issue whose
+# row carries evidence is therefore a gap in its own words — close it — never
+# an exemption (quorum lane 3 on PMAT-693: the earlier wording said "no
+# evidence-closure" exactly when there was one). A `reject` row with `hrq: true` whose
 # issue carries the `disposition:reject` label is the human review queue — the
 # run never closes a human-authored item on a reject — and counts as enacted
 # without a milestone (release brief §0.3, §8).
-open_issue_table="$(gh issue list --repo "${repo}" --state open --limit 200 --json number,title,milestone,labels,state)"
+if [ -n "${issues_json}" ]; then
+  open_issue_table="$(cat "${issues_json}")"
+else
+  open_issue_table="$(gh issue list --repo "${repo}" --state open --limit "${GH_LIMIT}" --json number,title,milestone,labels,state)"
+fi
+if [ "$(jq 'length' <<<"${open_issue_table}")" -ge "${GH_LIMIT}" ]; then
+  echo "board-check: the issue listing is exactly ${GH_LIMIT} long — truncated, not measured" >&2
+  exit 2
+fi
 issue_gap_text="$(jq -r \
   --argjson issues "${open_issue_table}" \
   --slurpfile ledger_rows "${ledger_path}" \
@@ -221,7 +269,7 @@ issue_gap_text="$(jq -r \
     | (
         if $issue.milestone == null and ($hrq_reject | not) then
           if $has_evidence then
-            "GAP issue " + $issue_id + " milestone missing and no evidence-closure"
+            "GAP issue " + $issue_id + " ledger row carries an evidence closure but the issue is still open — close it"
           else
             "GAP issue " + $issue_id + " no milestone"
           end
