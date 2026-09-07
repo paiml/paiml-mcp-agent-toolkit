@@ -4370,11 +4370,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'release cut 3.39.0: bump the five version carriers, CHANGELOG from merged PR bodies, tickets completed; tag, prerelease, manual publish from a detached worktree'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-07T07:31:22Z
   spec: null
   acceptance_criteria:
   - Cargo.toml, Cargo.lock (pmat entry), README.md version line, mcp.json, CHANGELOG.md ([Unreleased] → [3.39.0]); pmat verify; PR; tag on the merge commit; prerelease; publish-from-tag; AD-01 release-check and AD-02 dogfood-published exit 0 on the published crate; docs.rs doc_status true; prerelease promoted.
