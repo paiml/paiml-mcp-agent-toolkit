@@ -78,21 +78,58 @@ mutation_matrix:
     observed: "hook_debt_scope: 5 passed, 8 FAILED. diff_scope: 2 passed, 2 FAILED (the O11 case and the offender-naming case)."
     reading: "the suite discriminates the shipped rule from the rule it replaces"
 
+  - id: the_generated_hook_puts_the_flag_on_a_command_line_for_rust_only
+    rule: "complexity_gate_tests::complexity_gate_scopes_rust_to_the_diff_only and ::dropping_the_flag_from_the_generated_hook_goes_red in src/cli/handlers/hooks_command_handlers/hook_generation.rs READ the SCOPE_FLAG case arms out of the generated text (a bare hook.contains(\"--diff-scope\") would now pass on the doctrine COMMENT alone) and assert the *.rs arm asks for the scoped verdict, the fallback arm does not, and the invocation passes $SCOPE_FLAG without hardcoding the flag"
+    prediction: "20 passed. Two mutants are built inside the test and run through the SAME predicate: blanking the *.rs arm, and deleting $SCOPE_FLAG from the invocation. Both are asserted to be caught, and each mutant is first asserted to differ from the real hook so the legs cannot pass vacuously."
+    test: "cargo test -p pmat --lib complexity_gate"
+    if_fails: "the flag is declared and routed but never reaches a command line -- the exact state this ticket found, where a tested rule was not the rule the hook ran"
+  - id: end_to_end_the_hook_allows_the_o11_case_and_refuses_growth
+    rule: "a minimal git repo (no Cargo.toml, so the hook's fmt and clippy gates are inert), fixture.rs with `debted` at cyclomatic 36 and `innocent` at 1, committed BEFORE `pmat hooks install` so the debt is pre-existing; thresholds read back out of the installed hook (30/25); no --no-verify"
+    prediction: "a one-line edit inside `innocent` commits cleanly (rc 0, HEAD moves) although the whole-file measurement of the same file reports `Errors: 2` / `Max Cyclomatic: 36`; growing `innocent` itself to 36 is refused (rc 1, HEAD unchanged) printing `innocent - Cyclomatic 36 > 30 (was 1)` and `innocent - Cognitive 35 > 25 (was 0)`, with the untouched `debted` absent from the refusal"
+    test: "manual, recorded under wiring_status.end_to_end"
+    if_fails: "report O11 is still reproducible in the field: a developer is charged for debt the commit did not write"
 wiring_status:
-  measured_on: "2026-09-07, commit 045ab4b73"
+  measured_on: "2026-09-08, PMAT-707 phase 3"
   wired: >
-    NO. The rule, the git reads (staged_verdict / staged_verdict_for_file) and
-    the CLI entry point (handle_analyze_complexity_diff_scoped) all exist and
-    are tested, but no command line reaches them: the generated pre-commit hook
-    in src/cli/handlers/hooks_command_handlers/hook_generation.rs still runs
-    `pmat analyze complexity --file "$SRC_FILE"`, which is WHOLE FILE. Until the
-    `--diff-scope` flag is declared and routed, this contract holds over a rule
-    the hook does not run, and report O11 is still reproducible in the field.
+    YES, for Rust. `diff_scope: bool` is declared on AnalyzeCommands::Complexity
+    (clap `--diff-scope`, `requires = "file"`), route_complexity_analysis in
+    src/cli/handlers/analysis_handlers/core_routes.rs dispatches it to
+    handle_analyze_complexity_diff_scoped, and the generated pre-commit hook in
+    hook_generation.rs selects it PER STAGED FILE: `*.rs` gets
+    `SCOPE_FLAG="--diff-scope"`, every other language gets `SCOPE_FLAG=""` and
+    keeps the whole-file measurement, because the scoped measurement is
+    syn-based and there is no honest touched-set for a .py/.ts/.go file.
+  end_to_end:
+    procedure: >
+      A minimal `git init` repo (no Cargo.toml, so the hook's fmt and clippy
+      gates are inert and the complexity gate is the only variable), fixture.rs
+      holding `debted` (35 ifs, cyclomatic 36) and `innocent` (cyclomatic 1),
+      COMMITTED BEFORE `pmat hooks install` so the debt is genuinely
+      pre-existing. The hook exported PMAT_MAX_CYCLOMATIC_COMPLEXITY=30 /
+      PMAT_MAX_COGNITIVE_COMPLEXITY=25, read back out of the installed file
+      rather than taken from what the installer printed. No --no-verify.
+    baseline: >
+      The whole-file measurement over the same file reports `Errors: 2`,
+      `Max Cyclomatic: 36` — i.e. under the pre-BSE-12 rule EVERY commit
+      touching this file is refused. That is report O11.
+    allowed: >
+      A one-line change inside `innocent` (`acc = 0i64` -> `acc = 7i64`,
+      a single -/+ hunk at line 42) committed cleanly:
+      "Complexity check... OK / All quality gates passed!", rc 0, HEAD moved.
+      `debted` is over the threshold in the same file and did not affect it.
+    refused: >
+      Growing `innocent` itself to 35 ifs in the next commit was refused, rc 1,
+      HEAD unchanged, naming the function and both numbers:
+      "innocent - Cyclomatic 36 > 30 (was 1)" and
+      "innocent - Cognitive 35 > 25 (was 0)". `debted`, untouched and also at
+      cyclomatic 36, is ABSENT from the refusal — which is what distinguishes
+      the scoped verdict from the whole-file one.
   remaining: >
-    Declare `diff_scope: bool` on AnalyzeCommands::Complexity
-    (src/cli/commands/analyze_commands/mod.rs), which forces `diff_scope: false`
-    into 23 struct literals rustc names across 6 files — none of them in this
-    ticket's scope — then route it in
-    src/cli/handlers/analysis_handlers/core_routes.rs::route_complexity_command
-    to handle_analyze_complexity_diff_scoped, then add the flag to the hook's
-    command line and delete the doctrine paragraph that says WHOLE FILE.
+    One compiler-mandated site is unpatched and it blocks the crate's `tests`
+    target: tests/modules/analysis_timeout_test.rs:261 constructs
+    AnalyzeCommands::Complexity and needs `diff_scope: false`. It lies OUTSIDE
+    this ticket's scope_paths — the phase brief measured 23 E0063 sites across
+    six files under src/, and the integration-test target contributes a 24th —
+    so it was deliberately NOT edited. `cargo check -p pmat --lib --bins` is
+    clean; `--all-targets` is not, and the repo's own pre-commit clippy stage
+    therefore refuses to let the change be committed at all.

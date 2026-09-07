@@ -99,6 +99,7 @@
         let temp_dir = create_test_dir();
 
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: temp_dir.path().to_path_buf(),
             project_path: None,
             file: None,
@@ -286,6 +287,7 @@
         let output_path = temp_dir.path().join("complexity.json");
 
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: temp_dir.path().to_path_buf(),
             project_path: None,
             file: None,
@@ -432,6 +434,7 @@
 
         // Create a Complexity command with deprecated project_path
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: PathBuf::from("."),
             project_path: Some(temp_dir.path().to_path_buf()),
             file: None,

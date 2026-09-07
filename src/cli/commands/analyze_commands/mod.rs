@@ -110,6 +110,24 @@ pub enum AnalyzeCommands {
         #[arg(long, conflicts_with = "include")]
         file: Option<PathBuf>,
 
+        /// Judge only the functions the staged diff touches in --file, and
+        /// refuse only GROWTH
+        ///
+        /// The measurement is read out of git, not the working tree: the new
+        /// source is the staged blob (`git show :<path>`), the old source is
+        /// `git show HEAD:<path>`, and the touched set comes from
+        /// `git diff --cached -U0`. A touched function is refused only when it
+        /// is over the limit AND worse than it was at HEAD; a function with no
+        /// HEAD counterpart is judged against the limit alone. Untouched
+        /// functions never affect the verdict, over the limit or not.
+        ///
+        /// This is FEEDBACK for the pre-commit hook, not the gate — `ci / gate`
+        /// still enforces the thresholds over the whole tree on the merge path,
+        /// so scoping this to the diff removes no enforcement. Rust only: the
+        /// scoped measurement is syn-based.
+        #[arg(long, requires = "file")]
+        diff_scope: bool,
+
         /// Analyze specific files (comma-separated list for MCP tool composition)
         ///
         /// Enable AI agents to chain analysis tools by passing file lists between commands.

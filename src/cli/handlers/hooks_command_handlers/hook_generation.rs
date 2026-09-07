@@ -310,15 +310,18 @@ fi
 # side of it -- print the function and both numbers, exit non-zero -- is
 # handle_analyze_complexity_diff_scoped in
 # src/cli/handlers/complexity_handlers/mod.rs.
-# THE MEASUREMENT BELOW IS STILL WHOLE FILE, and it is what runs: no command
-# line reaches any of the above. A one-line fix in an undebted function of a
-# file with pre-existing debt is refused here, today. What is missing is one
-# flag -- `diff_scope: bool` on AnalyzeCommands::Complexity in
-# src/cli/commands/analyze_commands/mod.rs (which forces `diff_scope: false`
-# into 23 struct literals across 6 other files) and its route in
-# route_complexity_command -- after which `--diff-scope` goes on the line
-# below and this paragraph is deleted. Tests exist and pass over a rule the
-# hook does not call: that is a claim about a code path, not about this hook.
+# THAT RULE IS WHAT RUNS BELOW, for Rust files: the invocation carries
+# `--diff-scope`, so a one-line fix in an undebted function of a file with
+# pre-existing debt is ALLOWED, and growth inside a function the diff touches
+# is refused naming the function, the measured value, the limit and the value
+# it had at HEAD.
+# IT IS RUST ONLY, and deliberately: the scoped measurement is syn-based, so
+# there is no span for a .py/.ts/.go/.c/.lua staged file and no honest way to
+# say which of its functions the diff touched. Those files keep the WHOLE-FILE
+# measurement and are still charged for pre-existing debt -- the flag is
+# therefore chosen PER FILE inside the loop, not once for the run. Widening the
+# scope to another language means teaching hook_debt_scope.rs to measure it,
+# not passing the flag and hoping.
 STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.go' '*.c' '*.cpp' '*.lua' '*.php' '*.swift' 2>/dev/null)
 if [ -n "$STAGED_SRC" ]; then
     echo -n "  Complexity check... "
@@ -343,7 +346,16 @@ if [ -n "$STAGED_SRC" ]; then
             #   stripped Errors: 2                -> 'Errors: *[1-9]'   MATCH
             # NO_COLOR is set as well so the sed is belt-and-braces rather than
             # the only line of defence.
-            FILE_OUTPUT=$(NO_COLOR=1 pmat analyze complexity --file "$SRC_FILE" --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1 | sed "s/$(printf '\\033')\[[0-9;]*m//g")
+            # BSE-12 (PMAT-707): Rust gets the diff-scoped verdict, everything
+            # else keeps the whole-file one -- see the doctrine above. The
+            # expansion of $SCOPE_FLAG is deliberately UNQUOTED: it is either
+            # empty or the single space-free literal --diff-scope, and quoting
+            # it would pass an empty argument that clap rejects.
+            case "$SRC_FILE" in
+                *.rs) SCOPE_FLAG="--diff-scope" ;;
+                *)    SCOPE_FLAG="" ;;
+            esac
+            FILE_OUTPUT=$(NO_COLOR=1 pmat analyze complexity --file "$SRC_FILE" $SCOPE_FLAG --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1 | sed "s/$(printf '\\033')\[[0-9;]*m//g")
             if echo "$FILE_OUTPUT" | grep -qE 'Errors: *[1-9]'; then
                 COMPLEXITY_FAILED=1
                 # #1033: name the OFFENDER, not just the file.
@@ -857,6 +869,128 @@ mod complexity_gate_tests {
             hook.contains("offender not reported by this pmat build"),
             "when the pattern matches nothing the hook must say the offender is \
              unknown, not print a bare filename"
+        );
+    }
+
+    /// The per-file decision the generated hook makes, read out of its own
+    /// text: `case` pattern -> the value it assigns to `SCOPE_FLAG`.
+    ///
+    /// Read rather than restated, following this module's existing convention
+    /// of grepping the hook's own pattern instead of asserting a literal --
+    /// and because `--diff-scope` now appears in the doctrine COMMENT too, so
+    /// `hook.contains("--diff-scope")` would pass over a hook that never puts
+    /// the flag on a command line.
+    fn scope_flag_arms(hook: &str) -> Vec<(String, String)> {
+        hook.lines()
+            .filter_map(|line| {
+                let (pattern, rest) = line.trim().split_once(')')?;
+                let assign = rest.find("SCOPE_FLAG=\"")? + "SCOPE_FLAG=\"".len();
+                let value = &rest[assign..];
+                let end = value.find('"')?;
+                Some((pattern.trim().to_string(), value[..end].to_string()))
+            })
+            .collect()
+    }
+
+    /// The property, as a function, so the mutants below run through the SAME
+    /// predicate the real hook is judged by.
+    fn diff_scope_is_wired_for_rust_only(hook: &str) -> Result<(), String> {
+        let arms = scope_flag_arms(hook);
+        let rust = arms
+            .iter()
+            .find(|(pattern, _)| pattern == "*.rs")
+            .ok_or("no *.rs arm sets SCOPE_FLAG")?;
+        if rust.1 != "--diff-scope" {
+            return Err(format!(
+                "the *.rs arm must ask for the diff-scoped verdict, got {:?}",
+                rust.1
+            ));
+        }
+        let fallback = arms
+            .iter()
+            .find(|(pattern, _)| pattern == "*")
+            .ok_or("no fallback arm sets SCOPE_FLAG")?;
+        if !fallback.1.is_empty() {
+            return Err(format!(
+                "non-Rust staged files must keep the whole-file measurement \
+                 (the scoped one is syn-based), got {:?}",
+                fallback.1
+            ));
+        }
+        // The decision has to REACH pmat. An arm that sets a variable nobody
+        // passes is the shape this ticket exists to fix: a rule implemented,
+        // tested, and never on a command line.
+        let invocation = hook
+            .lines()
+            .find(|line| line.contains("pmat analyze complexity --file \"$SRC_FILE\""))
+            .ok_or("the complexity invocation is gone")?;
+        if !invocation.contains("$SCOPE_FLAG") {
+            return Err("the invocation does not pass $SCOPE_FLAG".to_string());
+        }
+        if invocation.contains("--diff-scope") {
+            return Err(
+                "the invocation hardcodes --diff-scope, which would apply the \
+                 syn-based scoped measurement to .py/.ts/.go staged files"
+                    .to_string(),
+            );
+        }
+        Ok(())
+    }
+
+    /// BSE-12 (PMAT-707): Rust is judged on the diff; other languages are not.
+    #[test]
+    fn complexity_gate_scopes_rust_to_the_diff_only() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        diff_scope_is_wired_for_rust_only(&hook).expect("the shipped hook must wire --diff-scope");
+
+        // The doctrine must not outlive the defect it described. A comment
+        // saying the measurement is whole-file, sitting above an invocation
+        // that scopes it, is how the next reader concludes the flag is inert.
+        assert!(
+            !hook.contains("THE MEASUREMENT BELOW IS STILL WHOLE FILE"),
+            "the pre-BSE-12 doctrine paragraph must be deleted now that the \
+             flag is on the command line"
+        );
+    }
+
+    /// The mutation: take `--diff-scope` back out and watch the assertion fail.
+    ///
+    /// Both mutants are built here rather than reverted by hand, so the proof
+    /// that this suite discriminates is re-run on every `cargo test` instead of
+    /// living in a commit message.
+    #[test]
+    fn dropping_the_flag_from_the_generated_hook_goes_red() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+
+        // Mutant 1: the *.rs arm stops asking for the scoped verdict -- the
+        // exact pre-BSE-12 behaviour, where every staged Rust file was graded
+        // whole-file and pre-existing debt refused a one-line fix.
+        let whole_file_again = hook.replace(
+            "SCOPE_FLAG=\"--diff-scope\"",
+            "SCOPE_FLAG=\"\" # mutant: whole file",
+        );
+        assert_ne!(
+            whole_file_again, hook,
+            "mutant 1 changed nothing -- the assertion below would be vacuous"
+        );
+        assert!(
+            diff_scope_is_wired_for_rust_only(&whole_file_again).is_err(),
+            "dropping --diff-scope from the *.rs arm must be caught"
+        );
+
+        // Mutant 2: the arms survive but the flag never reaches the command
+        // line. This is the failure the *.rs arm alone cannot see, and it is
+        // the state this ticket found the repo in.
+        let unwired = hook.replace(" $SCOPE_FLAG --max-cyclomatic", " --max-cyclomatic");
+        assert_ne!(
+            unwired, hook,
+            "mutant 2 changed nothing -- the assertion below would be vacuous"
+        );
+        assert!(
+            diff_scope_is_wired_for_rust_only(&unwired).is_err(),
+            "a SCOPE_FLAG that no invocation passes must be caught"
         );
     }
 }

@@ -66,6 +66,7 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_complexity_basic() {
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: PathBuf::from("/nonexistent/path/for/complexity/test"),
             project_path: None,
             file: None,
@@ -92,6 +93,7 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_complexity_with_file_and_thresholds() {
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: PathBuf::from("/tmp/test-complexity"),
             project_path: None,
             file: Some(PathBuf::from("/tmp/test-complexity/main.rs")),
@@ -117,6 +119,7 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_complexity_with_files_list() {
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: PathBuf::from("/nonexistent"),
             project_path: None,
             file: None,
@@ -146,6 +149,7 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_complexity_deprecated_project_path() {
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: PathBuf::from("."),
             project_path: Some(PathBuf::from("/tmp/deprecated-path")),
             file: None,

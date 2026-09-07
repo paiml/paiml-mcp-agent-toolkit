@@ -136,6 +136,7 @@
     #[test]
     fn test_analyze_commands_variants() {
         let complexity = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: PathBuf::from("."),
             project_path: None,
             file: Some(PathBuf::from("test.rs")),
@@ -265,3 +266,60 @@
         }
         */
     }
+
+/// BSE-12 (PMAT-707): `--diff-scope` must reach the parser, default off, and
+/// refuse to stand alone.
+///
+/// The flag changes which QUESTION `analyze complexity` answers -- judge only
+/// the functions the staged diff touches in `--file`, and refuse only growth --
+/// so `--diff-scope` without `--file` has nothing to scope to. clap enforces
+/// that with `requires = "file"`; if that attribute is dropped the third leg
+/// below goes red rather than the flag silently degrading to a whole-project
+/// run that ignores it.
+#[test]
+fn test_analyze_complexity_diff_scope_flag() {
+    // 8MB stack: the Cli enum overflows the default test stack (see
+    // test_cli_parse_empty).
+    let handle = std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(|| {
+            let parsed = Cli::try_parse_from([
+                "pmat",
+                "analyze",
+                "complexity",
+                "--file",
+                "src/lib.rs",
+                "--diff-scope",
+            ])
+            .expect("--diff-scope with --file must parse");
+            match parsed.command {
+                Commands::Analyze(AnalyzeCommands::Complexity {
+                    diff_scope, file, ..
+                }) => {
+                    assert!(diff_scope, "--diff-scope must set diff_scope");
+                    assert_eq!(file, Some(PathBuf::from("src/lib.rs")));
+                }
+                other => panic!("expected analyze complexity, got {other:?}"),
+            }
+
+            // Absent flag is false, not merely "not true by accident".
+            let default =
+                Cli::try_parse_from(["pmat", "analyze", "complexity", "--file", "src/lib.rs"])
+                    .expect("plain --file must parse");
+            match default.command {
+                Commands::Analyze(AnalyzeCommands::Complexity { diff_scope, .. }) => {
+                    assert!(!diff_scope, "diff_scope must default to false");
+                }
+                other => panic!("expected analyze complexity, got {other:?}"),
+            }
+
+            // Nothing to scope to => a parse error, not a silent whole-project run.
+            assert!(
+                Cli::try_parse_from(["pmat", "analyze", "complexity", "--diff-scope"]).is_err(),
+                "--diff-scope without --file must be refused: there is no file whose \
+                 staged diff could define the touched set"
+            );
+        })
+        .expect("Failed to spawn thread");
+    handle.join().expect("Thread panicked");
+}
