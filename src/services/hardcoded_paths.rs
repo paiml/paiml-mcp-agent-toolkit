@@ -2,7 +2,7 @@
 //!
 //! # Why this exists
 //!
-//! aprender shipped binaries containing `/home/noah/...`. They worked perfectly
+//! aprender shipped binaries containing `/home/<user>/...`. They worked perfectly
 //! on the machine that built them and were inert everywhere else. Nothing in the
 //! quality gates saw it: the code compiled, the tests passed (on that machine),
 //! clippy was clean, and the path was just a string literal.
@@ -173,52 +173,74 @@ impl Report {
 /// each arm requires a *specific* identifier (a username, a store hash, a
 /// toolchain root), never merely a leading slash.
 fn classify(path: &str) -> Option<PathKind> {
-    // `/home/<user>/` and `/Users/<user>/` — the trailing slash matters. Bare
-    // `/home` or `/Users` is the mount point, which is portable and meaningless
-    // on its own; it is the *named user under it* that pins the machine.
+    if let Some(decided) = classify_user_home(path) {
+        return decided;
+    }
+    if let Some(kind) = classify_windows_home(path) {
+        return Some(kind);
+    }
+    if let Some(kind) = classify_nix_or_root(path) {
+        return Some(kind);
+    }
+    classify_toolchain_state(path)
+}
+
+/// `/home/<user>/` and `/Users/<user>/` — the trailing slash matters. Bare
+/// `/home` or `/Users` is the mount point, which is portable and meaningless
+/// on its own; it is the *named user under it* that pins the machine.
+///
+/// `Some(verdict)` when the path is under one of those roots (the verdict may
+/// itself be `None`: a placeholder home is portable all the way down, so the
+/// caller must stop here rather than fall through to the build-host rules —
+/// `/home/user/.cargo/registry/…` is a documentation example, not this
+/// machine's crate cache). `None` when the prefix does not apply.
+fn classify_user_home(path: &str) -> Option<Option<PathKind>> {
     for prefix in ["/home/", "/Users/"] {
         if let Some(rest) = path.strip_prefix(prefix) {
             let user = rest.split('/').next().unwrap_or("");
-            if is_username(user) {
-                return Some(PathKind::UserHome);
-            }
-            // A placeholder home is portable all the way down, so stop here
-            // rather than fall through to the build-host rules below —
-            // `/home/user/.cargo/registry/…` is a documentation example, not
-            // this machine's crate cache.
-            return None;
+            return Some(is_username(user).then_some(PathKind::UserHome));
         }
     }
-    // Windows: `C:\Users\<user>\` in any drive letter, either slash direction.
-    if let Some(rest) = windows_users_suffix(path) {
-        let user = rest.split(['/', '\\']).next().unwrap_or("");
-        if is_username(user) {
-            return Some(PathKind::UserHome);
-        }
-    }
+    None
+}
+
+/// Windows: `C:\Users\<user>\` in any drive letter, either slash direction.
+fn classify_windows_home(path: &str) -> Option<PathKind> {
+    let rest = windows_users_suffix(path)?;
+    let user = rest.split(['/', '\\']).next().unwrap_or("");
+    is_username(user).then_some(PathKind::UserHome)
+}
+
+/// The Nix store, and `/root/` with something under it. A bare `/root/` is a
+/// prefix, not a location: pmat's own hook checker lists
+/// `["/home/", "/Users/", "/root/"]` as the patterns it searches for, and
+/// flagging a detector's own pattern table is the noise that makes a detector
+/// unusable.
+fn classify_nix_or_root(path: &str) -> Option<PathKind> {
     if path
         .strip_prefix("/nix/store/")
         .is_some_and(|r| !r.is_empty())
     {
         return Some(PathKind::NixStore);
     }
-    // A bare `/root/` with nothing under it is a prefix, not a location. pmat's
-    // own hook checker lists `["/home/", "/Users/", "/root/"]` as the patterns
-    // it searches for; flagging a detector's own pattern table is the noise that
-    // makes a detector unusable.
     if path.strip_prefix("/root/").is_some_and(|r| !r.is_empty()) {
         return Some(PathKind::BuildHost);
     }
-    // Toolchain state, wherever it is rooted. The host root is what makes it
-    // machine-specific, so there must be something before `/.cargo/registry/`:
-    // `/home/x/.cargo/registry/` is a real location, while the bare
-    // `"/.cargo/registry/"` in `file_discovery.rs` is an ignore-glob fragment.
-    for marker in ["/.cargo/registry/", "/.rustup/toolchains/"] {
-        if path.starts_with('/') && path.find(marker).is_some_and(|at| at > 0) {
-            return Some(PathKind::BuildHost);
-        }
-    }
     None
+}
+
+/// Toolchain state, wherever it is rooted. The host root is what makes it
+/// machine-specific, so there must be something before `/.cargo/registry/`:
+/// `/home/x/.cargo/registry/` is a real location, while the bare
+/// `"/.cargo/registry/"` in `file_discovery.rs` is an ignore-glob fragment.
+fn classify_toolchain_state(path: &str) -> Option<PathKind> {
+    if !path.starts_with('/') {
+        return None;
+    }
+    ["/.cargo/registry/", "/.rustup/toolchains/"]
+        .iter()
+        .any(|marker| path.find(marker).is_some_and(|at| at > 0))
+        .then_some(PathKind::BuildHost)
 }
 
 /// `C:\Users\<user>` / `c:/users/<user>` — returns what follows `Users`, if the
@@ -310,34 +332,48 @@ fn is_boundary(prev: u8) -> bool {
     )
 }
 
+/// Does a Windows drive-letter path (`C:\\…` or `C:/…`) begin at `i`?
+fn is_windows_drive(b: &[u8], i: usize) -> bool {
+    i + 2 < b.len()
+        && b[i].is_ascii_alphabetic()
+        && b[i + 1] == b':'
+        && (b[i + 2] == b'\\' || b[i + 2] == b'/')
+}
+
+/// Does an absolute path — unix (`/…`) or Windows drive-letter — begin at `i`?
+fn path_starts_at(b: &[u8], i: usize) -> bool {
+    b[i] == b'/' || is_windows_drive(b, i)
+}
+
+/// Terminate on whitespace, quotes, and shell/format metacharacters.
+fn ends_candidate(c: u8) -> bool {
+    c.is_ascii_whitespace()
+        || matches!(
+            c,
+            b'"' | b'\'' | b'`' | b')' | b']' | b'}' | b',' | b';' | b'|' | b'>' | b'<'
+        )
+}
+
+/// Index one past the last byte of the candidate that begins at `start`.
+fn candidate_end(b: &[u8], start: usize) -> usize {
+    let mut i = start;
+    while i < b.len() && !ends_candidate(b[i]) {
+        i += 1;
+    }
+    i
+}
+
 fn candidates(line: &str) -> Vec<&str> {
     let mut out = Vec::new();
     let bytes = line.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
-        let starts_path = bytes[i] == b'/'
-            || (i + 2 < bytes.len()
-                && bytes[i].is_ascii_alphabetic()
-                && bytes[i + 1] == b':'
-                && (bytes[i + 2] == b'\\' || bytes[i + 2] == b'/'));
-        if !starts_path || (i > 0 && !is_boundary(bytes[i - 1])) {
+        if !path_starts_at(bytes, i) || (i > 0 && !is_boundary(bytes[i - 1])) {
             i += 1;
             continue;
         }
         let start = i;
-        while i < bytes.len() {
-            let c = bytes[i];
-            // Terminate on whitespace, quotes, and shell/format metacharacters.
-            if c.is_ascii_whitespace()
-                || matches!(
-                    c,
-                    b'"' | b'\'' | b'`' | b')' | b']' | b'}' | b',' | b';' | b'|' | b'>' | b'<'
-                )
-            {
-                break;
-            }
-            i += 1;
-        }
+        i = candidate_end(bytes, start);
         if i > start {
             out.push(&line[start..i]);
         }
@@ -397,7 +433,7 @@ fn site_of(rel: &str) -> Site {
 }
 
 /// Is this line a comment? Comment hits are documentation-grade, not defects,
-/// so they are downgraded rather than dropped — a `/home/noah` in a comment is
+/// so they are downgraded rather than dropped — a `/home/<user>` in a comment is
 /// still a sign someone developed against one machine.
 fn is_comment(line: &str, ext: Option<&str>) -> bool {
     let t = line.trim_start();
@@ -434,75 +470,110 @@ fn is_comment(line: &str, ext: Option<&str>) -> bool {
 /// literals spanning multiple lines are not, because this reads line by line —
 /// that residual is why [`CfgTestTracker`] treats an early close as "leave the
 /// test region" (report as shipped) rather than the reverse.
+/// Skip a char literal that starts at the `'` at `quote`, returning the byte to
+/// resume scanning from.
+///
+/// Only a closing quote within a few bytes makes this a literal; a lifetime
+/// (`'a`) has none, so the scan rewinds to just past the quote and continues
+/// normally rather than swallowing the rest of the line.
+fn skip_char_literal(b: &[u8], quote: usize) -> usize {
+    let start = quote + 1;
+    let mut i = start;
+    while i < b.len() && i - start < 4 {
+        if b[i] == b'\\' {
+            i += 2;
+            continue;
+        }
+        if b[i] == b'\'' {
+            break;
+        }
+        i += 1;
+    }
+    if i >= b.len() || b[i] != b'\'' {
+        start // a lifetime; rewind and keep scanning normally
+    } else {
+        i + 1
+    }
+}
+
+/// Skip a raw string (`r"…"` or `r#"…"#` with any number of hashes) that starts
+/// at `r`, returning the byte to resume scanning from. An `r` that is not
+/// actually a raw string opener advances by one.
+fn skip_raw_string(b: &[u8], r: usize) -> usize {
+    let mut hashes = 0usize;
+    let mut j = r + 1;
+    while j < b.len() && b[j] == b'#' {
+        hashes += 1;
+        j += 1;
+    }
+    if j >= b.len() || b[j] != b'"' {
+        return r + 1;
+    }
+    j += 1;
+    // Scan to the terminator: `"` followed by `hashes` `#`s.
+    while j < b.len() {
+        if b[j] == b'"' && b[j + 1..].iter().take(hashes).all(|c| *c == b'#') {
+            j += 1 + hashes;
+            break;
+        }
+        j += 1;
+    }
+    j
+}
+
+/// Skip a normal string literal opening at `quote`, honouring backslash
+/// escapes, and return the byte to resume scanning from. An unterminated
+/// literal runs to the end of the line, which ends the scan.
+fn skip_string_literal(b: &[u8], quote: usize) -> usize {
+    let mut i = quote + 1;
+    while i < b.len() {
+        if b[i] == b'\\' {
+            i += 2;
+            continue;
+        }
+        if b[i] == b'"' {
+            break;
+        }
+        i += 1;
+    }
+    i + 1
+}
+
+/// Does a line comment (`//`) begin at `i`? Everything after it is skipped.
+fn is_line_comment(b: &[u8], i: usize) -> bool {
+    b[i] == b'/' && i + 1 < b.len() && b[i + 1] == b'/'
+}
+
+/// Does a raw string opener (`r"` or `r#`) begin at `i`?
+fn is_raw_string_open(b: &[u8], i: usize) -> bool {
+    b[i] == b'r' && i + 1 < b.len() && (b[i + 1] == b'"' || b[i + 1] == b'#')
+}
+
 fn braces_outside_literals(line: &str) -> (i32, i32) {
     let b = line.as_bytes();
     let (mut opens, mut closes) = (0i32, 0i32);
     let mut i = 0usize;
     while i < b.len() {
-        match b[i] {
-            b'/' if i + 1 < b.len() && b[i + 1] == b'/' => break, // line comment
-            b'{' => opens += 1,
-            b'}' => closes += 1,
-            b'\'' => {
-                // Char literal or a lifetime (`'a`). Only a closing quote within
-                // a few bytes makes it a literal; lifetimes have none.
-                i += 1;
-                let start = i;
-                while i < b.len() && i - start < 4 {
-                    if b[i] == b'\\' {
-                        i += 2;
-                        continue;
-                    }
-                    if b[i] == b'\'' {
-                        break;
-                    }
-                    i += 1;
-                }
-                if i >= b.len() || b[i] != b'\'' {
-                    i = start; // a lifetime; rewind and keep scanning normally
-                    continue;
-                }
-            }
-            b'r' if i + 1 < b.len() && (b[i + 1] == b'"' || b[i + 1] == b'#') => {
-                // Raw string: r"…" or r#"…"# with any number of hashes.
-                let mut hashes = 0usize;
-                let mut j = i + 1;
-                while j < b.len() && b[j] == b'#' {
-                    hashes += 1;
-                    j += 1;
-                }
-                if j >= b.len() || b[j] != b'"' {
-                    i += 1;
-                    continue;
-                }
-                j += 1;
-                // Scan to the terminator: `"` followed by `hashes` `#`s.
-                while j < b.len() {
-                    if b[j] == b'"' && b[j + 1..].iter().take(hashes).all(|c| *c == b'#') {
-                        j += 1 + hashes;
-                        break;
-                    }
-                    j += 1;
-                }
-                i = j;
-                continue;
-            }
-            b'"' => {
-                i += 1;
-                while i < b.len() {
-                    if b[i] == b'\\' {
-                        i += 2;
-                        continue;
-                    }
-                    if b[i] == b'"' {
-                        break;
-                    }
-                    i += 1;
-                }
-            }
-            _ => {}
+        if is_line_comment(b, i) {
+            break;
         }
-        i += 1;
+        i = if is_raw_string_open(b, i) {
+            skip_raw_string(b, i)
+        } else {
+            match b[i] {
+                b'{' => {
+                    opens += 1;
+                    i + 1
+                }
+                b'}' => {
+                    closes += 1;
+                    i + 1
+                }
+                b'\'' => skip_char_literal(b, i),
+                b'"' => skip_string_literal(b, i),
+                _ => i + 1,
+            }
+        };
     }
     (opens, closes)
 }
@@ -519,32 +590,43 @@ impl CfgTestTracker {
         if ext != Some("rs") {
             return false;
         }
-        let t = line.trim();
         if self.depth == 0 {
-            if t.starts_with("#[cfg(test)]") || t.starts_with("#[cfg(all(test") {
-                self.armed = true;
-                return false;
-            }
-            if self.armed {
-                // The `mod … {` that the attribute applies to. Attributes may
-                // stack, so tolerate intervening attribute lines.
-                if t.starts_with("#[") || t.is_empty() {
-                    return false;
-                }
-                self.armed = false;
-                if t.contains(" mod ") || t.starts_with("mod ") {
-                    self.depth = i32::from(t.contains('{'));
-                    return self.depth > 0;
-                }
-                return false;
-            }
+            return self.feed_outside(line.trim());
+        }
+        self.feed_inside(line)
+    }
+
+    /// At depth 0: arm on a `#[cfg(test)]` attribute, then look for the `mod … {`
+    /// it applies to. Always reports "not in a test module" except on the `mod`
+    /// line itself, which opens the region.
+    fn feed_outside(&mut self, t: &str) -> bool {
+        if t.starts_with("#[cfg(test)]") || t.starts_with("#[cfg(all(test") {
+            self.armed = true;
             return false;
         }
+        if !self.armed {
+            return false;
+        }
+        // The `mod … {` that the attribute applies to. Attributes may
+        // stack, so tolerate intervening attribute lines.
+        if t.starts_with("#[") || t.is_empty() {
+            return false;
+        }
+        self.armed = false;
+        if !t.contains(" mod ") && !t.starts_with("mod ") {
+            return false;
+        }
+        self.depth = i32::from(t.contains('{'));
+        self.depth > 0
+    }
+
+    /// Inside the module: track brace depth. Always reports "in a test module",
+    /// because the line that closes the module is still part of it.
+    fn feed_inside(&mut self, line: &str) -> bool {
         let (opens, closes) = braces_outside_literals(line);
         self.depth += opens - closes;
         if self.depth <= 0 {
             self.depth = 0;
-            return true; // the closing line is still part of the module
         }
         true
     }
@@ -667,7 +749,7 @@ mod tests {
 
     #[test]
     fn a_named_home_is_machine_specific() {
-        assert_eq!(classify("/home/noah/src/x"), Some(PathKind::UserHome));
+        assert_eq!(classify("/home/alice/src/x"), Some(PathKind::UserHome));
         assert_eq!(classify("/Users/alice/Code"), Some(PathKind::UserHome));
         assert_eq!(
             classify("C:\\Users\\bob\\AppData"),
@@ -738,15 +820,15 @@ mod tests {
     /// this, every docs link to a user page would be a finding.
     #[test]
     fn urls_are_not_paths() {
-        let (f, _) = scan_text("src/a.rs", r#"let u = "https://example.com/home/noah/x";"#);
+        let (f, _) = scan_text("src/a.rs", r#"let u = "https://example.com/home/alice/x";"#);
         assert!(f.is_empty(), "URL was flagged as a path: {f:?}");
     }
 
     #[test]
     fn shipped_code_is_ranked_above_tests_and_docs() {
-        let (shipped, _) = scan_text("src/main.rs", r#"let p = "/home/noah/data";"#);
-        let (test, _) = scan_text("tests/it.rs", r#"let p = "/home/noah/data";"#);
-        let (doc, _) = scan_text("docs/guide.md", "see /home/noah/data");
+        let (shipped, _) = scan_text("src/main.rs", r#"let p = "/home/alice/data";"#);
+        let (test, _) = scan_text("tests/it.rs", r#"let p = "/home/alice/data";"#);
+        let (doc, _) = scan_text("docs/guide.md", "see /home/alice/data");
         assert_eq!(shipped[0].site, Site::Shipped);
         assert_eq!(test[0].site, Site::Test);
         assert_eq!(doc[0].site, Site::Doc);
@@ -755,7 +837,7 @@ mod tests {
     /// A comment is a weaker signal than an executable literal, but not zero.
     #[test]
     fn a_comment_hit_is_downgraded_not_dropped() {
-        let (f, _) = scan_text("src/a.rs", "// built against /home/noah/src/x");
+        let (f, _) = scan_text("src/a.rs", "// built against /home/alice/src/x");
         assert_eq!(f.len(), 1, "comment hit was dropped entirely");
         assert_eq!(f[0].site, Site::Doc);
     }
@@ -829,13 +911,13 @@ mod tests {
     #[test]
     fn an_inline_cfg_test_module_is_test_site_not_shipped() {
         let src = r#"
-pub fn real() -> &'static str { "/home/noah/prod" }
+pub fn real() -> &'static str { "/home/alice/prod" }
 
 #[cfg(test)]
 mod tests {
     #[test]
     fn t() {
-        let fixture = "/home/noah/fixture";
+        let fixture = "/home/alice/fixture";
         assert!(fixture.len() > 0);
     }
 }
@@ -862,10 +944,10 @@ mod tests {
         let src = r#"
 #[cfg(test)]
 mod tests {
-    fn t() { let _ = "/home/noah/fixture"; }
+    fn t() { let _ = "/home/alice/fixture"; }
 }
 
-pub fn later() -> &'static str { "/home/noah/prod" }
+pub fn later() -> &'static str { "/home/alice/prod" }
 "#;
         let (f, _) = scan_text("src/lib.rs", src);
         let prod = f.iter().find(|x| x.path.contains("prod")).expect("prod");
@@ -890,7 +972,7 @@ mod tests {
         let _ = msg;
     }
     fn b() {
-        let p = \"/home/noah/fixture\";
+        let p = \"/home/alice/fixture\";
         let _ = p;
     }
 }
@@ -979,7 +1061,7 @@ mod tests {
         );
         // A real user under the same shape is still a finding.
         assert_eq!(
-            classify("/home/noah/.cargo/registry/src/x"),
+            classify("/home/alice/.cargo/registry/src/x"),
             Some(PathKind::UserHome)
         );
     }
