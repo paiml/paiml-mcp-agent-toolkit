@@ -4565,3 +4565,38 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-691
+  github_issue: null
+  item_type: task
+  title: 'board post-3.39.0: disposition the five dependabot PRs opened 2026-09-07 (#1210-#1214) and reconcile PMAT-682''s roadmap status (recorded complete in dispositions-3.39.0.json, still planned in roadmap.yaml)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T07:00:54Z
+  updated: 2026-09-07T07:01:13.407321051+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:triage
+  notes: null
+- id: PMAT-692
+  github_issue: null
+  item_type: task
+  title: 'deps: flate2 1.1.10 moves to miniz_oxide 0.9 and adds zlib-rs 0.6.7 while another dependency still resolves miniz_oxide 0.8.9 — dependabot #1210 (closed) would land a duplicate crate version and a new transitive crate; deny.toml multiple-versions = warn so CI cannot refuse it. Either pin flate2''s backend (default-features = false + rust_backend) or make multiple-versions = deny with an allowlist, then re-take the pmcp 2.19.3 / lru 0.18.4 / toml 1.1.5 bumps'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T07:23:43Z
+  updated: 2026-09-07T07:23:43Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.40.0
+  - kind:code
+  notes: null
