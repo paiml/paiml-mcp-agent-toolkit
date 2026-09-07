@@ -75,3 +75,10 @@ mod release_workflow_tests;
 #[cfg(test)]
 #[path = "../../../tests/fleet_banned_paths_tests.rs"]
 mod fleet_banned_paths_tests;
+
+// PMAT-695 (#1156): the build script's assets are committed and checksummed,
+// and the script reaches no network. Registered here for the same reason as
+// its siblings above: nothing reaches `src/tests/lib.rs`.
+#[cfg(test)]
+#[path = "../../../tests/hermetic_assets_tests.rs"]
+mod hermetic_assets_tests;
