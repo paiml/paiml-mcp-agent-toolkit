@@ -3043,7 +3043,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-620
   github_issue: null
@@ -3061,6 +3062,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - contract-binding
   - provable-contracts
   - component-27
@@ -3081,6 +3083,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - verification-ladder
   - provable-contracts
   - component-28
@@ -3101,6 +3104,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - falsification-unification
   - provable-contracts
   - component-29
@@ -3121,6 +3125,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - compile-time-codegen
   - proc-macro
   - component-30
@@ -3141,6 +3146,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - cot-proof-derivation
   - provable-contracts
   - component-31
@@ -3228,7 +3234,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: MACS-000
   github_issue: 612
@@ -3664,7 +3671,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-633
   github_issue: null
@@ -3680,7 +3688,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-634
   github_issue: null
@@ -3728,7 +3737,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-637
   github_issue: null
@@ -3760,7 +3770,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-639
   github_issue: null
@@ -3776,7 +3787,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-640
   github_issue: null
@@ -3894,7 +3906,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-647
   github_issue: null
@@ -3911,7 +3924,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-648
   github_issue: null
@@ -4013,7 +4027,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-653
   github_issue: null
@@ -4030,7 +4045,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-655
   github_issue: null
@@ -4064,7 +4080,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-660
   github_issue: null
@@ -4292,6 +4309,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - kind:code
   notes: null
 - id: PMAT-678
@@ -4310,6 +4328,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - kind:code
   notes: null
 - id: PMAT-679
@@ -4364,17 +4383,18 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - kind:code
   notes: null
 - id: PMAT-682
   github_issue: null
   item_type: task
   title: 'release cut 3.39.0: bump the five version carriers, CHANGELOG from merged PR bodies, tickets completed; tag, prerelease, manual publish from a detached worktree'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-07T07:31:22Z
   spec: null
   acceptance_criteria:
   - Cargo.toml, Cargo.lock (pmat entry), README.md version line, mcp.json, CHANGELOG.md ([Unreleased] → [3.39.0]); pmat verify; PR; tag on the merge commit; prerelease; publish-from-tag; AD-01 release-check and AD-02 dogfood-published exit 0 on the published crate; docs.rs doc_status true; prerelease promoted.
@@ -4402,7 +4422,7 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:measurement
-  - deferred:3.40.0
+  - deferred:3.41.0
   notes: null
 - id: PMAT-684
   github_issue: null
@@ -4421,7 +4441,7 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  - deferred:3.40.0
+  - deferred:3.41.0
   notes: null
 - id: PMAT-685
   github_issue: null
@@ -4482,11 +4502,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'fleet lint-gate: hardcoded_paths.rs fixtures and check.rs comment still carry /home/noah; pay the complexity debt (classify cognitive 33, check.rs helpers 25 fns) or land a per-repo EXCLUDE in paiml/.github unified-gate.yml'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-09-06T13:26:05Z
-  updated: 2026-09-06T13:26:05Z
+  updated: 2026-09-07T09:23:32.230419688+00:00
   spec: null
   acceptance_criteria:
   - 'Until one of the two lands, a pmat tag fails the fleet gate at lint-gate (probe run 34034967876) and the prerelease is created by hand. Also: pmat analyze hardcoded-paths reports 45 machine-specific paths in shipped code on this tree — audit them in the same ticket.'
@@ -4547,7 +4567,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
   notes: null
 - id: PMAT-690
   github_issue: null
@@ -4563,5 +4584,269 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - deferred:3.41.0
+  notes: null
+- id: PMAT-691
+  github_issue: null
+  item_type: task
+  title: 'board post-3.39.0: disposition the five dependabot PRs opened 2026-09-07 (#1210-#1214) and reconcile PMAT-682''s roadmap status (recorded complete in dispositions-3.39.0.json, still planned in roadmap.yaml)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T07:00:54Z
+  updated: 2026-09-07T07:01:13.407321051+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:triage
+  notes: null
+- id: PMAT-692
+  github_issue: null
+  item_type: task
+  title: 'deps: flate2 1.1.10 moves to miniz_oxide 0.9 and adds zlib-rs 0.6.7 while another dependency still resolves miniz_oxide 0.8.9 — dependabot #1210 (closed) would land a duplicate crate version and a new transitive crate; deny.toml multiple-versions = warn so CI cannot refuse it. Either pin flate2''s backend (default-features = false + rust_backend) or make multiple-versions = deny with an allowlist, then re-take the pmcp 2.19.3 / lru 0.18.4 / toml 1.1.5 bumps'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T07:23:43Z
+  updated: 2026-09-07T07:23:43Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+- id: PMAT-693
+  github_issue: null
+  item_type: task
+  title: '[train/BC] board-check: scripts/board-check.sh + make board-check — read-only; exit 1 naming every open PR without a disposition row, every open issue without exactly one milestone or an evidence closure, every non-completed roadmap ticket absent from the newest docs/audits/dispositions-*.json or lacking defer/complete/reject; self-test arm on a planted id must fail'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:24Z
+  updated: 2026-09-07T08:02:23.168389884+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-694
+  github_issue: null
+  item_type: task
+  title: '[train/CF] ci/coverage flake root cause (#1202, absorbs #1127): quality_proxy tests compile the host workspace with a nested cargo clippy under llvm-cov (>600 s); move them to a <=50-line fixture crate under tests/fixtures/quality_proxy with its own CARGO_TARGET_DIR, env -u LLVM_PROFILE_FILE/CARGO_LLVM_COV/RUSTFLAGS, a deadline, a process group and prlimit --as in one spawn fn'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:25Z
+  updated: 2026-09-07T08:03:00.462661306+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-695
+  github_issue: null
+  item_type: task
+  title: '[train/HB] hermetic build.rs (#1156): vendor gridjs/mermaid/d3 under assets/vendor with a committed SHA256SUMS; build.rs reads and verifies, no network, no rerun-if-changed on gitignored paths; clean-room gate step runs with --network none'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:26Z
+  updated: 2026-09-07T07:56:26Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-696
+  github_issue: null
+  item_type: task
+  title: '[train/GT] gate-metadata truth (#1128, #1132, honest half of #1074): delete the orphan Dependabot advisory gate and the stale quality-gate.yml lines; required-status-checks.txt generated from live protection (make required-checks-sync) with an offline check in ci/gate that every listed check is a declared job; cargo deny wrapper prints scope: rustsec-only, never ok'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:28Z
+  updated: 2026-09-07T07:56:28Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+- id: PMAT-697
+  github_issue: null
+  item_type: task
+  title: '[train/HN] honest not-measured (#1124, #1162, #1131): one typed Measured(x) | NotMeasured{reason} at the model layer rendered verbatim; gates_run complexity = not_measured for bash/C/TS; tdg check-regression delta 0 on an unedited file; quality-gate emits exactly one files_examined'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:29Z
+  updated: 2026-09-07T07:56:29Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+- id: PMAT-698
+  github_issue: null
+  item_type: task
+  title: '[train/CT] config truth (#1137, #1138): config --show prints the resolved config every reader consumes; restore the .pmat-gates.toml section the default reader needs and make its guard test assert presence'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:30Z
+  updated: 2026-09-07T07:56:30Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+- id: PMAT-699
+  github_issue: null
+  item_type: task
+  title: '[train/DC] dead surface deletion (#1141, #1144, #1135, #1140, #1134, #1145): remove src/protocol and src/state (zero inbound edges), the simulated refactor.* MCP engine and the two dead MCP tool inventories; fix vacuous-tests --help figures, pmat init next-command, MCP_VERSION == negotiated version; SemVer: pub mod removal permitted at minor because crates.io reverse deps = 0'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:31Z
+  updated: 2026-09-07T07:56:31Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+- id: PMAT-700
+  github_issue: null
+  item_type: task
+  title: '[train/RC] release cut 3.40.0: bump the six version carriers the 3.39.0 cut touched (Cargo.toml, Cargo.lock pmat entry, README.md, mcp.json, CHANGELOG.md [Unreleased] -> [3.40.0], roadmap statuses); tag v3.40.0; prerelease; publish --locked from a detached worktree of the tag; AD-01 + AD-02 exit 0'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:32Z
+  updated: 2026-09-07T07:56:32Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-701
+  github_issue: null
+  item_type: task
+  title: '[train/IP] infra pin bump 3.39.0 -> 3.40.0 in machines/{lambda-labs,intel,mini,gx10}/forjar.yaml (paiml/infra); forjar apply -f machines/$(hostname)/forjar.yaml on this host only; pmat --version == 3.40.0'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:33Z
+  updated: 2026-09-07T07:56:33Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-702
+  github_issue: null
+  item_type: task
+  title: '[train/PK] crate package at 99.6% of crates.io''s 10 MB ceiling after PMAT-695 (9,956,257 B; 43,743 B headroom): carve the package before any packaged addition — measure cargo package --list per-file sizes, exclude non-build inputs (large fixtures, docs already excluded?), consider shipping only the gz assets the server reads; an oversized upload returns a bare 503, not a size error'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T10:29:03Z
+  updated: 2026-09-07T10:29:03Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+- id: PMAT-703
+  github_issue: null
+  item_type: task
+  title: 'reachability: sources of a nested Cargo package (a directory with its own Cargo.toml and a [workspace] table, e.g. tests/fixtures/quality_proxy) are counted as pmat orphans; model nested packages so the orphan_files ratchet can drop back from 408 to 407 (PMAT-694 justification)'
+  status: cancelled
+  priority: low
+  assigned_to: null
+  created: 2026-09-07T10:36:06Z
+  updated: 2026-09-07T11:49:42Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+- id: PMAT-704
+  github_issue: null
+  item_type: task
+  title: 'quality proxy sibling: auto_clippy_fix_core.rs:22 (the auto_clippy_fix MCP tool) spawns cargo clippy with tokio::process::Command and inherits the parent env — no instrumentation scrub, no deadline, no process group, no address-space cap; route it through the quality proxy''s child_command (PMAT-694) so no spawn can miss the caps'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T11:49:41Z
+  updated: 2026-09-07T11:49:41Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+- id: PMAT-705
+  github_issue: null
+  item_type: task
+  title: 'dead-code outcome tests: crate_with() builds a fixture with no Cargo.lock, so check_dead_code_outcome refuses for the MISSING LOCKFILE, not the syntax error the test names — it passes locally for the wrong reason and fails in ci/test (run 34123854548, a_crate_that_does_not_compile_is_reported_as_not_measured: not_measured was None). Give the fixture a lockfile via write_fixture_lockfile so each of the three legs measures what it claims'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T14:07:36Z
+  updated: 2026-09-07T14:07:36Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
   notes: null

@@ -223,6 +223,12 @@ mod dead_code_outcome_tests {
         .expect("manifest");
         std::fs::create_dir_all(tmp.path().join("src")).expect("src");
         std::fs::write(tmp.path().join("src/lib.rs"), body).expect("lib");
+        // The analyzer passes `--locked` (#1076), so a fixture with no
+        // `Cargo.lock` is refused for the MISSING LOCKFILE — not for the
+        // reason each test below names. That made the uncompilable-crate leg
+        // pass locally for the wrong reason and fail in `ci / test`, where the
+        // refusal took a different shape (run 34123854548).
+        crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(tmp.path());
         tmp
     }
 
