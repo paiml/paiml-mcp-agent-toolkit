@@ -1,0 +1,62 @@
+# Hand-authored work contract for PMAT-695 (#1156): build.rs downloaded four
+# assets from unpkg at build time — mermaid and d3 at `@latest` — into the
+# gitignored assets/vendor/, gzipped them, and read its own output back as a
+# build input. Every evidence_method below was run on this tree by the worker;
+# the lib tests run under CI's `cargo test --lib`.
+name: "PMAT-695"
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  description: "The build script reaches no network: the four demo assets are committed .gz files verified against a committed SHA256SUMS on every build, the crate that carries them stays under the crates.io ceiling, and nothing is watched that git does not track"
+  references:
+    - "build.rs"
+    - "build_support.rs"
+    - "assets/vendor/SHA256SUMS"
+    - "assets/vendor/PROVENANCE.md"
+    - "src/tests/hermetic_assets_tests.rs"
+    - "src/cli/handlers/work_handlers/mod.rs"
+    - "src/demo/assets.rs"
+    - ".gitignore"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 6
+proof_obligations:
+- id: "PO-H1"
+  statement: "build.rs names no remote at all: no `unpkg.com`, no `https://`, no `http://` and no `download`, in code or in prose, so neither the fetch nor a helper one edit away from returning is still in the file"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- build_script_has_no_network_input"
+- id: "PO-H2"
+  statement: "Every file named by assets/vendor/SHA256SUMS is present and hashes to the recorded digest, and the file covers at least the four vendored assets"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- vendored_assets_match_the_committed_checksums"
+- id: "PO-H3"
+  statement: "SHA256SUMS itself and every asset it names are tracked by git, so they ship in the package and are not regenerated silently into a gitignored directory"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- vendored_assets_are_tracked"
+- id: "PO-H4"
+  statement: "Every literal `cargo:rerun-if-changed=` in build.rs names a path git tracks, and the committed assets are watched by name rather than by their enclosing (partly ignored) directory"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- no_rerun_if_changed_on_ignored_paths"
+- id: "PO-H5"
+  statement: "The build completes with no network namespace at all (`unshare -rn`, exit 0), and a single flipped byte in a vendored asset fails the build naming that file — so the checksum gate is live, not decorative"
+  evidence_method: "unshare -rn env CARGO_TARGET_DIR=/mnt/nvme-raid0/targets/paiml-mcp-agent-toolkit HOME=/home/noah PATH=/usr/bin:/bin:/home/noah/.cargo/bin /home/noah/.cargo/bin/cargo build --locked && sha256sum -c assets/vendor/SHA256SUMS"
+- id: "PO-H6"
+  statement: "The package that now carries the four .gz assets stays under crates.io's 10 MiB ceiling — 9,956,257 bytes against 10,000,000 — and lists SHA256SUMS, PROVENANCE.md and all four assets"
+  evidence_method: "cargo package --locked --no-verify && test $(stat -c%s /mnt/nvme-raid0/targets/paiml-mcp-agent-toolkit/package/pmat-3.39.0.crate) -lt 10000000 && cargo package --list | grep assets/vendor"
+falsifiable_claims:
+- hypothesis: "build.rs names no remote at all: no `unpkg.com`, no `https://`, no `http://` and no `download`, in code or in prose, so neither the fetch nor a helper one edit away from returning is still in the file"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- build_script_has_no_network_input"
+  from_step: "H1"
+- hypothesis: "Every file named by assets/vendor/SHA256SUMS is present and hashes to the recorded digest, and the file covers at least the four vendored assets"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- vendored_assets_match_the_committed_checksums"
+  from_step: "H2"
+- hypothesis: "SHA256SUMS itself and every asset it names are tracked by git, so they ship in the package and are not regenerated silently into a gitignored directory"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- vendored_assets_are_tracked"
+  from_step: "H3"
+- hypothesis: "Every literal `cargo:rerun-if-changed=` in build.rs names a path git tracks, and the committed assets are watched by name rather than by their enclosing (partly ignored) directory"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- no_rerun_if_changed_on_ignored_paths"
+  from_step: "H4"
+- hypothesis: "The build completes with no network namespace at all (`unshare -rn`, exit 0), and a single flipped byte in a vendored asset fails the build naming that file — so the checksum gate is live, not decorative"
+  method: "unshare -rn env CARGO_TARGET_DIR=/mnt/nvme-raid0/targets/paiml-mcp-agent-toolkit HOME=/home/noah PATH=/usr/bin:/bin:/home/noah/.cargo/bin /home/noah/.cargo/bin/cargo build --locked && sha256sum -c assets/vendor/SHA256SUMS"
+  from_step: "H5"
+- hypothesis: "The package that now carries the four .gz assets stays under crates.io's 10 MiB ceiling — 9,956,257 bytes against 10,000,000 — and lists SHA256SUMS, PROVENANCE.md and all four assets"
+  method: "cargo package --locked --no-verify && test $(stat -c%s /mnt/nvme-raid0/targets/paiml-mcp-agent-toolkit/package/pmat-3.39.0.crate) -lt 10000000 && cargo package --list | grep assets/vendor"
+  from_step: "H6"
