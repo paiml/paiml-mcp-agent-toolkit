@@ -910,9 +910,18 @@
   "id": "PMAT-703",
   "kind": "ticket",
   "title": "reachability: nested Cargo package sources counted as orphans",
+  "disposition": "reject",
+  "hrq": false,
+  "enacted": "roadmap:cancelled",
+  "rationale": "Moot: PMAT-694 removed the nested fixture package (manifest and lock are literals), so no nested-package source is counted as an orphan; the ratchet returned to 407."
+ },
+ {
+  "id": "PMAT-704",
+  "kind": "ticket",
+  "title": "auto_clippy_fix MCP tool spawns cargo clippy outside the quality proxy child_command caps",
   "disposition": "defer(3.41.0)",
   "hrq": false,
   "enacted": "roadmap-label:deferred:3.41.0",
-  "rationale": "S3 finding from PMAT-694; no code this train"
+  "rationale": "S3 finding from the PMAT-694 quorum (lane 3, pre-existing site, not in the diff); no code this train"
  }
 ]

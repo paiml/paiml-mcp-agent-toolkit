@@ -4801,11 +4801,29 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'reachability: sources of a nested Cargo package (a directory with its own Cargo.toml and a [workspace] table, e.g. tests/fixtures/quality_proxy) are counted as pmat orphans; model nested packages so the orphan_files ratchet can drop back from 408 to 407 (PMAT-694 justification)'
-  status: planned
+  status: cancelled
   priority: low
   assigned_to: null
   created: 2026-09-07T10:36:06Z
-  updated: 2026-09-07T10:36:06Z
+  updated: 2026-09-07T11:49:42Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+- id: PMAT-704
+  github_issue: null
+  item_type: task
+  title: 'quality proxy sibling: auto_clippy_fix_core.rs:22 (the auto_clippy_fix MCP tool) spawns cargo clippy with tokio::process::Command and inherits the parent env — no instrumentation scrub, no deadline, no process group, no address-space cap; route it through the quality proxy''s child_command (PMAT-694) so no spawn can miss the caps'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T11:49:41Z
+  updated: 2026-09-07T11:49:41Z
   spec: null
   acceptance_criteria: []
   phases: []
