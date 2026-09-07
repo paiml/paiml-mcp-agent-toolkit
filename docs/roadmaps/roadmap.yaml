@@ -4871,3 +4871,21 @@ roadmap:
   - deferred:3.41.0
   - kind:code
   notes: null
+- id: PMAT-708
+  github_issue: null
+  item_type: task
+  title: 'flake: a_crate_that_does_not_compile_is_reported_as_not_measured is nondeterministic in ci/test — PASSED on PR #1215 (run on 07af99725, with the PMAT-705 lockfile fix) and FAILED identically on PR #1222 (job in run for c0d3faeee, same fix present): not_measured None, violations [], not_applicable None, i.e. the analyzer reports a clean full measurement for a crate that cannot compile. Suspect the dead-code cache (PMAT-648 keyed on git write-tree) returning a hit across fixtures, or a shared .pmat cache dir in CI; the local run is green either way'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T20:15:35Z
+  updated: 2026-09-07T20:15:35Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null

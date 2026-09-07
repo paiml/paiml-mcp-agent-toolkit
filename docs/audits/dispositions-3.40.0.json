@@ -951,5 +951,14 @@
   "enacted": "closed",
   "evidence": "make release-check exit 0 on master: 3.40.0 is tagged, released and on crates.io",
   "rationale": "Stale bot report: opened before the crate was published."
+ },
+ {
+  "id": "PMAT-708",
+  "kind": "ticket",
+  "title": "flake: dead-code not-measured leg is nondeterministic in ci/test",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "Found while merging the 3.40.0 receipt PR: the same test with the same code passed on #1215 and failed on #1222. A rerun to green is a flake ticket, not a pass (release brief 3.8)."
  }
 ]

@@ -122,6 +122,10 @@ PMAT-687's falsifier was observed in production: on the v3.40.0 tag, `release.ym
 
 Subagent peak 1 of 3 slots. Denials 2 (both the lock hook refusing `gh` while a stopped agent's entry was still present; each cleared by the orchestrator, its own session's entry). Workers: 4 dispatched, 3 hit their 40-turn cap, 1 was cut off by an API rate limit — the orchestrator finished each one's tree.
 
+## One flake, named not rerun
+
+`cli::analysis_utilities::dead_code_outcome_tests::a_crate_that_does_not_compile_is_reported_as_not_measured` **passed** on PR #1215 (which carried PMAT-705's lockfile fix) and **failed identically** on PR #1222 with the same code on master: `not_measured` None, `violations` `[]` — the analyzer reporting a clean full measurement for a crate that cannot compile. That is nondeterminism in CI, not a regression, and a rerun to green is a flake ticket, not a pass. Filed as **PMAT-708**, deferred 3.41.0. It does not touch the shipped crate: 3.40.0 was published, verified by AD-01 and AD-02 on the crates.io binary, and its docs built before this PR existed.
+
 verdict: SHIPPED 3.40.0
 
 RELEASE-3.40.0-RECEIPT-END
