@@ -4797,3 +4797,21 @@ roadmap:
   - deferred:3.41.0
   - kind:code
   notes: null
+- id: PMAT-703
+  github_issue: null
+  item_type: task
+  title: 'reachability: sources of a nested Cargo package (a directory with its own Cargo.toml and a [workspace] table, e.g. tests/fixtures/quality_proxy) are counted as pmat orphans; model nested packages so the orphan_files ratchet can drop back from 408 to 407 (PMAT-694 justification)'
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-07T10:36:06Z
+  updated: 2026-09-07T10:36:06Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null

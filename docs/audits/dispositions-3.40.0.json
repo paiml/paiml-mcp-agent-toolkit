@@ -905,5 +905,14 @@
   "hrq": false,
   "enacted": "roadmap-label:deferred:3.41.0",
   "rationale": "PK crate headroom (S2 finding): filed during the 3.40.0 train; no budget this run"
+ },
+ {
+  "id": "PMAT-703",
+  "kind": "ticket",
+  "title": "reachability: nested Cargo package sources counted as orphans",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "S3 finding from PMAT-694; no code this train"
  }
 ]
