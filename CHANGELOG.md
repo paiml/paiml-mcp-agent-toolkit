@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.40.0] - 2026-09-07
+
+### Added
+- `make board-check` — the falsifiable instrument for a cleared board (PMAT-693). Read-only; exits 1 listing every open PR without a disposition row, every open issue without exactly one milestone (a `reject` in the human review queue is exempt: it carries the ledger row and the label, and the run never closes a human-authored item on a reject), and every non-completed roadmap ticket absent from the newest disposition ledger. Exit codes: 0 clean and complete, 1 gaps, 2 could not measure, 3 clean but partial. `make board-check-selftest` drives five fixtures.
+
+### Fixed
+- A pmat tag can pass the fleet clean-room gate's banned-path scan (PMAT-687). The banned-path analyzer's own comments and test fixtures named the strings the scan bans, so every tag since the scan landed failed `gate / lint-gate` and 3.39.0 shipped with a hand-made prerelease. The analyzer's complexity debt is paid (`classify` split into four helpers; `candidates`, `feed` and `braces_outside_literals` refactored below the cognitive-25 gate, 23 behaviour tests unchanged), its fixtures no longer name a real workstation, and the last quoted path in a `comply check` comment is scrubbed. Nothing is excluded fleet-side: an `EXCLUDE` fragment there is matched against `path:line:content` and would mask any line whose content names it.
+- The dead-code outcome fixture gets a `Cargo.lock` (PMAT-705). The analyzer passes `--locked`, so a fixture crate without one was refused for the missing lockfile rather than for the syntax error each test plants — passing locally for the wrong reason and failing `ci / test`.
+
+### Changed
+- Dependencies: hyper 1.11.1, tower-http 0.7.1, ureq 3.4.0, arrow 59.3.0, minijinja 2.24.0. The `flate2` bump was declined: it adds a second `miniz_oxide` and a new `zlib-rs`, and `deny.toml` sets `multiple-versions = "warn"` so CI cannot refuse it (PMAT-692).
+
+
 ## [3.39.0] - 2026-09-06
 
 ### Fixed
