@@ -200,7 +200,10 @@ report_gap_lines "${pr_gap_text}"
 # ── Issue leg: one jq pass over open issues against the ledger's "issue" rows.
 # A newer ledger row may carry an `evidence` or `evidenced` key; a non-null
 # value there is treated as an evidence-closure that changes the missing-
-# milestone wording (see PMAT-693 brief).
+# milestone wording (see PMAT-693 brief). A `reject` row with `hrq: true` whose
+# issue carries the `disposition:reject` label is the human review queue — the
+# run never closes a human-authored item on a reject — and counts as enacted
+# without a milestone (release brief §0.3, §8).
 open_issue_table="$(gh issue list --repo "${repo}" --state open --limit 200 --json number,title,milestone,labels,state)"
 issue_gap_text="$(jq -r \
   --argjson issues "${open_issue_table}" \
@@ -212,8 +215,11 @@ issue_gap_text="$(jq -r \
     | ("#" + (.number | tostring)) as $issue_id
     | ($rows | map(select(.kind == "issue" and .id == $issue_id)) | first) as $row
     | (($row.evidence // $row.evidenced // null) != null) as $has_evidence
+    | (($row.disposition // "") == "reject"
+        and ($row.hrq // false) == true
+        and ([$issue.labels[].name] | index("disposition:reject")) != null) as $hrq_reject
     | (
-        if $issue.milestone == null then
+        if $issue.milestone == null and ($hrq_reject | not) then
           if $has_evidence then
             "GAP issue " + $issue_id + " milestone missing and no evidence-closure"
           else
