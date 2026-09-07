@@ -1327,3 +1327,69 @@ mod dag_depth_tests {
         assert!(!limited.nodes.is_empty());
     }
 }
+
+/// The diff-scoped complexity check: `analyze complexity --file <p> --diff-scope`.
+///
+/// Whole-file mode answers "is any function in this file over the limit?" and
+/// therefore charges a developer for debt someone else committed — the O11
+/// case, a one-line fix in an undebted function of a debted file, is refused
+/// with no way to land it but to refactor code the change never touched. This
+/// mode answers the narrower question the pre-commit hook should be asking:
+/// *did the functions this commit TOUCHES get worse?*
+///
+/// The rule and the git reads live in
+/// [`crate::cli::handlers::hooks_command_handlers::hook_debt_scope`]; this
+/// function is the CLI's contract over them — what it prints and what it
+/// exits.
+///
+/// Thresholds default to the same 10/15 [`ComplexityConfig::from_args`] uses,
+/// so `--diff-scope` narrows the POPULATION being judged and nothing else.
+///
+/// # Errors
+/// Returns an error — a non-zero exit — when a touched function's debt grew
+/// past a limit, and equally when the verdict could not be reached at all
+/// (nothing staged at that path, not a Rust source, git unusable). An
+/// unreachable verdict is never reported as a pass: that is the shape of
+/// "0 violations over 0 files".
+pub fn handle_analyze_complexity_diff_scoped(
+    file: &std::path::Path,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+) -> Result<()> {
+    use crate::cli::handlers::hooks_command_handlers::hook_debt_scope::{
+        staged_verdict_for_file, DebtThresholds,
+    };
+
+    let thresholds = DebtThresholds {
+        max_cyclomatic: u32::from(max_cyclomatic.unwrap_or(10)),
+        max_cognitive: u32::from(max_cognitive.unwrap_or(15)),
+    };
+    let shown = file.display();
+    let verdict = staged_verdict_for_file(file, thresholds)?;
+    let offenders = verdict.rendered();
+
+    if offenders.is_empty() {
+        // The count the hook greps for is printed on the allowed path too:
+        // a gate that prints nothing when it passes is indistinguishable from
+        // a gate that did not run.
+        println!(
+            "  {shown}: no touched function grew past its limits (Cyclomatic {}, Cognitive {})",
+            thresholds.max_cyclomatic, thresholds.max_cognitive
+        );
+        println!("Errors: 0");
+        return Ok(());
+    }
+
+    // Printed in the same shape the whole-file summary uses — "<metric>
+    // <measured> > <limit>" — so the hook's existing offender grep reads this
+    // output unchanged.
+    println!("  {shown}:");
+    for offender in &offenders {
+        println!("    {offender}");
+    }
+    println!("Errors: {}", offenders.len());
+    anyhow::bail!(
+        "diff-scoped complexity refused {shown}: {}",
+        offenders.join("; ")
+    )
+}
