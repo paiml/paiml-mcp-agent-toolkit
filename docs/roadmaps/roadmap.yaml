@@ -4654,6 +4654,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - kind:code
   notes: null
 - id: PMAT-695
@@ -4671,6 +4672,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - kind:code
   notes: null
 - id: PMAT-696
@@ -4749,11 +4751,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: '[train/RC] release cut 3.40.0: bump the six version carriers the 3.39.0 cut touched (Cargo.toml, Cargo.lock pmat entry, README.md, mcp.json, CHANGELOG.md [Unreleased] -> [3.40.0], roadmap statuses); tag v3.40.0; prerelease; publish --locked from a detached worktree of the tag; AD-01 + AD-02 exit 0'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:32Z
-  updated: 2026-09-07T17:10:01.693904154+00:00
+  updated: 2026-09-07T19:43:05Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4777,6 +4779,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - deferred:3.41.0
   - kind:code
   notes: null
 - id: PMAT-702
@@ -4848,5 +4851,23 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels:
+  - kind:code
+  notes: null
+- id: PMAT-706
+  github_issue: null
+  item_type: task
+  title: 'fleet unified-gate: the cpu-gates job cancels pmat''s clean room at 30 minutes (run 34150721411, killed mid GATE B1 at 18:43:26 after starting 18:13:13) while the same Mode A+B passes in ~35 min locally in the fleet''s own container — every pmat tag therefore fails ''gate / gate'' on a timeout, not on content. Raise timeout-minutes for the pmat repo case or split Mode A and Mode B into two jobs'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T18:51:56Z
+  updated: 2026-09-07T18:51:56Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
   - kind:code
   notes: null
