@@ -297,6 +297,18 @@ fi
 # regions of a tree are the ones dropped every time -- not a random sample.
 # If a bound is ever needed for latency it must print the number of files it
 # declined to measure and exit non-zero; a silent bound must never print OK.
+# This hook is FEEDBACK, not the gate. `ci / gate` is what enforces these
+# thresholds on the merge path, so scoping this check to the diff would remove
+# no enforcement -- it would only stop charging a developer for debt they did
+# not write. BSE-12 (PMAT-707): the diff-scoped rule -- a function is TOUCHED
+# when its measured span overlaps a staged hunk, and it is refused only when a
+# metric exceeds the threshold AND exceeds the same function's value at HEAD --
+# is implemented and tested in
+# src/cli/handlers/hooks_command_handlers/hook_debt_scope.rs.
+# The measurement below is still WHOLE FILE: a one-line fix in an undebted
+# function of a file with pre-existing debt is refused here. Wiring the scoped
+# rule needs a flag on `pmat analyze complexity` (its argument surface lives in
+# src/cli/commands/analyze_commands/mod.rs), which this commit does not change.
 STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.go' '*.c' '*.cpp' '*.lua' '*.php' '*.swift' 2>/dev/null)
 if [ -n "$STAGED_SRC" ]; then
     echo -n "  Complexity check... "

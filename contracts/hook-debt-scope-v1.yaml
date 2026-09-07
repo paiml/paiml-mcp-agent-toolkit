@@ -1,0 +1,53 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-07"
+  author: PAIML Engineering
+  references:
+    - "paiml/infra docs/specifications/build-system-enhancement.md BSE-12 (report O11)"
+    - "PMAT-707 — pre-commit debt rule scoped to the diff's touched functions"
+    - "src/cli/handlers/hooks_command_handlers/hook_debt_scope.rs"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    The pre-commit hook's complexity verdict is a function of the diff's
+    TOUCHED functions only. A function is touched when its measured
+    [line_start, line_end] span in the staged file overlaps a line added or
+    modified by a staged hunk (the + side of git diff --cached -U0). A touched
+    function is refused only when a metric exceeds the threshold AND exceeds
+    the same function's value in the HEAD version of the file, measured the
+    same way; a function with no HEAD counterpart is judged against the
+    threshold alone, never as growth. Untouched functions never affect the
+    verdict, over threshold or not. The hook is FEEDBACK, not the gate — ci /
+    gate enforces the thresholds on the merge path — so scoping the hook to the
+    diff removes no enforcement, it only stops refusing a one-line fix in an
+    undebted function of a file that carries pre-existing debt.
+  contract: hook-debt-scope
+  status: draft
+
+equations:
+  verdict_is_a_function_of_touched_functions_only:
+    formula: "verdict(old, new, diff, limits) = REFUSE iff exists f in touched(new, ranges(diff)) with (m(f) > limit and (old(f) is none or m(f) > m(old(f))))"
+    domain: "one staged source file, its HEAD version, and its git diff --cached -U0 hunk headers"
+    codomain: bool
+    invariants:
+      - "an untouched function over the threshold does not change the verdict"
+      - "a touched function over the threshold but no worse than at HEAD does not change the verdict"
+      - "a touched function with no HEAD counterpart is judged against the threshold alone"
+      - "spans and metrics come from collect_functions + measure_block + FunctionSpans, the one existing measurement path; no second parser"
+      - "a refusal names the function, the measured value, the limit, and the previous value (or says there is none)"
+    preconditions: []
+
+falsification:
+  - condition: "a commit whose only change is a one-line edit in an undebted function is refused because another function in the same file carries pre-existing debt"
+    severity: P1
+    action: reject_push
+  - condition: "complexity growth inside a touched function is allowed, or the refusal does not name the function and both numbers"
+    severity: P0
+    action: reject_push
+
+falsification_tests:
+  - id: verdict_is_a_function_of_touched_functions_only
+    rule: "the hook_debt_scope_* tests in src/cli/handlers/hooks_command_handlers/hook_debt_scope_tests.rs: one-line fix beside pre-existing debt is allowed; growth in a touched function is refused with both numbers; a new over-threshold function is refused; an untouched over-threshold function is ignored; the pre-BSE-12 whole-file rule refuses the first case"
+    prediction: "diff-scoped rule: 7 passed. Same fixtures under the pre-BSE-12 whole-file rule (touched set = every function, previous = none): 5 of 7 FAIL, including the one-line-fix case."
+    test: "cargo test -p pmat hook_debt_scope"
+    if_fails: "the hook refuses a one-line fix for debt the commit did not write, and the developer decomposes functions the change never touched"

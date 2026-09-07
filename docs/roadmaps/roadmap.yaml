@@ -4864,6 +4864,18 @@ roadmap:
   updated: 2026-09-07T18:51:56Z
   spec: null
   acceptance_criteria: []
+- id: PMAT-707
+  github_issue: null
+  item_type: task
+  title: 'BSE-12: pre-commit debt rule scoped to the diff''s touched functions — a one-line change in an undebted function commits; growth in a touched function is refused'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T20:09:56Z
+  updated: 2026-09-07T20:09:56Z
+  spec: null
+  acceptance_criteria:
+  - 'Spec: paiml/infra docs/specifications/build-system-enhancement.md BSE-12 (report O11). Scope src/quality/git_hooks.rs, git_hooks_install.rs, git_hooks_tests.rs. A: cargo test -p <crate> hook_debt_scope. Mutation: compare the whole file -> the first case goes RED. Contract pv: the hook''s verdict is a function of the diff''s touched functions only. Doctrine: pre-commit is feedback, not a gate (ci / gate enforces), so scoping feedback to the diff costs no enforcement. Metric: decompositions per one-line fix 11 -> <= 1.'
   phases: []
   subtasks: []
   estimated_effort: null
@@ -4889,3 +4901,15 @@ roadmap:
   - deferred:3.41.0
   - kind:code
   notes: null
+  - kind:code
+  notes: 'Landed: the diff-scoped verdict rule in src/cli/handlers/hooks_command_handlers/hook_debt_scope.rs
+    (touched function = measured span overlapping a git diff --cached -U0 hunk;
+    refuse only when a metric exceeds the threshold AND exceeds its HEAD value;
+    no HEAD counterpart is judged on the threshold alone; untouched functions
+    never affect the verdict), 7 hook_debt_scope_* tests incl. the pre-BSE-12
+    whole-file falsifier (5 of 7 RED under it), contracts/hook-debt-scope-v1.yaml
+    (pv validate: 0 errors). NOT landed: the generated hook still measures whole
+    files. Wiring it needs a flag on `pmat analyze complexity` (--diff-scope /
+    --functions-touching) whose argument surface is src/cli/commands/analyze_commands/mod.rs
+    and its complexity handler — outside this ticket''s scope_paths, so the
+    generated hook carries a comment naming the rule, its module and the missing flag.'
