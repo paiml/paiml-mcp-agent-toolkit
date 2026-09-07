@@ -48,6 +48,51 @@ falsification:
 falsification_tests:
   - id: verdict_is_a_function_of_touched_functions_only
     rule: "the hook_debt_scope_* tests in src/cli/handlers/hooks_command_handlers/hook_debt_scope_tests.rs: one-line fix beside pre-existing debt is allowed; growth in a touched function is refused with both numbers; a new over-threshold function is refused; an untouched over-threshold function is ignored; the pre-BSE-12 whole-file rule refuses the first case"
-    prediction: "diff-scoped rule: 7 passed. Same fixtures under the pre-BSE-12 whole-file rule (touched set = every function, previous = none): 5 of 7 FAIL, including the one-line-fix case."
+    prediction: "diff-scoped rule: 13 passed (7 in-memory fixtures + 6 over a fixture repo). Same suite under the pre-BSE-12 whole-file rule (touched set = every function, previous = none): 8 of 13 FAIL, including the one-line-fix case."
     test: "cargo test -p pmat hook_debt_scope"
     if_fails: "the hook refuses a one-line fix for debt the commit did not write, and the developer decomposes functions the change never touched"
+  - id: the_verdict_is_read_out_of_git_not_out_of_the_working_tree
+    rule: "the staged_repo::* tests in src/cli/handlers/hooks_command_handlers/hook_debt_scope_tests.rs run the rule over a real fixture repo through staged_verdict / staged_verdict_for_file: the NEW source is `git show :<path>` (the INDEX), the OLD source is `git show HEAD:<path>`, and the ranges come from `git diff --cached -U0 -- <path>`"
+    prediction: "6 passed. One of them stages the allowed content and then writes over-threshold growth into the WORKING TREE: a verdict read from disk instead of the index fails it. An unstaged path and an unreadable diff are errors, so neither can render as 'no violations'."
+    test: "cargo test -p pmat hook_debt_scope"
+    if_fails: "the hook grades content that is not being committed, in either direction: unstaged work refuses a clean commit, or staged debt slips past because the disk copy is clean"
+  - id: the_cli_entry_point_prints_the_offender_and_exits_non_zero
+    rule: "the diff_scope_entry_point::* tests in src/cli/handlers/complexity_handlers/complexity_handlers_tests.rs call handle_analyze_complexity_diff_scoped over a fixture repo at the DEFAULT thresholds (10/15, the same ComplexityConfig::from_args uses)"
+    prediction: "4 passed. Report O11 — a one-line fix in `innocent` beside a committed `debted` of cyclomatic 11 — returns Ok; `innocent` grown to 12 returns Err naming 'innocent - Cyclomatic 12 > 10 (was 1)'; a path with nothing staged is an Err, not a pass."
+    test: "cargo test -p pmat diff_scope"
+    if_fails: "the developer is told a file is at fault without being told which function, which is the report the whole-file mode already gives"
+
+mutation_matrix:
+  - mutation: "diff_scoped_verdict judges every function instead of the touched ones (`for func in new_functions.iter()`), leaving the growth comparison in place"
+    observed: "hook_debt_scope: 13 passed, 0 failed. diff_scope: 4 passed, 0 failed."
+    reading: >
+      Not a weak suite — a fact about the rule. An UNTOUCHED function measures
+      identically in the HEAD blob and the staged blob, so the growth
+      comparison already spares it and the touched filter is redundant for a
+      file that HAS a HEAD counterpart. The filter is load-bearing exactly
+      where growth cannot be computed: a file absent from HEAD has no previous
+      value for any function, and there the scope is the only thing between the
+      developer and the whole file. That leg is
+      hook_debt_scope_a_file_absent_from_head_is_judged_on_the_threshold.
+  - mutation: "the above PLUS `previous = None` — i.e. the complete pre-BSE-12 whole-file rule the hook still runs today"
+    observed: "hook_debt_scope: 5 passed, 8 FAILED. diff_scope: 2 passed, 2 FAILED (the O11 case and the offender-naming case)."
+    reading: "the suite discriminates the shipped rule from the rule it replaces"
+
+wiring_status:
+  measured_on: "2026-09-07, commit 045ab4b73"
+  wired: >
+    NO. The rule, the git reads (staged_verdict / staged_verdict_for_file) and
+    the CLI entry point (handle_analyze_complexity_diff_scoped) all exist and
+    are tested, but no command line reaches them: the generated pre-commit hook
+    in src/cli/handlers/hooks_command_handlers/hook_generation.rs still runs
+    `pmat analyze complexity --file "$SRC_FILE"`, which is WHOLE FILE. Until the
+    `--diff-scope` flag is declared and routed, this contract holds over a rule
+    the hook does not run, and report O11 is still reproducible in the field.
+  remaining: >
+    Declare `diff_scope: bool` on AnalyzeCommands::Complexity
+    (src/cli/commands/analyze_commands/mod.rs), which forces `diff_scope: false`
+    into 23 struct literals rustc names across 6 files — none of them in this
+    ticket's scope — then route it in
+    src/cli/handlers/analysis_handlers/core_routes.rs::route_complexity_command
+    to handle_analyze_complexity_diff_scoped, then add the flag to the hook's
+    command line and delete the doctrine paragraph that says WHOLE FILE.

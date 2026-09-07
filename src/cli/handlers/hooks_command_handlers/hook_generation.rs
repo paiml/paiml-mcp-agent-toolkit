@@ -304,11 +304,21 @@ fi
 # when its measured span overlaps a staged hunk, and it is refused only when a
 # metric exceeds the threshold AND exceeds the same function's value at HEAD --
 # is implemented and tested in
-# src/cli/handlers/hooks_command_handlers/hook_debt_scope.rs.
-# The measurement below is still WHOLE FILE: a one-line fix in an undebted
-# function of a file with pre-existing debt is refused here. Wiring the scoped
-# rule needs a flag on `pmat analyze complexity` (its argument surface lives in
-# src/cli/commands/analyze_commands/mod.rs), which this commit does not change.
+# src/cli/handlers/hooks_command_handlers/hook_debt_scope.rs, it READS a real
+# repo there (`git show :<path>` for the staged blob, `git show HEAD:<path>`
+# for its counterpart, `git diff --cached -U0` for the ranges), and the CLI
+# side of it -- print the function and both numbers, exit non-zero -- is
+# handle_analyze_complexity_diff_scoped in
+# src/cli/handlers/complexity_handlers/mod.rs.
+# THE MEASUREMENT BELOW IS STILL WHOLE FILE, and it is what runs: no command
+# line reaches any of the above. A one-line fix in an undebted function of a
+# file with pre-existing debt is refused here, today. What is missing is one
+# flag -- `diff_scope: bool` on AnalyzeCommands::Complexity in
+# src/cli/commands/analyze_commands/mod.rs (which forces `diff_scope: false`
+# into 23 struct literals across 6 other files) and its route in
+# route_complexity_command -- after which `--diff-scope` goes on the line
+# below and this paragraph is deleted. Tests exist and pass over a rule the
+# hook does not call: that is a claim about a code path, not about this hook.
 STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.go' '*.c' '*.cpp' '*.lua' '*.php' '*.swift' 2>/dev/null)
 if [ -n "$STAGED_SRC" ]; then
     echo -n "  Complexity check... "
