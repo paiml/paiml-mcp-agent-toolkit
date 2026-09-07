@@ -27,7 +27,10 @@
 //! ([`collect_functions`] + [`measure_block`] + [`FunctionSpans`]); this module
 //! adds no second parser.
 
-use anyhow::Result;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+use anyhow::{anyhow, Context, Result};
 
 use crate::services::accurate_complexity_analyzer::{collect_functions, measure_block};
 use crate::services::source_line_index::{FunctionSpans, LineSpan};
@@ -295,6 +298,108 @@ fn grew(
     })
 }
 
+/// The staged verdict for one file, read out of git itself.
+///
+/// This is the adapter the CLI entry point calls: it performs the three reads
+/// the rule above needs and does no judging of its own.
+///
+/// * NEW source is `git show :<path>` — the INDEX, not the working tree. The
+///   hook judges what is being COMMITTED; an unstaged edit sitting in the
+///   working tree is not part of this commit and must not change the verdict.
+/// * OLD source is `git show HEAD:<path>`, `None` when the file has no
+///   counterpart there (added, renamed, or an unborn branch).
+/// * The diff is `git diff --cached -U0 -- <path>`.
+///
+/// # Errors
+/// Returns an error when git is unusable, when `path` is not staged (an
+/// absence must never render as "no violations"), when the diff cannot be
+/// read, or when either source is not parseable Rust.
+pub fn staged_verdict(
+    repo_root: &Path,
+    path: &Path,
+    thresholds: DebtThresholds,
+) -> Result<DebtVerdict> {
+    ensure_rust_source(path)?;
+    let spec = path.to_string_lossy().replace('\\', "/");
+    let staged = format!(":{spec}");
+    let new_source = git_read(repo_root, &["show", &staged])?.ok_or_else(|| {
+        anyhow!(
+            "{spec} is not staged: `git show {staged}` found no blob, so the \
+             diff-scoped check has nothing to judge"
+        )
+    })?;
+    let old_source = git_read(repo_root, &["show", &format!("HEAD:{spec}")])?;
+    // A failed diff read is an error, never an empty range list: no ranges
+    // means no touched functions means Allowed, which would be a pass this
+    // code never measured.
+    let diff = git_read(repo_root, &["diff", "--cached", "-U0", "--", &spec])?
+        .ok_or_else(|| anyhow!("`git diff --cached -U0 -- {spec}` failed in {repo_root:?}"))?;
+    diff_scoped_verdict(old_source.as_deref(), &new_source, &diff, thresholds)
+}
+
+/// [`staged_verdict`] for a path as the user typed it: finds the repository
+/// and the path's name inside it, then judges.
+///
+/// # Errors
+/// As [`staged_verdict`], plus when `path` is not inside a git repository.
+pub fn staged_verdict_for_file(path: &Path, thresholds: DebtThresholds) -> Result<DebtVerdict> {
+    let (root, relative) = locate_in_repo(path)?;
+    staged_verdict(&root, &relative, thresholds)
+}
+
+/// The repository root containing `path`, and `path` as git names it.
+fn locate_in_repo(path: &Path) -> Result<(PathBuf, PathBuf)> {
+    let dir = match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
+        _ => PathBuf::from("."),
+    };
+    let name = path
+        .file_name()
+        .ok_or_else(|| anyhow!("{path:?} names no file"))?;
+    let root = git_read(&dir, &["rev-parse", "--show-toplevel"])?
+        .ok_or_else(|| anyhow!("{path:?} is not inside a git repository"))?;
+    let root = canonical(Path::new(root.trim()));
+    let relative = canonical(&dir)
+        .strip_prefix(&root)
+        .map(Path::to_path_buf)
+        .map_err(|_| anyhow!("{path:?} is not under the repository root {root:?}"))?
+        .join(name);
+    Ok((root, relative))
+}
+
+/// Symlinked temp roots (`/tmp` on macOS) make the string forms of the same
+/// directory differ; compare the resolved forms, and fall back to the input
+/// when it cannot be resolved (a staged-but-deleted path has no inode).
+fn canonical(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// The measurement path is `syn`, so a non-Rust file cannot be graded here.
+/// Saying so is the point: a caller that silently allowed every `.py` file
+/// would be reporting a verdict it never reached.
+fn ensure_rust_source(path: &Path) -> Result<()> {
+    if path.extension().is_some_and(|ext| ext == "rs") {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "diff-scoped complexity is measured with the Rust analyzer; {path:?} is not a .rs file"
+    ))
+}
+
+/// `git -C <dir> <args>`: `Ok(None)` when git EXITED non-zero (a missing
+/// object), `Err` only when git could not be run at all.
+fn git_read(dir: &Path, args: &[&str]) -> Result<Option<String>> {
+    let output = Command::new("git")
+        .current_dir(dir)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .args(args)
+        .output()
+        .with_context(|| format!("running `git {}` in {dir:?}", args.join(" ")))?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    Ok(Some(String::from_utf8_lossy(&output.stdout).into_owned()))
+}
 #[cfg(test)]
 #[path = "hook_debt_scope_tests.rs"]
 mod hook_debt_scope_tests;

@@ -356,3 +356,181 @@ fn hook_debt_scope_a_file_absent_from_head_is_judged_on_the_threshold() {
         verdict.rendered()
     );
 }
+
+/// The adapter that the CLI entry point calls: everything above measures the
+/// RULE against in-memory fixtures, and these measure the two READS the rule
+/// needs — the staged blob and its HEAD counterpart — against a real repo.
+///
+/// A fixture repo, not a mock: `git show :<path>` (the INDEX, not the working
+/// tree) is precisely the read a mock would have gotten wrong, and it is the
+/// one that decides whether the hook judges what is being committed or what
+/// happens to be on disk.
+mod staged_repo {
+    use super::super::{staged_verdict, staged_verdict_for_file, DebtThresholds};
+    use super::{whole_file_verdict, GROWTH_IN_INNOCENT, HEAD_VERSION, ONE_LINE_IN_INNOCENT};
+    use std::path::Path;
+
+    const LIMITS: DebtThresholds = DebtThresholds {
+        max_cyclomatic: 5,
+        max_cognitive: 100,
+    };
+
+    fn git(dir: &Path, args: &[&str]) {
+        let out = std::process::Command::new("git")
+            .current_dir(dir)
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .args(args)
+            .output()
+            .expect("git must be on PATH");
+        assert!(
+            out.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// `--template=` keeps a developer's global hook template out of the
+    /// fixture; the identity is pinned so the commit does not depend on the
+    /// machine's git config.
+    fn repo_with_committed_debt() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let p = dir.path();
+        git(p, &["init", "-q", "--template=", "--initial-branch=main"]);
+        git(p, &["config", "user.email", "fixture@example.com"]);
+        git(p, &["config", "user.name", "Fixture"]);
+        std::fs::create_dir_all(p.join("src")).expect("mkdir");
+        std::fs::write(p.join("src/lib.rs"), HEAD_VERSION).expect("write");
+        git(p, &["add", "-A"]);
+        git(p, &["commit", "-q", "-m", "pre-existing debt"]);
+        dir
+    }
+
+    fn stage(dir: &Path, source: &str) {
+        std::fs::write(dir.join("src/lib.rs"), source).expect("write");
+        git(dir, &["add", "src/lib.rs"]);
+    }
+
+    /// Report O11, end to end over git: a one-line fix in an undebted function
+    /// of a file carrying pre-existing debt is ALLOWED.
+    #[test]
+    fn staged_verdict_allows_a_one_line_fix_beside_pre_existing_debt() {
+        let repo = repo_with_committed_debt();
+        stage(repo.path(), ONE_LINE_IN_INNOCENT);
+
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/lib.rs"), LIMITS).expect("verdict");
+
+        assert!(
+            verdict.is_allowed(),
+            "the O11 case must commit, got {:?}",
+            verdict.rendered()
+        );
+        // The falsifier: the rule the hook used before this ticket refuses the
+        // very same staged content, so the pass above is scoping and not an
+        // absence of debt.
+        assert!(
+            !whole_file_verdict(ONE_LINE_IN_INNOCENT, LIMITS).is_allowed(),
+            "the pre-BSE-12 whole-file rule must refuse this same file"
+        );
+    }
+
+    /// Growth inside a touched function is refused, and the offender line names
+    /// the function and both numbers.
+    #[test]
+    fn staged_verdict_refuses_growth_and_names_the_function() {
+        let repo = repo_with_committed_debt();
+        stage(repo.path(), GROWTH_IN_INNOCENT);
+
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/lib.rs"), LIMITS).expect("verdict");
+
+        assert!(!verdict.is_allowed(), "growth must be refused");
+        let rendered = verdict.rendered().join("\n");
+        assert!(
+            rendered.contains("innocent"),
+            "the refusal names the function: {rendered}"
+        );
+        assert!(
+            rendered.contains("6 > 5"),
+            "the refusal carries measured and limit: {rendered}"
+        );
+        assert!(
+            rendered.contains("(was 1)"),
+            "the refusal carries the previous value: {rendered}"
+        );
+        assert!(
+            !rendered.contains("debted"),
+            "the untouched debted function is never an offender: {rendered}"
+        );
+    }
+
+    /// The verdict is a function of the INDEX, not of the working tree: a
+    /// further unstaged edit that would blow the limit cannot change it.
+    #[test]
+    fn staged_verdict_reads_the_index_not_the_working_tree() {
+        let repo = repo_with_committed_debt();
+        stage(repo.path(), ONE_LINE_IN_INNOCENT);
+        std::fs::write(repo.path().join("src/lib.rs"), GROWTH_IN_INNOCENT).expect("write");
+
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/lib.rs"), LIMITS).expect("verdict");
+
+        assert!(
+            verdict.is_allowed(),
+            "only staged content is judged, got {:?}",
+            verdict.rendered()
+        );
+    }
+
+    /// A file that exists only in the index (added, never committed) has no
+    /// HEAD counterpart: it is judged against the threshold alone rather than
+    /// erroring out.
+    #[test]
+    fn staged_verdict_judges_a_file_absent_from_head() {
+        let repo = repo_with_committed_debt();
+        std::fs::write(repo.path().join("src/added.rs"), HEAD_VERSION).expect("write");
+        git(repo.path(), &["add", "src/added.rs"]);
+
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/added.rs"), LIMITS).expect("verdict");
+
+        assert!(!verdict.is_allowed(), "new debt in a new file is refused");
+        assert!(
+            verdict.rendered().iter().any(|l| l.contains("debted")),
+            "the new file's offender is named: {:?}",
+            verdict.rendered()
+        );
+    }
+
+    /// The entry point the CLI flag uses takes the path the user typed and
+    /// finds the repo itself.
+    #[test]
+    fn staged_verdict_for_file_resolves_the_repo_from_the_path() {
+        let repo = repo_with_committed_debt();
+        stage(repo.path(), ONE_LINE_IN_INNOCENT);
+
+        let verdict =
+            staged_verdict_for_file(&repo.path().join("src/lib.rs"), LIMITS).expect("verdict");
+
+        assert!(
+            verdict.is_allowed(),
+            "same O11 verdict through the path-taking entry point: {:?}",
+            verdict.rendered()
+        );
+    }
+
+    /// A path git does not have staged is NOT "no violations": say so.
+    #[test]
+    fn staged_verdict_refuses_to_grade_an_unstaged_path() {
+        let repo = repo_with_committed_debt();
+        std::fs::write(repo.path().join("src/loose.rs"), HEAD_VERSION).expect("write");
+
+        let err = staged_verdict(repo.path(), Path::new("src/loose.rs"), LIMITS)
+            .expect_err("an unstaged path has nothing to judge");
+
+        assert!(
+            err.to_string().contains("src/loose.rs"),
+            "the error names the path: {err}"
+        );
+    }
+}
