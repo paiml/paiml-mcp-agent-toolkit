@@ -522,3 +522,215 @@ pub fn greet(name: &str) -> String {
     }
 }
 
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod child_process_isolation_tests {
+    //! PMAT-694 (#1202, absorbing #1127): what the quality proxy's child
+    //! compilers are allowed to touch.
+    //!
+    //! `ci / coverage` runs `cargo llvm-cov` over `cargo test --lib`, which
+    //! exports `RUSTFLAGS`, `LLVM_PROFILE_FILE`, `CARGO_LLVM_COV*` and a shared
+    //! `CARGO_TARGET_DIR` into every process the test binary spawns. The proxy
+    //! spawns a real `cargo clippy`; inheriting that environment made the child
+    //! build instrumented, into a target directory a dozen sibling tests were
+    //! already holding the package lock on, and the 600s deadline expired. Run
+    //! 34020631941 on PR #1181 failed exactly there, on
+    //! `test_proxy_advisory_mode` and a sibling, and two reruns went green — a
+    //! rerun to green is a flake, not a pass.
+    //!
+    //! These four tests are the guard: a fixture crate the child can lint in
+    //! seconds, an environment the child cannot inherit instrumentation
+    //! through, an address-space cap on the child, and a wall-clock bound on
+    //! the two tests that failed.
+    use super::*;
+    use std::ffi::OsStr;
+    use std::path::{Path, PathBuf};
+    use std::time::Instant;
+
+    /// The fixture crate the lint stage's temp crate is built from.
+    const FIXTURE_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/quality_proxy");
+
+    /// The environment a child compiler must not inherit from a `cargo
+    /// llvm-cov` parent. Instrumenting pmat must not instrument the child.
+    const INSTRUMENTATION_VARS: [&str; 6] = [
+        "LLVM_PROFILE_FILE",
+        "CARGO_LLVM_COV",
+        "CARGO_LLVM_COV_TARGET_DIR",
+        "RUSTFLAGS",
+        "CARGO_ENCODED_RUSTFLAGS",
+        "CARGO_INCREMENTAL",
+    ];
+
+    fn rust_files(dir: &Path) -> Vec<PathBuf> {
+        let mut found = Vec::new();
+        let mut stack = vec![dir.to_path_buf()];
+        while let Some(next) = stack.pop() {
+            let Ok(entries) = std::fs::read_dir(&next) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    stack.push(path);
+                } else if path.extension() == Some(OsStr::new("rs")) {
+                    found.push(path);
+                }
+            }
+        }
+        found.sort();
+        found
+    }
+
+    /// (a) The crate the child lints is a fixture, not this workspace.
+    ///
+    /// `[workspace]` is the load-bearing line: without it cargo walks up from
+    /// the crate directory, finds pmat's workspace root and lints 3,000+ files.
+    #[test]
+    fn fixture_crate_is_small() {
+        let dir = Path::new(FIXTURE_DIR);
+        let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap_or_default();
+        assert!(
+            !manifest.is_empty(),
+            "the quality proxy fixture crate must exist at {FIXTURE_DIR}/Cargo.toml"
+        );
+        assert!(
+            manifest.contains("[workspace]"),
+            "the fixture must declare its own [workspace] so cargo cannot climb \
+             into pmat's; manifest was:\n{manifest}"
+        );
+        assert!(
+            dir.join("Cargo.lock").is_file(),
+            "the fixture's Cargo.lock must be committed so the child never resolves a registry"
+        );
+
+        let files = rust_files(dir);
+        assert!(!files.is_empty(), "the fixture must contain Rust to lint");
+        let lines: usize = files
+            .iter()
+            .map(|f| std::fs::read_to_string(f).unwrap_or_default().lines().count())
+            .sum();
+        assert!(
+            lines <= 50,
+            "the fixture is a seconds-long lint, not a workspace: {lines} lines over {files:?}"
+        );
+    }
+
+    /// (b) The child cannot inherit the parent's coverage instrumentation.
+    ///
+    /// Asserted on the constructed `Command`: `env_remove` records the variable
+    /// with no value, so the clear is visible whatever the parent process has
+    /// set, and the test does not have to mutate a process-global environment
+    /// that 21,000 sibling tests share.
+    #[test]
+    fn child_env_is_scrubbed() {
+        let workdir = std::env::temp_dir();
+        let cmd = child_command("cargo", &[OsStr::new("clippy")], &workdir);
+        let envs: Vec<(String, Option<String>)> = cmd
+            .get_envs()
+            .map(|(k, v)| {
+                (
+                    k.to_string_lossy().into_owned(),
+                    v.map(|v| v.to_string_lossy().into_owned()),
+                )
+            })
+            .collect();
+
+        for var in INSTRUMENTATION_VARS {
+            assert!(
+                envs.iter().any(|(k, v)| k == var && v.is_none()),
+                "the child must clear {var}; the command carries {envs:?}"
+            );
+        }
+
+        let target = envs
+            .iter()
+            .find_map(|(k, v)| (k == "CARGO_TARGET_DIR").then(|| v.clone()))
+            .flatten()
+            .unwrap_or_default();
+        assert!(
+            !target.is_empty() && Path::new(&target).starts_with(&workdir),
+            "the child needs a private CARGO_TARGET_DIR under its own working \
+             directory, not the shared one a dozen sibling tests hold the \
+             package lock on; got {target:?}"
+        );
+    }
+
+    /// (c) The child has an address-space cap — #1127's ask.
+    ///
+    /// The deadline and the process-group kill bound how long a child runs and
+    /// guarantee it dies; neither bounds how much memory it takes with it.
+    #[test]
+    fn child_has_a_memory_cap() {
+        let line = child_command_line(&child_command(
+            "cargo",
+            &[OsStr::new("clippy")],
+            &std::env::temp_dir(),
+        ));
+        assert!(
+            line.contains("prlimit --as=") || line.contains("ulimit -v"),
+            "the child compiler must run under an address-space cap; command line was: {line}"
+        );
+    }
+
+    /// (d) The two tests that `ci / coverage` killed still judge the same
+    /// content, and finish two orders of magnitude inside the deadline.
+    ///
+    /// 60s is not the target — the walls this prints are seconds — it is the
+    /// bound below which the failure mode cannot recur: the killed runs sat at
+    /// the 600s test-mode budget.
+    #[tokio::test]
+    async fn proxy_modes_finish_well_inside_the_deadline() {
+        let service = QualityProxyService::new();
+
+        let advisory_started = Instant::now();
+        let advisory = service
+            .proxy_operation(ProxyRequest {
+                operation: ProxyOperation::Write,
+                file_path: "test.rs".to_string(),
+                content: Some("pub fn undocumented() {\n    println!(\"No docs\");\n}".to_string()),
+                old_content: None,
+                new_content: None,
+                mode: ProxyMode::Advisory,
+                quality_config: QualityConfig::default(),
+            })
+            .await
+            .expect("advisory mode must produce a report, not an unmeasured lint stage");
+        let advisory_wall = advisory_started.elapsed();
+        assert!(matches!(advisory.status, ProxyStatus::Accepted));
+
+        let strict_started = Instant::now();
+        let strict = service
+            .proxy_operation(ProxyRequest {
+                operation: ProxyOperation::Write,
+                file_path: "test.rs".to_string(),
+                content: Some(
+                    "/// A simple greeting function\n/// Greet.\npub fn greet(name: &str) -> \
+                     String {\n    format!(\"Hello, {}!\", name)\n}"
+                        .to_string(),
+                ),
+                old_content: None,
+                new_content: None,
+                mode: ProxyMode::Strict,
+                quality_config: QualityConfig::default(),
+            })
+            .await
+            .expect("strict mode must produce a report, not an unmeasured lint stage");
+        let strict_wall = strict_started.elapsed();
+        assert!(matches!(strict.status, ProxyStatus::Accepted));
+
+        eprintln!(
+            "PMAT-694 wall: advisory {:.2}s, strict {:.2}s",
+            advisory_wall.as_secs_f64(),
+            strict_wall.as_secs_f64()
+        );
+        for (name, wall) in [("advisory", advisory_wall), ("strict", strict_wall)] {
+            assert!(
+                wall.as_secs() < 60,
+                "{name} mode took {:.2}s; the lint stage is meant to be one rustc \
+                 invocation over one file",
+                wall.as_secs_f64()
+            );
+        }
+    }
+}

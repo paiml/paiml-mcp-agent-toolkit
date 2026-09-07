@@ -38,6 +38,33 @@ const CLIPPY_TIMEOUT: Duration = if cfg!(test) {
 /// content, and unbounded before this for the same reason clippy was.
 const RUSTFMT_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Build the child `cargo`/`rustfmt` process the quality proxy spawns.
+///
+/// One constructor for every child this service starts, so that no spawn site
+/// can be added later that misses what a spawn here has to do. Today it is the
+/// faithful extraction of what the two call sites did inline: name the program,
+/// pass the arguments, run in the given directory.
+pub(crate) fn child_command(
+    program: &str,
+    args: &[&std::ffi::OsStr],
+    workdir: &Path,
+) -> std::process::Command {
+    let mut cmd = std::process::Command::new(program);
+    cmd.args(args);
+    cmd.current_dir(workdir);
+    cmd
+}
+
+/// The command line `child_command` built, for diagnostics and for the guard
+/// tests that assert what wraps the child.
+pub(crate) fn child_command_line(cmd: &std::process::Command) -> String {
+    std::iter::once(cmd.get_program())
+        .chain(cmd.get_args())
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Names published in `QualityReport::gates_run`. A gate missing from that
 /// list did not run, and the corresponding zero in `metrics` is not a
 /// measurement of zero.
@@ -559,7 +586,6 @@ impl QualityProxyService {
     async fn run_lint_checks(&self, content: &str) -> Result<Vec<(usize, String)>> {
         use std::fs;
         use std::io::Write;
-        use std::process::Command;
 
         // Create a temporary Rust project
         let temp_dir = tempfile::TempDir::new()?;
@@ -631,8 +657,11 @@ edition = "2021"
         // report is the only answer that invents neither a pass nor a finding.
         let project_dir = temp_dir.path().to_path_buf();
         let spawned = tokio::task::spawn_blocking(move || {
-            let mut cmd = Command::new("cargo");
-            cmd.arg("clippy").current_dir(&project_dir);
+            let mut cmd = child_command(
+                "cargo",
+                &[std::ffi::OsStr::new("clippy")],
+                &project_dir,
+            );
             crate::cli::handlers::work_falsification::deny_refresh::run_with_timeout(
                 &mut cmd,
                 CLIPPY_TIMEOUT,
@@ -667,8 +696,6 @@ edition = "2021"
     }
 
     async fn format_rust_code(&self, content: &str) -> Result<String> {
-        use std::process::Command;
-
         let temp_file = self.create_temp_file(content, "rs")?;
         let target = temp_file.path().to_path_buf();
 
@@ -679,8 +706,18 @@ edition = "2021"
         // this scope — only its path is moved into the worker — because rustfmt
         // formats it in place and it is read back below.
         let output = tokio::task::spawn_blocking(move || {
-            let mut cmd = Command::new("rustfmt");
-            cmd.arg("--edition").arg("2021").arg(&target);
+            let workdir = target
+                .parent()
+                .map_or_else(std::env::temp_dir, Path::to_path_buf);
+            let mut cmd = child_command(
+                "rustfmt",
+                &[
+                    std::ffi::OsStr::new("--edition"),
+                    std::ffi::OsStr::new("2021"),
+                    target.as_os_str(),
+                ],
+                &workdir,
+            );
             crate::cli::handlers::work_falsification::deny_refresh::run_with_timeout(
                 &mut cmd,
                 RUSTFMT_TIMEOUT,
