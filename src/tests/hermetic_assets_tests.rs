@@ -57,7 +57,12 @@ fn parse_checksums(text: &str) -> Vec<(String, String)> {
             64,
             "SHA256SUMS digest is not 64 hex characters: {line:?}"
         );
-        rows.push((hex.to_string(), name.trim_start_matches("./").to_string()));
+        let name = name.trim().trim_start_matches("./").to_string();
+        assert!(
+            name.starts_with("assets/vendor/"),
+            "SHA256SUMS must name repository-root relative paths under assets/vendor/: {name}"
+        );
+        rows.push((hex.to_string(), name));
     }
     rows
 }
@@ -142,7 +147,7 @@ fn vendored_assets_match_the_committed_checksums() {
         rows.len()
     );
     for (expected, name) in rows {
-        let file = repo_root().join("assets/vendor").join(&name);
+        let file = repo_root().join(&name);
         assert!(
             file.exists(),
             "SHA256SUMS names {name}, which is not present at {}",
@@ -170,7 +175,7 @@ fn vendored_assets_are_tracked() {
     let text = std::fs::read_to_string(checksums_path())
         .expect("assets/vendor/SHA256SUMS must be committed");
     for (_, name) in parse_checksums(&text) {
-        let want = format!("assets/vendor/{name}");
+        let want = name.clone();
         assert!(
             tracked.contains(&want),
             "{want} is named by SHA256SUMS but is not tracked; git knows: {tracked:#?}"
@@ -217,7 +222,7 @@ fn no_rerun_if_changed_on_ignored_paths() {
     let text = read.expect("presence asserted on the line above");
     let mut required = vec!["assets/vendor/SHA256SUMS".to_string()];
     for (_, name) in parse_checksums(&text) {
-        required.push(format!("assets/vendor/{name}"));
+        required.push(name);
     }
     for want in required {
         assert!(

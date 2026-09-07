@@ -29,6 +29,14 @@ fn main() {
     // checkout it does not exist at fingerprint time and the crate rebuilt in
     // full on every run. The gate above caught that on its first CI run.
     println!("cargo:rerun-if-changed=assets/demo/");
+    // #1156. The vendored assets are watched BY NAME. Watching the directory
+    // would name a path git does not track (its uncompressed originals are
+    // still ignored) and, before this change, a path the script wrote itself.
+    println!("cargo:rerun-if-changed=assets/vendor/SHA256SUMS");
+    println!("cargo:rerun-if-changed=assets/vendor/gridjs.min.js.gz");
+    println!("cargo:rerun-if-changed=assets/vendor/gridjs-mermaid.min.css.gz");
+    println!("cargo:rerun-if-changed=assets/vendor/mermaid.min.js.gz");
+    println!("cargo:rerun-if-changed=assets/vendor/d3.min.js.gz");
     println!("cargo:rerun-if-changed=templates/");
     println!("cargo:rerun-if-changed=src/schema/refactor_state.capnp");
     println!("cargo:rerun-if-env-changed=PMAT_FAST_BUILD");
@@ -80,10 +88,16 @@ fn main() {
     // Compress templates at build time
     compress_templates();
 
-    // Download and compress assets for demo mode
-    // Skip asset downloading during cargo publish to avoid modifying source directory
+    // #1156 (PMAT-695): the four demo assets are committed under
+    // `assets/vendor/` and checked against the committed `SHA256SUMS`. This
+    // runs on every build, not only a `--features demo` one: hashing ~900 KB
+    // is cheap, and an asset whose bytes have moved must fail the build that
+    // embeds it rather than the one that happens to enable a feature.
+    verify_vendored_assets();
+
+    // Minify the demo assets. Skipped while publishing, which must not modify
+    // the source directory.
     if env::var("CARGO_FEATURE_DEMO").is_ok() && !is_publishing() {
-        download_and_compress_assets();
         minify_demo_assets();
     }
 
@@ -165,96 +179,98 @@ fn verify_dependency_versions() {
     }
 }
 
-fn download_and_compress_assets() {
-    setup_asset_directories();
-    let assets = get_asset_definitions();
-    process_assets(&assets);
+/// Verify the committed demo assets against `assets/vendor/SHA256SUMS`.
+///
+/// #1156 (PMAT-695). This function used to fetch four files from a CDN at
+/// build time — `gridjs` pinned, `mermaid` and `d3` at `@latest` — into
+/// `assets/vendor/`, which was gitignored, gzip them and then read its own
+/// output back as a build input. That is a network input in a sovereign
+/// build, non-deterministic by construction, and it made a clean-room build
+/// pass only because the machine had a route out.
+///
+/// The assets are committed now (the `.gz` forms, which are what
+/// `src/demo/assets.rs` embeds); `assets/vendor/PROVENANCE.md` records the
+/// exact upstream version and digest of each one. Nothing here touches the
+/// network, creates a directory, or writes to the source tree.
+fn verify_vendored_assets() {
+    let sums_path = Path::new("assets/vendor/SHA256SUMS");
+    let sums = match fs::read_to_string(sums_path) {
+        Ok(text) => text,
+        Err(e) => panic!(
+            "PMAT-695: {} is unreadable ({e}). The vendored assets are committed \
+             files — restore them from git rather than fetching them.",
+            sums_path.display()
+        ),
+    };
+
+    let rows = parse_vendor_checksums(&sums);
+    assert!(
+        rows.len() >= 4,
+        "PMAT-695: {} covers {} file(s); the four vendored assets must all be listed",
+        sums_path.display(),
+        rows.len()
+    );
+    for (expected, name) in rows {
+        // Names are repository-root relative, which is `CARGO_MANIFEST_DIR` —
+        // the directory cargo runs this script in — and is also what
+        // `sha256sum -c assets/vendor/SHA256SUMS` expects from the root.
+        verify_one_vendored_asset(Path::new(&name), &name, &expected);
+    }
+
     set_asset_hash_env();
 }
 
-fn setup_asset_directories() {
-    let vendor_dir = Path::new("assets/vendor");
-    let demo_dir = Path::new("assets/demo");
-    let _ = fs::create_dir_all(vendor_dir);
-    let _ = fs::create_dir_all(demo_dir);
-}
-
-const fn get_asset_definitions() -> [(&'static str, &'static str); 4] {
-    [
-        (
-            "https://unpkg.com/gridjs@6.0.6/dist/gridjs.umd.js",
-            "gridjs.min.js",
-        ),
-        (
-            "https://unpkg.com/gridjs@6.0.6/dist/theme/mermaid.min.css",
-            "gridjs-mermaid.min.css",
-        ),
-        (
-            "https://unpkg.com/mermaid@latest/dist/mermaid.min.js",
-            "mermaid.min.js",
-        ),
-        ("https://unpkg.com/d3@latest/dist/d3.min.js", "d3.min.js"),
-    ]
-}
-
-fn process_assets(assets: &[(&str, &str)]) {
-    let vendor_dir = Path::new("assets/vendor");
-
-    for (url, filename) in assets {
-        let path = vendor_dir.join(filename);
-        let gz_path = vendor_dir.join(format!("{filename}.gz"));
-        let hash_path = vendor_dir.join(format!("{filename}.hash"));
-
-        if should_skip_asset(&path, &gz_path, &hash_path) {
-            println!("cargo:warning=Skipping unchanged asset: {filename} (O(1) hash check)");
+/// Parse `SHA256SUMS` in `sha256sum` format: `<64 hex>  <name>` per line.
+///
+/// A malformed line is fatal, not skipped: skipping is how a checksum file
+/// quietly comes to cover nothing.
+fn parse_vendor_checksums(text: &str) -> Vec<(String, String)> {
+    let mut rows = Vec::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
             continue;
         }
-
-        ensure_asset_downloaded(&path, &gz_path, url, filename);
-        compress_asset(&path, &gz_path, &hash_path, filename);
+        let Some((hex, name)) = line.split_once("  ") else {
+            panic!("PMAT-695: malformed SHA256SUMS line, expected `<sha256>  <name>`: {line}")
+        };
+        assert!(
+            hex.len() == 64 && hex.chars().all(|c| c.is_ascii_hexdigit()),
+            "PMAT-695: SHA256SUMS digest is not 64 hex characters: {line}"
+        );
+        let name = name.trim().trim_start_matches("./").to_string();
+        assert!(
+            name.starts_with("assets/vendor/") && !name.contains(".."),
+            "PMAT-695: SHA256SUMS may only name files under assets/vendor/: {name}"
+        );
+        rows.push((hex.to_string(), name));
     }
+    rows
 }
 
-fn ensure_asset_downloaded(path: &Path, gz_path: &Path, url: &str, filename: &str) {
-    if !path.exists() {
-        // Check if we're in a docs.rs build environment
-        if env::var("DOCS_RS").is_ok() {
-            println!("cargo:warning=Skipping asset download in docs.rs environment: {filename}");
-            // Create a placeholder file for docs.rs builds
-            let _ = fs::write(path, b"/* Asset skipped in docs.rs build */");
-            // Also create an empty gzipped placeholder to satisfy include_bytes!
-            let _ = fs::write(gz_path, b"");
-        } else {
-            download_asset(url, path, filename);
+/// One asset: present, and byte-identical to what `SHA256SUMS` recorded.
+///
+/// Under `--no-default-features` there is no `sha2` in build-dependencies, so
+/// `calculate_file_hash` cannot answer; the presence check still applies and
+/// the unverifiable case is reported rather than passed silently.
+fn verify_one_vendored_asset(path: &Path, name: &str, expected: &str) {
+    assert!(
+        path.exists(),
+        "PMAT-695: vendored asset {name} is named by assets/vendor/SHA256SUMS but is \
+         missing at {}. It is a committed file; restore it from git.",
+        path.display()
+    );
+    match calculate_file_hash(path) {
+        Some(actual) => assert!(
+            actual == expected,
+            "PMAT-695: vendored asset {name} does not match assets/vendor/SHA256SUMS \
+             (recorded {expected}, found {actual}). Restore the file from git, or \
+             regenerate SHA256SUMS and PROVENANCE.md if the change is intended."
+        ),
+        None => {
+            println!("cargo:warning=PMAT-695: cannot verify {name} without sha2 (no standard-deps)")
         }
     }
-}
-
-fn download_asset(url: &str, path: &Path, filename: &str) {
-    println!("cargo:warning=Downloading {filename} from {url}");
-
-    match ureq::get(url).call() {
-        Ok(mut response) => match response.body_mut().read_to_vec() {
-            Ok(content) => {
-                if let Err(e) = fs::write(path, &content) {
-                    println!("cargo:warning=Failed to write {filename}: {e}");
-                }
-            }
-            Err(e) => {
-                println!("cargo:warning=Failed to read {filename}: {e}");
-                let _ = fs::write(path, b"/* Asset download failed during build */");
-            }
-        },
-        Err(e) => {
-            handle_download_failure(&e, path, filename);
-        }
-    }
-}
-
-fn handle_download_failure(e: &ureq::Error, path: &Path, filename: &str) {
-    println!("cargo:warning=Failed to download {filename}: {e}. Using placeholder.");
-    // Create a placeholder file
-    let _ = fs::write(path, b"/* Asset download failed during build */");
 }
 
 fn set_asset_hash_env() {

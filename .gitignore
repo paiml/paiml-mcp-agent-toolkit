@@ -1,5 +1,12 @@
 # Vendor assets (minified libraries)
-assets/vendor/
+# PMAT-695 (#1156): the four demo assets are COMMITTED here, with a committed
+# SHA256SUMS that build.rs verifies on every build — the build script no longer
+# fetches anything. Only the uncompressed originals stay ignored: nothing reads
+# them (src/demo/assets.rs embeds the .gz forms) and mermaid.min.js alone is
+# 2.6 MB against crates.io's 10 MiB package ceiling.
+assets/vendor/*
+# (the un-ignore rules are at the FOOT of this file: the blanket `*.gz`
+#  further down would otherwise re-ignore every committed asset — last match wins)
 server/assets/vendor/
 *.min.js
 *.min.css
@@ -321,3 +328,15 @@ satd.json
 # keeping belongs in scripts/dogfood/ with a name and a guard, not in the root.
 /run_audit*.sh
 /run_checks*.sh
+
+# PMAT-695 (#1156): the committed demo assets, un-ignored LAST so that neither
+# `assets/vendor/*` above nor the blanket `*.gz` can take them back. git
+# applies the last matching pattern, so these six lines must stay at the foot
+# of this file. `build.rs` verifies every one of them against SHA256SUMS on
+# every build; `assets/vendor/PROVENANCE.md` records their upstream versions.
+!assets/vendor/SHA256SUMS
+!assets/vendor/PROVENANCE.md
+!assets/vendor/gridjs.min.js.gz
+!assets/vendor/gridjs-mermaid.min.css.gz
+!assets/vendor/mermaid.min.js.gz
+!assets/vendor/d3.min.js.gz
