@@ -38,20 +38,97 @@ const CLIPPY_TIMEOUT: Duration = if cfg!(test) {
 /// content, and unbounded before this for the same reason clippy was.
 const RUSTFMT_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// The crate the lint stage compiles the content under review inside.
+///
+/// Embedded rather than read from disk: an installed pmat has no checkout to
+/// read `tests/fixtures/` from, and a manifest that differs between the tests
+/// and the shipped binary would make the tests prove nothing about it. The
+/// fixture's own `src/lib.rs` is not embedded — it is a lintable placeholder
+/// that keeps the fixture a valid crate; the temp copy's `src/lib.rs` is the
+/// caller's content.
+const FIXTURE_CARGO_TOML: &str = include_str!("../../tests/fixtures/quality_proxy/Cargo.toml");
+const FIXTURE_CARGO_LOCK: &str = include_str!("../../tests/fixtures/quality_proxy/Cargo.lock");
+
+/// Address space a child compiler may map before the kernel refuses it.
+///
+/// The deadline bounds how long a child runs and the process-group kill
+/// guarantees it dies; neither bounds how much memory it takes with it on the
+/// way (#1127). Eight gigabytes is far above what one rustc invocation over one
+/// dependency-free file needs — measured in hundreds of megabytes — and far
+/// below what a runaway child can cost a CI box, so it converts an OOM that
+/// takes the whole job down into a compile error in one child.
+const CHILD_ADDRESS_SPACE_LIMIT_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+
+/// Variables a child compiler must never inherit from this process.
+///
+/// `cargo llvm-cov` exports all six into `cargo test --lib`, so a child spawned
+/// from a lib test would compile the fixture crate instrumented, write profraw
+/// data over the parent's `LLVM_PROFILE_FILE` pattern, and — through
+/// `CARGO_TARGET_DIR` / `CARGO_LLVM_COV_TARGET_DIR` — queue behind the package
+/// lock every sibling test's child is already holding. Instrumenting pmat must
+/// not instrument the child.
+const CHILD_INSTRUMENTATION_VARS: [&str; 6] = [
+    "LLVM_PROFILE_FILE",
+    "CARGO_LLVM_COV",
+    "CARGO_LLVM_COV_TARGET_DIR",
+    "RUSTFLAGS",
+    "CARGO_ENCODED_RUSTFLAGS",
+    "CARGO_INCREMENTAL",
+];
+
+/// Is `prlimit(1)` on PATH? Scanned rather than spawned: this runs on the
+/// request path, and a probe process to decide whether to cap a process is
+/// worse than the fallback.
+fn prlimit_on_path() -> bool {
+    std::env::var_os("PATH").is_some_and(|path| {
+        std::env::split_paths(&path).any(|dir| dir.join("prlimit").is_file())
+    })
+}
+
 /// Build the child `cargo`/`rustfmt` process the quality proxy spawns.
 ///
 /// One constructor for every child this service starts, so that no spawn site
-/// can be added later that misses what a spawn here has to do. Today it is the
-/// faithful extraction of what the two call sites did inline: name the program,
-/// pass the arguments, run in the given directory.
+/// can be added later that misses any of the three things a spawn here has to
+/// do: run under an address-space cap, own its target directory, and inherit
+/// none of the parent's coverage instrumentation. The deadline and the
+/// process-group kill stay where they were, in `run_with_timeout`, which every
+/// caller of this function passes the command to.
 pub(crate) fn child_command(
     program: &str,
     args: &[&std::ffi::OsStr],
     workdir: &Path,
 ) -> std::process::Command {
-    let mut cmd = std::process::Command::new(program);
+    let mut cmd = if prlimit_on_path() {
+        let mut cmd = std::process::Command::new("prlimit");
+        cmd.arg(format!("--as={CHILD_ADDRESS_SPACE_LIMIT_BYTES}"))
+            .arg("--")
+            .arg(program);
+        cmd
+    } else {
+        // No prlimit (busybox, Alpine, macOS): the POSIX shell has the same
+        // rlimit, in KiB, and `exec` keeps the process count and the process
+        // group the timeout's kill path relies on unchanged. A shell whose
+        // hard limit is already lower writes to stderr and carries on with
+        // the tighter limit, which is why the failure is discarded rather
+        // than made fatal.
+        let mut cmd = std::process::Command::new("sh");
+        cmd.arg("-c")
+            .arg(format!(
+                "ulimit -v {} 2>/dev/null; exec \"$0\" \"$@\"",
+                CHILD_ADDRESS_SPACE_LIMIT_BYTES / 1024
+            ))
+            .arg(program);
+        cmd
+    };
     cmd.args(args);
     cmd.current_dir(workdir);
+    // Private, and under the caller's temp directory: a shared target dir is a
+    // shared package lock, and the wait for it is indistinguishable from a slow
+    // compile until the deadline expires.
+    cmd.env("CARGO_TARGET_DIR", workdir.join("target"));
+    for var in CHILD_INSTRUMENTATION_VARS {
+        cmd.env_remove(var);
+    }
     cmd
 }
 
@@ -597,18 +674,21 @@ impl QualityProxyService {
         lib_file.write_all(content.as_bytes())?;
         lib_file.flush()?;
 
-        let cargo_toml = r#"[package]
-name = "temp_quality_check"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#;
-
-        let cargo_path = temp_dir.path().join("Cargo.toml");
-        let mut cargo_file = fs::File::create(&cargo_path)?;
-        cargo_file.write_all(cargo_toml.as_bytes())?;
-        cargo_file.flush()?;
+        // The manifest is the committed fixture's, not one written here: it
+        // carries `[workspace]`, without which cargo walks up from the temp
+        // directory looking for a workspace root and can find one (a temp
+        // directory inside a checkout, a TMPDIR under $HOME with a stray
+        // manifest above it) and lint it instead of this file. The lock file
+        // goes with it so the child never resolves a registry.
+        for (name, contents) in [
+            ("Cargo.toml", FIXTURE_CARGO_TOML),
+            ("Cargo.lock", FIXTURE_CARGO_LOCK),
+        ] {
+            let path = temp_dir.path().join(name);
+            let mut file = fs::File::create(&path)?;
+            file.write_all(contents.as_bytes())?;
+            file.flush()?;
+        }
 
         // Run cargo clippy.
         //

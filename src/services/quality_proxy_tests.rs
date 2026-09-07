@@ -673,6 +673,50 @@ mod child_process_isolation_tests {
         );
     }
 
+    /// The control for (b) and (c): a child that is capped, scrubbed and given
+    /// its own target directory must still be a child that RAN.
+    ///
+    /// Without this, a wrapper that failed to exec `cargo` at all would leave
+    /// stderr that matches none of the missing-tool markers, hand back zero
+    /// findings, and every timing assertion above would pass faster than ever
+    /// while the lint stage measured nothing.
+    #[tokio::test]
+    async fn the_wrapped_child_still_reports_clippy_findings() {
+        let service = QualityProxyService::new();
+        let report = service
+            .proxy_operation(ProxyRequest {
+                operation: ProxyOperation::Write,
+                file_path: "test.rs".to_string(),
+                content: Some(
+                    "/// Documented.\npub fn lints() {\n    let unused = 1;\n}".to_string(),
+                ),
+                old_content: None,
+                new_content: None,
+                mode: ProxyMode::Advisory,
+                quality_config: QualityConfig::default(),
+            })
+            .await
+            .expect("the lint stage must produce a verdict")
+            .quality_report;
+
+        assert!(
+            report.gates_run.iter().any(|g| g == "lint"),
+            "the lint gate must be claimed: {:?}",
+            report.gates_run
+        );
+        let lint: Vec<&str> = report
+            .violations
+            .iter()
+            .filter(|v| matches!(v.violation_type, ViolationType::Lint))
+            .map(|v| v.message.as_str())
+            .collect();
+        assert!(
+            lint.iter().any(|m| m.contains("unused")),
+            "clippy warns about the unused binding; if the wrapped child had not run, \
+             this list would be empty: {lint:?}"
+        );
+    }
+
     /// (d) The two tests that `ci / coverage` killed still judge the same
     /// content, and finish two orders of magnitude inside the deadline.
     ///

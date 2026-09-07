@@ -1,0 +1,23 @@
+# The crate the quality proxy's lint stage is run against.
+#
+# Every field here is load-bearing:
+#
+# * `[dependencies]` is empty, so `cargo clippy` over it is one rustc
+#   invocation over one file — seconds on a cold cache, with nothing to
+#   resolve and nothing to fetch.
+# * `[workspace]` makes this crate its own workspace root. Without it cargo
+#   walks up the directory tree looking for one, finds pmat's at the repo
+#   root, and lints a 3,000-file workspace instead of this file. That is the
+#   defect PMAT-694 is about: two lib tests spawned a child cargo that
+#   compiled the host workspace under coverage instrumentation and blew a
+#   600s deadline, so `ci / coverage` failed and a rerun "fixed" it.
+# * `Cargo.lock` beside this file is committed, so the child never resolves
+#   a registry it may not be able to reach.
+[package]
+name = "quality_proxy_fixture"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[workspace]
