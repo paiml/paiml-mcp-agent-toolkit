@@ -4604,11 +4604,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: '[train/BC] board-check: scripts/board-check.sh + make board-check — read-only; exit 1 naming every open PR without a disposition row, every open issue without exactly one milestone or an evidence closure, every non-completed roadmap ticket absent from the newest docs/audits/dispositions-*.json or lacking defer/complete/reject; self-test arm on a planted id must fail'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:24Z
-  updated: 2026-09-07T07:56:24Z
+  updated: 2026-09-07T08:02:23.168389884+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4621,11 +4621,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: '[train/CF] ci/coverage flake root cause (#1202, absorbs #1127): quality_proxy tests compile the host workspace with a nested cargo clippy under llvm-cov (>600 s); move them to a <=50-line fixture crate under tests/fixtures/quality_proxy with its own CARGO_TARGET_DIR, env -u LLVM_PROFILE_FILE/CARGO_LLVM_COV/RUSTFLAGS, a deadline, a process group and prlimit --as in one spawn fn'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:25Z
-  updated: 2026-09-07T07:56:25Z
+  updated: 2026-09-07T08:03:00.462661306+00:00
   spec: null
   acceptance_criteria: []
   phases: []
