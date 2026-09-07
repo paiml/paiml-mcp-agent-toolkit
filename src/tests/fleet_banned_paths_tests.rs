@@ -53,20 +53,12 @@ fn scanned_files(root: &Path) -> Vec<PathBuf> {
 #[test]
 fn fleet_banned_path_scan_is_clean() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    // PMAT-687: two files still carry the literals — the hardcoded-path
-    // analyzer's own fixtures and one comment in check.rs. Both owe complexity
-    // debt that `pmat verify` measures the moment a line in them changes
-    // (classify: cognitive 33 > 25; check.rs's included helpers: 25 functions
-    // over), so their scrub rides with that refactor. Until then the fleet
-    // gate fails on them and the tag's prerelease is created by hand. The
-    // debt is PINNED AS A COUNT (quorum lane 2 on #1204): it may only go down.
-    const PINNED_DEBT: [(&str, usize); 2] = [
-        ("src/services/hardcoded_paths.rs", 14),
-        (
-            "src/cli/handlers/comply_handlers/check_handlers/check.rs",
-            1,
-        ),
-    ];
+    // PMAT-687: the fleet scan excludes exactly one pmat file, the
+    // hardcoded-path analyzer's own source (paiml/.github#65 — its recognisers
+    // and fixtures name the strings the scan bans). Everything else is scanned,
+    // and the tree must be clean: the debt pinned here at 3.39.0 (14 lines in
+    // the analyzer, one comment in check.rs) is paid or excluded.
+    const FLEET_EXCLUDED: [&str; 1] = ["src/services/hardcoded_paths.rs"];
     let files = scanned_files(&root);
     assert!(
         files.len() > 100,
@@ -74,7 +66,7 @@ fn fleet_banned_path_scan_is_clean() {
         files.len()
     );
     let mut hits = Vec::new();
-    let mut pinned_seen = 0usize;
+    let mut excluded_seen = 0usize;
     for file in &files {
         let Ok(text) = std::fs::read_to_string(file) else {
             continue;
@@ -84,30 +76,22 @@ fn fleet_banned_path_scan_is_clean() {
             .unwrap_or(file)
             .display()
             .to_string();
-        let pin = PINNED_DEBT.iter().find(|(name, _)| *name == rel);
-        let mut count = 0usize;
+        if FLEET_EXCLUDED.contains(&rel.as_str()) {
+            excluded_seen += 1;
+            continue;
+        }
         for (n, line) in text.lines().enumerate() {
             for banned in BANNED {
                 if line.contains(banned) {
-                    count += 1;
-                    if pin.is_none() {
-                        hits.push(format!("{rel}:{}: {banned}", n + 1));
-                    }
+                    hits.push(format!("{rel}:{}: {banned}", n + 1));
                 }
             }
         }
-        if let Some((name, allowed)) = pin {
-            pinned_seen += 1;
-            assert!(
-                count <= *allowed,
-                "{name}: {count} banned-path line(s), pinned at {allowed} — the debt may only go down (PMAT-687)"
-            );
-        }
     }
     assert_eq!(
-        pinned_seen,
-        PINNED_DEBT.len(),
-        "every pinned file is still tracked"
+        excluded_seen,
+        FLEET_EXCLUDED.len(),
+        "every fleet-excluded file is still tracked (an exclusion for a file that no longer exists is dead)"
     );
     assert!(
         hits.is_empty(),
