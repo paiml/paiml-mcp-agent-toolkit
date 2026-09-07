@@ -165,6 +165,23 @@ unrelated PMAT-689 `/tmp/CHANGELOG.md` collision):
   `read_dir` output, whose order is not specified. It is unchanged by this
   ticket and affects only a demo cache-busting string.
 
+## Quorum (agy `--mode plan`, width 3, review-only)
+
+Lanes 0f588512-f871-4754-9432-e4b02319e914, 87497a3c-3d11-40ab-8b36-f12c60fbcfaa, 26dc1488-f988-42b7-a185-77e10f872259 — 3/3 needs-changes, none do-not-merge. Every lane affirmed the central claim: the network fetch is gone, the four `.gz` are committed and packaged (6 vendored files of 4,982 paths in `cargo package --list`), `verify_vendored_assets()` is called unconditionally from `main()`, a missing file hard-fails, and the watches name only tracked files.
+
+| # | finding | lanes | disposition |
+|---|---|---|---|
+| 1 | `rows.len() >= 4` is a count floor — nothing required the four *specific* assets to be named, so a renamed or duplicated row could stand in for a dropped one | 3/3 | **fixed**: the four names are asserted individually. Mutation: drop the gridjs row from SHA256SUMS → `PMAT-695: assets/vendor/SHA256SUMS does not name assets/vendor/gridjs.min.js.gz`, build fails |
+| 2 | the test's banned-substring list (`unpkg.com`, `https://`, `http://`, `download`) applies to the whole file including doc comments | 2/3 | kept: 0 hits today; a future doc comment naming a URL *should* be re-examined, which is what the test says |
+| 3 | `PROVENANCE.md` "falsely claims versions were read from the banner" | 2/3 (lane 1 called it a blocker) | **refuted** by lane 3 and by the delegate: the sentence is scoped to "the two `@latest` specifiers" (d3, mermaid), both of which carry banners; gridjs was pinned at 6.0.6 in the pre-fix script and was never `@latest` |
+| 4 | `ASSET_HASH` is derived from an unsorted `fs::read_dir` | 3/3 | pre-existing, untouched by this diff; not absorbed (§2 emergent-findings protocol, S3) |
+| 5 | the receipt's crate size came from `--no-verify` | 1/3 | the number is the tarball size, which is what the 10 MB ceiling measures; the verify build runs in CI (`feature-matrix.yml:495`, `release.yml:101`), so a non-compiling package is caught there |
+| 6 | stray untracked `pre_fix_build.rs` at the worktree root | delegate | deleted |
+
+Delegate note the lanes did not reach, recorded because it is the actual mechanism behind "a size regression is caught": the `include_bytes!` block is double-gated (`#[cfg(feature = "demo")]` and `not(cargo_publish)`), and `demo` is not in `default` — so CI's verify build never embeds these assets. What proves they are in the tarball is `verify_vendored_assets()` running unconditionally rather than under `CARGO_FEATURE_DEMO`.
+
+Brief premise corrected before the lanes ran: the pre-fix `build.rs` did **not** watch the gitignored `assets/vendor/` (it deliberately did not, per its own comment). This branch watches *more* — five newly tracked files — rather than stopping an ignored watch.
+
 verdict: PASS — the build script performs no network access, the four assets are committed and verified against a committed SHA256SUMS on every build (mutation → exit 101 naming the file), `unshare -rn cargo build --locked` exits 0, and the package is 9,956,257 bytes, under the 10,000,000 ceiling.
 
 IMPL-PMAT-695-RECEIPT-END

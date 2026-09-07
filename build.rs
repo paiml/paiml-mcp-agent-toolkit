@@ -204,12 +204,21 @@ fn verify_vendored_assets() {
     };
 
     let rows = parse_vendor_checksums(&sums);
-    assert!(
-        rows.len() >= 4,
-        "PMAT-695: {} covers {} file(s); the four vendored assets must all be listed",
-        sums_path.display(),
-        rows.len()
-    );
+    // The four assets by NAME, not by count (PMAT-695 quorum): a count floor
+    // lets a renamed or duplicated row stand in for a dropped asset.
+    const VENDORED: [&str; 4] = [
+        "assets/vendor/d3.min.js.gz",
+        "assets/vendor/gridjs-mermaid.min.css.gz",
+        "assets/vendor/gridjs.min.js.gz",
+        "assets/vendor/mermaid.min.js.gz",
+    ];
+    for required in VENDORED {
+        assert!(
+            rows.iter().any(|(_, name)| name == required),
+            "PMAT-695: {} does not name {required}; every vendored asset must be listed",
+            sums_path.display()
+        );
+    }
     for (expected, name) in rows {
         // Names are repository-root relative, which is `CARGO_MANIFEST_DIR` —
         // the directory cargo runs this script in — and is also what
