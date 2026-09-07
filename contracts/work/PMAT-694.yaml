@@ -1,0 +1,57 @@
+# Hand-authored work contract for PMAT-694 (#1202, absorbing #1127): the
+# quality proxy spawned a real `cargo clippy` from inside a lib test and let it
+# inherit the coverage instrumentation, the shared target directory and the
+# unbounded address space of its parent. Under `ci / coverage` the child built
+# instrumented, queued on a package lock a dozen sibling tests were holding, and
+# blew the 600s test-mode deadline: run 34020631941 on PR #1181 killed
+# `test_proxy_advisory_mode` and a sibling, and two reruns went green. A rerun
+# to green is a flake, not a pass. Every evidence_method below was run on this
+# tree; all of them are lib tests, so they run under CI's `cargo test --lib`.
+name: "PMAT-694"
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  description: "Every child compiler the quality proxy spawns runs against a committed fixture crate, under an address-space cap, with its own target directory and none of the parent's coverage instrumentation — built by one constructor no spawn site can bypass"
+  references:
+    - "src/services/quality_proxy_analysis.rs"
+    - "src/services/quality_proxy_tests.rs"
+    - "tests/fixtures/quality_proxy/Cargo.toml"
+    - "tests/fixtures/quality_proxy/Cargo.lock"
+    - "tests/fixtures/quality_proxy/src/lib.rs"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 5
+proof_obligations:
+- id: "PO-C1"
+  statement: "The crate the lint stage compiles the content under review inside is the committed fixture at tests/fixtures/quality_proxy: at most 50 lines of Rust, a committed Cargo.lock, and a [workspace] table so cargo cannot walk up into pmat's 3,000-file workspace"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::fixture_crate_is_small"
+- id: "PO-C2"
+  statement: "The Command child_command builds clears all six variables cargo llvm-cov exports into cargo test --lib — LLVM_PROFILE_FILE, CARGO_LLVM_COV, CARGO_LLVM_COV_TARGET_DIR, RUSTFLAGS, CARGO_ENCODED_RUSTFLAGS, CARGO_INCREMENTAL — and sets a CARGO_TARGET_DIR under the child's own working directory, whatever the parent process has set"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::child_env_is_scrubbed"
+- id: "PO-C3"
+  statement: "The child compiler runs under an address-space cap: prlimit --as= where prlimit is on PATH, and a POSIX `ulimit -v` + exec shim where it is not (#1127); the deadline and the process-group kill are unchanged and still apply"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::child_has_a_memory_cap"
+- id: "PO-C4"
+  statement: "The wrapped child still RAN: a clippy warning about an unused binding reaches the report's violations and the lint gate is named in gates_run, so a wrapper that silently failed to exec cargo cannot make the timing obligations pass by measuring nothing"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::the_wrapped_child_still_reports_clippy_findings"
+- id: "PO-C5"
+  statement: "The two proxy tests ci / coverage killed still judge the same content and each finishes in under 60 seconds — two orders of magnitude inside the 600s test-mode budget the killed runs sat at; the measured wall on this tree is 0.10s advisory and 0.10s strict"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::proxy_modes_finish_well_inside_the_deadline -- --nocapture"
+falsifiable_claims:
+- hypothesis: "The crate the lint stage compiles the content under review inside is the committed fixture at tests/fixtures/quality_proxy: at most 50 lines of Rust, a committed Cargo.lock, and a [workspace] table so cargo cannot walk up into pmat's 3,000-file workspace"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::fixture_crate_is_small"
+  from_step: "C1"
+- hypothesis: "The Command child_command builds clears all six variables cargo llvm-cov exports into cargo test --lib and sets a CARGO_TARGET_DIR under the child's own working directory, whatever the parent process has set"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::child_env_is_scrubbed"
+  from_step: "C2"
+- hypothesis: "The child compiler runs under an address-space cap: prlimit --as= where prlimit is on PATH, and a POSIX ulimit -v + exec shim where it is not"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::child_has_a_memory_cap"
+  from_step: "C3"
+- hypothesis: "The wrapped child still ran: a clippy warning about an unused binding reaches the report's violations and the lint gate is named in gates_run"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::the_wrapped_child_still_reports_clippy_findings"
+  from_step: "C4"
+- hypothesis: "The two proxy tests ci / coverage killed each finish in under 60 seconds, measured and printed rather than assumed"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- --exact services::quality_proxy::child_process_isolation_tests::proxy_modes_finish_well_inside_the_deadline -- --nocapture"
+  from_step: "C5"
