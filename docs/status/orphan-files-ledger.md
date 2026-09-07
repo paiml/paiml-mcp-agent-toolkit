@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4444 tracked `.rs` files: 3955 reachable from 137 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35910 lines, 2022 `#[test]` fns).
+4445 tracked `.rs` files: 3956 reachable from 137 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35910 lines, 2022 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
