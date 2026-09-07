@@ -545,11 +545,8 @@ mod child_process_isolation_tests {
     //! the two tests that failed.
     use super::*;
     use std::ffi::OsStr;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use std::time::Instant;
-
-    /// The fixture crate the lint stage's temp crate is built from.
-    const FIXTURE_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/quality_proxy");
 
     /// The environment a child compiler must not inherit from a `cargo
     /// llvm-cov` parent. Instrumenting pmat must not instrument the child.
@@ -562,57 +559,42 @@ mod child_process_isolation_tests {
         "CARGO_INCREMENTAL",
     ];
 
-    fn rust_files(dir: &Path) -> Vec<PathBuf> {
-        let mut found = Vec::new();
-        let mut stack = vec![dir.to_path_buf()];
-        while let Some(next) = stack.pop() {
-            let Ok(entries) = std::fs::read_dir(&next) else {
-                continue;
-            };
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    stack.push(path);
-                } else if path.extension() == Some(OsStr::new("rs")) {
-                    found.push(path);
-                }
-            }
-        }
-        found.sort();
-        found
-    }
-
     /// (a) The crate the child lints is a fixture, not this workspace.
     ///
     /// `[workspace]` is the load-bearing line: without it cargo walks up from
     /// the crate directory, finds pmat's workspace root and lints 3,000+ files.
+    /// The manifest and lock are literals in the shipped binary (an
+    /// `include_str!` of a nested package does not survive `cargo package`).
     #[test]
     fn fixture_crate_is_small() {
-        let dir = Path::new(FIXTURE_DIR);
-        let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap_or_default();
-        assert!(
-            !manifest.is_empty(),
-            "the quality proxy fixture crate must exist at {FIXTURE_DIR}/Cargo.toml"
-        );
+        let manifest = FIXTURE_CARGO_TOML;
         assert!(
             manifest.contains("[workspace]"),
             "the fixture must declare its own [workspace] so cargo cannot climb \
              into pmat's; manifest was:\n{manifest}"
         );
+        let deps = manifest
+            .split("[dependencies]")
+            .nth(1)
+            .and_then(|rest| rest.split("\n[").next())
+            .unwrap_or("");
         assert!(
-            dir.join("Cargo.lock").is_file(),
-            "the fixture's Cargo.lock must be committed so the child never resolves a registry"
+            deps.trim().is_empty(),
+            "the fixture must have no dependencies (one rustc over one file): {deps:?}"
         );
-
-        let files = rust_files(dir);
-        assert!(!files.is_empty(), "the fixture must contain Rust to lint");
-        let lines: usize = files
-            .iter()
-            .map(|f| std::fs::read_to_string(f).unwrap_or_default().lines().count())
-            .sum();
         assert!(
-            lines <= 50,
-            "the fixture is a seconds-long lint, not a workspace: {lines} lines over {files:?}"
+            manifest.lines().count() <= 50,
+            "the fixture is a seconds-long lint, not a workspace"
+        );
+        let lock = FIXTURE_CARGO_LOCK;
+        assert_eq!(
+            lock.matches("[[package]]").count(),
+            1,
+            "the lock names exactly the fixture package, so the child never resolves a registry"
+        );
+        assert!(
+            !std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/quality_proxy")).exists(),
+            "no nested package may live under tests/fixtures: cargo package drops it and an include_str! of it breaks the published crate"
         );
     }
 

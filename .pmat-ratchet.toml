@@ -193,16 +193,7 @@ comments after code are not counted.
 """
 
 [metric.orphan_files]
-baseline = 408
-justification = """
-PMAT-694 adds tests/fixtures/quality_proxy/src/lib.rs: a 15-line standalone
-crate (its own Cargo.toml with a [workspace] table) that the quality proxy's
-child cargo lints instead of the host workspace. It is another package's
-source, never a pmat compilation unit, but `pmat analyze reachability` does
-not model nested packages and counts it as the 408th orphan. Raised by exactly
-that one file; the analyzer gap is filed (nested-package awareness) so the
-baseline can drop back to 407 when it lands.
-"""
+baseline = 407
 unit = "count"
 band = 0
 includes_test_files = true
