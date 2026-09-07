@@ -573,8 +573,10 @@ mod child_process_isolation_tests {
             "the fixture must declare its own [workspace] so cargo cannot climb \
              into pmat's; manifest was:\n{manifest}"
         );
+        // The section header on its own line — a comment above it mentions
+        // the same bracketed word.
         let deps = manifest
-            .split("[dependencies]")
+            .split("\n[dependencies]\n")
             .nth(1)
             .and_then(|rest| rest.split("\n[").next())
             .unwrap_or("");
