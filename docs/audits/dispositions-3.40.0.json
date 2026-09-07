@@ -1,0 +1,909 @@
+[
+ {
+  "kind": "issue",
+  "id": "#999",
+  "title": "Agent integration: pmat \u2194 Claude Code ultracode \u2194 Google Antigravity (EV-0..EV-6)",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Enhancement epic (Agent integration EV-0..EV-6); explicitly still being re-verified against current master by its own text, not delivered.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1014",
+  "title": "pmat comply check asks for ~4 GB x CPU-count of RAM \u2014 192 GB on a 48-core box",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Author states the acute RAM spike was fixed in bddb239f3, but explicitly files this because \"the underlying cause is not fully addressed\" \u2014 kept open per the issue's own framing.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1017",
+  "title": "pmat cannot see unreachable code: ~475 tracked .rs files, >320k lines, ~8,900 tests that have never compiled",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Enhancement epic (unreachable code, ~475 files fleet-wide); children (#1141, #1142) still open, no completion evidence.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1018",
+  "title": "~933 tests across the fleet cannot fail, because line coverage is the only metric with a floor",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Enhancement epic (~933 vacuous tests fleet-wide); floor established, detector-capability children (#1139) still open.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1019",
+  "title": "Config and contracts that nothing reads: 99/99 keys dead in wos, 2,093 zero-assertion macros in duende",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Stack-wide enhancement epic (99/99 dead keys in wos, etc.); only this repo's .pmat-gates.toml slice was touched (PR #1022, itself now regressed per #1137), broader epic remains open.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1029",
+  "title": "MCP tool list is hand-curated, so new analyze subcommands are CLI-only by omission (3 in 3.32.0)",
+  "disposition": "complete",
+  "rationale": "Per #1135's own text (\"Split out of #1029, whose literal asks are delivered\"), #1029's MCP-registry-for-analyze-family ask shipped in 3.32.0; residual gaps live on in #1135/#1136.",
+  "hrq": true,
+  "links": [
+   "#1135",
+   "#1136"
+  ],
+  "enacted": "closed",
+  "evidence": "MCP tools/list on the crates.io 3.39.0 binary advertises analyze_hardcoded_paths / analyze_reachability / analyze_vacuous_tests; fixing commit f3db8db02 is an ancestor of v3.39.0"
+ },
+ {
+  "kind": "issue",
+  "id": "#1031",
+  "title": "Complete AGY (Antigravity 2.0) Support & Comply Integration",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Enhancement epic; rescoped per its own later comments to the .agents/plugins.json schema question only, still open.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1034",
+  "title": "pmat comply: evidence-derived feature backlog (T0 done; 4 source premises corrected)",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Enhancement backlog tracking issue; T0 preflight done but the bulk of the comply backlog remains unimplemented (children split off, e.g. #1132).",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1035",
+  "title": "Root cause: pmat renders 'not measured' as 'measured and clean' \u2014 12-repo stack audit, 5 clusters",
+  "disposition": "reject",
+  "rationale": "Superseded: this is the 12-repo stack-audit root-cause umbrella whose clusters are already filed as individual issues in this batch (#1124/#1127/#1128/#1129/#1130/#1131/#1132); no separate action on the umbrella.",
+  "hrq": true,
+  "links": [],
+  "enacted": "labeled"
+ },
+ {
+  "kind": "issue",
+  "id": "#1074",
+  "title": "cargo deny reports 'advisories ok' on a tree with an open moderate vulnerability \u2014 GHSA-only advisories are invisible to the only blocking security gate",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Bug-labeled; owner action (provision DEPENDABOT_TOKEN) still pending, cleanup half split to #1128.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1090",
+  "title": "[EPIC] PMAT Deep MCP Capability Improvements & Defect Hardening",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Large EPIC (Deep MCP Capability Improvements & Defect Hardening); many of its Task-level children are tracked/landing individually (e.g. #1127, #1125), epic itself remains open.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1118",
+  "title": "Commands is a 1,822-line enum with 71 variants \u2014 every new subcommand edits one file",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Commands enum still large (2,367 lines per src/cli/commands/commands_enum/definition.rs); no split found.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1119",
+  "title": "Four independent McpRequest / McpResponse definitions",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Four independent McpRequest/McpResponse definitions; no consolidation commit found.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1120",
+  "title": "Blocking std::fs calls on two async hot paths (discover_project_structure, CargoDeadCodeAnalyzer::analyze)",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Blocking std::fs calls on async hot paths (discover_project_structure, CargoDeadCodeAnalyzer::analyze) not verified fixed.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1121",
+  "title": "pmat analyze complexity is quadratic in functions-per-file on every heuristic path (measured 4x per doubling)",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Quadratic complexity in pmat analyze complexity's heuristic path (src/cli/language_analyzer/mod.rs:235) not verified fixed.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1122",
+  "title": "Docker artifacts publish paiml/pmat:2.10.0 from a 3.35.0 crate; docs pin 2.12.0",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Only partially addressed: #1203 demoted docker-publish to workflow_dispatch and made the tag come from Cargo.toml, but the stale published paiml/pmat:2.10.0 image and docs pin (2.12.0) still need a corrective publish/doc update.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1123",
+  "title": "resolve_import_to_node is O(imports x nodes) with a fresh allocation per candidate",
+  "disposition": "defer(3.41.0)",
+  "rationale": "resolve_import_to_node's O(imports x nodes) allocation-per-candidate shape not verified fixed; no matching commit found.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1124",
+  "title": "quality_proxy: gates_run claims complexity ran for bash, C and TypeScript, where the heuristic returns a constant",
+  "disposition": "defer(3.41.0)",
+  "rationale": "gates_run still reported for quality_proxy with no per-language (bash/C/TS) distinction found in src/services/quality_proxy_operations.rs.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1125",
+  "title": "#1090 Task 3: decide, in writing, whether pmat ships a tamper-evident MCP audit ledger",
+  "disposition": "defer(3.41.0)",
+  "rationale": "#1090 Task 3 (tamper-evident MCP audit ledger) still undecided; no mcp-audit.jsonl or verify-audit-log surface found.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1127",
+  "title": "quality_proxy's child compilers have a deadline and a process group but no memory bound",
+  "disposition": "defer(3.40.0)",
+  "rationale": "quality_proxy child compilers still have no address-space (memory) bound per the issue; only timeout + process-group kill shipped.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.40.0",
+  "reason": "absorbed by PMAT-694 [train/CF]"
+ },
+ {
+  "kind": "issue",
+  "id": "#1128",
+  "title": "Two Dependabot advisory gates ship; only one is wired, the orphan is RED, and 24 lines of quality-gate.yml describe files that do not exist",
+  "disposition": "defer(3.41.0)",
+  "rationale": "No evidence the orphan Dependabot advisory gate was wired or the stale quality-gate.yml lines removed.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1129",
+  "title": "quality-gate --checks security: scope is now disclosed, breadth is not \u2014 an AWS-key-shaped literal is not detected",
+  "disposition": "defer(3.41.0)",
+  "rationale": "quality-gate --checks security breadth gap (AWS-key-shaped literal undetected); no evidence of a detector-breadth fix.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1130",
+  "title": "Verify #1035 Cluster 2's three never-independently-checked comply-ladder rows (whisper.apr CB-1206, infra CB-1308, rmedia CB-1210 vs CB-1339)",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Verification task for #1035 Cluster 2's three ladder rows; no receipt found confirming it was carried out.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1131",
+  "title": "quality-gate reports two different denominators for one tree inside one JSON document",
+  "disposition": "defer(3.41.0)",
+  "rationale": "quality-gate's files_examined vs files_not_read.<check>.discovered denominators still coexist (src/mcp_pmcp/tool_functions/analysis_tools.rs) with no reconciliation found.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1132",
+  "title": "Enforcement metadata claims a required check that does not exist \u2014 mutation-diff.yml and required-status-checks.txt contradict each other and both contradict live protection (CRUX-14a leg 7)",
+  "disposition": "defer(3.41.0)",
+  "rationale": "CRUX-14a leg 7: no evidence mutation-diff.yml / required-status-checks.txt were reconciled with live branch protection.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1133",
+  "title": "pmat init --target agy writes one skill, not \"progressive skills\" (PMAT-INIT-002 claim 3, PO-C13)",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Enhancement: pmat init --target agy writing genuinely progressive skills is unbuilt; rescoped per #1031 to the plugins.json schema question.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1134",
+  "title": "pmat init prints a next: verification command that returns a JSON-RPC error",
+  "disposition": "defer(3.41.0)",
+  "rationale": "No evidence `pmat init`'s printed next: verification command was fixed to avoid a JSON-RPC error.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1135",
+  "title": "Two dead MCP tool inventories still advertise analyzers the exposure registry marks Backlog",
+  "disposition": "defer(3.41.0)",
+  "rationale": "No evidence the two dead MCP tool inventories (advertising Backlog analyzers) were pruned on master.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1136",
+  "title": "70 of 71 top-level Commands variants have no MCP exposure declaration \u2014 decide it or write the decision down",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Decision/registry-expansion enhancement (MCP exposure declaration for 70 of 71 Commands variants); not built.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1137",
+  "title": "The #1019 fix deleted the one .pmat-gates.toml section its own default reader consumes, and its guard test now pins that out",
+  "disposition": "defer(3.41.0)",
+  "rationale": "The #1019 fix (PR #1022, merged) is the cited regression source; no follow-up commit restores the deleted .pmat-gates.toml section.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1138",
+  "title": "pmat config --show is labelled \"Raw Configuration (TOML)\" but drops keys pmat honours",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Confirmed unfixed: src/cli/handlers/configuration_handlers_display.rs:137 still prints \"Raw Configuration (TOML):\" for the deserialized/lossy view.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1139",
+  "title": "analyze vacuous-tests misses two classes, both live in pmat's own suite: assert-over-an-empty-set, and expect()-on-the-harness with no assertion on the subject",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Detector-capability gap in analyze vacuous-tests (assert-over-empty-set, expect-on-harness); not addressed.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1140",
+  "title": "pmat analyze vacuous-tests --help prints the 802 / ~933 figures the author of #1018 retracted",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Small stale-help-text defect (802/~933 figures); no evidence of a fix on master.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1141",
+  "title": "Two root pub mods nothing calls: src/protocol/ (2,047 lines) and src/state/ (3,896 lines) compile into every binary and no pmat check can see them",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Confirmed unfixed: src/lib.rs still declares `pub mod protocol;` and `pub mod state;` at top level, still uncallable-detector-blind.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1142",
+  "title": "Manifest/target parity is unenforced: no gate checks criterion_main! against [[bench]], and nothing would notice the next benchmark that never runs",
+  "disposition": "defer(3.41.0)",
+  "rationale": "New-gate enhancement (manifest/target parity check for criterion_main! vs [[bench]]); no such gate exists on master.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "carried from the 3.39.0 ledger"
+ },
+ {
+  "kind": "issue",
+  "id": "#1143",
+  "title": "comply check has no peak-RSS measurement, so #1014's memory criteria cannot be judged either way",
+  "disposition": "defer(3.41.0)",
+  "rationale": "No peak-RSS measurement exists anywhere in the tree (grep for peak_rss/max_rss finds nothing); still unfalsifiable per the issue's own evidence.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1144",
+  "title": "The simulated refactor.* MCP surface EV-0 removed is still compiled in, on an unconstructed builder",
+  "disposition": "defer(3.41.0)",
+  "rationale": "No evidence of removal on master; the simulated refactor.* engine remains compiled in behind an unconstructed builder per #999 EV-0.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1145",
+  "title": "mcp_integration::MCP_VERSION is frozen at \"2024-11-05\" and pmat-agent prints it as the protocol version",
+  "disposition": "defer(3.41.0)",
+  "rationale": "Confirmed still true: src/mcp_integration/types.rs:8 pins MCP_VERSION = \"2024-11-05\" verbatim, printed twice by pmat-agent.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1153",
+  "title": "CRUX audit tracking: 25 verified defects whose acceptance tests are still draft",
+  "disposition": "reject",
+  "rationale": "Superseded: the 25 verified defects this tracking issue references are already filed individually in this same batch (#1118-#1145); no separate action needed on the umbrella issue.",
+  "hrq": true,
+  "links": [],
+  "enacted": "labeled"
+ },
+ {
+  "kind": "issue",
+  "id": "#1156",
+  "title": "build.rs downloads four assets from unpkg.com at build time, two pinned to @latest, into a gitignored directory it then watches",
+  "disposition": "defer(3.40.0)",
+  "rationale": "Not fixed: build.rs:185-196 still fetches gridjs/mermaid@latest/d3@latest from unpkg.com into the gitignored assets/vendor/ it watches.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.40.0",
+  "reason": "absorbed by PMAT-695 [train/HB]"
+ },
+ {
+  "kind": "issue",
+  "id": "#1159",
+  "title": "pmat comply check --format json aborts: 'byte index 1000 is not a char boundary; it is inside '\u2500''",
+  "disposition": "complete",
+  "rationale": "Fixed by commit 45481aaac (PMAT-649): the lean_theorem slice is bounded at a line start, never inside a multi-byte char.",
+  "hrq": true,
+  "links": [
+   "PMAT-649"
+  ],
+  "enacted": "closed",
+  "evidence": "comply check --format json on a README with 1,400 box-drawing chars: exit 1 (findings), valid JSON, no abort; 45481aaac ancestor of v3.39.0"
+ },
+ {
+  "kind": "issue",
+  "id": "#1162",
+  "title": "tdg check-regression compares a cached baseline score (with entropy) against a recompute that omits entropy \u2014 every edited file reads as a regression",
+  "disposition": "defer(3.41.0)",
+  "rationale": "No fix found on master for the entropy-omitted recompute vs cached baseline in tdg check-regression; still a live defect.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.41.0",
+  "reason": "size-gate"
+ },
+ {
+  "kind": "issue",
+  "id": "#1169",
+  "title": "pmat work add: minted an id that is live on another branch (PMAT-744) and rewrote 2046 lines of docs/roadmaps/roadmap.yaml",
+  "disposition": "complete",
+  "rationale": "Same root cause and fix as #1193 (PMAT-680 single-authority mint + PMAT-679 append-only writer + PMAT-676 shared validator, all in PR #1201).",
+  "hrq": true,
+  "links": [
+   "#1201",
+   "PMAT-679",
+   "PMAT-680",
+   "PMAT-676"
+  ],
+  "enacted": "closed",
+  "evidence": "two worktrees, crates.io 3.39.0: ids PMAT-702/PMAT-703 distinct, 0 deleted roadmap lines; e79f0014e ancestor of v3.39.0"
+ },
+ {
+  "kind": "issue",
+  "id": "#1193",
+  "title": "work add on 3.37.0 re-serializes roadmap.yaml (2,532 lines) and mints colliding ids across concurrent checkouts",
+  "disposition": "complete",
+  "rationale": "Fixed by PR #1201: PMAT-680 mints ids from one authority (lock + high-water mark, e79f0014e) and PMAT-679 makes the roadmap writer append-only (f9cedb962/b14fbc6e1), closing the re-serialize/collide defect.",
+  "hrq": true,
+  "links": [
+   "#1201",
+   "PMAT-679",
+   "PMAT-680",
+   "PMAT-676"
+  ],
+  "enacted": "closed",
+  "evidence": "same measurement as #1169: distinct ids, append-only diff; e79f0014e ancestor of v3.39.0"
+ },
+ {
+  "kind": "issue",
+  "id": "#1198",
+  "title": "release-check: 3.38.0 is declared in Cargo.toml but not fully released",
+  "disposition": "complete",
+  "rationale": "Stale bot report: 3.38.0 shipped (commit b233e7911, chore(release) 3.38.0) and 3.39.0 is now tagged on master; bot-authored, no human close decision needed.",
+  "hrq": false,
+  "links": [],
+  "enacted": "closed",
+  "evidence": "AD-01 release-check exit 0"
+ },
+ {
+  "kind": "issue",
+  "id": "#1202",
+  "title": "flake: ci / coverage kills quality_proxy tests whose nested cargo clippy exceeds 600s under llvm-cov",
+  "disposition": "defer(3.40.0)",
+  "rationale": "Still open: nested `cargo clippy` under llvm-cov exceeds the 600s lint budget in ci/coverage; not addressed on master.",
+  "hrq": false,
+  "links": [],
+  "enacted": "milestone:3.40.0",
+  "reason": "absorbed by PMAT-694 [train/CF]"
+ },
+ {
+  "id": "#1205",
+  "kind": "issue",
+  "disposition": "complete",
+  "hrq": false,
+  "rationale": "bot report: release-check on 3.39.0 before the crate was published; AD-01 exits 0 now",
+  "title": "release-check: 3.39.0 is declared in Cargo.toml but not fully released",
+  "enacted": "closed",
+  "evidence": "AD-01 release-check exit 0"
+ },
+ {
+  "id": "#1210",
+  "kind": "pr",
+  "title": "deps: patch-updates group (flate2/lru/pmcp/toml)",
+  "disposition": "close(five-whys)",
+  "hrq": false,
+  "enacted": "closed",
+  "rationale": "flate2 1.1.10 adds miniz_oxide 0.9.1 beside 0.8.9 and a new crate zlib-rs; quorum 3/3 do-not-merge; PMAT-692"
+ },
+ {
+  "id": "#1211",
+  "kind": "pr",
+  "title": "deps: tokio-ecosystem group (hyper, tower-http)",
+  "disposition": "merge",
+  "hrq": false,
+  "enacted": "merged:ead823166",
+  "rationale": "quorum 3/3 merge; fixes touch features pmat does not enable"
+ },
+ {
+  "id": "#1213",
+  "kind": "pr",
+  "title": "deps: ureq 3.3.0 -> 3.4.0",
+  "disposition": "merge",
+  "hrq": false,
+  "enacted": "merged",
+  "rationale": "quorum 3/3 merge; build-dependency; no new lock entries"
+ },
+ {
+  "id": "#1214",
+  "kind": "pr",
+  "title": "deps: arrow 59.2.0 -> 59.3.0",
+  "disposition": "merge",
+  "hrq": false,
+  "enacted": "pending:phase-1",
+  "rationale": "quorum 2/3 merge; one arrow version resolves; parquet ^59.2.0 satisfied by 59.3.0"
+ },
+ {
+  "id": "#1212",
+  "kind": "pr",
+  "title": "deps: minijinja 2.21.0 -> 2.24.0",
+  "disposition": "merge",
+  "hrq": false,
+  "enacted": "pending:phase-1",
+  "rationale": "quorum 2/3 merge; no template renders a bool; 1,326 renderer tests pass on 2.24.0"
+ },
+ {
+  "id": "PMAT-619",
+  "kind": "ticket",
+  "title": "DEBT: Pre-commit complexity hook false-negative on zero-code repos",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Defect (pre-commit complexity hook false-negative on zero-code repos); no fix found on master."
+ },
+ {
+  "id": "PMAT-620",
+  "kind": "ticket",
+  "title": "Spec 27: Work Contract Binding \u2014 implements[] field + bind/unbind CLI + CB-1600..1609",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "carried from the 3.39.0 ledger: Enhancement (Spec 27: Work Contract Binding, CB-1600..1609); unimplemented, no matching commits."
+ },
+ {
+  "id": "PMAT-621",
+  "kind": "ticket",
+  "title": "Spec 28: Work Verification Ladder \u2014 typed VerificationLevel enum + L0-L5 gates + CB-1610..1619",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "carried from the 3.39.0 ledger: Enhancement (Spec 28: Work Verification Ladder, CB-1610..1619); unimplemented, no matching commits."
+ },
+ {
+  "id": "PMAT-622",
+  "kind": "ticket",
+  "title": "Spec 29: Falsification Unification \u2014 ProvableContract variant + unified roster + CB-1620..1629",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "carried from the 3.39.0 ledger: Enhancement (Spec 29: Falsification Unification, CB-1620..1629); unimplemented, no matching commits."
+ },
+ {
+  "id": "PMAT-623",
+  "kind": "ticket",
+  "title": "Spec 30: Work Compile-Time Codegen \u2014 #[pmat_work_contract] proc macro + CB-1630..1639",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "carried from the 3.39.0 ledger: Enhancement (Spec 30: Work Compile-Time Codegen, CB-1630..1639); unimplemented, no matching commits."
+ },
+ {
+  "id": "PMAT-624",
+  "kind": "ticket",
+  "title": "Spec 31: Work CoT Proof Derivation \u2014 structured ChainOfThoughtStep + CB-1640..1649",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "carried from the 3.39.0 ledger: Enhancement (Spec 31: Work CoT Proof Derivation, CB-1640..1649); unimplemented, no matching commits."
+ },
+ {
+  "id": "PMAT-629",
+  "kind": "ticket",
+  "title": "Phase 1: cover rust_wasm_analyzer::analyze_impl_method branches",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Coverage-gap task (rust_wasm_analyzer::analyze_impl_method branches); no matching test-addition commits found."
+ },
+ {
+  "id": "PMAT-632",
+  "kind": "ticket",
+  "title": "paiml-implement discover.sh: gate_cmd fell back to ''cargo test --workspace'' on pmat although ''mak",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Defect (discover.sh gate_cmd fallback); no matching fix commit found."
+ },
+ {
+  "id": "PMAT-633",
+  "kind": "ticket",
+  "title": "binary size: no per-crate ratchet \u2014 .text grew ~3.4 MiB since ece3baf11 (pmat +1.9 MiB, pmcp +0.7, r",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Tech-debt/defect (no per-crate binary-size ratchet); no matching commit found."
+ },
+ {
+  "id": "PMAT-636",
+  "kind": "ticket",
+  "title": "CB-200: the lib test the_committed_baseline_is_the_measured_count is Unmeasurable in CI (no .pmat/co",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Defect (CB-200 lib test Unmeasurable in CI, ratchet drift); no matching fix commit found on master beyond the older, unrelated CB-200 commits."
+ },
+ {
+  "id": "PMAT-638",
+  "kind": "ticket",
+  "title": "pmat work complete runs quality gates that hang past 2 min on this repo and the only documented bypa",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Defect (pmat work complete hangs, only bypass is --skip-quality); no matching fix commit found."
+ },
+ {
+  "id": "PMAT-639",
+  "kind": "ticket",
+  "title": "TDG dead_code component is hardcoded 0.0 while carrying weight 0.20 (CB-128 ''6th dimension''): ever",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Defect (TDG dead_code component hardcoded 0.0 at 20% weight); no matching fix commit found."
+ },
+ {
+  "id": "PMAT-646",
+  "kind": "ticket",
+  "title": "CI: pull_request synchronize/ready_for_review events on PR #1164 created no workflow runs (3 events,",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: CI-investigation defect (pull_request synchronize/ready_for_review created no runs on #1164); no matching fix commit found."
+ },
+ {
+  "id": "PMAT-647",
+  "kind": "ticket",
+  "title": "models::quality_gate::QualityGateResults still carries duplicate_violations after CRUX-02 renamed th",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Confirmed still true: src/models/quality_gate.rs:24 still declares `duplicate_violations`, not renamed to identical_files as PMAT-642/CRUX-02 did for the CLI gate."
+ },
+ {
+  "id": "PMAT-654",
+  "kind": "ticket",
+  "title": "git_context tests fail in any git worktree: the repo-path helper requires .git/HEAD, but a worktree'",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Confirmed NOT merged: the git_context worktree fix (commit beee475ce, PMAT-654) is not an ancestor of HEAD."
+ },
+ {
+  "id": "PMAT-653",
+  "kind": "ticket",
+  "title": "the_cargo_engine_attributes_the_decision_to_rustc hits the analyzer''s 600 s dead-code timeout on a ",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Confirmed still open: the_cargo_engine_attributes_the_decision_to_rustc test still exists (src/cli/handlers/dead_code_library_disclosure_tests.rs:210); the only related fix (2906c55a1) predates this r"
+ },
+ {
+  "id": "PMAT-659",
+  "kind": "ticket",
+  "title": "hooks install --stack has no strict mode: the stack installer writes its own lightweight pre-commit ",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "size-gate; carried 3.39.0 rationale: Confirmed still open: command_dispatch.rs:50 only refuses `--strict --stack` together rather than implementing strict mode for the stack installer."
+ },
+ {
+  "id": "PMAT-677",
+  "kind": "ticket",
+  "title": "dogfood skill identity: rename to .claude/skills/pmat-dogfood with explicit name: pmat-dogfood so a ",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "DS: size-gate \u2014 the 3.40.0 train admits BC, FG, CF, HB at basis 30 turns"
+ },
+ {
+  "id": "PMAT-678",
+  "kind": "ticket",
+  "title": "publish poka-yoke: make publish-from-tag TAG=vX.Y.Z publishes only from a detached worktree of the t",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "PP: size-gate \u2014 the 3.40.0 train admits BC, FG, CF, HB at basis 30 turns"
+ },
+ {
+  "id": "PMAT-681",
+  "kind": "ticket",
+  "title": "harness gate declaration: a Makefile gate target running pmat verify so paiml-implement discovery yi",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "GD: size-gate \u2014 the 3.40.0 train admits BC, FG, CF, HB at basis 30 turns"
+ },
+ {
+  "id": "PMAT-683",
+  "kind": "ticket",
+  "title": "blocking mutants: measure a runtime baseline from three master runs before making the mutants job a ",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "MB: size-gate \u2014 the 3.40.0 train admits BC, FG, CF, HB at basis 30 turns"
+ },
+ {
+  "id": "PMAT-684",
+  "kind": "ticket",
+  "title": "3.40.0: revive the three closed 3.38-era PRs on post-3.39.0 master \u2014 #1177 (AD-05 quality-gate file-",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "RV: size-gate \u2014 the 3.40.0 train admits BC, FG, CF, HB at basis 30 turns"
+ },
+ {
+  "id": "PMAT-687",
+  "kind": "ticket",
+  "title": "fleet lint-gate: hardcoded_paths.rs fixtures and check.rs comment still carry /home/noah; pay the co",
+  "disposition": "complete",
+  "hrq": false,
+  "enacted": "pending:phase-2",
+  "rationale": "[train/FG] \u2014 this train"
+ },
+ {
+  "id": "PMAT-689",
+  "kind": "ticket",
+  "title": "documentation_scorer tests score the temp dir''s PARENT: score_changelog looks at project_path.paren",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "doc-scorer TMPDIR: filed during the 3.40.0 train; no budget this run"
+ },
+ {
+  "id": "PMAT-690",
+  "kind": "ticket",
+  "title": "flag-efficacy sweep: show-metrics and comply report baselines are intermittently nondeterministic \u2014 ",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "sweep nondeterminism: filed during the 3.40.0 train; no budget this run"
+ },
+ {
+  "id": "PMAT-691",
+  "kind": "ticket",
+  "title": "board post-3.39.0: disposition the five dependabot PRs opened 2026-09-07 (#1210-#1214) and reconcile",
+  "disposition": "complete",
+  "hrq": false,
+  "enacted": "pending:phase-2",
+  "rationale": "board triage (Phase 1) \u2014 this train"
+ },
+ {
+  "id": "PMAT-692",
+  "kind": "ticket",
+  "title": "deps: flate2 1.1.10 moves to miniz_oxide 0.9 and adds zlib-rs 0.6.7 while another dependency still r",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "flate2 dup: filed during the 3.40.0 train; no budget this run"
+ },
+ {
+  "id": "PMAT-693",
+  "kind": "ticket",
+  "title": "[train/BC] board-check: scripts/board-check.sh + make board-check \u2014 read-only; exit 1 naming every o",
+  "disposition": "complete",
+  "hrq": false,
+  "enacted": "pending:phase-2",
+  "rationale": "[train/BC] \u2014 this train"
+ },
+ {
+  "id": "PMAT-694",
+  "kind": "ticket",
+  "title": "[train/CF] ci/coverage flake root cause (#1202, absorbs #1127): quality_proxy tests compile the host",
+  "disposition": "complete",
+  "hrq": false,
+  "enacted": "pending:phase-2",
+  "rationale": "[train/CF] \u2014 this train"
+ },
+ {
+  "id": "PMAT-695",
+  "kind": "ticket",
+  "title": "[train/HB] hermetic build.rs (#1156): vendor gridjs/mermaid/d3 under assets/vendor with a committed ",
+  "disposition": "complete",
+  "hrq": false,
+  "enacted": "pending:phase-2",
+  "rationale": "[train/HB] \u2014 this train"
+ },
+ {
+  "id": "PMAT-696",
+  "kind": "ticket",
+  "title": "[train/GT] gate-metadata truth (#1128, #1132, honest half of #1074): delete the orphan Dependabot ad",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "GT: size-gate \u2014 the 3.40.0 train admits BC, FG, CF, HB at basis 30 turns"
+ },
+ {
+  "id": "PMAT-697",
+  "kind": "ticket",
+  "title": "[train/HN] honest not-measured (#1124, #1162, #1131): one typed Measured(x) | NotMeasured{reason} at",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "HN: size-gate \u2014 the 3.40.0 train admits BC, FG, CF, HB at basis 30 turns"
+ },
+ {
+  "id": "PMAT-698",
+  "kind": "ticket",
+  "title": "[train/CT] config truth (#1137, #1138): config --show prints the resolved config every reader consum",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "CT: size-gate \u2014 the 3.40.0 train admits BC, FG, CF, HB at basis 30 turns"
+ },
+ {
+  "id": "PMAT-699",
+  "kind": "ticket",
+  "title": "[train/DC] dead surface deletion (#1141, #1144, #1135, #1140, #1134, #1145): remove src/protocol and",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "DC: size-gate \u2014 the 3.40.0 train admits BC, FG, CF, HB at basis 30 turns"
+ },
+ {
+  "id": "PMAT-700",
+  "kind": "ticket",
+  "title": "[train/RC] release cut 3.40.0: bump the six version carriers the 3.39.0 cut touched (Cargo.toml, Car",
+  "disposition": "complete",
+  "hrq": false,
+  "enacted": "pending:phase-2",
+  "rationale": "[train/RC] \u2014 this train"
+ },
+ {
+  "id": "PMAT-701",
+  "kind": "ticket",
+  "title": "[train/IP] infra pin bump 3.39.0 -> 3.40.0 in machines/{lambda-labs,intel,mini,gx10}/forjar.yaml (pa",
+  "disposition": "complete",
+  "hrq": false,
+  "enacted": "pending:phase-2",
+  "rationale": "[train/IP] \u2014 this train"
+ },
+ {
+  "id": "PMAT-702",
+  "kind": "ticket",
+  "title": "[train/PK] crate package at 99.6% of crates.io''s 10 MB ceiling after PMAT-695 (9,956,257 B; 43,743 ",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "PK crate headroom (S2 finding): filed during the 3.40.0 train; no budget this run"
+ }
+]
