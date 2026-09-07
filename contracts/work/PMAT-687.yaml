@@ -1,0 +1,42 @@
+# Hand-authored work contract for PMAT-687 ([train/FG]): the fleet clean-room
+# gate (paiml/.github unified-gate.yml "Banned path scan") failed on every pmat
+# tag because the banned-path analyzer's own source names the strings it bans,
+# so 3.39.0 shipped clean_room=local-modeA with a hand-made prerelease. The
+# fleet gate now excludes exactly that one file (paiml/.github#65) and the last
+# other line (a comment in check.rs) is scrubbed. Evidence methods were run on
+# this tree; the workflow probe runs after both PRs merge.
+name: "PMAT-687"
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  description: "A pmat tag passes the fleet gate's banned-path scan: the in-repo mirror of the scan is clean with zero pinned debt and exactly one fleet-side exclusion (the analyzer's own source)"
+  references:
+    - "src/tests/fleet_banned_paths_tests.rs"
+    - "src/cli/handlers/comply_handlers/check_handlers/check.rs"
+    - "https://github.com/paiml/.github/pull/65"
+    - ".github/workflows/release.yml"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 3
+proof_obligations:
+- id: "PO-G1"
+  statement: "The in-repo mirror of the fleet scan (every tracked .rs/.toml/.sh except src/services/hardcoded_paths.rs) finds zero banned-path lines and pins no debt; at the RED commit it named exactly check.rs:693"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- fleet_banned_path_scan_is_clean"
+- id: "PO-G2"
+  statement: "The fleet-side exclusion is exactly one file and still tracked: the mirror asserts the excluded file exists (an exclusion for a vanished file is dead)"
+  evidence_method: "env -u RUST_MIN_STACK cargo test --lib -- fleet_banned_path_scan_is_clean && git ls-files --error-unmatch src/services/hardcoded_paths.rs"
+- id: "PO-G3"
+  statement: "With paiml/.github#65 merged, a workflow_dispatch probe of release.yml on tag v3.39.0 with probe_fail_verify=true reaches verify: gate / lint-gate is green, verify is red, and no release is created for the probe (clean_room=fleet is admissible)"
+  evidence_method: "gh workflow run release.yml -f tag=v3.39.0 -f probe_fail_verify=true && gh run watch <id>; gh api repos/paiml/paiml-mcp-agent-toolkit/actions/runs/<id>/jobs -q '.jobs[]|\"\\(.name)=\\(.conclusion)\"'"
+falsifiable_claims:
+- hypothesis: "The in-repo mirror of the fleet scan (every tracked .rs/.toml/.sh except src/services/hardcoded_paths.rs) finds zero banned-path lines and pins no debt; at the RED commit it named exactly check.rs:693"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- fleet_banned_path_scan_is_clean"
+  from_step: "G1"
+- hypothesis: "The fleet-side exclusion is exactly one file and still tracked: the mirror asserts the excluded file exists (an exclusion for a vanished file is dead)"
+  method: "env -u RUST_MIN_STACK cargo test --lib -- fleet_banned_path_scan_is_clean && git ls-files --error-unmatch src/services/hardcoded_paths.rs"
+  from_step: "G2"
+- hypothesis: "With paiml/.github#65 merged, a workflow_dispatch probe of release.yml on tag v3.39.0 with probe_fail_verify=true reaches verify: gate / lint-gate is green, verify is red, and no release is created for the probe (clean_room=fleet is admissible)"
+  method: "gh workflow run release.yml -f tag=v3.39.0 -f probe_fail_verify=true && gh run watch <id>; gh api repos/paiml/paiml-mcp-agent-toolkit/actions/runs/<id>/jobs -q '.jobs[]|\"\\(.name)=\\(.conclusion)\"'"
+  from_step: "G3"
