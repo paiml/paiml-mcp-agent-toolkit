@@ -777,7 +777,7 @@
   "title": "fleet lint-gate: hardcoded_paths.rs fixtures and check.rs comment still carry /home/noah; pay the co",
   "disposition": "complete",
   "hrq": false,
-  "enacted": "pending:phase-2",
+  "enacted": "completed",
   "rationale": "[train/FG] \u2014 this train"
  },
  {
@@ -804,7 +804,7 @@
   "title": "board post-3.39.0: disposition the five dependabot PRs opened 2026-09-07 (#1210-#1214) and reconcile",
   "disposition": "complete",
   "hrq": false,
-  "enacted": "pending:phase-2",
+  "enacted": "completed",
   "rationale": "board triage (Phase 1) \u2014 this train"
  },
  {
@@ -822,25 +822,25 @@
   "title": "[train/BC] board-check: scripts/board-check.sh + make board-check \u2014 read-only; exit 1 naming every o",
   "disposition": "complete",
   "hrq": false,
-  "enacted": "pending:phase-2",
+  "enacted": "completed",
   "rationale": "[train/BC] \u2014 this train"
  },
  {
   "id": "PMAT-694",
   "kind": "ticket",
   "title": "[train/CF] ci/coverage flake root cause (#1202, absorbs #1127): quality_proxy tests compile the host",
-  "disposition": "complete",
+  "disposition": "defer(3.41.0)",
   "hrq": false,
-  "enacted": "pending:phase-2",
+  "enacted": "roadmap-label:deferred:3.41.0",
   "rationale": "[train/CF] \u2014 this train"
  },
  {
   "id": "PMAT-695",
   "kind": "ticket",
   "title": "[train/HB] hermetic build.rs (#1156): vendor gridjs/mermaid/d3 under assets/vendor with a committed ",
-  "disposition": "complete",
+  "disposition": "defer(3.41.0)",
   "hrq": false,
-  "enacted": "pending:phase-2",
+  "enacted": "roadmap-label:deferred:3.41.0",
   "rationale": "[train/HB] \u2014 this train"
  },
  {
@@ -885,17 +885,17 @@
   "title": "[train/RC] release cut 3.40.0: bump the six version carriers the 3.39.0 cut touched (Cargo.toml, Car",
   "disposition": "complete",
   "hrq": false,
-  "enacted": "pending:phase-2",
+  "enacted": "completed",
   "rationale": "[train/RC] \u2014 this train"
  },
  {
   "id": "PMAT-701",
   "kind": "ticket",
   "title": "[train/IP] infra pin bump 3.39.0 -> 3.40.0 in machines/{lambda-labs,intel,mini,gx10}/forjar.yaml (pa",
-  "disposition": "complete",
+  "disposition": "defer(3.41.0)",
   "hrq": false,
-  "enacted": "pending:phase-2",
-  "rationale": "[train/IP] \u2014 this train"
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "The infra pins on origin/main already carry 3.39.0 and the hosts are provisioned; the 3.40.0 pin bump rides the next run with the fleet-gate timeout fix (PMAT-706)."
  },
  {
   "id": "PMAT-702",
@@ -930,7 +930,35 @@
   "title": "dead-code outcome fixture has no Cargo.lock, so each leg refuses for the wrong reason",
   "disposition": "complete",
   "hrq": false,
-  "enacted": "pending:phase-2",
+  "enacted": "completed",
   "rationale": "S1 absorbed into the 3.40.0 train: the missing lockfile made a_crate_that_does_not_compile_is_reported_as_not_measured pass locally for the wrong reason and fail ci/test on every PR of the train (run 34123854548), blocking ci/gate."
+ },
+ {
+  "id": "PMAT-706",
+  "kind": "ticket",
+  "title": "fleet unified-gate cancels pmat clean room at 30 minutes",
+  "disposition": "defer(3.41.0)",
+  "hrq": true,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "Filed this run from the v3.40.0 tag (run 34150721411, cpu-gates cancelled at 30m19s mid GATE B1 having passed A0-A4, B-pre, B0). Fleet-side fix: paiml/.github#66. HRQ: the owner of paiml/.github decides between a higher timeout and splitting Mode A/B."
+ },
+ {
+  "id": "#1221",
+  "kind": "issue",
+  "title": "bot: release-check on 3.40.0",
+  "disposition": "complete",
+  "hrq": false,
+  "enacted": "closed",
+  "evidence": "make release-check exit 0 on master: 3.40.0 is tagged, released and on crates.io",
+  "rationale": "Stale bot report: opened before the crate was published."
+ },
+ {
+  "id": "PMAT-708",
+  "kind": "ticket",
+  "title": "flake: dead-code not-measured leg is nondeterministic in ci/test",
+  "disposition": "defer(3.41.0)",
+  "hrq": false,
+  "enacted": "roadmap-label:deferred:3.41.0",
+  "rationale": "Found while merging the 3.40.0 receipt PR: the same test with the same code passed on #1215 and failed on #1222. A rerun to green is a flake ticket, not a pass (release brief 3.8)."
  }
 ]
