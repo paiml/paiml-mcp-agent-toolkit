@@ -70,6 +70,7 @@ async fn add(project: &Path, title: &str) -> anyhow::Result<()> {
         Some(project.to_path_buf()),
         false,
         None,
+        None,
     )
     .await
 }

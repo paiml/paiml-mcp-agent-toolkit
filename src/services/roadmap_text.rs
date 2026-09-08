@@ -23,7 +23,7 @@
 //! number is what a reader needs in a 4,000-line file.
 
 use crate::models::roadmap::RoadmapItem;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -592,4 +592,84 @@ fn last_line_of_row(
         last = index;
     }
     last
+}
+
+/// Every top-level row's `id` paired with the `title` declared in the same row.
+///
+/// PMAT-713 / #1240. Ids are allocated from branch-local state, so two agents
+/// working at once both read `max = N` and both mint `N+1`. Neither is wrong
+/// locally; the collision is created by the MERGE, and git resolves it to one
+/// entry per id — which silently DELETES one agent's ticket while leaving every
+/// artefact that cites it (DAG rows, receipt filenames, commit trailers, PR
+/// bodies) pointing at the survivor's unrelated work.
+///
+/// Nothing caught it, and the reason is worth stating: after the merge the ids
+/// ARE unique, so `work validate`, `check_roadmap_ids_unique.sh` and the
+/// additive-diff guard all pass. Uniqueness is preserved BY the loss.
+///
+/// The title is what makes the loss visible without storing anything new: an id
+/// means one piece of work, so once minted its title is immutable, and a base
+/// that says `PMAT-1065 = "L0-1a CUDA…"` against a head that says
+/// `PMAT-1065 = "BSE-09b merge=union…"` is a collision no matter which side is
+/// "right".
+#[must_use]
+pub fn titles_by_id(raw: &str) -> BTreeMap<String, String> {
+    let ids = id_lines(raw);
+    let lines: Vec<&str> = raw.lines().collect();
+    let mut out = BTreeMap::new();
+    for (position, (line_no, id)) in ids.iter().enumerate() {
+        // `id_lines` is 1-based; rows run from this id to the next one.
+        let start = line_no.saturating_sub(1);
+        let end = ids
+            .get(position + 1)
+            .map_or(lines.len(), |(next, _)| next.saturating_sub(1));
+        let id_indent = lines
+            .get(start)
+            .map_or(0, |l| l.len() - l.trim_start().len());
+        for line in lines.iter().take(end).skip(start) {
+            let indent = line.len() - line.trim_start().len();
+            // A `title:` nested deeper belongs to a subtask, not this row; the
+            // sequence dash makes the id line's own indent two columns short,
+            // so accept the id line itself and anything at the key indent.
+            if indent < id_indent {
+                break;
+            }
+            let trimmed = line.trim_start().trim_start_matches("- ");
+            if let Some(rest) = trimmed.strip_prefix("title:") {
+                out.insert(id.clone(), clean_scalar(rest));
+                break;
+            }
+        }
+    }
+    out
+}
+
+/// An id whose title differs between two revisions of a roadmap.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TitleChange {
+    pub id: String,
+    pub before: String,
+    pub after: String,
+}
+
+/// Ids that exist in both revisions but no longer mean the same thing.
+///
+/// Ids present in only one side are NOT reported: a row added on this branch is
+/// the normal case, and a row deleted deliberately is `work delete`'s business.
+/// Only a REUSED id is a collision.
+#[must_use]
+pub fn titles_changed(base: &str, head: &str) -> Vec<TitleChange> {
+    let before = titles_by_id(base);
+    let after = titles_by_id(head);
+    before
+        .into_iter()
+        .filter_map(|(id, was)| {
+            let now = after.get(&id)?;
+            (now != &was).then(|| TitleChange {
+                id,
+                before: was.clone(),
+                after: now.clone(),
+            })
+        })
+        .collect()
 }

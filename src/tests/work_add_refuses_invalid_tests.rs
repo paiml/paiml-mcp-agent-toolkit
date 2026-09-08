@@ -109,6 +109,7 @@ async fn add(project: &Path, title: &str) -> anyhow::Result<()> {
         Some(project.to_path_buf()),
         false,
         None,
+        None,
     )
     .await
 }
@@ -242,6 +243,7 @@ async fn work_add_refuses_invalid_clean_roadmap_still_mints_and_still_validates(
         Some(project.path().to_path_buf()),
         false,
         false,
+        None,
     )
     .await
     .expect("what `add` and `edit` wrote must validate");

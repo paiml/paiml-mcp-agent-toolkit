@@ -111,7 +111,7 @@
             let temp_dir = TempDir::new().unwrap();
 
             let result =
-                handle_work_validate(Some(temp_dir.path().to_path_buf()), false, false).await;
+                handle_work_validate(Some(temp_dir.path().to_path_buf()), false, false, None).await;
 
             assert!(result.is_err());
         }
@@ -376,7 +376,7 @@
             std::fs::write(&roadmap_path, "invalid: yaml: content:").unwrap();
 
             let result =
-                handle_work_validate(Some(temp_dir.path().to_path_buf()), false, false).await;
+                handle_work_validate(Some(temp_dir.path().to_path_buf()), false, false, None).await;
 
             assert!(result.is_err());
         }

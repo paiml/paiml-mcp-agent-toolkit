@@ -155,8 +155,19 @@ impl CommandDispatcher {
                 path,
                 dry_run,
             } => work_handlers::handle_work_sync(*direction, path.clone(), *dry_run).await,
-            WorkCommands::Validate { path, verbose, fix } => {
-                work_handlers::handle_work_validate(path.clone(), *verbose, *fix).await
+            WorkCommands::Validate {
+                path,
+                verbose,
+                fix,
+                check_base,
+            } => {
+                work_handlers::handle_work_validate(
+                    path.clone(),
+                    *verbose,
+                    *fix,
+                    check_base.clone(),
+                )
+                .await
             }
             WorkCommands::Migrate {
                 path,
@@ -173,6 +184,7 @@ impl CommandDispatcher {
                 path,
                 github,
                 level,
+                id,
             } => {
                 work_handlers::handle_work_add(
                     title.clone(),
@@ -182,6 +194,7 @@ impl CommandDispatcher {
                     path.clone(),
                     *github,
                     level.clone(),
+                    id.clone(),
                 )
                 .await
             }

@@ -40,6 +40,13 @@ mod work_validate_duplicate_ids_tests;
 #[cfg(test)]
 #[path = "../../../tests/work_add_allocator_tests.rs"]
 mod work_add_allocator_tests;
+// PMAT-713 (#1240): a merge that REUSES an id deletes a ticket, and every
+// uniqueness check passes afterwards because the survivor is unique. Registered
+// here for the same reason as its siblings — a file left in `tests/` with no
+// `mod` is never compiled, and silence reads as a pass.
+#[cfg(test)]
+#[path = "../../../tests/roadmap_id_collision_tests.rs"]
+mod roadmap_id_collision_tests;
 // PMAT-676: `work add` and `work edit` must refuse a roadmap `work validate`
 // rejects. Registered here for the same reason as its two siblings above —
 // `src/tests/lib.rs` reaches nothing, so a test file left there is never

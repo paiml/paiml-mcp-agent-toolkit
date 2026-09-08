@@ -1,0 +1,237 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
+//! PMAT-713 / #1240 — a merge that reuses a ticket id DELETES a ticket, and
+//! every existing check passes afterwards because the survivor is unique.
+//!
+//! Measured before this module existed, on a fixture reproducing the reported
+//! shape: `pmat work validate` printed `✓ Validation passed` on the tree where
+//! `PMAT-002` had silently stopped meaning agent A's work and started meaning
+//! agent BSE's. Uniqueness is preserved BY the loss, so uniqueness cannot be
+//! the check.
+//!
+//! Registered from `cli/handlers/work_handlers/mod.rs` for the same reason its
+//! siblings are: `autotests = false` and nothing reaches `src/tests/lib.rs`, so
+//! a file dropped in `tests/` without a `mod` is never compiled and its silence
+//! reads as a pass.
+
+use crate::services::roadmap_text::{titles_by_id, titles_changed};
+
+const BASE: &str = "\
+roadmap_version: '1.0'
+roadmap:
+- id: PMAT-001
+  item_type: task
+  title: 'the pre-existing row'
+  status: planned
+- id: PMAT-002
+  item_type: task
+  title: 'L0-1a the CUDA row that is in the merge queue'
+  status: planned
+";
+
+/// The merged tree exactly as reported: ONE entry for the id, and it is the
+/// other agent's work.
+const AFTER_MERGE: &str = "\
+roadmap_version: '1.0'
+roadmap:
+- id: PMAT-001
+  item_type: task
+  title: 'the pre-existing row'
+  status: planned
+- id: PMAT-002
+  item_type: task
+  title: 'BSE-09b merge=union on GitHub merge engine'
+  status: planned
+";
+
+#[test]
+fn a_reused_id_is_a_collision_even_though_the_ids_are_unique() {
+    // The property that made this invisible: the merged tree passes a
+    // uniqueness check. Assert that, so the test cannot be mistaken for one
+    // about duplicates.
+    let ids: Vec<String> = crate::services::roadmap_text::id_lines(AFTER_MERGE)
+        .into_iter()
+        .map(|(_, id)| id)
+        .collect();
+    let mut unique = ids.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(ids.len(), unique.len(), "fixture must have unique ids");
+
+    let changed = titles_changed(BASE, AFTER_MERGE);
+    assert_eq!(
+        changed.len(),
+        1,
+        "the reused id must be reported: {changed:?}"
+    );
+    assert_eq!(changed[0].id, "PMAT-002");
+    assert!(changed[0].before.starts_with("L0-1a"));
+    assert!(changed[0].after.starts_with("BSE-09b"));
+}
+
+#[test]
+fn adding_a_row_is_not_a_collision() {
+    let head = format!(
+        "{BASE}- id: PMAT-003\n  item_type: task\n  title: 'a genuinely new row'\n  status: planned\n"
+    );
+    assert!(
+        titles_changed(BASE, &head).is_empty(),
+        "appending a row must not read as a collision"
+    );
+}
+
+#[test]
+fn deleting_a_row_is_not_a_collision() {
+    let head = "\
+roadmap_version: '1.0'
+roadmap:
+- id: PMAT-001
+  item_type: task
+  title: 'the pre-existing row'
+  status: planned
+";
+    assert!(
+        titles_changed(BASE, head).is_empty(),
+        "a deleted row is `work delete`'s business, not a reused id"
+    );
+}
+
+#[test]
+fn an_unchanged_roadmap_reports_nothing() {
+    assert!(titles_changed(BASE, BASE).is_empty());
+}
+
+#[test]
+fn titles_are_read_per_row_not_from_the_nearest_title_line() {
+    // A subtask carrying its own title must not be mistaken for the row's.
+    let raw = "\
+roadmap_version: '1.0'
+roadmap:
+- id: PMAT-001
+  item_type: task
+  title: 'the row title'
+  subtasks:
+  - id: PMAT-001a
+    title: 'the subtask title'
+";
+    let titles = titles_by_id(raw);
+    assert_eq!(
+        titles.get("PMAT-001").map(String::as_str),
+        Some("the row title")
+    );
+    assert_eq!(
+        titles.get("PMAT-001a").map(String::as_str),
+        Some("the subtask title"),
+        "a subtask id is an id in use too, and carries its own title"
+    );
+}
+
+// ── `work add --id`: the caller allocates, the allocator is not consulted.
+
+fn roadmap_fixture() -> tempfile::TempDir {
+    let dir = tempfile::TempDir::new().expect("fixture dir");
+    let roadmaps = dir.path().join("docs/roadmaps");
+    std::fs::create_dir_all(&roadmaps).expect("fixture roadmaps dir");
+    std::fs::write(roadmaps.join("roadmap.yaml"), BASE).expect("fixture roadmap");
+    dir
+}
+
+async fn add_with_id(
+    project: &std::path::Path,
+    title: &str,
+    id: Option<&str>,
+) -> anyhow::Result<()> {
+    crate::cli::handlers::work_handlers::handle_work_add(
+        title.to_string(),
+        None,
+        crate::cli::commands::WorkPriority::Medium,
+        None,
+        Some(project.to_path_buf()),
+        false,
+        None,
+        id.map(str::to_string),
+    )
+    .await
+}
+
+#[tokio::test]
+async fn an_explicit_id_is_minted_verbatim_and_the_allocator_is_not_consulted() {
+    let dir = roadmap_fixture();
+    // 1207 is far above max(id)+1, which is what an id from a collision-free
+    // authority (a GitHub issue number) looks like.
+    add_with_id(
+        dir.path(),
+        "allocated from the issue number",
+        Some("PMAT-1207"),
+    )
+    .await
+    .expect("an explicit free id must be accepted");
+    let raw =
+        std::fs::read_to_string(dir.path().join("docs/roadmaps/roadmap.yaml")).expect("read back");
+    let titles = titles_by_id(&raw);
+    assert_eq!(
+        titles.get("PMAT-1207").map(String::as_str),
+        Some("allocated from the issue number")
+    );
+    // The allocator would have said PMAT-003; it was not asked.
+    assert!(
+        !titles.contains_key("PMAT-003"),
+        "allocator must not have run"
+    );
+}
+
+#[tokio::test]
+async fn an_explicit_id_already_in_use_is_refused_not_upserted() {
+    let dir = roadmap_fixture();
+    let before = std::fs::read_to_string(dir.path().join("docs/roadmaps/roadmap.yaml"))
+        .expect("read before");
+
+    let err = add_with_id(
+        dir.path(),
+        "a second meaning for an id in use",
+        Some("PMAT-002"),
+    )
+    .await
+    .expect_err("reusing an id must be refused");
+    assert!(
+        format!("{err}").contains("already in use"),
+        "the refusal must say why: {err}"
+    );
+
+    let after =
+        std::fs::read_to_string(dir.path().join("docs/roadmaps/roadmap.yaml")).expect("read after");
+    assert_eq!(
+        before, after,
+        "a refused --id must leave the roadmap byte-identical — overwriting the row \
+         is the very failure this flag exists to prevent"
+    );
+}
+
+#[tokio::test]
+async fn an_explicit_id_pushes_the_high_water_mark_so_the_allocator_cannot_reissue_it() {
+    let dir = roadmap_fixture();
+    add_with_id(dir.path(), "explicitly allocated", Some("PMAT-1207"))
+        .await
+        .expect("explicit id accepted");
+    add_with_id(dir.path(), "then an allocated one", None)
+        .await
+        .expect("allocator still works");
+    let raw =
+        std::fs::read_to_string(dir.path().join("docs/roadmaps/roadmap.yaml")).expect("read back");
+    let ids: Vec<String> = crate::services::roadmap_text::id_lines(&raw)
+        .into_iter()
+        .map(|(_, id)| id)
+        .collect();
+    let mut unique = ids.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(
+        ids.len(),
+        unique.len(),
+        "the allocator reissued a spent id: {ids:?}"
+    );
+    assert_eq!(
+        ids.iter().filter(|i| *i == "PMAT-1207").count(),
+        1,
+        "PMAT-1207 must appear exactly once, got {ids:?}"
+    );
+}

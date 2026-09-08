@@ -145,6 +145,7 @@ async fn add(checkout: &Path, title: &str) -> anyhow::Result<()> {
         Some(checkout.to_path_buf()),
         false,
         None,
+        None,
     )
     .await
 }

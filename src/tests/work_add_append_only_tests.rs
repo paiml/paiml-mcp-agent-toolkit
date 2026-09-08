@@ -97,6 +97,7 @@ async fn add(project: &Path, title: &str) -> anyhow::Result<()> {
         Some(project.to_path_buf()),
         false,
         None,
+        None,
     )
     .await
 }
@@ -193,6 +194,7 @@ async fn work_add_append_only_add_appends_the_row_and_rewrites_nothing() {
         Some(project.path().to_path_buf()),
         false,
         false,
+        None,
     )
     .await
     .expect("what `add` wrote must validate");

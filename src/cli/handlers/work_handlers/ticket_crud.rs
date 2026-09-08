@@ -10,6 +10,7 @@ pub async fn handle_work_add(
     path: Option<PathBuf>,
     create_github: bool,
     level: Option<String>,
+    explicit_id: Option<String>,
 ) -> Result<()> {
     let claimed = level
         .as_deref()
@@ -53,7 +54,7 @@ pub async fn handle_work_add(
     // followed by `upsert_item`, with the lock released in between: two
     // processes minted the same id and the second silently replaced the first
     // ticket.
-    let next_id = service.add_item_with_next_id(move |id| crate::models::roadmap::RoadmapItem {
+    let build = move |id: String| crate::models::roadmap::RoadmapItem {
         id,
         github_issue: None,
         item_type: crate::models::roadmap::ItemType::Task,
@@ -70,7 +71,14 @@ pub async fn handle_work_add(
         estimated_effort: None,
         labels,
         notes: None,
-    })?;
+    };
+    // #1240: an id the caller allocated from a collision-free authority beats
+    // one derived from `max(id) + 1` over branch-local state, which two agents
+    // working at once necessarily agree on and therefore both spend.
+    let next_id = match explicit_id.as_deref() {
+        Some(id) => service.add_item_with_id(id, build)?,
+        None => service.add_item_with_next_id(build)?,
+    };
 
     println!("{}", c::pass(&format!("Created ticket: {}", c::path(&next_id))));
     println!("   {} {}", c::label("Title:"), title);

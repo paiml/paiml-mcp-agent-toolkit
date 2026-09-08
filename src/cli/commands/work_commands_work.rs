@@ -33,6 +33,18 @@ pub enum WorkCommands {
         /// claim follows the evidence: L1 unbound, L2 when bound with --implements.
         #[arg(long)]
         level: Option<String>,
+
+        /// Mint this exact id instead of allocating the next one (#1240)
+        ///
+        /// The allocator derives `max(id) + 1` from state this branch can see,
+        /// which is safe alone and unsafe in parallel: two agents both read the
+        /// same max and both mint the same id, and the merge deletes one of the
+        /// two tickets. Pass an id you allocated from an authority that cannot
+        /// collide — the GitHub issue number every one of these tickets already
+        /// carries is one — and the allocator is not consulted. An id already in
+        /// use is refused.
+        #[arg(long, value_name = "ID")]
+        id: Option<String>,
     },
 
     /// List all work tickets (READ)
@@ -420,6 +432,20 @@ pub enum WorkCommands {
         /// Fix issues automatically where possible
         #[arg(long)]
         fix: bool,
+
+        /// Refuse any ticket id whose title changed since <REF> (#1240)
+        ///
+        /// A ticket id means one piece of work, so its title is immutable once
+        /// minted. Two agents on parallel branches both read the same
+        /// `max(id)` and both mint `max+1`; neither is wrong locally, and the
+        /// merge resolves the clash to one entry per id — silently DELETING
+        /// one agent's ticket while its DAG rows, receipt filenames, commit
+        /// trailers and PR body go on citing that id. Afterwards the ids ARE
+        /// unique, so a uniqueness check passes: uniqueness is preserved by
+        /// the loss. A changed title is the same event, visible, and needs no
+        /// state beyond the ref you already have.
+        #[arg(long, value_name = "REF")]
+        check_base: Option<String>,
     },
 
     /// Auto-fix common roadmap.yaml issues (Part B: UX Improvements)

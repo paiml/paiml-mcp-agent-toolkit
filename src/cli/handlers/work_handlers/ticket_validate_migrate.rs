@@ -122,7 +122,12 @@ fn print_yaml_error_context(error_msg: &str, content: &str) {
 ///
 /// Validates roadmap.yaml syntax and content with actionable error messages.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: bool) -> Result<()> {
+pub async fn handle_work_validate(
+    path: Option<PathBuf>,
+    verbose: bool,
+    fix: bool,
+    check_base: Option<String>,
+) -> Result<()> {
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -154,6 +159,15 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
                 &roadmap_path,
             ) {
                 return Err(report_duplicate_ids(invalid.duplicates(), &roadmap_path));
+            }
+            // #1240: unique ids are not enough. Two agents mint the same id on
+            // parallel branches, the merge keeps one entry, and every
+            // uniqueness check then passes over the wreckage — uniqueness is
+            // preserved BY the loss. Compare titles against the base instead:
+            // an id means one piece of work, so a title that changed is an id
+            // that was reused.
+            if let Some(base) = check_base.as_deref() {
+                check_titles_against_base(base, &project_path, &roadmap_path, &content)?;
             }
             print_valid_roadmap(&roadmap, verbose, fix);
             Ok(())
@@ -1046,4 +1060,73 @@ mod row_violation_tests {
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].id, None);
     }
+}
+
+/// Refuse the tree if any id's title changed since `base` (#1240).
+///
+/// Reads the roadmap AT the ref rather than diffing the working tree, so it
+/// works on a merge result, a rebase, or a PR branch alike. A ref that has no
+/// roadmap is not an error: the file may simply be newer than the base.
+fn check_titles_against_base(
+    base: &str,
+    project_path: &Path,
+    roadmap_path: &Path,
+    head: &str,
+) -> Result<()> {
+    use crate::cli::colors as c;
+
+    let relative = roadmap_path
+        .strip_prefix(project_path)
+        .unwrap_or(roadmap_path)
+        .display()
+        .to_string();
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(project_path)
+        .arg("show")
+        .arg(format!("{base}:{relative}"))
+        .output()
+        .with_context(|| format!("failed to run git show {base}:{relative}"))?;
+    if !out.status.success() {
+        println!(
+            "   {}",
+            c::dim(&format!(
+                "no roadmap at {base}:{relative} — nothing to compare titles against"
+            ))
+        );
+        return Ok(());
+    }
+    let base_text = String::from_utf8_lossy(&out.stdout);
+    let changed = crate::services::roadmap_text::titles_changed(&base_text, head);
+    if changed.is_empty() {
+        println!(
+            "   {}",
+            c::dim(&format!(
+                "{} id(s) kept their titles since {base}",
+                crate::services::roadmap_text::titles_by_id(&base_text).len()
+            ))
+        );
+        return Ok(());
+    }
+    for change in &changed {
+        println!(
+            "error: id {} changed meaning since {base}\n  was: {}\n  now: {}",
+            change.id, change.before, change.after
+        );
+    }
+    anyhow::bail!(
+        "Roadmap validation failed: {} ticket id(s) reused since {base}: {}.\n\n\
+         A ticket id means one piece of work and its title is immutable once minted, so a \
+         changed title is an id that two branches both allocated. The ids are still UNIQUE — \
+         that is the trap: the merge kept one entry per id, which means the other agent's \
+         ticket was deleted, and every artefact citing that id (DAG rows, receipt filenames, \
+         commit trailers, PR bodies) now points at unrelated work. Restore the lost ticket \
+         under a fresh id; do not simply re-title this one. See #1240.",
+        changed.len(),
+        changed
+            .iter()
+            .map(|c| c.id.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
 }
