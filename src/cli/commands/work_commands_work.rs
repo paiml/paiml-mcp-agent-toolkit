@@ -34,6 +34,21 @@ pub enum WorkCommands {
         #[arg(long)]
         level: Option<String>,
 
+        /// Bind this GitHub issue and derive the ticket id from it (#1240)
+        ///
+        /// This is the collision-proof path, and the reason is structural rather
+        /// than careful: GitHub allocates issue numbers from ONE authority, so
+        /// two agents on two branches cannot be handed the same number no matter
+        /// what either can see of the other. `max(id) + 1` has the opposite
+        /// property — both branches read the same roadmap, both compute the same
+        /// answer, and the merge deletes one of the two tickets.
+        ///
+        /// Mints `PMAT-<N>` and records `github_issue: <N>`, so the ticket and
+        /// the issue that authorised its id stay joined. Prefer this over the
+        /// allocator whenever an issue exists.
+        #[arg(long, value_name = "N", conflicts_with = "id")]
+        github_issue: Option<u64>,
+
         /// Mint this exact id instead of allocating the next one (#1240)
         ///
         /// The allocator derives `max(id) + 1` from state this branch can see,

@@ -71,6 +71,7 @@ async fn add(project: &Path, title: &str) -> anyhow::Result<()> {
         false,
         None,
         None,
+        None,
     )
     .await
 }

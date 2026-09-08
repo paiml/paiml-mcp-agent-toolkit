@@ -140,6 +140,19 @@ async fn add_with_id(
     title: &str,
     id: Option<&str>,
 ) -> anyhow::Result<()> {
+    add_full(project, title, id, None).await
+}
+
+async fn add_from_issue(project: &std::path::Path, title: &str, issue: u64) -> anyhow::Result<()> {
+    add_full(project, title, None, Some(issue)).await
+}
+
+async fn add_full(
+    project: &std::path::Path,
+    title: &str,
+    id: Option<&str>,
+    github_issue: Option<u64>,
+) -> anyhow::Result<()> {
     crate::cli::handlers::work_handlers::handle_work_add(
         title.to_string(),
         None,
@@ -149,6 +162,7 @@ async fn add_with_id(
         false,
         None,
         id.map(str::to_string),
+        github_issue,
     )
     .await
 }
@@ -233,5 +247,125 @@ async fn an_explicit_id_pushes_the_high_water_mark_so_the_allocator_cannot_reiss
         ids.iter().filter(|i| *i == "PMAT-1207").count(),
         1,
         "PMAT-1207 must appear exactly once, got {ids:?}"
+    );
+}
+
+// ── Ask 1: the id space is collision-proof when the number comes from an
+// authority both branches must go through.
+
+#[tokio::test]
+async fn the_id_is_derived_from_the_github_issue_number() {
+    let dir = roadmap_fixture();
+    add_from_issue(dir.path(), "the P0 CUDA row", 1065)
+        .await
+        .expect("an issue-derived id must be accepted");
+    let raw =
+        std::fs::read_to_string(dir.path().join("docs/roadmaps/roadmap.yaml")).expect("read back");
+    assert_eq!(
+        titles_by_id(&raw).get("PMAT-1065").map(String::as_str),
+        Some("the P0 CUDA row"),
+        "the id must be PMAT-<issue>, not the allocator's next number"
+    );
+    // The allocator would have said PMAT-003; it was not consulted.
+    assert!(
+        !titles_by_id(&raw).contains_key("PMAT-003"),
+        "the sequential allocator must not run when an issue supplies the number"
+    );
+    assert!(
+        raw.contains("github_issue: 1065"),
+        "the ticket must record the issue that authorised its id, so the two stay joined"
+    );
+}
+
+/// The property that makes this collision-PROOF rather than collision-unlikely.
+///
+/// The sequential allocator's defect is not that it is careless, it is that two
+/// branches deterministically AGREE: both read the same roadmap, both compute
+/// `max + 1`, both are right locally, and the merge deletes one ticket. An issue
+/// number inverts that — GitHub hands out each number once, so two agents cannot
+/// hold the same one, and no amount of what-can-this-branch-see is involved.
+///
+/// Simulated as two checkouts that cannot see each other at all: each starts from
+/// the same base roadmap, and neither's write is visible to the other.
+#[tokio::test]
+async fn two_branches_that_cannot_see_each_other_still_cannot_collide() {
+    let agent_a = roadmap_fixture();
+    let agent_bse = roadmap_fixture();
+
+    // Distinct issues, as GitHub would allocate them.
+    add_from_issue(agent_a.path(), "L0-1a the CUDA row", 1065)
+        .await
+        .expect("agent A");
+    add_from_issue(agent_bse.path(), "BSE-09b merge=union", 1074)
+        .await
+        .expect("agent BSE");
+
+    let a =
+        std::fs::read_to_string(agent_a.path().join("docs/roadmaps/roadmap.yaml")).expect("read A");
+    let bse = std::fs::read_to_string(agent_bse.path().join("docs/roadmaps/roadmap.yaml"))
+        .expect("read BSE");
+
+    let new_in_a: Vec<String> = titles_by_id(&a)
+        .into_keys()
+        .filter(|id| !titles_by_id(BASE).contains_key(id))
+        .collect();
+    let new_in_bse: Vec<String> = titles_by_id(&bse)
+        .into_keys()
+        .filter(|id| !titles_by_id(BASE).contains_key(id))
+        .collect();
+
+    assert_eq!(new_in_a, vec!["PMAT-1065".to_string()]);
+    assert_eq!(new_in_bse, vec!["PMAT-1074".to_string()]);
+    assert!(
+        new_in_a.iter().all(|id| !new_in_bse.contains(id)),
+        "two isolated branches minted the same id: {new_in_a:?} vs {new_in_bse:?}"
+    );
+
+    // And the control: the SEQUENTIAL allocator, given the same two isolated
+    // checkouts, does collide — which is the whole defect.
+    let seq_a = roadmap_fixture();
+    let seq_bse = roadmap_fixture();
+    add_with_id(seq_a.path(), "L0-1a the CUDA row", None)
+        .await
+        .expect("agent A, allocator");
+    add_with_id(seq_bse.path(), "BSE-09b merge=union", None)
+        .await
+        .expect("agent BSE, allocator");
+    let sa = std::fs::read_to_string(seq_a.path().join("docs/roadmaps/roadmap.yaml"))
+        .expect("read seq A");
+    let sb = std::fs::read_to_string(seq_bse.path().join("docs/roadmaps/roadmap.yaml"))
+        .expect("read seq BSE");
+    let seq_new_a: Vec<String> = titles_by_id(&sa)
+        .into_keys()
+        .filter(|id| !titles_by_id(BASE).contains_key(id))
+        .collect();
+    let seq_new_b: Vec<String> = titles_by_id(&sb)
+        .into_keys()
+        .filter(|id| !titles_by_id(BASE).contains_key(id))
+        .collect();
+    assert_eq!(
+        seq_new_a, seq_new_b,
+        "the control must reproduce the defect: two isolated checkouts both mint the \
+         same id from max+1. If this ever stops being equal, the allocator changed \
+         and this test's premise needs re-reading."
+    );
+
+    // The two ids the issue-derived path produced are exactly what the
+    // sequential path could not: different.
+    assert_ne!(new_in_a, new_in_bse);
+}
+
+#[tokio::test]
+async fn an_issue_number_whose_id_is_taken_is_refused_not_upserted() {
+    let dir = roadmap_fixture();
+    add_from_issue(dir.path(), "first claim on the id", 2)
+        .await
+        .expect_err("PMAT-002 already exists in the fixture, so this must be refused");
+    let raw =
+        std::fs::read_to_string(dir.path().join("docs/roadmaps/roadmap.yaml")).expect("read back");
+    assert_eq!(
+        titles_by_id(&raw).get("PMAT-002").map(String::as_str),
+        Some("L0-1a the CUDA row that is in the merge queue"),
+        "the existing row must be untouched"
     );
 }

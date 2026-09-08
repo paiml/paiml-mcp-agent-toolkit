@@ -185,6 +185,7 @@ impl CommandDispatcher {
                 github,
                 level,
                 id,
+                github_issue,
             } => {
                 work_handlers::handle_work_add(
                     title.clone(),
@@ -195,6 +196,7 @@ impl CommandDispatcher {
                     *github,
                     level.clone(),
                     id.clone(),
+                    *github_issue,
                 )
                 .await
             }
