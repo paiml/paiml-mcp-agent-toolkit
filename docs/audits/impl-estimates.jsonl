@@ -14,3 +14,4 @@
 {"repo":"paiml-mcp-agent-toolkit","ticket":"PMAT-676","phase":"1","mode":"subagent:opus (+resume)","est":34,"actual":12,"basis":"docs/audits/impl-estimates.jsonl:L11-L12; orchestrator turns on this ticket, worker 40+resume"}
 {"repo":"paiml-mcp-agent-toolkit","ticket":"PMAT-679","phase":"1","mode":"subagent:opus","est":34,"actual":6,"basis":"docs/audits/impl-estimates.jsonl:L11-L12; single dispatch, no resume"}
 {"repo":"paiml-mcp-agent-toolkit","ticket":"PMAT-680","phase":"1","mode":"subagent:opus","est":34,"actual":6,"basis":"docs/audits/impl-estimates.jsonl:L11-L12; single dispatch, no resume"}
+{"repo":"pmat","ticket":"PMAT-707","phase":"ph1-ph3","mode":"direct","est":2,"actual":null,"basis":"first-run[U]","note":"K_HAT=2 from estimate.sh (ROWS=0); actual far over K=4, dominated by an out-of-policy ultracode Workflow and three ~10min pmat verify runs. Recorded as null rather than a guessed integer."}
