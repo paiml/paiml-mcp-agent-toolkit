@@ -461,6 +461,20 @@ pub enum WorkCommands {
         /// state beyond the ref you already have.
         #[arg(long, value_name = "REF")]
         check_base: Option<String>,
+
+        /// A ticket id whose title is ALLOWED to have changed (repeatable)
+        ///
+        /// `pmat work edit --title` renames a ticket on purpose — a typo fix, a
+        /// re-scope — and `--check-base` cannot tell that apart from a reused id
+        /// by looking at titles alone. Without an escape the check would fire on
+        /// honest edits, and a gate that cries wolf is a gate someone turns off,
+        /// which would leave the defect it was built for uncaught.
+        ///
+        /// So the rename is allowed, but it has to be SAID: naming the id here is
+        /// a reviewable claim that this title changed because someone meant it
+        /// to, not because two branches both minted the id.
+        #[arg(long, value_name = "ID")]
+        allow_retitle: Vec<String>,
     },
 
     /// Auto-fix common roadmap.yaml issues (Part B: UX Improvements)

@@ -196,6 +196,7 @@ async fn work_add_append_only_add_appends_the_row_and_rewrites_nothing() {
         false,
         false,
         None,
+        Vec::new(),
     )
     .await
     .expect("what `add` wrote must validate");

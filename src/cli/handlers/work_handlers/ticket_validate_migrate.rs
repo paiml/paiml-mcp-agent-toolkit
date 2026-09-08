@@ -127,6 +127,7 @@ pub async fn handle_work_validate(
     verbose: bool,
     fix: bool,
     check_base: Option<String>,
+    allow_retitle: Vec<String>,
 ) -> Result<()> {
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
@@ -167,7 +168,7 @@ pub async fn handle_work_validate(
             // an id means one piece of work, so a title that changed is an id
             // that was reused.
             if let Some(base) = check_base.as_deref() {
-                check_titles_against_base(base, &project_path, &roadmap_path, &content)?;
+                check_titles_against_base(base, &project_path, &roadmap_path, &content, &allow_retitle)?;
             }
             print_valid_roadmap(&roadmap, verbose, fix);
             Ok(())
@@ -1072,6 +1073,7 @@ fn check_titles_against_base(
     project_path: &Path,
     roadmap_path: &Path,
     head: &str,
+    allow_retitle: &[String],
 ) -> Result<()> {
     use crate::cli::colors as c;
 
@@ -1097,7 +1099,21 @@ fn check_titles_against_base(
         return Ok(());
     }
     let base_text = String::from_utf8_lossy(&out.stdout);
-    let changed = crate::services::roadmap_text::titles_changed(&base_text, head);
+    let all_changed = crate::services::roadmap_text::titles_changed(&base_text, head);
+    // A rename the caller declared is not a collision — but it IS recorded, so a
+    // reviewer sees which ids were waved through and on whose say-so.
+    let (allowed, changed): (Vec<_>, Vec<_>) = all_changed
+        .into_iter()
+        .partition(|c| allow_retitle.iter().any(|id| id == &c.id));
+    for a in &allowed {
+        println!(
+            "   {}",
+            c::dim(&format!(
+                "{} retitled with --allow-retitle: {:?} -> {:?}",
+                a.id, a.before, a.after
+            ))
+        );
+    }
     if changed.is_empty() {
         println!(
             "   {}",
@@ -1121,7 +1137,12 @@ fn check_titles_against_base(
          that is the trap: the merge kept one entry per id, which means the other agent's \
          ticket was deleted, and every artefact citing that id (DAG rows, receipt filenames, \
          commit trailers, PR bodies) now points at unrelated work. Restore the lost ticket \
-         under a fresh id; do not simply re-title this one. See #1240.",
+         under a fresh id; do not simply re-title this one.\n\n\
+         If a title changed because someone MEANT to rename the ticket \
+         (`pmat work edit --title` does exactly that), say so: pass \
+         `--allow-retitle <ID>` for each one. Titles alone cannot tell a rename \
+         from a reused id, so the difference has to be declared rather than \
+         guessed. See #1240.",
         changed.len(),
         changed
             .iter()

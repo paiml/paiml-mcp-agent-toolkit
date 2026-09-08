@@ -245,6 +245,7 @@ async fn work_add_refuses_invalid_clean_roadmap_still_mints_and_still_validates(
         false,
         false,
         None,
+        Vec::new(),
     )
     .await
     .expect("what `add` and `edit` wrote must validate");

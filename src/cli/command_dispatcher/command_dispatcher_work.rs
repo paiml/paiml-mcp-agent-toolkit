@@ -160,12 +160,14 @@ impl CommandDispatcher {
                 verbose,
                 fix,
                 check_base,
+                allow_retitle,
             } => {
                 work_handlers::handle_work_validate(
                     path.clone(),
                     *verbose,
                     *fix,
                     check_base.clone(),
+                    allow_retitle.clone(),
                 )
                 .await
             }
