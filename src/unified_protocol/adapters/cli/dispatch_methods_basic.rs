@@ -34,6 +34,11 @@ impl CliAdapter {
                 fail_on_violation: _,
                 timeout: _,
                 ml: _, // GH-97: ML flag
+                // BSE-12: pre-commit hook feedback. The measurement reads the
+                // caller's git index (`git diff --cached`), which has no
+                // representation in a protocol request, so it is dropped here
+                // rather than encoded — same as `fail_on_violation` above.
+                diff_scope: _,
             } => Self::decode_analyze_complexity_with_migration(
                 path,
                 project_path,
