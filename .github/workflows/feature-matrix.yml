@@ -854,9 +854,11 @@ jobs:
       - name: green, and measuring something
         run: |
           set -o pipefail
-          cargo test --test all --release \
+          # Both filters go AFTER `--`: cargo takes ONE positional TESTNAME, libtest
+          # takes many. `cargo test --test all a:: b::` is a cargo usage error.
+          cargo test --test all --release -- \
             modules::cli_documentation_sync:: modules::documentation_examples:: \
-            -- --nocapture 2>&1 | tee before.log
+            --nocapture 2>&1 | tee before.log
           # Three ways this suite has reported ok while measuring nothing (#1228).
           # All three are now impossible in code; assert it, because "impossible"
           # is exactly what was believed about the last five.
