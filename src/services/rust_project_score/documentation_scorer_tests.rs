@@ -259,11 +259,11 @@ MIT
 
     #[test]
     fn a_changelog_beside_a_project_whose_parent_is_no_workspace_is_not_this_project_s() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
         let project = project_with_polluted_parent(temp_dir.path());
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(&project, None).unwrap();
+        let result = scorer.score_changelog(&project, None).expect("scorer must not error");
 
         // No CHANGELOG.md in the project and no workspace above it => 0 points.
         // The old code read the neighbour's two version entries and scored 3.0.
@@ -272,12 +272,13 @@ MIT
 
     #[test]
     fn a_project_s_own_changelog_wins_over_a_stray_neighbour_with_more_versions() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
         let project = project_with_polluted_parent(temp_dir.path());
-        fs::write(project.join("CHANGELOG.md"), "# Changelog\n\nChanges go here").unwrap();
+        fs::write(project.join("CHANGELOG.md"), "# Changelog\n\nChanges go here")
+            .expect("project changelog");
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(&project, None).unwrap();
+        let result = scorer.score_changelog(&project, None).expect("scorer must not error");
 
         // Minimal own changelog = 1.0. The old code preferred the neighbour
         // because it had more version entries.
@@ -289,16 +290,16 @@ MIT
     /// workspace" and "delete the feature" are indistinguishable.
     #[test]
     fn a_real_workspace_root_above_the_crate_still_supplies_its_changelog() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
         fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[workspace]\nmembers = [\"proj\"]\n",
         )
-        .unwrap();
+        .expect("parent manifest");
         let project = project_with_polluted_parent(temp_dir.path());
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(&project, None).unwrap();
+        let result = scorer.score_changelog(&project, None).expect("scorer must not error");
 
         assert_eq!(result, 3.0, "the monorepo workspace-root fallback was lost");
     }
@@ -307,16 +308,16 @@ MIT
     /// is still not a workspace root.
     #[test]
     fn a_parent_package_that_declares_no_workspace_is_not_a_workspace_root() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
         fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"outer\"\nversion = \"0.1.0\"\n",
         )
-        .unwrap();
+        .expect("parent manifest");
         let project = project_with_polluted_parent(temp_dir.path());
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(&project, None).unwrap();
+        let result = scorer.score_changelog(&project, None).expect("scorer must not error");
 
         assert_eq!(result, 0.0, "a non-workspace parent package was treated as a workspace root");
     }
