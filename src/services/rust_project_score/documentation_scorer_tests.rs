@@ -201,15 +201,13 @@ MIT
 
     #[test]
     fn test_changelog_missing() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            "[package]\nname = \"test\"",
-        )
-        .unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        let project = nested_project(&temp_dir);
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_changelog(&project, None)
+            .expect("scorer must not error");
 
         // No CHANGELOG = 0 points
         assert_eq!(result, 0.0);
@@ -217,20 +215,15 @@ MIT
 
     #[test]
     fn test_changelog_minimal() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            "[package]\nname = \"test\"",
-        )
-        .unwrap();
-        fs::write(
-            temp_dir.path().join("CHANGELOG.md"),
-            "# Changelog\n\nChanges go here",
-        )
-        .unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        let project = nested_project(&temp_dir);
+        fs::write(project.join("CHANGELOG.md"), "# Changelog\n\nChanges go here")
+            .expect("fixture changelog");
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_changelog(&project, None)
+            .expect("scorer must not error");
 
         // Minimal CHANGELOG = 1.0 point
         assert_eq!(result, 1.0);
@@ -240,6 +233,20 @@ MIT
     // has a parent. These four pin the distinction the scorer must draw, and the
     // first two fail on the old code (the stray file is read as this project's
     // changelog and scores 3.0 instead of 0.0 / 1.0).
+
+    /// A project directory nested one level inside the temp dir.
+    ///
+    /// PMAT-689: a fixture rooted AT `TempDir::new()` has `$TMPDIR` as its parent,
+    /// so the host's own files sit in the slot the scorer consults. Nesting one
+    /// level puts a directory the test controls there instead, and no file the
+    /// host happens to keep in /tmp can reach it.
+    fn nested_project(temp: &TempDir) -> std::path::PathBuf {
+        let project = temp.path().join("proj");
+        fs::create_dir_all(&project).expect("fixture project dir");
+        fs::write(project.join("Cargo.toml"), "[package]\nname = \"test\"")
+            .expect("fixture manifest");
+        project
+    }
 
     /// A CHANGELOG.md beside the project, in a directory that is NOT a Cargo
     /// workspace root, must be invisible. This is the shape that made three of
@@ -320,6 +327,49 @@ MIT
         let result = scorer.score_changelog(&project, None).expect("scorer must not error");
 
         assert_eq!(result, 0.0, "a non-workspace parent package was treated as a workspace root");
+    }
+
+    /// The three shapes a line-oriented `[workspace]` scan gets wrong. All are
+    /// legal TOML that Cargo accepts, so each one is a real score, wrong.
+    /// Quorum review of PMAT-689 named all three.
+    #[test]
+    fn legal_toml_workspace_spellings_are_recognised_and_look_alikes_are_not() {
+        for (label, manifest, expect_fallback) in [
+            // Recognised: whitespace inside the header is legal TOML.
+            ("spaces", "[ workspace ]\nmembers = [\"proj\"]\n", true),
+            // Recognised: a trailing comment is legal TOML.
+            ("trailing comment", "[workspace] # the root\n", true),
+            // Recognised: a root package that also owns the workspace.
+            (
+                "package plus workspace",
+                "[package]\nname = \"outer\"\n\n[workspace]\nmembers = [\"proj\"]\n",
+                true,
+            ),
+            // NOT recognised: the text appears inside a multi-line string, so
+            // this manifest declares no workspace at all.
+            (
+                "inside a multi-line string",
+                "[package]\nname = \"outer\"\ndescription = \"\"\"\n[workspace]\n\"\"\"\n",
+                false,
+            ),
+            // NOT recognised: not a workspace, and not parseable either.
+            ("malformed", "[package\nname =\n", false),
+        ] {
+            let temp_dir = TempDir::new().expect("fixture temp dir");
+            fs::write(temp_dir.path().join("Cargo.toml"), manifest).expect("parent manifest");
+            let project = project_with_polluted_parent(temp_dir.path());
+
+            let scorer = DocumentationScorer::new();
+            let result = scorer
+                .score_changelog(&project, None)
+                .expect("scorer must not error");
+
+            let expected = if expect_fallback { 3.0 } else { 0.0 };
+            assert_eq!(
+                result, expected,
+                "{label}: manifest was judged the wrong way round"
+            );
+        }
     }
 
     #[test]
@@ -427,17 +477,13 @@ MIT
 
     #[test]
     fn test_recommendations_empty_project() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            "[package]\nname = \"test\"",
-        )
-        .unwrap();
-        fs::write(temp_dir.path().join("src/lib.rs"), "pub fn foo() {}").unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).expect("fixture src dir");
+        fs::write(project.join("src/lib.rs"), "pub fn foo() {}").expect("fixture lib.rs");
 
         let scorer = DocumentationScorer::new();
-        let recommendations = scorer.recommendations(temp_dir.path());
+        let recommendations = scorer.recommendations(&project);
 
         // Should recommend all areas
         assert!(recommendations.iter().any(|r| r.contains("rustdoc")));

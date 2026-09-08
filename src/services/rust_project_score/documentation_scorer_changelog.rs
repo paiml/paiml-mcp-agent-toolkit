@@ -73,18 +73,28 @@ fn workspace_root_above(project_path: &Path) -> Option<&Path> {
     declares_workspace(&manifest).then_some(parent)
 }
 
-/// Whether a manifest's text declares a `[workspace]` (a virtual manifest, or a
-/// root package that also owns the workspace).
+/// Whether a manifest declares a `[workspace]` (a virtual manifest, or a root
+/// package that also owns the workspace).
 ///
-/// Line-oriented on purpose: this decides which of two files to read, not what to
-/// build, so it stays a cheap predicate rather than pulling in a TOML parse of
-/// every candidate parent. `[workspace.dependencies]` and friends count — only a
-/// workspace root can carry them.
+/// This parses the manifest instead of scanning lines. A line-oriented version was
+/// written first and was wrong three ways, each of which is legal TOML that Cargo
+/// accepts: `[ workspace ]` and `[workspace] # comment` are workspace roots it did
+/// not recognise (deflating the score by dropping a real fallback), and a
+/// `[workspace]` occurring inside a multi-line string was a root it invented
+/// (inflating the score with a stranger's changelog). Deciding which of two files
+/// to read is not a good enough reason to re-implement a TOML parser badly.
+///
+/// A manifest that does not parse yields `false`: no fallback, which is the safe
+/// direction — the failure this whole function exists to prevent is reading a
+/// changelog that is not this project's.
 fn declares_workspace(manifest: &str) -> bool {
-    manifest.lines().any(|line| {
-        let t = line.trim();
-        t == "[workspace]" || t.starts_with("[workspace.")
-    })
+    // `toml::Table`, not `str::parse::<toml::Value>()`: the latter parses a TOML
+    // *value*, so it reads a manifest's first line `[workspace]` as an array
+    // literal and then fails with "unexpected content, expected nothing". It
+    // would have made this predicate always false — silently deleting the
+    // monorepo fallback instead of scoping it. Caught by
+    // `a_real_workspace_root_above_the_crate_still_supplies_its_changelog`.
+    toml::from_str::<toml::Table>(manifest).is_ok_and(|t| t.contains_key("workspace"))
 }
 
 impl DocumentationScorer {
