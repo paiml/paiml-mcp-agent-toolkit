@@ -4561,14 +4561,14 @@ roadmap:
   priority: low
   assigned_to: null
   created: 2026-09-06T19:21:25Z
-  updated: 2026-09-06T19:21:25Z
+  updated: 2026-09-08T12:15:30Z
   spec: null
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels:
-  - deferred:3.41.0
+  - kind:code
   notes: null
 - id: PMAT-690
   github_issue: null

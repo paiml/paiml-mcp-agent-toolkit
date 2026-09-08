@@ -236,6 +236,91 @@ MIT
         assert_eq!(result, 1.0);
     }
 
+    // PMAT-689: `project_path.parent()` is not a workspace test — every directory
+    // has a parent. These four pin the distinction the scorer must draw, and the
+    // first two fail on the old code (the stray file is read as this project's
+    // changelog and scores 3.0 instead of 0.0 / 1.0).
+
+    /// A CHANGELOG.md beside the project, in a directory that is NOT a Cargo
+    /// workspace root, must be invisible. This is the shape that made three of
+    /// this module's tests fail on any host with a stray /tmp/CHANGELOG.md.
+    fn project_with_polluted_parent(parent: &std::path::Path) -> std::path::PathBuf {
+        let project = parent.join("proj");
+        fs::create_dir_all(&project).expect("fixture project dir");
+        fs::write(project.join("Cargo.toml"), "[package]\nname = \"test\"")
+            .expect("fixture manifest");
+        fs::write(
+            parent.join("CHANGELOG.md"),
+            "# Changelog\n\n## [2.0.0]\n- b\n\n## [1.0.0]\n- a\n",
+        )
+        .expect("stray changelog");
+        project
+    }
+
+    #[test]
+    fn a_changelog_beside_a_project_whose_parent_is_no_workspace_is_not_this_project_s() {
+        let temp_dir = TempDir::new().unwrap();
+        let project = project_with_polluted_parent(temp_dir.path());
+
+        let scorer = DocumentationScorer::new();
+        let result = scorer.score_changelog(&project, None).unwrap();
+
+        // No CHANGELOG.md in the project and no workspace above it => 0 points.
+        // The old code read the neighbour's two version entries and scored 3.0.
+        assert_eq!(result, 0.0, "a stray CHANGELOG.md beside the project was read as its own");
+    }
+
+    #[test]
+    fn a_project_s_own_changelog_wins_over_a_stray_neighbour_with_more_versions() {
+        let temp_dir = TempDir::new().unwrap();
+        let project = project_with_polluted_parent(temp_dir.path());
+        fs::write(project.join("CHANGELOG.md"), "# Changelog\n\nChanges go here").unwrap();
+
+        let scorer = DocumentationScorer::new();
+        let result = scorer.score_changelog(&project, None).unwrap();
+
+        // Minimal own changelog = 1.0. The old code preferred the neighbour
+        // because it had more version entries.
+        assert_eq!(result, 1.0, "a stray neighbour outranked the project's own CHANGELOG.md");
+    }
+
+    /// The monorepo fallback this scoping must NOT delete: a real workspace root
+    /// above the crate still supplies the changelog. Without this, "scope it to a
+    /// workspace" and "delete the feature" are indistinguishable.
+    #[test]
+    fn a_real_workspace_root_above_the_crate_still_supplies_its_changelog() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"proj\"]\n",
+        )
+        .unwrap();
+        let project = project_with_polluted_parent(temp_dir.path());
+
+        let scorer = DocumentationScorer::new();
+        let result = scorer.score_changelog(&project, None).unwrap();
+
+        assert_eq!(result, 3.0, "the monorepo workspace-root fallback was lost");
+    }
+
+    /// A parent that has a Cargo.toml but is a plain package, not a workspace,
+    /// is still not a workspace root.
+    #[test]
+    fn a_parent_package_that_declares_no_workspace_is_not_a_workspace_root() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"outer\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+        let project = project_with_polluted_parent(temp_dir.path());
+
+        let scorer = DocumentationScorer::new();
+        let result = scorer.score_changelog(&project, None).unwrap();
+
+        assert_eq!(result, 0.0, "a non-workspace parent package was treated as a workspace root");
+    }
+
     #[test]
     fn test_changelog_with_versions() {
         let temp_dir = TempDir::new().unwrap();
