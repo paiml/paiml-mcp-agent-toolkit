@@ -375,13 +375,14 @@ MIT
     #[test]
     fn test_changelog_with_versions() {
         let temp_dir = TempDir::new().unwrap();
+        let project = nested_project(&temp_dir);
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("CHANGELOG.md"),
+            project.join("CHANGELOG.md"),
             r#"# Changelog
 
 ## [0.2.0] - 2024-01-02
@@ -396,7 +397,7 @@ MIT
         .unwrap();
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(temp_dir.path(), None).unwrap();
+        let result = scorer.score_changelog(&project, None).unwrap();
 
         // Multiple versions = full points
         assert_eq!(result, 3.0);
@@ -419,26 +420,27 @@ MIT
     #[test]
     fn test_score_full_project() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("src/lib.rs"),
+            project.join("src/lib.rs"),
             "/// Documented\npub fn foo() {}",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("README.md"),
+            project.join("README.md"),
             "# Project\n\nDescription with installation and usage",
         )
         .unwrap();
-        fs::write(temp_dir.path().join("CHANGELOG.md"), "## [0.1.0]\nInitial").unwrap();
+        fs::write(project.join("CHANGELOG.md"), "## [0.1.0]\nInitial").unwrap();
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(&project).unwrap();
 
         // Should get positive score
         assert!(result.earned > 0.0);
@@ -448,9 +450,10 @@ MIT
     #[test]
     fn test_score_with_cache() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
@@ -458,17 +461,17 @@ MIT
         // Create cache
         let mut cache = FileCache::new();
         cache.insert(
-            temp_dir.path().join("src/lib.rs"),
+            project.join("src/lib.rs"),
             "/// Documented\npub fn foo() {}".to_string(),
         );
         cache.insert(
-            temp_dir.path().join("README.md"),
+            project.join("README.md"),
             "# Project\n\nDescription with installation and usage and examples".to_string(),
         );
 
         let scorer = DocumentationScorer::new();
         let result = scorer
-            .score_with_cache(temp_dir.path(), ScoringMode::Fast, Some(&cache))
+            .score_with_cache(&project, ScoringMode::Fast, Some(&cache))
             .unwrap();
 
         assert!(result.earned > 0.0);
@@ -494,30 +497,31 @@ MIT
     #[test]
     fn test_recommendations_well_documented() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("src/lib.rs"),
+            project.join("src/lib.rs"),
             "/// Doc\npub fn foo() {}\n/// Doc\npub fn bar() {}",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("README.md"),
+            project.join("README.md"),
             "# P\n\n## Installation\ninstall\n## Usage\nuse\n## Examples\n```rust\n```\n## License\nMIT",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("CHANGELOG.md"),
+            project.join("CHANGELOG.md"),
             "## [0.1.0]\n## [0.2.0]",
         )
         .unwrap();
 
         let scorer = DocumentationScorer::new();
-        let recommendations = scorer.recommendations(temp_dir.path());
+        let recommendations = scorer.recommendations(&project);
 
         // Should have fewer or no recommendations for well-documented project
         assert!(recommendations.len() <= 3);
@@ -592,21 +596,22 @@ pub struct Foo;
     #[test]
     fn test_changelog_with_cache() {
         let temp_dir = TempDir::new().unwrap();
+        let project = nested_project(&temp_dir);
         fs::write(
-            temp_dir.path().join("CHANGELOG.md"),
+            project.join("CHANGELOG.md"),
             "## [0.1.0]\n## [0.2.0]",
         )
         .unwrap();
 
         let mut cache = FileCache::new();
         cache.insert(
-            temp_dir.path().join("CHANGELOG.md"),
+            project.join("CHANGELOG.md"),
             "## [0.1.0]\n## [0.2.0]".to_string(),
         );
 
         let scorer = DocumentationScorer::new();
         let result = scorer
-            .score_changelog(temp_dir.path(), Some(&cache))
+            .score_changelog(&project, Some(&cache))
             .unwrap();
 
         // Multiple versions = full points
@@ -616,17 +621,18 @@ pub struct Foo;
     #[test]
     fn test_score_with_mode_fast() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
-        fs::write(temp_dir.path().join("src/lib.rs"), "pub fn foo() {}").unwrap();
+        fs::write(project.join("src/lib.rs"), "pub fn foo() {}").unwrap();
 
         let scorer = DocumentationScorer::new();
         let result = scorer
-            .score_with_mode(temp_dir.path(), ScoringMode::Fast)
+            .score_with_mode(&project, ScoringMode::Fast)
             .unwrap();
 
         // Mode doesn't affect documentation scorer
@@ -637,17 +643,18 @@ pub struct Foo;
     #[test]
     fn test_score_with_mode_full() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
-        fs::write(temp_dir.path().join("src/lib.rs"), "pub fn foo() {}").unwrap();
+        fs::write(project.join("src/lib.rs"), "pub fn foo() {}").unwrap();
 
         let scorer = DocumentationScorer::new();
         let result = scorer
-            .score_with_mode(temp_dir.path(), ScoringMode::Full)
+            .score_with_mode(&project, ScoringMode::Full)
             .unwrap();
 
         // Mode doesn't affect documentation scorer
