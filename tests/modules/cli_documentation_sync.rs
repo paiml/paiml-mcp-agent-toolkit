@@ -1,7 +1,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -13,32 +13,35 @@ struct DocumentedCommand {
     options: Vec<String>,
 }
 
-/// Where the CLI reference lives.
+/// The documentation this suite grades, or `None` when it was never shipped.
 ///
-/// #1228: this was `Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap()`.
-/// `CARGO_MANIFEST_DIR` is ALREADY the repository root, so `.parent()` pointed at
-/// `<repo>/../rust-docs/cli-reference.md`, which does not exist. Every test in this
-/// file then took its "file not found" branch, returned empty, and reported ok:
-/// five green tests asserting nothing, in 0.00s.
-fn cli_reference_path() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-docs/cli-reference.md")
-}
-
-/// Read the CLI reference, or fail loudly.
+/// `None` has exactly ONE cause: the published crate excludes `/rust-docs/`
+/// (Cargo.toml:26) while shipping `tests/`, so a consumer running `cargo test` on
+/// the crates.io tarball has the tests but not the document. That is not drift and
+/// not something this suite can measure, so it says so and stops.
 ///
-/// A missing input is RED, never green. The whole point of this suite is to notice
-/// when the CLI and its reference drift apart; if it cannot read the reference it
-/// has measured nothing, and saying so is the only honest outcome.
-fn read_cli_reference(doc_path: &Path) -> String {
-    fs::read_to_string(doc_path).unwrap_or_else(|e| {
+/// Everything else PANICS. If `rust-docs/` is present — which it is in every source
+/// checkout and every CI job — then a missing or renamed `cli-reference.md` is drift, and
+/// #1228 is the record of what happens when that reads as "ok": five green tests,
+/// 0.00s, asserting nothing, while the document they guard drifted 60 commands.
+fn cli_reference() -> Option<String> {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    if !repo_root.join("rust-docs").is_dir() {
+        eprintln!(
+            "NOT-SHIPPED: rust-docs/ is absent, so this is the packaged crate rather \
+             than a source checkout; cli-reference.md was never included. Nothing to compare."
+        );
+        return None;
+    }
+    let doc_path = repo_root.join("rust-docs/cli-reference.md");
+    Some(fs::read_to_string(&doc_path).unwrap_or_else(|e| {
         panic!(
-            "cli-reference.md not found at {} ({e}).\n\
-             This suite compares the CLI against that document; without it nothing \
-             is measured. It must not be skipped — see #1228, where the same read \
-             failed silently and five tests reported ok.",
+            "cli-reference.md not found at {} ({e}), but rust-docs/ exists — so this is a \
+             source checkout and the document has been moved, renamed or deleted. \
+             That is drift; it must fail rather than skip (#1228).",
             doc_path.display()
         )
-    })
+    }))
 }
 
 /// Parse `rust-docs/cli-reference.md` into the commands it documents.
@@ -54,9 +57,9 @@ fn read_cli_reference(doc_path: &Path) -> String {
 ///   `### \`demo\``              — a top-level command, under `## Commands`
 ///   `##### \`analyze churn\``   — a subcommand
 ///   `**Arguments:**`           — an argument block (not `#### Arguments`)
-fn parse_documented_cli_commands() -> Vec<DocumentedCommand> {
-    let doc_path = cli_reference_path();
-    let content = read_cli_reference(&doc_path);
+fn parse_documented_cli_commands() -> Option<Vec<DocumentedCommand>> {
+    // `None` only when the document was never shipped — see cli_reference().
+    let content = cli_reference()?;
 
     let top_level = Regex::new(r"(?m)^### `([a-z][a-z0-9-]*)`").expect("static regex must compile");
     let sub_level = Regex::new(r"(?m)^##### `([a-z][a-z0-9-]* [a-z][a-z0-9-]*)`")
@@ -131,14 +134,13 @@ fn parse_documented_cli_commands() -> Vec<DocumentedCommand> {
 
     assert!(
         !commands.is_empty(),
-        "parsed 0 commands out of {} ({} bytes). The document is readable, so either \
-         its heading shape changed or this parser is wrong — either way this suite \
-         measures nothing and must not report ok (#1228).",
-        doc_path.display(),
+        "parsed 0 commands out of {} bytes of cli-reference.md. The document is \
+         readable, so either its heading shape changed or this parser is wrong — \
+         either way this suite measures nothing and must not report ok (#1228).",
         content.len()
     );
 
-    commands
+    Some(commands)
 }
 
 fn parse_cli_help_output(output: &[u8]) -> Vec<String> {
@@ -177,45 +179,32 @@ fn parse_cli_help_output(output: &[u8]) -> Vec<String> {
 
 /// The binary this test grades.
 ///
-/// #1228: this used to be `Path::new(manifest_dir).parent().unwrap()`, which is
-/// one level ABOVE the repository, so neither candidate could ever exist and the
-/// function fell through to the string `"pmat"` — whatever happened to be on
-/// `PATH`, typically a `cargo install`ed copy from some earlier release. A doc
-/// test that silently grades a different binary than the one just built is worse
-/// than no test, so there is no fallback now: if the build is missing, say so.
+/// #1228: this hand-built `<repo>/target/{release,debug}/pmat`. Two things were
+/// wrong with that. The path was rooted at `CARGO_MANIFEST_DIR.parent()`, one level
+/// ABOVE the repository, so neither candidate existed and it fell through to the
+/// literal "pmat" — whatever was on PATH, typically a `cargo install`ed copy from an
+/// older release. And even rooted correctly it ignores `CARGO_TARGET_DIR`: on a
+/// machine that redirects the target directory (this repo's own does) the hand-built
+/// path finds a STALE `./target/release/pmat` while the real build is elsewhere —
+/// the same "grade the wrong binary" failure, wearing a different hat.
+///
+/// `CARGO_BIN_EXE_pmat` is set by Cargo for integration test targets, points at the
+/// binary Cargo just built for THIS test run, and honours the target directory. An
+/// earlier revision of this function claimed it was unavailable here; that was
+/// simply false, and measuring it took one `println!`.
 fn get_binary_path() -> String {
-    // CARGO_MANIFEST_DIR is the repository root; the previous `.parent()` climbed
-    // out of it. Cargo's own `CARGO_BIN_EXE_pmat` is not available here because
-    // this file is compiled into the `all` integration target, not a bin target.
-    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let release_binary = repo_root.join("target/release/pmat");
-    let debug_binary = repo_root.join("target/debug/pmat");
-
-    if release_binary.exists() {
-        release_binary.to_string_lossy().to_string()
-    } else if debug_binary.exists() {
-        debug_binary.to_string_lossy().to_string()
-    } else {
-        panic!(
-            "no pmat binary to grade the documentation against.\n  tried: {}\n  tried: {}\n\
-             Build one first: cargo build --release --bin pmat\n\
-             (this used to fall back to `pmat` on PATH, which graded a stale \
-             install against current docs — #1228)",
-            release_binary.display(),
-            debug_binary.display()
-        )
-    }
+    env!("CARGO_BIN_EXE_pmat").to_string()
 }
 
 #[test]
 fn test_cli_commands_match_documentation() {
     // Parse documented commands from docs/cli-mcp.md
-    let documented_commands = parse_documented_cli_commands();
-    assert!(
-        !documented_commands.is_empty(),
-        "no documented commands parsed — this test would otherwise report ok \
-         while comparing nothing (#1228)"
-    );
+    // `None` means the document was never shipped (packaged crate); there is
+    // nothing to compare and saying so is the honest answer. An EMPTY parse from a
+    // document that IS present panics inside parse_documented_cli_commands instead.
+    let Some(documented_commands) = parse_documented_cli_commands() else {
+        return;
+    };
 
     // Get actual commands from CLI
     let binary_path = get_binary_path();
@@ -250,12 +239,12 @@ fn test_cli_commands_match_documentation() {
 
 #[test]
 fn test_cli_subcommands_match_documentation() {
-    let documented_commands = parse_documented_cli_commands();
-    assert!(
-        !documented_commands.is_empty(),
-        "no documented commands parsed — this test would otherwise report ok \
-         while comparing nothing (#1228)"
-    );
+    // `None` means the document was never shipped (packaged crate); there is
+    // nothing to compare and saying so is the honest answer. An EMPTY parse from a
+    // document that IS present panics inside parse_documented_cli_commands instead.
+    let Some(documented_commands) = parse_documented_cli_commands() else {
+        return;
+    };
     let binary_path = get_binary_path();
 
     // Check subcommands for commands that have them
@@ -287,12 +276,12 @@ fn test_cli_subcommands_match_documentation() {
 
 #[test]
 fn test_cli_options_match_documentation() {
-    let documented_commands = parse_documented_cli_commands();
-    assert!(
-        !documented_commands.is_empty(),
-        "no documented commands parsed — this test would otherwise report ok \
-         while comparing nothing (#1228)"
-    );
+    // `None` means the document was never shipped (packaged crate); there is
+    // nothing to compare and saying so is the honest answer. An EMPTY parse from a
+    // document that IS present panics inside parse_documented_cli_commands instead.
+    let Some(documented_commands) = parse_documented_cli_commands() else {
+        return;
+    };
     let binary_path = get_binary_path();
 
     for doc_cmd in &documented_commands {
@@ -401,12 +390,12 @@ const UNDOCUMENTED_AT_BASELINE: &[&str] = &[
 
 #[test]
 fn test_no_undocumented_commands() {
-    let documented_commands = parse_documented_cli_commands();
-    assert!(
-        !documented_commands.is_empty(),
-        "no documented commands parsed — this test would otherwise report ok \
-         while comparing nothing (#1228)"
-    );
+    // `None` means the document was never shipped (packaged crate); there is
+    // nothing to compare and saying so is the honest answer. An EMPTY parse from a
+    // document that IS present panics inside parse_documented_cli_commands instead.
+    let Some(documented_commands) = parse_documented_cli_commands() else {
+        return;
+    };
 
     let binary_path = get_binary_path();
     let output = Command::new(&binary_path)
@@ -464,8 +453,10 @@ fn test_no_undocumented_commands() {
 
 #[test]
 fn test_documentation_examples_are_valid() {
-    let doc_path = cli_reference_path();
-    let content = read_cli_reference(&doc_path);
+    // `None` only when the document was never shipped — see cli_reference().
+    let Some(content) = cli_reference() else {
+        return;
+    };
 
     // Extract bash code blocks - use a simpler approach
     let mut in_bash_block = false;

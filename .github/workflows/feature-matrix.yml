@@ -851,32 +851,51 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: cli-doc-sync-falsifier
-      # get_binary_path() now panics rather than falling back to `pmat` on PATH,
-      # so the binary it grades has to exist and has to be this build.
-      - name: build the binary under test
-        run: cargo build --release --locked --bin pmat
-      - name: green with the document present
+      - name: green, and measuring something
         run: |
-          cargo test --test all --release modules::cli_documentation_sync:: 2>&1 | tee before.log
-          if grep -q "Skipping test" before.log; then
-            echo "::error::the suite skipped a test — a missing input must be RED, never green (#1228)"
-            exit 1
-          fi
+          set -o pipefail
+          cargo test --test all --release \
+            modules::cli_documentation_sync:: modules::documentation_examples:: \
+            -- --nocapture 2>&1 | tee before.log
+          # Three ways this suite has reported ok while measuring nothing (#1228).
+          # All three are now impossible in code; assert it, because "impossible"
+          # is exactly what was believed about the last five.
+          for marker in "Skipping test" "No documented commands found" "NOT-SHIPPED"; do
+            if grep -qF "$marker" before.log; then
+              echo "::error::the suite emitted '$marker' — it reported ok without comparing anything (#1228)"
+              exit 1
+            fi
+          done
       - name: RED with the document removed
         run: |
           mv rust-docs/cli-reference.md "$RUNNER_TEMP/cli-reference.md"
-          if cargo test --test all --release modules::cli_documentation_sync:: > after.log 2>&1; then
+          rc=0
+          cargo test --test all --release modules::cli_documentation_sync:: > after.log 2>&1 || rc=$?
+          if [ "$rc" -eq 0 ]; then
             echo "::error::the suite PASSED with rust-docs/cli-reference.md removed — it is measuring nothing (#1228)"
-            mv "$RUNNER_TEMP/cli-reference.md" rust-docs/cli-reference.md
             exit 1
           fi
-          if ! grep -q "cli-reference.md not found" after.log; then
-            echo "::error::the suite failed, but not for the reason expected; it must name the missing document"
+          # It must fail because the DOCUMENT is gone, not because the binary is
+          # missing or the crate stopped compiling. rust-docs/ still exists, so the
+          # not-shipped branch must not be what fired.
+          if grep -qF "NOT-SHIPPED" after.log; then
+            echo "::error::took the packaged-crate branch inside a source checkout — the discriminator is wrong"
+            exit 1
+          fi
+          if ! grep -qF "cli-reference.md not found" after.log; then
+            echo "::error::failed, but not for the expected reason; it must name the missing document"
             cat after.log
-            mv "$RUNNER_TEMP/cli-reference.md" rust-docs/cli-reference.md
             exit 1
           fi
-          mv "$RUNNER_TEMP/cli-reference.md" rust-docs/cli-reference.md
+      # `always()` so a failure above cannot leave the checkout mutated for any
+      # step that follows, and so the log of WHY is still the failure, not a
+      # confusing second error about a missing file.
+      - name: restore the document
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/cli-reference.md" ]; then
+            mv "$RUNNER_TEMP/cli-reference.md" rust-docs/cli-reference.md
+          fi
       - name: green again once restored
         run: "cargo test --test all --release modules::cli_documentation_sync::"
 

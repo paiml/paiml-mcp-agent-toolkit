@@ -32,17 +32,41 @@ struct ToolDefinition {
     input_schema: Option<Value>,
 }
 
-fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/mcp-methods.md");
-
-    let content = fs::read_to_string(&doc_path).unwrap_or_else(|e| {
+/// The documentation this suite grades, or `None` when it was never shipped.
+///
+/// `None` has exactly ONE cause: the published crate excludes `/docs/`
+/// (Cargo.toml:26) while shipping `tests/`, so a consumer running `cargo test` on
+/// the crates.io tarball has the tests but not the document. That is not drift and
+/// not something this suite can measure, so it says so and stops.
+///
+/// Everything else PANICS. If `docs/` is present — which it is in every source
+/// checkout and every CI job — then a missing or renamed `mcp-methods.md` is drift, and
+/// #1228 is the record of what happens when that reads as "ok": five green tests,
+/// 0.00s, asserting nothing, while the document they guard drifted 60 commands.
+fn mcp_methods_doc() -> Option<String> {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    if !repo_root.join("docs").is_dir() {
+        eprintln!(
+            "NOT-SHIPPED: docs/ is absent, so this is the packaged crate rather \
+             than a source checkout; mcp-methods.md was never included. Nothing to compare."
+        );
+        return None;
+    }
+    let doc_path = repo_root.join("docs/mcp-methods.md");
+    Some(fs::read_to_string(&doc_path).unwrap_or_else(|e| {
         panic!(
-            "mcp-methods.md not found at {} ({e}). This suite compares the shipped \
-             surface against that document; without it nothing is measured, so it \
-             must fail rather than skip (#1228).",
+            "mcp-methods.md not found at {} ({e}), but docs/ exists — so this is a \
+             source checkout and the document has been moved, renamed or deleted. \
+             That is drift; it must fail rather than skip (#1228).",
             doc_path.display()
         )
-    });
+    }))
+}
+
+fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
+    let Some(content) = mcp_methods_doc() else {
+        return Default::default();
+    };
 
     let mut tools = Vec::new();
 
@@ -143,28 +167,21 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
 
 /// The binary this test grades.
 ///
-/// #1228: `Path::new(manifest_dir).parent()` is one level ABOVE the repository, so
-/// neither candidate could exist and this fell through to the string "pmat" —
-/// whatever was on PATH, typically a `cargo install`ed copy from an older release.
-/// A doc test that silently grades a different binary than the one just built is
-/// worse than no test, so there is no fallback: if the build is missing, say so.
+/// #1228: this hand-built `<repo>/target/{release,debug}/pmat`. Two things were
+/// wrong with that. The path was rooted at `CARGO_MANIFEST_DIR.parent()`, one level
+/// ABOVE the repository, so neither candidate existed and it fell through to the
+/// literal "pmat" — whatever was on PATH, typically a `cargo install`ed copy from an
+/// older release. And even rooted correctly it ignores `CARGO_TARGET_DIR`: on a
+/// machine that redirects the target directory (this repo's own does) the hand-built
+/// path finds a STALE `./target/release/pmat` while the real build is elsewhere —
+/// the same "grade the wrong binary" failure, wearing a different hat.
+///
+/// `CARGO_BIN_EXE_pmat` is set by Cargo for integration test targets, points at the
+/// binary Cargo just built for THIS test run, and honours the target directory. An
+/// earlier revision of this function claimed it was unavailable here; that was
+/// simply false, and measuring it took one `println!`.
 fn get_binary_path() -> String {
-    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let release_binary = repo_root.join("target/release/pmat");
-    let debug_binary = repo_root.join("target/debug/pmat");
-
-    if release_binary.exists() {
-        release_binary.to_string_lossy().to_string()
-    } else if debug_binary.exists() {
-        debug_binary.to_string_lossy().to_string()
-    } else {
-        panic!(
-            "no pmat binary to grade the documentation against; tried {} and {}. \
-             Build one first: cargo build --release --bin pmat (#1228).",
-            release_binary.display(),
-            debug_binary.display()
-        )
-    }
+    env!("CARGO_BIN_EXE_pmat").to_string()
 }
 
 fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
@@ -382,16 +399,9 @@ fn test_mcp_tool_schemas_match_documentation() {
 #[test]
 #[ignore = "Documentation structure test - may fail during development"]
 fn test_mcp_methods_match_documentation() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/mcp-methods.md");
-
-    let content = fs::read_to_string(&doc_path).unwrap_or_else(|e| {
-        panic!(
-            "mcp-methods.md not found at {} ({e}). This suite compares the shipped \
-             surface against that document; without it nothing is measured, so it \
-             must fail rather than skip (#1228).",
-            doc_path.display()
-        )
-    });
+    let Some(content) = mcp_methods_doc() else {
+        return Default::default();
+    };
 
     // Extract documented MCP methods from the "Available MCP Methods" section
     let methods_section = content
@@ -428,16 +438,9 @@ fn test_mcp_methods_match_documentation() {
 #[test]
 #[ignore = "Documentation structure test - may fail during development"]
 fn test_mcp_error_codes_are_complete() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/mcp-methods.md");
-
-    let content = fs::read_to_string(&doc_path).unwrap_or_else(|e| {
-        panic!(
-            "mcp-methods.md not found at {} ({e}). This suite compares the shipped \
-             surface against that document; without it nothing is measured, so it \
-             must fail rather than skip (#1228).",
-            doc_path.display()
-        )
-    });
+    let Some(content) = mcp_methods_doc() else {
+        return Default::default();
+    };
 
     // Extract error codes from documentation
     let error_section = content
