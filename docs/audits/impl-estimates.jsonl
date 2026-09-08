@@ -14,3 +14,4 @@
 {"repo":"paiml-mcp-agent-toolkit","ticket":"PMAT-676","phase":"1","mode":"subagent:opus (+resume)","est":34,"actual":12,"basis":"docs/audits/impl-estimates.jsonl:L11-L12; orchestrator turns on this ticket, worker 40+resume"}
 {"repo":"paiml-mcp-agent-toolkit","ticket":"PMAT-679","phase":"1","mode":"subagent:opus","est":34,"actual":6,"basis":"docs/audits/impl-estimates.jsonl:L11-L12; single dispatch, no resume"}
 {"repo":"paiml-mcp-agent-toolkit","ticket":"PMAT-680","phase":"1","mode":"subagent:opus","est":34,"actual":6,"basis":"docs/audits/impl-estimates.jsonl:L11-L12; single dispatch, no resume"}
+{"repo":"paiml-mcp-agent-toolkit","ticket":"PMAT-711","phase":"all","mode":"subagent:sonnet+quorum","est":228,"actual":40}
