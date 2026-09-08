@@ -96,6 +96,15 @@ both are fixed in `3f38dfc44`:
 2. the pre-existing tests still rooted their fixture at `TempDir::new()`, so
    `$TMPDIR` remained in the slot the scorer consults. Now nested under `proj/`.
 
+**Quorum 2** (head `df22be517`, after the objection-1 fix): 3/3 agreed objection 1 was
+closed; 3/3 said objection 2 was only PARTIAL — seven further tests still rooted their
+fixture at `TempDir::new()`. Fixed in `312b31001`.
+
+**Quorum 3** (head `312b31001`, narrow re-review of that delta):
+**3/3 PASS, dissent empty, `agreed=true`** — artifact `docs/audits/quorum-PMAT-689-final.json`.
+The delegate noted no lane ran `cargo test`; every PASS is a static reading. The rerun that
+matters is CI's on that exact head: 43 SUCCESS, 5 SKIPPED, 0 FAILURE, `mergeStateStatus=CLEAN`.
+
 The delegate flagged that every lane finding except the ratchet ones was grounded
 `asserted`, not `measured` — no lane compiled or ran anything. Each was re-checked
 here against the tree before being acted on, and the predicate objection was
