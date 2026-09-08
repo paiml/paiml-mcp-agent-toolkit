@@ -258,8 +258,18 @@ pub fn diff_scoped_verdict(
                 .count();
             Some(old_namesakes[ordinal].clone())
         } else {
-            let min_cyc = old_namesakes.iter().map(|f| f.cyclomatic).min().unwrap();
-            let min_cog = old_namesakes.iter().map(|f| f.cognitive).min().unwrap();
+            // `old_namesakes` is non-empty on this branch, but that is a
+            // POSITIONAL guarantee, not a typed one, and this runs inside a
+            // pre-commit hook: a later edit to the guard above would turn an
+            // `unwrap` here into an aborted commit for the user. Express the
+            // impossible case as "no baseline to pair against" and skip, which
+            // is what every other unpairable function on this path already does.
+            let (Some(min_cyc), Some(min_cog)) = (
+                old_namesakes.iter().map(|f| f.cyclomatic).min(),
+                old_namesakes.iter().map(|f| f.cognitive).min(),
+            ) else {
+                continue;
+            };
             Some(MeasuredFn {
                 name: func.name.clone(),
                 cyclomatic: min_cyc,

@@ -1372,22 +1372,28 @@ pub fn handle_analyze_complexity_diff_scoped(
         // The count the hook greps for is printed on the allowed path too:
         // a gate that prints nothing when it passes is indistinguishable from
         // a gate that did not run.
-        println!(
+        crate::status_eprintln!(
             "  {shown}: no touched function grew past its limits (Cyclomatic {}, Cognitive {})",
-            thresholds.max_cyclomatic, thresholds.max_cognitive
+            thresholds.max_cyclomatic,
+            thresholds.max_cognitive
         );
-        println!("Errors: 0");
+        crate::status_eprintln!("Errors: 0");
         return Ok(());
     }
 
     // Printed in the same shape the whole-file summary uses — "<metric>
     // <measured> > <limit>" — so the hook's existing offender grep reads this
-    // output unchanged.
-    println!("  {shown}:");
+    // output unchanged. It goes to STDERR, not stdout: stdout carries the
+    // `--format json` document and any chatter there breaks a JSON consumer at
+    // character 0 (#1061), which `complexity_handlers_never_decorate_stdout`
+    // enforces. The generated hook merges both streams
+    // (`FILE_OUTPUT=$(... 2>&1 | sed ...)`, hook_generation.rs:358), so the
+    // grep still sees every offender line.
+    crate::status_eprintln!("  {shown}:");
     for offender in &offenders {
-        println!("    {offender}");
+        crate::status_eprintln!("    {offender}");
     }
-    println!("Errors: {}", offenders.len());
+    crate::status_eprintln!("Errors: {}", offenders.len());
     anyhow::bail!(
         "diff-scoped complexity refused {shown}: {}",
         offenders.join("; ")

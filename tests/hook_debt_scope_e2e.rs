@@ -1,9 +1,15 @@
-use std::path::PathBuf;
 use std::process::Command;
 
-fn find_pmat() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_pmat"))
-}
+/// The hygienic constructor. Declared by path because this target is its own
+/// test binary and cannot see a module under `tests/modules/`.
+///
+/// BSE-12 (PMAT-707): this test asserts on the EXIT STATUS and the offender
+/// text of `analyze complexity --diff-scope`. An ambient `MCP_VERSION` makes
+/// the binary ignore argv entirely and start the stdio MCP server instead
+/// (`src/bin/pmat.rs:41`), so a bare `Command::new` here would compare the
+/// assertions against a different program. `pmat_cmd::pmat()` scrubs it.
+#[path = "support/pmat_cmd.rs"]
+mod pmat_cmd;
 
 fn git(dir: &std::path::Path, args: &[&str]) {
     let out = Command::new("git")
@@ -50,8 +56,7 @@ fn end_to_end_the_hook_allows_the_o11_case_and_refuses_growth() {
     .expect("write");
     git(p, &["add", "src/lib.rs"]);
 
-    let pmat = find_pmat();
-    let out_allowed = Command::new(&pmat)
+    let out_allowed = pmat_cmd::pmat()
         .current_dir(p)
         .args([
             "analyze",
@@ -82,7 +87,7 @@ fn end_to_end_the_hook_allows_the_o11_case_and_refuses_growth() {
     std::fs::write(p.join("src/lib.rs"), format!("{debted}\n{innocent_growth}")).expect("write");
     git(p, &["add", "src/lib.rs"]);
 
-    let out_refused = Command::new(&pmat)
+    let out_refused = pmat_cmd::pmat()
         .current_dir(p)
         .args([
             "analyze",

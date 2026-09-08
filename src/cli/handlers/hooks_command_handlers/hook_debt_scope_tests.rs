@@ -563,17 +563,17 @@ mod staged_repo {
         let spec = "src/renamed.rs";
         let staged = format!(":{spec}");
         let new_source = super::super::git_read(repo.path(), &["show", &staged])
-            .unwrap()
-            .unwrap();
-        let old_source =
-            super::super::git_read(repo.path(), &["show", &format!("HEAD:{spec}")]).unwrap(); // This will be None because src/renamed.rs doesn't exist in HEAD!
+            .expect("git show of the staged blob must succeed")
+            .expect("the staged blob must exist");
+        let old_source = super::super::git_read(repo.path(), &["show", &format!("HEAD:{spec}")])
+            .expect("git show of HEAD:<path> must succeed even when the path is absent"); // None: src/renamed.rs does not exist in HEAD
         let diff = super::super::git_read(repo.path(), &["diff", "--cached", "-U0", "--", spec])
-            .unwrap()
-            .unwrap();
+            .expect("git diff --cached must succeed")
+            .expect("a staged rename must produce a diff");
 
         let mutant_verdict =
             super::super::diff_scoped_verdict(old_source.as_deref(), &new_source, &diff, LIMITS)
-                .unwrap();
+                .expect("the mutant path must still return a verdict, not an error");
         assert!(
             !mutant_verdict.is_allowed(),
             "mutant without rename resolution loses baseline and refuses pre-existing debt"
@@ -743,8 +743,9 @@ fn hook_debt_scope_pairing_inserted_before_differs_min_baseline_refused() {
 
 #[test]
 fn hook_debt_scope_pairing_mutant_bare_name_find() {
-    let new_functions = measure_source(TWO_IMPLS_SECOND_GROWS).unwrap();
-    let old_functions = measure_source(TWO_IMPLS_HEAD).unwrap();
+    let new_functions =
+        measure_source(TWO_IMPLS_SECOND_GROWS).expect("the staged fixture must parse");
+    let old_functions = measure_source(TWO_IMPLS_HEAD).expect("the HEAD fixture must parse");
     let ranges = parse_touched_ranges("@@ -17 +17,7 @@\n");
 
     let mut growths = Vec::new();
