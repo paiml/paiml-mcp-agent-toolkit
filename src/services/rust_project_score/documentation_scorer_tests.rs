@@ -201,15 +201,13 @@ MIT
 
     #[test]
     fn test_changelog_missing() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            "[package]\nname = \"test\"",
-        )
-        .unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        let project = nested_project(&temp_dir);
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_changelog(&project, None)
+            .expect("scorer must not error");
 
         // No CHANGELOG = 0 points
         assert_eq!(result, 0.0);
@@ -217,35 +215,174 @@ MIT
 
     #[test]
     fn test_changelog_minimal() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            "[package]\nname = \"test\"",
-        )
-        .unwrap();
-        fs::write(
-            temp_dir.path().join("CHANGELOG.md"),
-            "# Changelog\n\nChanges go here",
-        )
-        .unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        let project = nested_project(&temp_dir);
+        fs::write(project.join("CHANGELOG.md"), "# Changelog\n\nChanges go here")
+            .expect("fixture changelog");
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_changelog(&project, None)
+            .expect("scorer must not error");
 
         // Minimal CHANGELOG = 1.0 point
         assert_eq!(result, 1.0);
     }
 
+    // PMAT-689: `project_path.parent()` is not a workspace test — every directory
+    // has a parent. These four pin the distinction the scorer must draw, and the
+    // first two fail on the old code (the stray file is read as this project's
+    // changelog and scores 3.0 instead of 0.0 / 1.0).
+
+    /// A project directory nested one level inside the temp dir.
+    ///
+    /// PMAT-689: a fixture rooted AT `TempDir::new()` has `$TMPDIR` as its parent,
+    /// so the host's own files sit in the slot the scorer consults. Nesting one
+    /// level puts a directory the test controls there instead, and no file the
+    /// host happens to keep in /tmp can reach it.
+    fn nested_project(temp: &TempDir) -> std::path::PathBuf {
+        let project = temp.path().join("proj");
+        fs::create_dir_all(&project).expect("fixture project dir");
+        fs::write(project.join("Cargo.toml"), "[package]\nname = \"test\"")
+            .expect("fixture manifest");
+        project
+    }
+
+    /// A CHANGELOG.md beside the project, in a directory that is NOT a Cargo
+    /// workspace root, must be invisible. This is the shape that made three of
+    /// this module's tests fail on any host with a stray /tmp/CHANGELOG.md.
+    fn project_with_polluted_parent(parent: &std::path::Path) -> std::path::PathBuf {
+        let project = parent.join("proj");
+        fs::create_dir_all(&project).expect("fixture project dir");
+        fs::write(project.join("Cargo.toml"), "[package]\nname = \"test\"")
+            .expect("fixture manifest");
+        fs::write(
+            parent.join("CHANGELOG.md"),
+            "# Changelog\n\n## [2.0.0]\n- b\n\n## [1.0.0]\n- a\n",
+        )
+        .expect("stray changelog");
+        project
+    }
+
+    #[test]
+    fn a_changelog_beside_a_project_whose_parent_is_no_workspace_is_not_this_project_s() {
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        let project = project_with_polluted_parent(temp_dir.path());
+
+        let scorer = DocumentationScorer::new();
+        let result = scorer.score_changelog(&project, None).expect("scorer must not error");
+
+        // No CHANGELOG.md in the project and no workspace above it => 0 points.
+        // The old code read the neighbour's two version entries and scored 3.0.
+        assert_eq!(result, 0.0, "a stray CHANGELOG.md beside the project was read as its own");
+    }
+
+    #[test]
+    fn a_project_s_own_changelog_wins_over_a_stray_neighbour_with_more_versions() {
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        let project = project_with_polluted_parent(temp_dir.path());
+        fs::write(project.join("CHANGELOG.md"), "# Changelog\n\nChanges go here")
+            .expect("project changelog");
+
+        let scorer = DocumentationScorer::new();
+        let result = scorer.score_changelog(&project, None).expect("scorer must not error");
+
+        // Minimal own changelog = 1.0. The old code preferred the neighbour
+        // because it had more version entries.
+        assert_eq!(result, 1.0, "a stray neighbour outranked the project's own CHANGELOG.md");
+    }
+
+    /// The monorepo fallback this scoping must NOT delete: a real workspace root
+    /// above the crate still supplies the changelog. Without this, "scope it to a
+    /// workspace" and "delete the feature" are indistinguishable.
+    #[test]
+    fn a_real_workspace_root_above_the_crate_still_supplies_its_changelog() {
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"proj\"]\n",
+        )
+        .expect("parent manifest");
+        let project = project_with_polluted_parent(temp_dir.path());
+
+        let scorer = DocumentationScorer::new();
+        let result = scorer.score_changelog(&project, None).expect("scorer must not error");
+
+        assert_eq!(result, 3.0, "the monorepo workspace-root fallback was lost");
+    }
+
+    /// A parent that has a Cargo.toml but is a plain package, not a workspace,
+    /// is still not a workspace root.
+    #[test]
+    fn a_parent_package_that_declares_no_workspace_is_not_a_workspace_root() {
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"outer\"\nversion = \"0.1.0\"\n",
+        )
+        .expect("parent manifest");
+        let project = project_with_polluted_parent(temp_dir.path());
+
+        let scorer = DocumentationScorer::new();
+        let result = scorer.score_changelog(&project, None).expect("scorer must not error");
+
+        assert_eq!(result, 0.0, "a non-workspace parent package was treated as a workspace root");
+    }
+
+    /// The three shapes a line-oriented `[workspace]` scan gets wrong. All are
+    /// legal TOML that Cargo accepts, so each one is a real score, wrong.
+    /// Quorum review of PMAT-689 named all three.
+    #[test]
+    fn legal_toml_workspace_spellings_are_recognised_and_look_alikes_are_not() {
+        for (label, manifest, expect_fallback) in [
+            // Recognised: whitespace inside the header is legal TOML.
+            ("spaces", "[ workspace ]\nmembers = [\"proj\"]\n", true),
+            // Recognised: a trailing comment is legal TOML.
+            ("trailing comment", "[workspace] # the root\n", true),
+            // Recognised: a root package that also owns the workspace.
+            (
+                "package plus workspace",
+                "[package]\nname = \"outer\"\n\n[workspace]\nmembers = [\"proj\"]\n",
+                true,
+            ),
+            // NOT recognised: the text appears inside a multi-line string, so
+            // this manifest declares no workspace at all.
+            (
+                "inside a multi-line string",
+                "[package]\nname = \"outer\"\ndescription = \"\"\"\n[workspace]\n\"\"\"\n",
+                false,
+            ),
+            // NOT recognised: not a workspace, and not parseable either.
+            ("malformed", "[package\nname =\n", false),
+        ] {
+            let temp_dir = TempDir::new().expect("fixture temp dir");
+            fs::write(temp_dir.path().join("Cargo.toml"), manifest).expect("parent manifest");
+            let project = project_with_polluted_parent(temp_dir.path());
+
+            let scorer = DocumentationScorer::new();
+            let result = scorer
+                .score_changelog(&project, None)
+                .expect("scorer must not error");
+
+            let expected = if expect_fallback { 3.0 } else { 0.0 };
+            assert_eq!(
+                result, expected,
+                "{label}: manifest was judged the wrong way round"
+            );
+        }
+    }
+
     #[test]
     fn test_changelog_with_versions() {
         let temp_dir = TempDir::new().unwrap();
+        let project = nested_project(&temp_dir);
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("CHANGELOG.md"),
+            project.join("CHANGELOG.md"),
             r#"# Changelog
 
 ## [0.2.0] - 2024-01-02
@@ -260,7 +397,7 @@ MIT
         .unwrap();
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(temp_dir.path(), None).unwrap();
+        let result = scorer.score_changelog(&project, None).unwrap();
 
         // Multiple versions = full points
         assert_eq!(result, 3.0);
@@ -283,26 +420,27 @@ MIT
     #[test]
     fn test_score_full_project() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("src/lib.rs"),
+            project.join("src/lib.rs"),
             "/// Documented\npub fn foo() {}",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("README.md"),
+            project.join("README.md"),
             "# Project\n\nDescription with installation and usage",
         )
         .unwrap();
-        fs::write(temp_dir.path().join("CHANGELOG.md"), "## [0.1.0]\nInitial").unwrap();
+        fs::write(project.join("CHANGELOG.md"), "## [0.1.0]\nInitial").unwrap();
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score(temp_dir.path()).unwrap();
+        let result = scorer.score(&project).unwrap();
 
         // Should get positive score
         assert!(result.earned > 0.0);
@@ -312,9 +450,10 @@ MIT
     #[test]
     fn test_score_with_cache() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
@@ -322,17 +461,17 @@ MIT
         // Create cache
         let mut cache = FileCache::new();
         cache.insert(
-            temp_dir.path().join("src/lib.rs"),
+            project.join("src/lib.rs"),
             "/// Documented\npub fn foo() {}".to_string(),
         );
         cache.insert(
-            temp_dir.path().join("README.md"),
+            project.join("README.md"),
             "# Project\n\nDescription with installation and usage and examples".to_string(),
         );
 
         let scorer = DocumentationScorer::new();
         let result = scorer
-            .score_with_cache(temp_dir.path(), ScoringMode::Fast, Some(&cache))
+            .score_with_cache(&project, ScoringMode::Fast, Some(&cache))
             .unwrap();
 
         assert!(result.earned > 0.0);
@@ -341,17 +480,13 @@ MIT
 
     #[test]
     fn test_recommendations_empty_project() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            "[package]\nname = \"test\"",
-        )
-        .unwrap();
-        fs::write(temp_dir.path().join("src/lib.rs"), "pub fn foo() {}").unwrap();
+        let temp_dir = TempDir::new().expect("fixture temp dir");
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).expect("fixture src dir");
+        fs::write(project.join("src/lib.rs"), "pub fn foo() {}").expect("fixture lib.rs");
 
         let scorer = DocumentationScorer::new();
-        let recommendations = scorer.recommendations(temp_dir.path());
+        let recommendations = scorer.recommendations(&project);
 
         // Should recommend all areas
         assert!(recommendations.iter().any(|r| r.contains("rustdoc")));
@@ -362,30 +497,31 @@ MIT
     #[test]
     fn test_recommendations_well_documented() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("src/lib.rs"),
+            project.join("src/lib.rs"),
             "/// Doc\npub fn foo() {}\n/// Doc\npub fn bar() {}",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("README.md"),
+            project.join("README.md"),
             "# P\n\n## Installation\ninstall\n## Usage\nuse\n## Examples\n```rust\n```\n## License\nMIT",
         )
         .unwrap();
         fs::write(
-            temp_dir.path().join("CHANGELOG.md"),
+            project.join("CHANGELOG.md"),
             "## [0.1.0]\n## [0.2.0]",
         )
         .unwrap();
 
         let scorer = DocumentationScorer::new();
-        let recommendations = scorer.recommendations(temp_dir.path());
+        let recommendations = scorer.recommendations(&project);
 
         // Should have fewer or no recommendations for well-documented project
         assert!(recommendations.len() <= 3);
@@ -460,21 +596,22 @@ pub struct Foo;
     #[test]
     fn test_changelog_with_cache() {
         let temp_dir = TempDir::new().unwrap();
+        let project = nested_project(&temp_dir);
         fs::write(
-            temp_dir.path().join("CHANGELOG.md"),
+            project.join("CHANGELOG.md"),
             "## [0.1.0]\n## [0.2.0]",
         )
         .unwrap();
 
         let mut cache = FileCache::new();
         cache.insert(
-            temp_dir.path().join("CHANGELOG.md"),
+            project.join("CHANGELOG.md"),
             "## [0.1.0]\n## [0.2.0]".to_string(),
         );
 
         let scorer = DocumentationScorer::new();
         let result = scorer
-            .score_changelog(temp_dir.path(), Some(&cache))
+            .score_changelog(&project, Some(&cache))
             .unwrap();
 
         // Multiple versions = full points
@@ -484,17 +621,18 @@ pub struct Foo;
     #[test]
     fn test_score_with_mode_fast() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
-        fs::write(temp_dir.path().join("src/lib.rs"), "pub fn foo() {}").unwrap();
+        fs::write(project.join("src/lib.rs"), "pub fn foo() {}").unwrap();
 
         let scorer = DocumentationScorer::new();
         let result = scorer
-            .score_with_mode(temp_dir.path(), ScoringMode::Fast)
+            .score_with_mode(&project, ScoringMode::Fast)
             .unwrap();
 
         // Mode doesn't affect documentation scorer
@@ -505,17 +643,18 @@ pub struct Foo;
     #[test]
     fn test_score_with_mode_full() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+        let project = nested_project(&temp_dir);
+        fs::create_dir_all(project.join("src")).unwrap();
         fs::write(
-            temp_dir.path().join("Cargo.toml"),
+            project.join("Cargo.toml"),
             "[package]\nname = \"test\"",
         )
         .unwrap();
-        fs::write(temp_dir.path().join("src/lib.rs"), "pub fn foo() {}").unwrap();
+        fs::write(project.join("src/lib.rs"), "pub fn foo() {}").unwrap();
 
         let scorer = DocumentationScorer::new();
         let result = scorer
-            .score_with_mode(temp_dir.path(), ScoringMode::Full)
+            .score_with_mode(&project, ScoringMode::Full)
             .unwrap();
 
         // Mode doesn't affect documentation scorer
