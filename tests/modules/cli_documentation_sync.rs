@@ -2,7 +2,6 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct DocumentedCommand {
@@ -454,6 +453,38 @@ fn test_no_undocumented_commands() {
     );
 }
 
+/// Documented examples that name a flag or subcommand the CLI does not have.
+///
+/// A RATCHET, like `UNDOCUMENTED_AT_BASELINE`: it may only ever get SHORTER. The
+/// honest measurement the moment this test could see anything at all was **16 of
+/// 79** examples drifted — the extractor had been reading one line per block and
+/// skipping any block that opened with a comment, which is nearly all of them.
+///
+/// Recorded rather than fixed here because the two are different jobs: deciding
+/// what `demo --web` or `analyze defect-prediction --explain` was MEANT to say
+/// needs someone who knows whether the flag was renamed, dropped, or never
+/// shipped, and guessing would replace drift with fiction. A new drifted example
+/// fails the test immediately; a line here that starts working ALSO fails it, so
+/// the list cannot rot. Emptying it is the goal.
+const DRIFTED_EXAMPLES_AT_BASELINE: &[&str] = &[
+    r#"paiml-mcp-agent-toolkit demo --web --port 8080"#,
+    r#"paiml-mcp-agent-toolkit demo --export markdown -o analysis.md"#,
+    r#"paiml-mcp-agent-toolkit demo --export sarif -o results.sarif"#,
+    r#"paiml-mcp-agent-toolkit scaffold rust \"#,
+    r#"paiml-mcp-agent-toolkit context rust"#,
+    r#"paiml-mcp-agent-toolkit context deno \"#,
+    r#"pmat analyze duplicates --gpu --perf --format json"#,
+    r#"pmat analyze defect-prediction --min-confidence 0.8"#,
+    r#"pmat analyze defect-prediction --explain --format detailed"#,
+    r#"pmat analyze defect-prediction --sarif -o defects.sarif"#,
+    r#"pmat analyze big-o --min-complexity "O(n^2)" --format json"#,
+    r#"pmat analyze makefile --min-severity error --format sarif"#,
+    r#"pmat analyze incremental-coverage --min-coverage 80.0 --fail-on-decrease"#,
+    r#"pmat analyze symbol-table --format ctags --include-private"#,
+    r#"pmat refactor serve --resume --auto-commit "refactor: {file}""#,
+    r#"pmat analyze web-assembly --include-binary --no-include-text"#,
+];
+
 #[test]
 fn test_documentation_examples_are_valid() {
     // `None` only when the document was never shipped — see cli_reference().
@@ -482,62 +513,123 @@ fn test_documentation_examples_are_valid() {
     }
     let binary_path = pmat_binary_path();
 
+    // #1228: this loop used to take `code_block.lines().next()` — the FIRST line
+    // of each block — and `continue` on any block starting with `#`. Nearly every
+    // block in the document opens with a comment, so nearly every block was
+    // skipped whole, and of the survivors only one line was ever examined.
+    // Measured: planting `demo-that-does-not-exist` into a real example left the
+    // test green. Every line of every block is examined now.
+    let mut examined = 0usize;
+    let mut drifted: Vec<String> = Vec::new();
     for code_block in bash_blocks {
-        // Skip comments and complex examples
-        if code_block.starts_with('#') || code_block.contains('|') || code_block.contains('$') {
-            continue;
-        }
+        for raw_line in code_block.lines() {
+            let command_line = raw_line.trim();
 
-        // Extract the command (first line if multi-line)
-        let command_line = code_block.lines().next().unwrap_or("");
-
-        // Skip if it's not a paiml-mcp-agent-toolkit or pmat command
-        if !command_line.contains("paiml-mcp-agent-toolkit") && !command_line.contains("pmat") {
-            continue;
-        }
-
-        // Skip commands with environment variables
-        if command_line.contains("RUST_LOG=") || command_line.contains("MCP_VERSION=") {
-            continue;
-        }
-
-        // Replace the binary name with our test binary path (handle both old and new names)
-        let test_command = command_line
-            .replace("paiml-mcp-agent-toolkit", &binary_path)
-            .replace("pmat", &binary_path);
-
-        // For commands with line continuations, just test the first line with --help
-        let test_args: Vec<&str> = if test_command.contains('\\') {
-            let base_cmd = test_command.split('\\').next().unwrap().trim();
-            let mut parts: Vec<&str> = base_cmd.split_whitespace().collect();
-            parts.push("--help");
-            parts
-        } else {
-            test_command.split_whitespace().collect()
-        };
-
-        if test_args.len() > 1 {
-            // Test that the command structure is valid by running with --help
-            let mut cmd_args = test_args[1..].to_vec();
-
-            // If the command doesn't already have --help, add it
-            if !cmd_args.contains(&"--help") {
-                // Find the subcommand position to insert --help
-                let subcommand_pos = cmd_args
-                    .iter()
-                    .position(|arg| !arg.starts_with('-'))
-                    .map_or(cmd_args.len(), |pos| pos + 1);
-
-                cmd_args.insert(subcommand_pos.min(cmd_args.len()), "--help");
+            // Per LINE, not per block: a comment above an example must not take
+            // the example down with it.
+            if command_line.is_empty() || command_line.starts_with('#') {
+                continue;
+            }
+            // Shell composition is out of scope — this checks that documented
+            // pmat commands exist, not that a pipeline runs.
+            if command_line.contains('|')
+                || command_line.contains('$')
+                || command_line.contains('>')
+                || command_line.contains("&&")
+            {
+                continue;
+            }
+            if !command_line.starts_with("paiml-mcp-agent-toolkit")
+                && !command_line.starts_with("pmat ")
+            {
+                continue;
             }
 
-            let output = Command::new(test_args[0]).args(&cmd_args).output();
+            let test_command = command_line
+                .replace("paiml-mcp-agent-toolkit", &binary_path)
+                .replace("pmat ", &format!("{binary_path} "));
 
-            // We expect the command to at least be recognized (even if it shows help)
-            assert!(
-                output.is_ok(),
-                "Example command failed to execute: {command_line}"
-            );
+            // A continuation line documents one command split across lines; take
+            // the head and ask the CLI whether that much is a real command.
+            let head = test_command.split('\\').next().unwrap_or("").trim();
+            let parts: Vec<&str> = head.split_whitespace().collect();
+            if parts.len() < 2 {
+                continue;
+            }
+            let mut cmd_args: Vec<&str> = parts[1..].to_vec();
+
+            // `--help` goes at the END. Inserting it after the first token is
+            // what made this unable to fail: `pmat analyze --help <anything>`
+            // prints the `analyze` help and exits 0, so a documented subcommand
+            // that does not exist was never parsed. Measured:
+            //   pmat analyze --help complexity-that-does-not-exist -> exit 0
+            //   pmat analyze complexity-that-does-not-exist --help -> exit 2,
+            //     "error: unrecognized subcommand"
+            if !cmd_args.contains(&"--help") {
+                cmd_args.push("--help");
+            }
+
+            let output = pmat_command()
+                .args(&cmd_args)
+                .output()
+                .unwrap_or_else(|e| panic!("could not spawn pmat for {command_line:?}: {e}"));
+
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if stderr.contains("unrecognized subcommand") || stderr.contains("unexpected argument")
+            {
+                // Collected, not asserted here: a document that has drifted has
+                // usually drifted in several places, and failing on the first
+                // turns one fix into N runs.
+                drifted.push(format!(
+                    "  {command_line}\n    {}",
+                    stderr.lines().next().unwrap_or("").trim()
+                ));
+            }
+            examined += 1;
         }
     }
+
+    // The count is the point. `0 examined` is what this test reported for its
+    // whole life while printing ok, so a run that examines nothing must fail.
+    assert!(
+        examined > 0,
+        "examined 0 documented examples — the extractor matched nothing, which is \
+         how this test passed while measuring nothing (#1228)"
+    );
+    let new_drift: Vec<&String> = drifted
+        .iter()
+        .filter(|d| {
+            let command = d.lines().next().unwrap_or("").trim();
+            !DRIFTED_EXAMPLES_AT_BASELINE.contains(&command)
+        })
+        .collect();
+    assert!(
+        new_drift.is_empty(),
+        "{} NEW drifted example(s) out of {examined} examined:\n{}\n\nFix the \
+         document, or, if the example is right and the CLI is wrong, fix the CLI. \
+         Adding a line to DRIFTED_EXAMPLES_AT_BASELINE needs a reason in the \
+         commit message — the list may only shrink.",
+        new_drift.len(),
+        new_drift
+            .iter()
+            .map(|d| d.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+
+    let fixed: Vec<&&str> = DRIFTED_EXAMPLES_AT_BASELINE
+        .iter()
+        .filter(|baseline| {
+            !drifted
+                .iter()
+                .any(|d| d.lines().next().unwrap_or("").trim() == **baseline)
+        })
+        .collect();
+    assert!(
+        fixed.is_empty(),
+        "{} entr(y/ies) in DRIFTED_EXAMPLES_AT_BASELINE now work: {fixed:?}\nDelete \
+         them from the list — a ratchet that keeps satisfied entries stops \
+         measuring anything.",
+        fixed.len()
+    );
 }

@@ -872,7 +872,12 @@ jobs:
         run: |
           mv rust-docs/cli-reference.md "$RUNNER_TEMP/cli-reference.md"
           rc=0
-          cargo test --test all --release modules::cli_documentation_sync:: > after.log 2>&1 || rc=$?
+          # BOTH modules, matching the green step. Falsifying only one leaves the
+          # other free to go vacuous while this job still reports ok — which is
+          # the exact shape of the defect being fixed.
+          cargo test --test all --release -- \
+            modules::cli_documentation_sync:: modules::documentation_examples:: \
+            > after.log 2>&1 || rc=$?
           if [ "$rc" -eq 0 ]; then
             echo "::error::the suite PASSED with rust-docs/cli-reference.md removed — it is measuring nothing (#1228)"
             exit 1
@@ -899,7 +904,9 @@ jobs:
             mv "$RUNNER_TEMP/cli-reference.md" rust-docs/cli-reference.md
           fi
       - name: green again once restored
-        run: "cargo test --test all --release modules::cli_documentation_sync::"
+        run: |
+          cargo test --test all --release -- \
+            modules::cli_documentation_sync:: modules::documentation_examples::
 
   feature-gate:
     name: feature-gate
