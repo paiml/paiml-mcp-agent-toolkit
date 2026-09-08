@@ -765,3 +765,213 @@ mod tests {
         }
     }
 }
+
+/// BSE-12 / PMAT-707: the `--diff-scope` entry point of `analyze complexity`.
+///
+/// The rule and the git reads are tested in
+/// `hooks_command_handlers::hook_debt_scope`; what is tested here is the
+/// HANDLER's contract — an allowed commit returns `Ok` and a refusal returns
+/// `Err` whose message names the function and both numbers, because that
+/// message is what the developer reads out of the pre-commit hook.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod diff_scope_entry_point {
+    use crate::cli::handlers::complexity_handlers::handle_analyze_complexity_diff_scoped;
+    use std::path::Path;
+
+    /// `debted` is cyclomatic 7 and already committed; `innocent` is 1.
+    const HEAD_VERSION: &str = "\
+fn debted(x: i32) -> i32 {
+    let mut n = 0;
+    if x > 0 { n += 1; }
+    if x > 1 { n += 1; }
+    if x > 2 { n += 1; }
+    if x > 3 { n += 1; }
+    if x > 4 { n += 1; }
+    if x > 5 { n += 1; }
+    if x > 6 { n += 1; }
+    if x > 7 { n += 1; }
+    if x > 8 { n += 1; }
+    if x > 9 { n += 1; }
+    n
+}
+
+fn innocent(x: i32) -> i32 {
+    x + 1
+}
+";
+
+    /// The O11 case: one line changed inside the undebted function.
+    const ONE_LINE_IN_INNOCENT: &str = "\
+fn debted(x: i32) -> i32 {
+    let mut n = 0;
+    if x > 0 { n += 1; }
+    if x > 1 { n += 1; }
+    if x > 2 { n += 1; }
+    if x > 3 { n += 1; }
+    if x > 4 { n += 1; }
+    if x > 5 { n += 1; }
+    if x > 6 { n += 1; }
+    if x > 7 { n += 1; }
+    if x > 8 { n += 1; }
+    if x > 9 { n += 1; }
+    n
+}
+
+fn innocent(x: i32) -> i32 {
+    x + 2
+}
+";
+
+    /// `innocent` grows past the default cyclomatic limit of 10 — debt this
+    /// commit writes.
+    const GROWTH_IN_INNOCENT: &str = "\
+fn debted(x: i32) -> i32 {
+    let mut n = 0;
+    if x > 0 { n += 1; }
+    if x > 1 { n += 1; }
+    if x > 2 { n += 1; }
+    if x > 3 { n += 1; }
+    if x > 4 { n += 1; }
+    if x > 5 { n += 1; }
+    if x > 6 { n += 1; }
+    if x > 7 { n += 1; }
+    if x > 8 { n += 1; }
+    if x > 9 { n += 1; }
+    n
+}
+
+fn innocent(x: i32) -> i32 {
+    let mut n = x;
+    if x > 0 { n += 1; }
+    if x > 1 { n += 1; }
+    if x > 2 { n += 1; }
+    if x > 3 { n += 1; }
+    if x > 4 { n += 1; }
+    if x > 5 { n += 1; }
+    if x > 6 { n += 1; }
+    if x > 7 { n += 1; }
+    if x > 8 { n += 1; }
+    if x > 9 { n += 1; }
+    if x > 10 { n += 1; }
+    n
+}
+";
+
+    fn git(dir: &Path, args: &[&str]) {
+        let out = std::process::Command::new("git")
+            .current_dir(dir)
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .args(args)
+            .output()
+            .expect("git must be on PATH");
+        assert!(
+            out.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// `--template=` keeps a developer's global hook template out of the
+    /// fixture and the identity is pinned, so the commit does not depend on
+    /// the machine's git config.
+    fn repo_with_committed_debt(staged: &str) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let p = dir.path();
+        git(p, &["init", "-q", "--template=", "--initial-branch=main"]);
+        git(p, &["config", "user.email", "fixture@example.com"]);
+        git(p, &["config", "user.name", "Fixture"]);
+        std::fs::create_dir_all(p.join("src")).expect("mkdir");
+        std::fs::write(p.join("src/lib.rs"), HEAD_VERSION).expect("write");
+        git(p, &["add", "-A"]);
+        git(p, &["commit", "-q", "-m", "pre-existing debt"]);
+        std::fs::write(p.join("src/lib.rs"), staged).expect("write");
+        git(p, &["add", "src/lib.rs"]);
+        dir
+    }
+
+    /// Report O11, through the handler: the commit is ALLOWED at the DEFAULT
+    /// thresholds (10/15) that `analyze complexity` uses everywhere else.
+    #[test]
+    fn diff_scope_allows_a_one_line_fix_beside_pre_existing_debt() {
+        let repo = repo_with_committed_debt(ONE_LINE_IN_INNOCENT);
+
+        let outcome =
+            handle_analyze_complexity_diff_scoped(&repo.path().join("src/lib.rs"), None, None);
+
+        assert!(
+            outcome.is_ok(),
+            "the O11 case must exit 0, got: {}",
+            outcome.unwrap_err()
+        );
+    }
+
+    /// Growth in a touched function refuses, and the message a developer reads
+    /// names the function and both numbers.
+    #[test]
+    fn diff_scope_refuses_growth_and_names_the_function_and_both_numbers() {
+        let repo = repo_with_committed_debt(GROWTH_IN_INNOCENT);
+
+        let err =
+            handle_analyze_complexity_diff_scoped(&repo.path().join("src/lib.rs"), None, None)
+                .expect_err("growth in a touched function must exit non-zero");
+
+        let message = err.to_string();
+        assert!(
+            message.contains("innocent"),
+            "the refusal names the function: {message}"
+        );
+        assert!(
+            message.contains("12 > 10"),
+            "the refusal carries measured and limit: {message}"
+        );
+        assert!(
+            message.contains("(was 1)"),
+            "the refusal carries the previous value: {message}"
+        );
+        assert!(
+            !message.contains("debted"),
+            "the untouched function is never the cause: {message}"
+        );
+    }
+
+    /// A path with nothing staged is not a pass. The whole-file mode would
+    /// happily measure the working tree; the diff-scoped mode has no diff to
+    /// judge and must say so rather than exit 0.
+    #[test]
+    fn diff_scope_refuses_to_grade_a_path_with_nothing_staged() {
+        let repo = repo_with_committed_debt(ONE_LINE_IN_INNOCENT);
+        std::fs::write(repo.path().join("src/loose.rs"), HEAD_VERSION).expect("write");
+
+        let err =
+            handle_analyze_complexity_diff_scoped(&repo.path().join("src/loose.rs"), None, None)
+                .expect_err("an unstaged path has nothing to judge");
+
+        assert!(
+            err.to_string().contains("loose.rs"),
+            "the error names the path: {err}"
+        );
+    }
+
+    /// The thresholds the hook passes are honoured: the same staged content
+    /// that passes at the defaults refuses at a limit below it.
+    #[test]
+    fn diff_scope_honours_the_thresholds_it_is_given() {
+        let repo = repo_with_committed_debt(GROWTH_IN_INNOCENT);
+        let file = repo.path().join("src/lib.rs");
+
+        let strict = handle_analyze_complexity_diff_scoped(&file, Some(11), None)
+            .expect_err("cyclomatic 12 is over a limit of 11");
+        assert!(
+            strict.to_string().contains("12 > 11"),
+            "the given limit is the one reported: {strict}"
+        );
+
+        let lenient = handle_analyze_complexity_diff_scoped(&file, Some(50), Some(50));
+        assert!(
+            lenient.is_ok(),
+            "under a limit nothing exceeds, the same commit passes: {:?}",
+            lenient.err()
+        );
+    }
+}

@@ -419,6 +419,7 @@ mod tests {
         fn test_complexity_with_project_path_no_warning() {
             // No deprecation warnings - silently accept both --path and --project-path
             let cmd = AnalyzeCommands::Complexity {
+                diff_scope: false,
                 path: PathBuf::from("."),
                 project_path: Some(PathBuf::from("/deprecated/path")),
                 file: None,
@@ -443,6 +444,7 @@ mod tests {
         #[test]
         fn test_complexity_without_project_path_no_warning() {
             let cmd = AnalyzeCommands::Complexity {
+                diff_scope: false,
                 path: PathBuf::from("."),
                 project_path: None,
                 file: None,
@@ -577,6 +579,7 @@ mod tests {
         fn test_complexity_with_valid_path_succeeds() {
             let temp_dir = create_temp_dir();
             let cmd = AnalyzeCommands::Complexity {
+                diff_scope: false,
                 path: temp_dir.path().to_path_buf(),
                 project_path: None,
                 file: None,
@@ -602,6 +605,7 @@ mod tests {
         fn test_complexity_with_deprecated_project_path_succeeds() {
             let temp_dir = create_temp_dir();
             let cmd = AnalyzeCommands::Complexity {
+                diff_scope: false,
                 path: PathBuf::from("."),
                 project_path: Some(temp_dir.path().to_path_buf()),
                 file: None,
@@ -626,6 +630,7 @@ mod tests {
         #[test]
         fn test_complexity_with_invalid_path_fails() {
             let cmd = AnalyzeCommands::Complexity {
+                diff_scope: false,
                 path: PathBuf::from("/nonexistent/path/that/does/not/exist"),
                 project_path: None,
                 file: None,
@@ -652,6 +657,7 @@ mod tests {
             let temp_dir = create_temp_dir();
             let output_path = temp_dir.path().join("output.json");
             let cmd = AnalyzeCommands::Complexity {
+                diff_scope: false,
                 path: temp_dir.path().to_path_buf(),
                 project_path: None,
                 file: Some(PathBuf::from("test.rs")),
@@ -677,6 +683,7 @@ mod tests {
         fn test_complexity_with_zero_top_files() {
             let temp_dir = create_temp_dir();
             let cmd = AnalyzeCommands::Complexity {
+                diff_scope: false,
                 path: temp_dir.path().to_path_buf(),
                 project_path: None,
                 file: None,
@@ -702,6 +709,7 @@ mod tests {
         fn test_complexity_with_max_thresholds() {
             let temp_dir = create_temp_dir();
             let cmd = AnalyzeCommands::Complexity {
+                diff_scope: false,
                 path: temp_dir.path().to_path_buf(),
                 project_path: None,
                 file: None,

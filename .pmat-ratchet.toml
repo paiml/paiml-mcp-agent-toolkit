@@ -228,11 +228,35 @@ the other moves this number up, and up is red.
 """
 
 [metric.panic_macro_calls_src]
-baseline = 781
+baseline = 785
 unit = "count"
 band = 20
 includes_test_files = true
 command = '''git grep -oF 'panic!(' -- 'src/*.rs' | wc -l'''
+justification = """
+RAISED 781 -> 785 by BSE-12 / PMAT-707 (PR #1223). Four `panic!(` added, all in
+TEST code, none on any shipped path. Each was checked against a rewrite that
+would have kept the baseline, and each rewrite is worse:
+
+  hook_debt_scope_tests.rs:137,225 — `.unwrap_or_else(|| panic!("...{name}"))`.
+    The only formulation that removes the macro is `.expect(&format!(..))`, which
+    clippy's `expect_fun_call` explicitly lints AGAINST (it recommends exactly
+    the `unwrap_or_else(|| panic!(..))` form written here). Swapping in
+    `unreachable!` would satisfy this grep while changing nothing real — the
+    metric would read better and the code would not be, which is the failure
+    mode this ratchet exists to prevent.
+  tests_cli_parsing.rs:302,313 — `other => panic!("expected analyze complexity,
+    got {other:?}")`. That file already contains twelve match arms of the same
+    shape; the two new ones follow its established idiom and print what was
+    actually parsed instead of asserting a bare boolean.
+
+The same change REMOVED ten `.unwrap()` calls rather than banking them: two on
+a shipped pre-commit-hook path (hook_debt_scope.rs, now a `let ... else` that
+skips instead of aborting a user's commit) and eight in tests (now `.expect()`
+with a reason). unwrap_calls_src_total, unwrap_calls_src_outside_cfg_test and
+unwrap_calls_shipped_code therefore return to their baselines exactly
+(20336, 9177, 0) rather than being raised alongside this one.
+"""
 description = """
 `panic!(` occurrences across every tracked .rs file under src/. Five of them
 are this change's own: drive_tests.rs fails its match arms with `panic!` so the

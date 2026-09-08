@@ -15,6 +15,7 @@
         create_test_file(&temp_dir, "test.rs", "fn main() { println!(\"Hello\"); }");
 
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: temp_dir.path().to_path_buf(),
             project_path: None,
             file: None,
@@ -169,6 +170,7 @@
         let handler = ContractCliHandler::new().expect("Handler creation should succeed");
 
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: PathBuf::from("/nonexistent/path/that/does/not/exist"),
             project_path: None,
             file: None,
@@ -304,6 +306,7 @@
         let output_path = nested_dir.join("output.json");
 
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: temp_dir.path().to_path_buf(),
             project_path: None,
             file: None,
@@ -333,6 +336,7 @@
         let temp_dir = create_test_dir();
 
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: temp_dir.path().to_path_buf(),
             project_path: None,
             file: None,
@@ -399,6 +403,7 @@
         let temp_dir = create_test_dir();
 
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: temp_dir.path().to_path_buf(),
             project_path: None,
             file: None,
@@ -489,6 +494,7 @@
         let output_path = temp_dir.path().join("out.json");
 
         let cmd = AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: temp_dir.path().to_path_buf(),
             project_path: None,
             file: None,

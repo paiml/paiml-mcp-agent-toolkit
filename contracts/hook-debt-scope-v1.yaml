@@ -1,0 +1,136 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-07"
+  author: PAIML Engineering
+  references:
+    - "paiml/infra docs/specifications/build-system-enhancement.md BSE-12 (report O11)"
+    - "PMAT-707 — pre-commit debt rule scoped to the diff's touched functions"
+    - "src/cli/handlers/hooks_command_handlers/hook_debt_scope.rs"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    The pre-commit hook's complexity verdict is a function of the diff's
+    TOUCHED functions only. A function is touched when its measured
+    [line_start, line_end] span in the staged file overlaps a line added or
+    modified by a staged hunk (the + side of git diff --cached -U0). A touched
+    function is refused only when a metric exceeds the threshold AND exceeds
+    the same function's value in the HEAD version of the file, measured the
+    same way; a function with no HEAD counterpart is judged against the
+    threshold alone, never as growth. Untouched functions never affect the
+    verdict, over threshold or not. The hook is FEEDBACK, not the gate — ci /
+    gate enforces the thresholds on the merge path — so scoping the hook to the
+    diff removes no enforcement, it only stops refusing a one-line fix in an
+    undebted function of a file that carries pre-existing debt.
+  contract: hook-debt-scope
+  status: draft
+
+equations:
+  verdict_is_a_function_of_touched_functions_only:
+    formula: "verdict(old, new, diff, limits) = REFUSE iff exists f in touched(new, ranges(diff)) with (m(f) > limit and (old(f) is none or m(f) > m(old(f))))"
+    domain: "one staged source file, its HEAD version, and its git diff --cached -U0 hunk headers"
+    codomain: bool
+    invariants:
+      - "an untouched function over the threshold does not change the verdict"
+      - "a touched function over the threshold but no worse than at HEAD does not change the verdict"
+      - "a touched function with no HEAD counterpart is judged against the threshold alone"
+      - "spans and metrics come from collect_functions + measure_block + FunctionSpans, the one existing measurement path; no second parser"
+      - "a refusal names the function, the measured value, the limit, and the previous value (or says there is none)"
+    preconditions: []
+
+falsification:
+  - condition: "a commit whose only change is a one-line edit in an undebted function is refused because another function in the same file carries pre-existing debt"
+    severity: P1
+    action: reject_push
+  - condition: "complexity growth inside a touched function is allowed, or the refusal does not name the function and both numbers"
+    severity: P0
+    action: reject_push
+
+falsification_tests:
+  - id: verdict_is_a_function_of_touched_functions_only
+    rule: "the hook_debt_scope_* tests in src/cli/handlers/hooks_command_handlers/hook_debt_scope_tests.rs: one-line fix beside pre-existing debt is allowed; growth in a touched function is refused with both numbers; a new over-threshold function is refused; an untouched over-threshold function is ignored; the pre-BSE-12 whole-file rule refuses the first case"
+    prediction: "diff-scoped rule: 13 passed (7 in-memory fixtures + 6 over a fixture repo). Same suite under the pre-BSE-12 whole-file rule (touched set = every function, previous = none): 8 of 13 FAIL, including the one-line-fix case."
+    test: "cargo test -p pmat hook_debt_scope"
+    if_fails: "the hook refuses a one-line fix for debt the commit did not write, and the developer decomposes functions the change never touched"
+  - id: the_verdict_is_read_out_of_git_not_out_of_the_working_tree
+    rule: "the staged_repo::* tests in src/cli/handlers/hooks_command_handlers/hook_debt_scope_tests.rs run the rule over a real fixture repo through staged_verdict / staged_verdict_for_file: the NEW source is `git show :<path>` (the INDEX), the OLD source is `git show HEAD:<path>`, and the ranges come from `git diff --cached -U0 -- <path>`"
+    prediction: "6 passed. One of them stages the allowed content and then writes over-threshold growth into the WORKING TREE: a verdict read from disk instead of the index fails it. An unstaged path and an unreadable diff are errors, so neither can render as 'no violations'."
+    test: "cargo test -p pmat hook_debt_scope"
+    if_fails: "the hook grades content that is not being committed, in either direction: unstaged work refuses a clean commit, or staged debt slips past because the disk copy is clean"
+  - id: the_cli_entry_point_prints_the_offender_and_exits_non_zero
+    rule: "the diff_scope_entry_point::* tests in src/cli/handlers/complexity_handlers/complexity_handlers_tests.rs call handle_analyze_complexity_diff_scoped over a fixture repo at the DEFAULT thresholds (10/15, the same ComplexityConfig::from_args uses)"
+    prediction: "4 passed. Report O11 — a one-line fix in `innocent` beside a committed `debted` of cyclomatic 11 — returns Ok; `innocent` grown to 12 returns Err naming 'innocent - Cyclomatic 12 > 10 (was 1)'; a path with nothing staged is an Err, not a pass."
+    test: "cargo test -p pmat diff_scope"
+    if_fails: "the developer is told a file is at fault without being told which function, which is the report the whole-file mode already gives"
+
+mutation_matrix:
+  - mutation: "diff_scoped_verdict judges every function instead of the touched ones (`for func in new_functions.iter()`), leaving the growth comparison in place"
+    observed: "hook_debt_scope: 13 passed, 0 failed. diff_scope: 4 passed, 0 failed."
+    reading: >
+      Not a weak suite — a fact about the rule. An UNTOUCHED function measures
+      identically in the HEAD blob and the staged blob, so the growth
+      comparison already spares it and the touched filter is redundant for a
+      file that HAS a HEAD counterpart. The filter is load-bearing exactly
+      where growth cannot be computed: a file absent from HEAD has no previous
+      value for any function, and there the scope is the only thing between the
+      developer and the whole file. That leg is
+      hook_debt_scope_a_file_absent_from_head_is_judged_on_the_threshold.
+  - mutation: "the above PLUS `previous = None` — i.e. the complete pre-BSE-12 whole-file rule the hook still runs today"
+    observed: "hook_debt_scope: 5 passed, 8 FAILED. diff_scope: 2 passed, 2 FAILED (the O11 case and the offender-naming case)."
+    reading: "the suite discriminates the shipped rule from the rule it replaces"
+
+  - id: the_generated_hook_puts_the_flag_on_a_command_line_for_rust_only
+    rule: "complexity_gate_tests::complexity_gate_scopes_rust_to_the_diff_only and ::dropping_the_flag_from_the_generated_hook_goes_red in src/cli/handlers/hooks_command_handlers/hook_generation.rs READ the SCOPE_FLAG case arms out of the generated text (a bare hook.contains(\"--diff-scope\") would now pass on the doctrine COMMENT alone) and assert the *.rs arm asks for the scoped verdict, the fallback arm does not, and the invocation passes $SCOPE_FLAG without hardcoding the flag"
+    prediction: "20 passed. Two mutants are built inside the test and run through the SAME predicate: blanking the *.rs arm, and deleting $SCOPE_FLAG from the invocation. Both are asserted to be caught, and each mutant is first asserted to differ from the real hook so the legs cannot pass vacuously."
+    test: "cargo test -p pmat --lib complexity_gate"
+    if_fails: "the flag is declared and routed but never reaches a command line -- the exact state this ticket found, where a tested rule was not the rule the hook ran"
+  - id: end_to_end_the_hook_allows_the_o11_case_and_refuses_growth
+    rule: "a minimal git repo (no Cargo.toml, so the hook's fmt and clippy gates are inert), fixture.rs with `debted` at cyclomatic 36 and `innocent` at 1, committed BEFORE `pmat hooks install` so the debt is pre-existing; thresholds read back out of the installed hook (30/25); no --no-verify"
+    prediction: "a one-line edit inside `innocent` commits cleanly (rc 0, HEAD moves) although the whole-file measurement of the same file reports `Errors: 2` / `Max Cyclomatic: 36`; growing `innocent` itself to 36 is refused (rc 1, HEAD unchanged) printing `innocent - Cyclomatic 36 > 30 (was 1)` and `innocent - Cognitive 35 > 25 (was 0)`, with the untouched `debted` absent from the refusal"
+    test: "cargo test -p pmat --test hook_debt_scope_e2e"
+    if_fails: "report O11 is still reproducible in the field: a developer is charged for debt the commit did not write"
+wiring_status:
+  measured_on: "2026-09-08, PMAT-707 phase 3"
+  wired: >
+    YES, for Rust. `diff_scope: bool` is declared on AnalyzeCommands::Complexity
+    (clap `--diff-scope`, `requires = "file"`), route_complexity_analysis in
+    src/cli/handlers/analysis_handlers/core_routes.rs dispatches it to
+    handle_analyze_complexity_diff_scoped, and the generated pre-commit hook in
+    hook_generation.rs selects it PER STAGED FILE: `*.rs` gets
+    `SCOPE_FLAG="--diff-scope"`, every other language gets `SCOPE_FLAG=""` and
+    keeps the whole-file measurement, because the scoped measurement is
+    syn-based and there is no honest touched-set for a .py/.ts/.go file.
+  end_to_end:
+    procedure: >
+      A minimal `git init` repo (no Cargo.toml, so the hook's fmt and clippy
+      gates are inert and the complexity gate is the only variable), fixture.rs
+      holding `debted` (35 ifs, cyclomatic 36) and `innocent` (cyclomatic 1),
+      COMMITTED BEFORE `pmat hooks install` so the debt is genuinely
+      pre-existing. The hook exported PMAT_MAX_CYCLOMATIC_COMPLEXITY=30 /
+      PMAT_MAX_COGNITIVE_COMPLEXITY=25, read back out of the installed file
+      rather than taken from what the installer printed. No --no-verify.
+    baseline: >
+      The whole-file measurement over the same file reports `Errors: 2`,
+      `Max Cyclomatic: 36` — i.e. under the pre-BSE-12 rule EVERY commit
+      touching this file is refused. That is report O11.
+    allowed: >
+      A one-line change inside `innocent` (`acc = 0i64` -> `acc = 7i64`,
+      a single -/+ hunk at line 42) committed cleanly:
+      "Complexity check... OK / All quality gates passed!", rc 0, HEAD moved.
+      `debted` is over the threshold in the same file and did not affect it.
+    refused: >
+      Growing `innocent` itself to 35 ifs in the next commit was refused, rc 1,
+      HEAD unchanged, naming the function and both numbers:
+      "innocent - Cyclomatic 36 > 30 (was 1)" and
+      "innocent - Cognitive 35 > 25 (was 0)". `debted`, untouched and also at
+      cyclomatic 36, is ABSENT from the refusal — which is what distinguishes
+      the scoped verdict from the whole-file one.
+  remaining: >
+    Every AnalyzeCommands::Complexity struct literal in the crate (24 sites, the last
+    at tests/modules/analysis_timeout_test.rs, outside PMAT-707's scope and added by
+    the orchestrator at commit 3842c57e4) carries `diff_scope: false`; the pre-commit
+    clippy stage (--all-targets) is the check that refuses a missing site.
+    
+    LIMITATION: Rename-to-a-deleted-name. A touched function renamed to the name of a
+    DELETED function inherits the deleted one's baseline. This is an accepted
+    limitation of name-keyed pairing and is out of scope for this PR. It must be
+    fixed in a follow-up PR when AST-based identity tracking is introduced.

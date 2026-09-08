@@ -9,6 +9,10 @@
 mod cache_handlers;
 mod command_dispatch;
 mod hook_generation;
+// BSE-12 (PMAT-707): the diff-scoped complexity verdict the pre-commit hook
+// asks for. Its own file so the verdict rule is testable on source pairs
+// without going through hook generation.
+pub mod hook_debt_scope;
 mod hooks_command;
 mod interactive_setup;
 pub(crate) mod tdg_hooks;

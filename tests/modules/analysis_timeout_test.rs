@@ -274,6 +274,7 @@ mod cli_timeout_integration {
             fail_on_violation: false,
             timeout: 60, // This field must exist
             ml: false,
+            diff_scope: false,
         }) {
             AnalyzeCommands::Complexity { timeout, .. } => timeout,
             _ => panic!("Pattern match should work"),

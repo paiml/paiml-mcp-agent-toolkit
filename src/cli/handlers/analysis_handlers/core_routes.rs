@@ -47,6 +47,7 @@ pub(super) async fn route_complexity_analysis(cmd: AnalyzeCommands) -> Result<()
         fail_on_violation,
         timeout,
         ml,
+        diff_scope,
     } = cmd
     {
         // GH-97: the ML scorer is not wired into this handler. The flag used to
@@ -56,6 +57,25 @@ pub(super) async fn route_complexity_analysis(cmd: AnalyzeCommands) -> Result<()
         // models instead of heuristic formulas". Refuse rather than relabel.
         // The refusal is shared with `analyze tdg --ml`, which had the same bug.
         super::reject_unimplemented_ml(ml, "analyze complexity", "complexity scores")?;
+
+        // PMAT-707: `--diff-scope` is a different QUESTION, not a filter over
+        // the whole-file answer — it reads the staged blob, the HEAD blob and
+        // the cached diff out of git and judges only the functions the diff
+        // touches. So it dispatches before route_complexity_command rather
+        // than becoming its fifteenth parameter. clap's `requires = "file"`
+        // makes the None arm unreachable from the CLI; it is an error rather
+        // than an unwrap so a programmatic caller gets a sentence instead of
+        // a panic.
+        if diff_scope {
+            let Some(file) = file else {
+                anyhow::bail!("--diff-scope requires --file <PATH>");
+            };
+            return crate::cli::handlers::complexity_handlers::handle_analyze_complexity_diff_scoped(
+                &file,
+                max_cyclomatic,
+                max_cognitive,
+            );
+        }
 
         route_complexity_command(
             path,
@@ -338,6 +358,7 @@ mod ml_flag_tests {
 
     fn complexity_command(ml: bool) -> AnalyzeCommands {
         AnalyzeCommands::Complexity {
+            diff_scope: false,
             path: PathBuf::from("."),
             project_path: None,
             file: None,
