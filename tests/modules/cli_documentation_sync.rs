@@ -1,7 +1,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -13,46 +13,76 @@ struct DocumentedCommand {
     options: Vec<String>,
 }
 
-fn parse_documented_cli_commands() -> Vec<DocumentedCommand> {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
+/// Where the CLI reference lives.
+///
+/// #1228: this was `Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap()`.
+/// `CARGO_MANIFEST_DIR` is ALREADY the repository root, so `.parent()` pointed at
+/// `<repo>/../rust-docs/cli-reference.md`, which does not exist. Every test in this
+/// file then took its "file not found" branch, returned empty, and reported ok:
+/// five green tests asserting nothing, in 0.00s.
+fn cli_reference_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-docs/cli-reference.md")
+}
 
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return vec![];
-        }
-    };
+/// Read the CLI reference, or fail loudly.
+///
+/// A missing input is RED, never green. The whole point of this suite is to notice
+/// when the CLI and its reference drift apart; if it cannot read the reference it
+/// has measured nothing, and saying so is the only honest outcome.
+fn read_cli_reference(doc_path: &Path) -> String {
+    fs::read_to_string(doc_path).unwrap_or_else(|e| {
+        panic!(
+            "cli-reference.md not found at {} ({e}).\n\
+             This suite compares the CLI against that document; without it nothing \
+             is measured. It must not be skipped — see #1228, where the same read \
+             failed silently and five tests reported ok.",
+            doc_path.display()
+        )
+    })
+}
+
+/// Parse `rust-docs/cli-reference.md` into the commands it documents.
+///
+/// #1228 defect 3: this used to split on `"### Command: `"`, a heading shape that
+/// occurs ZERO times in the document. The parser therefore returned an empty Vec
+/// on a perfectly readable file, and all four callers took an
+/// `if documented_commands.is_empty() { return; }` branch and reported ok. That is
+/// a third, independent way this suite was vacuous — fixing only the two `.parent()`
+/// defects left all five tests still green in 0.00s, which is how it was found.
+///
+/// The document's real shape, measured:
+///   `### \`demo\``              — a top-level command, under `## Commands`
+///   `##### \`analyze churn\``   — a subcommand
+///   `**Arguments:**`           — an argument block (not `#### Arguments`)
+fn parse_documented_cli_commands() -> Vec<DocumentedCommand> {
+    let doc_path = cli_reference_path();
+    let content = read_cli_reference(&doc_path);
+
+    let top_level = Regex::new(r"(?m)^### `([a-z][a-z0-9-]*)`").expect("static regex must compile");
+    let sub_level = Regex::new(r"(?m)^##### `([a-z][a-z0-9-]* [a-z][a-z0-9-]*)`")
+        .expect("static regex must compile");
+    let arg_regex = Regex::new(r"`<([^>]+)>`").expect("static regex must compile");
+    let opt_regex =
+        Regex::new(r"`(?:-[a-zA-Z], )?--([a-z][a-z0-9-]*)`").expect("static regex must compile");
+
+    let subcommands_by_parent: Vec<String> = sub_level
+        .captures_iter(&content)
+        .map(|c| c[1].to_string())
+        .collect();
 
     let mut commands = Vec::new();
+    let heads: Vec<(usize, String)> = top_level
+        .captures_iter(&content)
+        .map(|c| {
+            let m = c.get(0).expect("group 0 always exists");
+            (m.start(), c[1].to_string())
+        })
+        .collect();
 
-    // Split by command sections
-    let sections: Vec<&str> = content.split("### Command: `").collect();
+    for (i, (offset, name)) in heads.iter().enumerate() {
+        let section_end = heads.get(i + 1).map_or(content.len(), |(next, _)| *next);
+        let section = &content[*offset..section_end];
 
-    // Pre-compile regex patterns outside the loop
-    let arg_regex = Regex::new(r"`<([^>]+)>`").unwrap();
-    let opt_regex = Regex::new(r"`(-[a-z], )?--([a-z-]+)`").unwrap();
-    let subcommand_regex = Regex::new(r"### Command: `analyze ([^`]+)`").unwrap();
-
-    for (i, section) in sections.iter().enumerate() {
-        if i == 0 {
-            continue; // Skip the first split (before any command)
-        }
-
-        // Extract command name
-        let name = if let Some(end) = section.find('`') {
-            section[..end].to_string()
-        } else {
-            continue;
-        };
-
-        // Extract description (first non-empty line after header)
         let description = section
             .lines()
             .skip(1)
@@ -60,42 +90,53 @@ fn parse_documented_cli_commands() -> Vec<DocumentedCommand> {
             .map(|s| s.trim().to_string())
             .unwrap_or_default();
 
-        // Extract arguments from #### Arguments section
-        let mut arguments = Vec::new();
-        if let Some(args_section) = section.split("#### Arguments").nth(1) {
-            if let Some(args_content) = args_section.split("####").next() {
-                for arg_cap in arg_regex.captures_iter(args_content) {
-                    arguments.push(arg_cap[1].to_string());
-                }
-            }
-        }
+        let arguments = section
+            .split("**Arguments:**")
+            .nth(1)
+            .and_then(|rest| rest.split("**").next())
+            .map(|block| {
+                arg_regex
+                    .captures_iter(block)
+                    .map(|c| c[1].to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
 
-        // Extract options from #### Options section
-        let mut options = Vec::new();
-        if let Some(opts_section) = section.split("#### Options").nth(1) {
-            if let Some(opts_content) = opts_section.split("####").next() {
-                for opt_cap in opt_regex.captures_iter(opts_content) {
-                    options.push(format!("--{}", &opt_cap[2]));
-                }
-            }
-        }
+        let options = section
+            .split("**Options:**")
+            .nth(1)
+            .and_then(|rest| rest.split("**").next())
+            .map(|block| {
+                opt_regex
+                    .captures_iter(block)
+                    .map(|c| format!("--{}", &c[1]))
+                    .collect()
+            })
+            .unwrap_or_default();
 
-        // Extract subcommands (for commands like "analyze")
-        let mut subcommands = Vec::new();
-        if name == "analyze" {
-            for sub_cap in subcommand_regex.captures_iter(&content) {
-                subcommands.push(sub_cap[1].to_string());
-            }
-        }
+        let subcommands = subcommands_by_parent
+            .iter()
+            .filter_map(|full| full.strip_prefix(&format!("{name} ")))
+            .map(str::to_string)
+            .collect();
 
         commands.push(DocumentedCommand {
-            name,
+            name: name.clone(),
             description,
             subcommands,
             arguments,
             options,
         });
     }
+
+    assert!(
+        !commands.is_empty(),
+        "parsed 0 commands out of {} ({} bytes). The document is readable, so either \
+         its heading shape changed or this parser is wrong — either way this suite \
+         measures nothing and must not report ok (#1228).",
+        doc_path.display(),
+        content.len()
+    );
 
     commands
 }
@@ -104,8 +145,14 @@ fn parse_cli_help_output(output: &[u8]) -> Vec<String> {
     let output_str = String::from_utf8_lossy(output);
     let mut commands = Vec::new();
 
-    // Look for commands in the help output
-    let command_regex = Regex::new(r"^\s{2,}(\w+)\s+").unwrap();
+    // #1228 defect 4: this was `^\s{2,}(\w+)\s+`. `\w` is [A-Za-z0-9_] and does
+    // NOT match `-`, and the trailing `\s+` then required whitespace immediately
+    // after the captured word — so every hyphenated command failed the match
+    // outright and was dropped. 23 of pmat's 71 top-level commands are hyphenated
+    // (quality-gates, dead-code, deep-context, five-whys, ...), so the CLI side of
+    // this comparison was missing a third of its input.
+    let command_regex =
+        Regex::new(r"^\s{2,}([a-z][a-z0-9-]*)\s{2,}").expect("static regex must compile");
     let mut in_commands_section = false;
 
     for line in output_str.lines() {
@@ -128,22 +175,35 @@ fn parse_cli_help_output(output: &[u8]) -> Vec<String> {
     commands
 }
 
+/// The binary this test grades.
+///
+/// #1228: this used to be `Path::new(manifest_dir).parent().unwrap()`, which is
+/// one level ABOVE the repository, so neither candidate could ever exist and the
+/// function fell through to the string `"pmat"` — whatever happened to be on
+/// `PATH`, typically a `cargo install`ed copy from some earlier release. A doc
+/// test that silently grades a different binary than the one just built is worse
+/// than no test, so there is no fallback now: if the build is missing, say so.
 fn get_binary_path() -> String {
-    // Try to find the binary in the target directory
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let workspace_root = Path::new(manifest_dir).parent().unwrap();
-
-    // Check release build first, then debug - look for pmat binary
-    let release_binary = workspace_root.join("target/release/pmat");
-    let debug_binary = workspace_root.join("target/debug/pmat");
+    // CARGO_MANIFEST_DIR is the repository root; the previous `.parent()` climbed
+    // out of it. Cargo's own `CARGO_BIN_EXE_pmat` is not available here because
+    // this file is compiled into the `all` integration target, not a bin target.
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let release_binary = repo_root.join("target/release/pmat");
+    let debug_binary = repo_root.join("target/debug/pmat");
 
     if release_binary.exists() {
         release_binary.to_string_lossy().to_string()
     } else if debug_binary.exists() {
         debug_binary.to_string_lossy().to_string()
     } else {
-        // Fall back to system binary
-        "pmat".to_string()
+        panic!(
+            "no pmat binary to grade the documentation against.\n  tried: {}\n  tried: {}\n\
+             Build one first: cargo build --release --bin pmat\n\
+             (this used to fall back to `pmat` on PATH, which graded a stale \
+             install against current docs — #1228)",
+            release_binary.display(),
+            debug_binary.display()
+        )
     }
 }
 
@@ -151,10 +211,11 @@ fn get_binary_path() -> String {
 fn test_cli_commands_match_documentation() {
     // Parse documented commands from docs/cli-mcp.md
     let documented_commands = parse_documented_cli_commands();
-    if documented_commands.is_empty() {
-        eprintln!("No documented commands found, skipping test");
-        return;
-    }
+    assert!(
+        !documented_commands.is_empty(),
+        "no documented commands parsed — this test would otherwise report ok \
+         while comparing nothing (#1228)"
+    );
 
     // Get actual commands from CLI
     let binary_path = get_binary_path();
@@ -190,10 +251,11 @@ fn test_cli_commands_match_documentation() {
 #[test]
 fn test_cli_subcommands_match_documentation() {
     let documented_commands = parse_documented_cli_commands();
-    if documented_commands.is_empty() {
-        eprintln!("No documented commands found, skipping test");
-        return;
-    }
+    assert!(
+        !documented_commands.is_empty(),
+        "no documented commands parsed — this test would otherwise report ok \
+         while comparing nothing (#1228)"
+    );
     let binary_path = get_binary_path();
 
     // Check subcommands for commands that have them
@@ -226,10 +288,11 @@ fn test_cli_subcommands_match_documentation() {
 #[test]
 fn test_cli_options_match_documentation() {
     let documented_commands = parse_documented_cli_commands();
-    if documented_commands.is_empty() {
-        eprintln!("No documented commands found, skipping test");
-        return;
-    }
+    assert!(
+        !documented_commands.is_empty(),
+        "no documented commands parsed — this test would otherwise report ok \
+         while comparing nothing (#1228)"
+    );
     let binary_path = get_binary_path();
 
     for doc_cmd in &documented_commands {
@@ -262,72 +325,147 @@ fn test_cli_options_match_documentation() {
     }
 }
 
+/// Top-level commands that `rust-docs/cli-reference.md` does not document yet.
+///
+/// A RATCHET, not an allow-list: this may only ever get SHORTER. It exists because
+/// the honest measurement is 60 undocumented commands out of 71, and a test that
+/// demanded all 60 be written today would simply be disabled tomorrow — which is
+/// how this suite came to assert nothing in the first place (#1228).
+///
+/// Adding a command without documenting it fails the test below. Documenting one
+/// without deleting its line here ALSO fails, so the list cannot rot into a
+/// permanent excuse. Emptying it is the goal; #1228 Step 3 (generate the reference
+/// from the command registry) is how that is meant to happen.
+const UNDOCUMENTED_AT_BASELINE: &[&str] = &[
+    "agent",
+    "agy",
+    "brick-score",
+    "cache",
+    "ci-local",
+    "comply",
+    "config",
+    "cuda-tdg",
+    "debug",
+    "demo-score",
+    "deps-audit",
+    "diagnose",
+    "embed",
+    "enforce",
+    "explain",
+    "extract",
+    "falsify",
+    "five-whys",
+    "hooks",
+    "infra-score",
+    "init",
+    "kaizen",
+    "localize",
+    "maintain",
+    "mcp",
+    "memory",
+    "oracle",
+    "org",
+    "perfection-score",
+    "popper-score",
+    "predict-quality",
+    "project-diag",
+    "prompt",
+    "qa-work",
+    "qdd",
+    "quality-gates",
+    "query",
+    "record-metric",
+    "red-team",
+    "report",
+    "repo-score",
+    "roadmap",
+    "rust-project-score",
+    "score",
+    "semantic",
+    "serve",
+    "show-metrics",
+    "spec",
+    "split",
+    "sql",
+    "stack",
+    "tdg",
+    "telemetry",
+    "test",
+    "test-discovery",
+    "test-stability",
+    "validate-docs",
+    "validate-readme",
+    "verify",
+    "work",
+];
+
 #[test]
 fn test_no_undocumented_commands() {
     let documented_commands = parse_documented_cli_commands();
-    if documented_commands.is_empty() {
-        eprintln!("No documented commands found, skipping test");
-        return;
-    }
+    assert!(
+        !documented_commands.is_empty(),
+        "no documented commands parsed — this test would otherwise report ok \
+         while comparing nothing (#1228)"
+    );
 
     let binary_path = get_binary_path();
-
-    // Get actual commands from CLI
     let output = Command::new(&binary_path)
         .arg("--help")
         .output()
         .expect("Failed to run CLI");
+    assert!(output.status.success(), "CLI --help command failed");
 
     let actual_commands = parse_cli_help_output(&output.stdout);
-    let documented_names: Vec<String> = documented_commands
+    assert!(
+        !actual_commands.is_empty(),
+        "no commands parsed from `--help` — the CLI side of this comparison is empty"
+    );
+
+    let documented_names: Vec<&str> = documented_commands
         .iter()
         .filter(|cmd| !cmd.name.contains(' '))
-        .map(|cmd| cmd.name.clone())
+        .map(|cmd| cmd.name.as_str())
         .collect();
 
-    // Check for undocumented commands
-    for actual_cmd in &actual_commands {
-        // Special case: "analyze" is documented as subcommands, not standalone
-        if actual_cmd == "analyze" {
-            let has_analyze_subcommands = documented_commands
-                .iter()
-                .any(|cmd| cmd.name.starts_with("analyze "));
-            assert!(
-                has_analyze_subcommands,
-                "Command 'analyze' exists in CLI but has no subcommands documented"
-            );
-            continue;
-        }
+    // `help` is clap's own; it is not part of this repo's surface.
+    let undocumented_now: Vec<&str> = actual_commands
+        .iter()
+        .map(String::as_str)
+        .filter(|c| *c != "help" && !documented_names.contains(c))
+        .collect();
 
-        // Special case: "help" is a standard CLI command that doesn't need documentation
-        if actual_cmd == "help" {
-            continue;
-        }
+    let newly_undocumented: Vec<&&str> = undocumented_now
+        .iter()
+        .filter(|c| !UNDOCUMENTED_AT_BASELINE.contains(c))
+        .collect();
+    assert!(
+        newly_undocumented.is_empty(),
+        "{} new undocumented command(s): {:?}\n\
+         Document them in rust-docs/cli-reference.md as `### `<name>``, or, if that \
+         is genuinely out of scope, add them to UNDOCUMENTED_AT_BASELINE and say why \
+         in the commit message. The list may only shrink.",
+        newly_undocumented.len(),
+        newly_undocumented
+    );
 
-        assert!(
-            documented_names.contains(actual_cmd),
-            "Command '{actual_cmd}' exists in CLI but is not documented in cli-reference.md"
-        );
-    }
+    let stale: Vec<&&str> = UNDOCUMENTED_AT_BASELINE
+        .iter()
+        .filter(|c| !undocumented_now.contains(c))
+        .collect();
+    assert!(
+        stale.is_empty(),
+        "{} entr(y/ies) in UNDOCUMENTED_AT_BASELINE {:?} are now documented or gone \
+         from the CLI. Delete them from the list — a ratchet that keeps satisfied \
+         entries stops measuring anything.",
+        stale.len(),
+        stale
+    );
 }
 
 #[test]
 fn test_documentation_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
-
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
-    };
+    let doc_path = cli_reference_path();
+    let content = read_cli_reference(&doc_path);
 
     // Extract bash code blocks - use a simpler approach
     let mut in_bash_block = false;

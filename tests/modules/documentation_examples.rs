@@ -3,39 +3,44 @@ use serde_json::Value;
 use std::fs;
 use std::path::Path;
 
+/// The binary this test grades.
+///
+/// #1228: `Path::new(manifest_dir).parent()` is one level ABOVE the repository, so
+/// neither candidate could exist and this fell through to the string "pmat" —
+/// whatever was on PATH, typically a `cargo install`ed copy from an older release.
+/// A doc test that silently grades a different binary than the one just built is
+/// worse than no test, so there is no fallback: if the build is missing, say so.
 fn get_binary_path() -> String {
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let workspace_root = Path::new(manifest_dir).parent().unwrap();
-
-    let release_binary = workspace_root.join("target/release/pmat");
-    let debug_binary = workspace_root.join("target/debug/pmat");
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let release_binary = repo_root.join("target/release/pmat");
+    let debug_binary = repo_root.join("target/debug/pmat");
 
     if release_binary.exists() {
         release_binary.to_string_lossy().to_string()
     } else if debug_binary.exists() {
         debug_binary.to_string_lossy().to_string()
     } else {
-        "pmat".to_string()
+        panic!(
+            "no pmat binary to grade the documentation against; tried {} and {}. \
+             Build one first: cargo build --release --bin pmat (#1228).",
+            release_binary.display(),
+            debug_binary.display()
+        )
     }
 }
 
 #[test]
 fn test_cli_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
+    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-docs/cli-reference.md");
 
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
-    };
+    let content = fs::read_to_string(&doc_path).unwrap_or_else(|e| {
+        panic!(
+            "cli-reference.md not found at {} ({e}). This suite compares the shipped \
+             surface against that document; without it nothing is measured, so it \
+             must fail rather than skip (#1228).",
+            doc_path.display()
+        )
+    });
     let code_block_regex = Regex::new(r"```bash\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
     let binary_path = get_binary_path();
 
@@ -172,21 +177,16 @@ fn validate_command_arguments(parts: &[&str], original_line: &str) {
 
 #[test]
 fn test_mcp_json_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
+    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-docs/cli-reference.md");
 
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
-    };
+    let content = fs::read_to_string(&doc_path).unwrap_or_else(|e| {
+        panic!(
+            "cli-reference.md not found at {} ({e}). This suite compares the shipped \
+             surface against that document; without it nothing is measured, so it \
+             must fail rather than skip (#1228).",
+            doc_path.display()
+        )
+    });
     let json_block_regex = Regex::new(r"```json\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
 
     for cap in json_block_regex.captures_iter(&content) {
@@ -254,21 +254,16 @@ fn validate_batch_request_array(array: &[Value]) {
 
 #[test]
 fn test_yaml_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
+    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-docs/cli-reference.md");
 
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
-    };
+    let content = fs::read_to_string(&doc_path).unwrap_or_else(|e| {
+        panic!(
+            "cli-reference.md not found at {} ({e}). This suite compares the shipped \
+             surface against that document; without it nothing is measured, so it \
+             must fail rather than skip (#1228).",
+            doc_path.display()
+        )
+    });
 
     // Extract YAML code blocks (like GitHub Actions examples)
     let yaml_block_regex = Regex::new(r"```yaml\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
@@ -295,21 +290,16 @@ fn test_yaml_examples_are_valid() {
 
 #[test]
 fn test_jsonc_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
+    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-docs/cli-reference.md");
 
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
-    };
+    let content = fs::read_to_string(&doc_path).unwrap_or_else(|e| {
+        panic!(
+            "cli-reference.md not found at {} ({e}). This suite compares the shipped \
+             surface against that document; without it nothing is measured, so it \
+             must fail rather than skip (#1228).",
+            doc_path.display()
+        )
+    });
 
     // Extract JSONC code blocks (JSON with comments, like VS Code config)
     let jsonc_block_regex = Regex::new(r"```jsonc\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
@@ -351,21 +341,16 @@ fn test_jsonc_examples_are_valid() {
 
 #[test]
 fn test_template_uri_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
+    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-docs/cli-reference.md");
 
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
-    };
+    let content = fs::read_to_string(&doc_path).unwrap_or_else(|e| {
+        panic!(
+            "cli-reference.md not found at {} ({e}). This suite compares the shipped \
+             surface against that document; without it nothing is measured, so it \
+             must fail rather than skip (#1228).",
+            doc_path.display()
+        )
+    });
 
     // Extract template URIs
     let uri_regex = Regex::new(r"template://([a-z-]+)/([a-z-]+)/([a-z-]+)").unwrap();
@@ -398,21 +383,16 @@ fn test_template_uri_examples_are_valid() {
 
 #[test]
 fn test_performance_numbers_are_reasonable() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
+    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-docs/cli-reference.md");
 
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
-    };
+    let content = fs::read_to_string(&doc_path).unwrap_or_else(|e| {
+        panic!(
+            "cli-reference.md not found at {} ({e}). This suite compares the shipped \
+             surface against that document; without it nothing is measured, so it \
+             must fail rather than skip (#1228).",
+            doc_path.display()
+        )
+    });
 
     // Check that documented performance numbers are reasonable
     let perf_regex = Regex::new(r"<(\d+)ms").unwrap();
