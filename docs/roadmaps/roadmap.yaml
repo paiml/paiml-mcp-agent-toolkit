@@ -4889,3 +4889,20 @@ roadmap:
   - deferred:3.41.0
   - kind:code
   notes: null
+- id: PMAT-711
+  github_issue: null
+  item_type: task
+  title: 'Triage the outstanding board after 3.40.0: classify every open issue serious vs trivial with evidence, link duplicates to their train ticket'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-08T07:38:24Z
+  updated: 2026-09-08T07:38:24Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:triage
+  notes: null

@@ -1,0 +1,617 @@
+[
+  {
+    "issue": 1202,
+    "verdict": "S3_MODERATE",
+    "title": "flake: ci/coverage kills quality_proxy tests whose nested cargo clippy exceeds 600s under llvm-cov",
+    "rationale": "Purely a CI-reliability issue with no user-facing impact (the two failing lib tests shell out to a real `cargo clippy` with a 600s wall-clock deadline, and only miss it under the extra overhead of `cargo llvm-cov` on a loaded shared runner). PMAT-694 already spent two rounds attempting root-cause isolation and could not reproduce it deterministically enough to fix (its own control found the wrapped child produces no clippy findings on the GH-hosted runner), so it was CLOSED-DEFERRED to 3.41.0 rather than left open as its own ticket. It does not permanently block merges (observed: rerun-once clears it; 4 of the last runs before/after the observed failure were green), so it is real load-dependent debt, not S1/S2 user-visible breakage, and not S4 cosmetic given it has actually reduced CI reliability and consumed two engineering rounds.",
+    "evidence": "gh issue view 1202 (full body: run 34020631941 job 101452450538, panic message, 'test result: FAILED. 21211 passed; 2 failed'); docs/audits/release-3.40.0-receipt.md:55 'PMAT-694 [train/CF] coverage flake | #1218 | closed, deferred 3.41.0 -- its own control caught that the wrapped child produces no clippy findings on a GitHub-hosted runner; two rounds could not isolate the cause'. Did not attempt to reproduce the flake myself (load-dependent, requires the shared CI runner under llvm-cov; not a cheap local probe).",
+    "verification": "TICKET_TEXT_ONLY",
+    "user_impact": "none - internal (CI-only flake in the coverage job; published crate and its tests are unaffected)",
+    "effort": "unknown",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-694",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1162,
+    "verdict": "STALE_OR_FIXED",
+    "title": "tdg check-regression compares a cached baseline (with entropy) against a recompute that omits entropy",
+    "rationale": "Reproduced the issue's exact repro steps (baseline create -> edit a file (removed a whole if-block, 5 lines) -> check-regression --fail-on-regression) on the installed 3.39.0 binary (essentially master's TDG code, unchanged since). The core claim -- 'every edited file reads as a regression' / a 100% false-positive rate -- does NOT reproduce: check-regression correctly returned `passed: true, violations: []`, and the raw baseline JSON shows entropy_score IS present and IDENTICAL on both the original baseline (9.5) and the fresh recompute (9.5), total 99.545456 both times, because check-regression's RegressionGate (src/tdg/quality_gate/regression.rs:30-43) compares `.total` fields taken straight from freshly-computed TdgScore objects, and both the baseline-create path and check-regression's internal recompute call the identical `analyzer.analyze_file()` -> `analyze_rust_ast` -> `score.entropy_score = self.score_entropy_analysis(...)` (src/tdg/analyzer_ast/analyzer_impl1_source_dispatch.rs:120) code path -- there is no asymmetry in the actual gate. I did find a real, but much narrower, residual bug: `pmat tdg <file> --include-components` (src/cli/handlers/tdg_handlers/formatting.rs:314-320) hardcodes exactly 6 breakdown rows and never prints score.entropy_score, so the displayed components summed to 100.0/100.0 while the printed Overall Score was 99.5/100 -- a genuine display inconsistency, but it does not cause check-regression false positives and is not what the ticket describes.",
+    "evidence": "Ran in scratchpad: `pmat tdg baseline create --output b.json --path .` (entropy_score=9.5, total=99.545456) then removed a 5-line if-block from the same file and ran `pmat tdg check-regression --baseline b.json --path . --format json --fail-on-regression` -> `{\"passed\": true, \"violations\": [], \"message\": \"No quality regressions detected (1 files analyzed)\"}`; recompute JSON (`pmat tdg baseline create --output current.json`) shows entropy=9.5, total=99.545456, IDENTICAL to the original baseline. Also ran `pmat tdg src/lib.rs --include-components`, which showed 6 components summing to 100.0 under an Overall Score of 99.5 (confirming the narrower display bug at src/cli/handlers/tdg_handlers/formatting.rs:314-320, no Entropy row).",
+    "verification": "REPRODUCED",
+    "user_impact": "none for check-regression itself (the regression gate works correctly on the exact repro given); `pmat tdg --include-components`'s printed breakdown omits Entropy and does not sum to the Overall Score, which is a real but separate cosmetic defect worth its own narrower ticket",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1156,
+    "verdict": "S3_MODERATE",
+    "title": "build.rs downloads four assets from unpkg.com at build time, two pinned to @latest, into a gitignored directory it then watches",
+    "rationale": "Confirmed the four unpkg.com URLs (build.rs:185-196), two still `@latest` (mermaid, d3), and that `assets/vendor/` is gitignored (.gitignore:2-3). The `rerun-if-changed=assets/vendor/` watch the issue describes as the CI-cost mechanism was ALREADY REMOVED (build.rs:31 explicitly documents why, citing CRUX-06/#1154) -- that part is STALE, matching the issue's own text ('Until #1154 the script also declared...'). The remaining, still-live defect is narrower than the issue's headline claim: `download_and_compress_assets()` only runs `if env::var(\"CARGO_FEATURE_DEMO\").is_ok() && !is_publishing()` (build.rs:83-86), and `demo` is NOT in the crate's default feature set (`default = [\"core-languages\", \"viz\", \"http-client\", \"standard-deps\", \"mcp-http\"]`, Cargo.toml:461) -- so the issue's claim that 'a `cargo build` (and `cargo install pmat`) reaches unpkg.com' is FALSE for a default `cargo install pmat`. It IS reached by `.github/workflows/docs.yml:47` (`cargo doc --features \"...,demo\"`), so CI's docs job genuinely depends on unpkg.com at build time today, and any downstream user who opts into `--features demo`/`advanced-analysis` hits it too. On network failure the code fails OPEN, not closed: `handle_download_failure` (build.rs:249-252) writes a `/* Asset download failed during build */` placeholder and the build continues silently -- so an offline or rate-limited build does not fail, it silently ships a broken demo asset baked in via the later `include_bytes!`/gzip step. Real, verified, bounded to the opt-in demo/advanced-analysis feature and to one CI workflow; not S1 since the published crate's default install path never executes this code. [QUORUM 3/3, PMAT-711 ph6: demoted S2->S3. The unpkg fetch needs the `demo` feature (via advanced-analysis); default = [core-languages, viz, http-client, standard-deps, mcp-http] does not include it (Cargo.toml:461), so a default `cargo install pmat` never reaches the network.]",
+    "evidence": "grep -n unpkg.com build.rs -> lines 185,189,193,196 (mermaid@latest, d3@latest confirmed); grep -n vendor .gitignore -> assets/vendor/, server/assets/vendor/; grep -n rerun-if-changed build.rs | grep vendor -> no output (watch already removed, build.rs:26-30 comments explain why); sed -n '80,90p' build.rs shows the CARGO_FEATURE_DEMO && !is_publishing() gate; grep default Cargo.toml:461 confirms demo is not default; grep -rn 'all-features|features.*demo' .github/workflows/*.yml -> docs.yml:47 builds with demo feature; read handle_download_failure/ensure_asset_downloaded/download_asset (build.rs:200-252) confirms fail-open placeholder-on-failure behavior, no build abort.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none for a default `cargo install pmat`/`cargo build`; a user who explicitly builds with `--features demo` (or `advanced-analysis`, which pulls it in) gets a non-reproducible build that reaches unpkg.com and silently ships a placeholder (broken) JS/CSS asset if the network is unavailable at build time; CI's docs.yml job is genuinely network-dependent",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-695",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1153,
+    "verdict": "TRACKER",
+    "title": "CRUX audit tracking: 25 verified defects whose acceptance tests are still draft",
+    "rationale": "This is explicitly an umbrella tracking issue, not a single unit of work: its own body says 'An item leaves this epic and gets its own issue only once its test has been rewritten to reject that lazy fix and re-run at HEAD.' Confirmed all 7 already-matured children it names as delivered/filed (CRUX-01,03,05,06,09,10,12 -> issues #1146-#1152) are CLOSED. The remaining 25 rows (CRUX-02,04,07,08,11,13-32 minus the 7 delivered) still sit inside this tracker with draft acceptance tests, per the table in the issue body -- exactly the 'children open' half of the TRACKER definition. It carries `disposition:reject` (rejected as an actionable ticket in its own right) while staying OPEN as the tracking record for the epic, which is consistent with a tracker rather than a stale/dead issue.",
+    "evidence": "gh issue view 1153 --json labels,state -> {\"state\":\"OPEN\",\"labels\":[\"disposition:reject\"]}; gh issue view {1146..1152} --json state,title -> all 7 CLOSED (CRUX-01,03,05,06,09,10,12); full issue body table lists 25 remaining MIXED/GAMEABLE items (CRUX-02,04,07,08,11,13-28,30-32) still without rewritten acceptance tests.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none - internal (audit/tracking artifact; the underlying 25 defects it tracks are not user-facing issues in this row and would each need its own triage once filed individually)",
+    "effort": "weeks",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1145,
+    "verdict": "S3_MODERATE",
+    "title": "mcp_integration::MCP_VERSION is frozen at \"2024-11-05\" and pmat-agent prints it as the protocol version",
+    "rationale": "Confirmed exactly as filed: `MCP_VERSION` is still the literal \"2024-11-05\" (src/mcp_integration/types.rs:8), still printed twice to a human by `pmat-agent` (src/bin/pmat-agent.rs:211,423), and the installed pmcp SDK's `LATEST_PROTOCOL_VERSION` is \"2025-11-25\" (pmcp 2.19.2, matching the issue's own measurement against 2.17.0/2.19.3) -- a real, currently-reproducing contradiction between a printed claim and the SDK's actual negotiated ceiling. The issue itself already scopes this correctly: `pmat-agent` requires `required-features = [\"mcp-integration\"]` (Cargo.toml:40), which is NOT in the crate's default feature set, so this reaches only users who explicitly build/run pmat-agent with that opt-in feature -- bounded blast radius, real user-visible wrong behavior when it does apply. [QUORUM 3/3, PMAT-711 ph6: demoted S2->S3. pmat-agent requires the non-default `mcp-integration` feature (Cargo.toml:40).]",
+    "evidence": "grep -n MCP_VERSION src/mcp_integration/types.rs -> line 8, \"2024-11-05\"; git grep -n mcp_integration::MCP_VERSION -- src -> src/bin/pmat-agent.rs:211,423; grep LATEST_PROTOCOL_VERSION ~/.cargo/registry/.../pmcp-2.19.2/src/types/protocol/version.rs -> \"2025-11-25\"; grep required-features Cargo.toml:40 -> [\"mcp-integration\"]; grep default Cargo.toml:461 confirms mcp-integration is not in default set.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "a user who builds/runs the opt-in `pmat-agent` binary (requires --features mcp-integration) is told the MCP protocol in use is \"2024-11-05\" when the shipped pmcp-backed server actually negotiates up to \"2025-11-25\"; no impact on the default `pmat` binary or a standard `cargo install pmat`",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-699",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1144,
+    "verdict": "S3_MODERATE",
+    "title": "the simulated refactor.* MCP surface EV-0 removed is still compiled in, on an unconstructed builder",
+    "rationale": "Confirmed the code is genuinely still present and unconstructed: `PmcpServer` still exists and is re-exported (src/mcp_pmcp/mod.rs:163), with 3 files total referencing it (git grep -c). The issue's own evidence already establishes there is no construction site in src/ and the live MCP surface stays at 19 tools with no refactor.* entries -- i.e. this is a latent risk (a future edit could re-wire the dead builder and silently re-advertise a fabricating tool engine to agents) rather than a currently-reproducing user-facing defect. That matches S3: genuine architectural/invariant risk (nothing currently guards absence of the CODE, only absence from the advertised list), no user impact today.",
+    "evidence": "git grep -c 'PmcpServer' -- src | wc -l -> 3; git grep -n 'pub use server::PmcpServer' src/mcp_pmcp/mod.rs -> line 163, confirms the re-export the issue names is still live. Did not re-run the issue's own MCP tools/list probe (would need a running pmat MCP session); relied on the issue's own already-measured tool count plus the code-presence check above.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none - internal (the dead builder is never constructed today, so no live surface advertises the simulated refactor.* tools; the risk is a future regression, not a present one)",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-699",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1143,
+    "verdict": "S3_MODERATE",
+    "title": "comply check has no peak-RSS measurement, so #1014's memory criteria cannot be judged either way",
+    "rationale": "Confirmed the proposed harness still does not exist (`scripts/measure-comply-rss.sh` -> No such file or directory) and no peak-RSS/max-RSS measurement exists anywhere in tracked config/scripts (grep for peak_rss/max_rss/maxrss/VmHWM across toml/yml/yaml/sh returns nothing, matching the issue's own evidence). This is a missing-instrument / unfalsifiable-claim problem, not a currently wrong user-facing behavior: `pmat comply check`'s printed 'peak' figure is a restatement of a hardcoded constant rather than a measurement, so nothing here is giving a WRONG answer today, it is giving NO answer -- genuine internal debt/risk that blocks judging #1014, no direct user impact.",
+    "evidence": "ls scripts/measure-comply-rss.sh -> 'No such file or directory'; grep -rn 'peak_rss|max_rss|maxrss|VmHWM' --include='*.toml' --include='*.yml' --include='*.yaml' --include='*.sh' . (excluding target) -> no output, matching the issue's own cited evidence exactly.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none - internal (blocks verifying #1014's memory-regression criteria; does not itself cause a user-visible defect)",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1142,
+    "verdict": "S3_MODERATE",
+    "title": "Manifest/target parity unenforced: nothing checks criterion_main! against [[bench]]",
+    "rationale": "Confirmed no such gate exists anywhere: `grep -rn criterion_main .github/workflows/ scripts/ Makefile` returns zero hits, matching the issue's own cited evidence exactly. Current state is 'in parity by luck, not by construction' per the issue -- there is no currently wrong behavior (all 9 declared [[bench]] entries match tracked benches/*.rs with criterion_main! today per the issue's own measurement), only an unenforced invariant that a future benchmark could silently violate (as #1017 documents actually happened once, for a benchmark backing published speedup claims). This is precisely S3: genuine unenforced-invariant risk, no user impact today.",
+    "evidence": "grep -rn 'criterion_main' .github/workflows/ scripts/ Makefile 2>/dev/null; echo exit=$? -> no matches, exit=1, confirming the issue's own zero-hit grep still holds. Did not independently re-run the issue's Cargo.toml/benches parity python snippet (would require re-parsing Cargo.toml; the issue's own count of 9 declared / 9 tracked / 9 with criterion_main, all in parity, is accepted as current since nothing about benches/ or Cargo.toml's [[bench]] section has changed per this session's git log review).",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none - internal (no gate exists to catch a benchmark whose criterion_main! stops running; no user-facing defect exists today)",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1141,
+    "verdict": "S3_MODERATE",
+    "title": "src/protocol/ (2,047 lines) and src/state/ (3,896 lines) compile into every binary, no check sees them",
+    "rationale": "Fully reproduced: both are pub mod at crate root in the default feature set, zero external references, and analyze reachability's orphan+quarantined lists contain neither. This is a real gap between three existing checks (reachability/dead-code/unreachable_pub), but the code is internal-only dead weight — it costs binary size and audit trust, not correctness or user-facing behavior.",
+    "evidence": "git ls-files src/protocol | wc -l -> 13, wc -l total -> 2047; git ls-files src/state -> 21 files, 3896 total. git grep -lE 'crate::protocol\\b|pmat::protocol\\b' -- src tests | grep -cv '^src/protocol/' -> 0. Same for state -> only tests/integration_test.rs.disabled (a .disabled file). grep -n 'pub mod protocol|pub mod state' src/lib.rs -> lines 168,185, both unconditional. pmat analyze reachability -p . -f json (local release binary, HEAD 74a0c7edd) -> orphans+quarantined filtered for src/protocol|src/state -> []. All numbers match the issue exactly.",
+    "verification": "REPRODUCED",
+    "user_impact": "none - internal (larger shipped binary only; no functional or correctness effect on users of the published crate)",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-699",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1140,
+    "verdict": "S4_TRIVIAL",
+    "title": "pmat analyze vacuous-tests --help still prints the retracted 802/~933 figures",
+    "rationale": "Reproduced verbatim in the shipped --help text and in src at the cited constants, while CHANGELOG.md itself already carries the retraction 4 lines away in spirit (different section). This is a stale numeric claim in doc text, cosmetic/doc-only per the severity scale — it does not change analyzer behavior, only what a user reads before running it.",
+    "evidence": "pmat analyze vacuous-tests --help (release binary, HEAD 74a0c7edd) -> first line prints '~933 tests ... 584 of forjar's 802' verbatim. git grep -n \"933 tests|584 of forjar\" -- src -> src/cli/commands/analyze_commands/mod.rs:462-463 and src/services/vacuous_tests.rs:5,659 (line numbers drifted slightly from the issue's 439/440 but same text, same files). grep -n 'corrects the figure in #1018' CHANGELOG.md -> line 1182, confirms the retraction is documented elsewhere but not reflected in the CLI text.",
+    "verification": "REPRODUCED",
+    "user_impact": "a user reading --help before running the analyzer sees a retracted, larger number and may misjudge severity when the tool later reports far fewer findings",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-699",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1139,
+    "verdict": "S2_SERIOUS",
+    "title": "analyze vacuous-tests misses assert-over-empty-set and expect-on-harness-only test shapes",
+    "rationale": "Reproduced live, not just read: running the current binary's own analyzer against this repo's own test suite (HEAD) returns zero vacuous-test hits for tests/modules/dependency_duplicates_test.rs, even though both cited functions (test_no_critical_duplicates at line 111 with an empty CRITICAL_DUPLICATES slice, and test_document_unavoidable_duplicates at line 140 with zero assertions) are textbook vacuous tests by the issue's own definitions. This is a real, currently-reproducing gap in a user-facing analyzer's output (its report of '1178 findings' is undercounted and gives false confidence), but blast radius is bounded to analyzer precision - no data corruption, no build breakage, and a manual-review workaround exists.",
+    "evidence": "sed -n '18,26p;120,135p' tests/modules/dependency_duplicates_test.rs confirms the empty CRITICAL_DUPLICATES const and the assert!(violations.is_empty(),...) shape exactly as cited. grep -n 'fn test_document_unavoidable_duplicates|fn test_no_critical_duplicates' confirms both function names/line numbers. pmat analyze vacuous-tests -p . -f json (release binary) -> jq filter for file matching 'dependency_duplicates' in the 'vacuous' array -> 0 hits, i.e. the analyzer genuinely walks past both live instances today.",
+    "verification": "REPRODUCED",
+    "user_impact": "users of pmat analyze vacuous-tests get an undercount and a false sense of completeness on their own test suites for these two specific shapes",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1138,
+    "verdict": "S2_SERIOUS",
+    "title": "pmat config --show is labelled Raw Configuration (TOML) but silently drops honoured keys",
+    "rationale": "Reproduced exactly: copying this repo's own pmat.toml (which sets 3 [quality] keys) into a scratch dir and running config --show yields zero occurrences of all three keys, while grep confirms two independent readers (quality_gate_config.rs:161 and :205, cited by the issue) genuinely consume them via toml.get('quality').get(key) lookups outside the PmatConfig struct. This is user-visible wrong information from a config-auditing command (it inverts the truth — presents honoured keys as absent), but it is read-only/informational: no gate behavior changes as a result, and reading pmat.toml directly is a workaround.",
+    "evidence": "cd scratch; cp <repo>/pmat.toml .; grep -c 'min_pattern_diversity|max_pattern_repetition|max_entropy_violations' pmat.toml -> 3; pmat config --show | grep -c same-pattern -> 0. Output header literally reads 'Raw Configuration (TOML):' followed by [system] etc. grep -n 'min_pattern_diversity|max_entropy_violations' src/cli/analysis_utilities/quality_gate_config.rs -> lines 161 (read_entropy_threshold_from_pmat_toml) and 199-205 (load_entropy_gate_config's [quality] fallback), confirming these are genuinely read, not just claimed.",
+    "verification": "REPRODUCED",
+    "user_impact": "a user auditing their config with pmat config --show concludes 3 keys their pmat.toml sets and pmat genuinely honours do not exist / are dead",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-698",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1137,
+    "verdict": "S3_MODERATE",
+    "title": "hooks_gates.rs's generate_gate_config_toml() writes sections its own [gates] reader never consumes, and a guard test pins the wrong invariant — but the generator has no production caller today",
+    "rationale": "Read + reproduced both halves. Reader half confirmed: quality_gates_handler.rs:18-36 declares GateConfigToml{gates: GateConfigInner} with all 8 keys the issue names, and a live differential (write .pmat-gates.toml with [gates] max_complexity=3/min_coverage=55.0, run pmat quality-gates show) correctly echoes both values — so the [gates] reader genuinely binds. Generator half confirmed differently from the issue's framing though: I ran `pmat hooks install` in a scratch dir and it does NOT create .pmat-gates.toml at all (install_all_hooks_with_gates, which calls the offending generate_gate_config_toml(), has zero production callers per git grep — confirmed only test call sites in hooks_tests.rs). So today no live CLI path emits the broken [entropy]/[tdg]/[quality] file; the aggravating guard test at hooks_gates.rs:168-184 (assert!(!parsed.contains_key(\"gates\"), \"the dead [gates] table is back\")) is real and does exactly what the issue says — it pins a would-be regression in code that cannot currently reach a user. Also confirmed pmat quality-gates init (a separate, live generator in src/quality/config.rs) still correctly emits [gates] with all 8 keys and quality-gates validate reports it green — so the currently-reachable generator/reader pair is NOT broken.",
+    "evidence": "printf '[gates]\\nmax_complexity=3\\nmin_coverage=55.0' > .pmat-gates.toml; pmat quality-gates show | grep min_coverage,max_complexity -> min_coverage=55, max_complexity=3 (reader binds). rm .pmat-gates.toml; pmat hooks install; ls -a -> no .pmat-gates.toml created (generator not reached). git grep -n 'install_all_hooks_with_gates|install_gate_config|generate_gate_config_toml' -- src -> definitions + tests only, no non-test caller. pmat quality-gates init; cat .pmat-gates.toml -> [gates] section with all 8 keys; pmat quality-gates validate -> '✅ Configuration is valid' exit=0, correctly, since this generator/reader pair matches. Read hooks_gates.rs:84-107 (template) and :168-185 (guard test) confirming the exact assertion text cited by the issue.",
+    "verification": "REPRODUCED",
+    "user_impact": "none today - the broken generator (hooks_gates.rs) has no caller reachable from any pmat subcommand; the reachable generator (quality-gates init) still correctly agrees with its reader. Risk is latent: if install_all_hooks_with_gates is ever wired to a CLI path (its name strongly suggests that was the intent), it will silently blank a user's real gate config, and the guard test would then have to be deleted or fixed rather than caught by CI",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-698",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1136,
+    "verdict": "S4_TRIVIAL",
+    "title": "70 of 71 top-level Commands variants have no MCP exposure declaration — decide it or write the decision down",
+    "rationale": "Confirmed the raw count (74 regex matches including Ok/Err/Ok noise, matching the issue's own accounting to 71 real variants) and confirmed only analyze_mcp_exposure*.rs and mcp_manifest.rs reference the exposure-registry symbols, i.e. only the Analyze family has a declared exposure. But the issue's own text says its ask is explicitly a decision to be made or written down ('Status of this item is contested... Closing this issue as won't-do with §9.2's reasoning is an acceptable outcome... silence is not'). That is exactly the severity scale's S4 category: 'a decision-to-write-down', not a live defect with user-visible wrong behavior — nothing currently misreports what's exposed; it's a governance/completeness gap for future variants.",
+    "evidence": "python3 regex over src/cli/commands/commands_enum/definition.rs 'pub enum Commands' body -> 74 matches (matches issue's count before subtracting Ok/Err noise). git grep -n 'parity_summary|ANALYZE_MCP_REGISTRY|required_analyze_tools' -- src -> only src/cli/analyze_mcp_exposure.rs, analyze_mcp_exposure_tests.rs, handlers/mcp_manifest.rs; no hits for any other command family.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none - internal (no MCP tool advertises exposure for these commands incorrectly today; this is a completeness/governance gap for future additions, not a live wrong answer)",
+    "effort": "unknown",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1135,
+    "verdict": "S3_MODERATE",
+    "title": "Two dead MCP tool inventories (initialize_tools_*.rs, mcp_simple/handler.rs) still advertise Backlog-marked analyzers",
+    "rationale": "Reproduced: confirmed 21 tool names across the 5 initialize_tools_*.rs files, confirmed handlers::handle_request has zero non-test/non-self callers, and confirmed SimpleMcpHandler::new has zero non-test constructors anywhere in src/tests/benches. Then proved the live surface actually disagrees with both stale inventories: sending tools/call for analyze_tdg (listed in mcp_simple's inventory) against the real --mode mcp server returns 'Tool not found', confirming the two inventories are dead code that could mislead an engineer grepping for a tool name into believing it is registered, with zero live-surface impact today.",
+    "evidence": "grep -hcE '\"name\": *\"[a-z_0-9]+\"' src/handlers/initialize_tools_*.rs | paste -sd+ | bc -> 21. git grep -rn 'handlers::handle_request' -- src tests | grep -v '^src/handlers/|^src/tests/' -> no hits. git grep -rn 'SimpleMcpHandler::new' -- src tests benches | grep -v tests.rs/comprehensive_tests -> no hits. Live differential: echo initialize handshake + tools/call analyze_tdg piped to release binary --mode mcp -> {\"error\":{\"code\":-32602,\"message\":\"Resource not found: Tool 'analyze_tdg' not found\"}}.",
+    "verification": "REPRODUCED",
+    "user_impact": "none - internal (an engineer could be misled while reading the code, but no live MCP client is affected since the real server correctly refuses these tool names)",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-699",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1134,
+    "verdict": "S2_SERIOUS",
+    "title": "pmat init's next: verification command returns a JSON-RPC error on a fresh workspace",
+    "rationale": "Fully reproduced end-to-end in a real scratch workspace, exactly as the issue describes. Ran `pmat init --target agy --path <scratch>`, captured the literal 'next:' line, and ran the exact printed command: it returns {\"error\":{\"code\":-32602,\"message\":\"Invalid params for initialize: missing field protocolVersion\"}}. Sending a conformant initialize payload against the same binary succeeds. This is user-visible wrong behavior on the first command a brand-new user is told to run - genuinely serious since it undermines trust in a correct registration immediately after setup - but the actual MCP server and registration are not broken (a real MCP client like Claude/Antigravity always sends a conformant initialize with protocolVersion), so blast radius is bounded to the printed example/self-check being wrong, not the real integration path. Does not corrupt data, does not false-green a release gate, and does not block cutting 3.41.0.",
+    "evidence": "mkdir scratch; pmat init --target agy --path scratch (release binary, HEAD 74a0c7edd) -> printed exactly: 'next: install pmat on PATH (\\`cargo install pmat\\`), then verify the MCP registration with:  pmat --mode mcp <<< ...{\"method\":\"initialize\",\"params\":{}}'. Ran that verbatim: echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}' | pmat --mode mcp -> {\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32602,\"message\":\"Invalid params for initialize: missing field \\`protocolVersion\\`\"}}. Control: same command with protocolVersion/capabilities/clientInfo added -> {\"result\":{...,\"serverInfo\":{\"name\":\"paiml-mcp-agent-toolkit\",\"version\":\"3.40.0\"}}}.",
+    "verification": "REPRODUCED",
+    "user_impact": "every new user who follows pmat init's own printed self-check sees a JSON-RPC error immediately after a successful setup, and may wrongly conclude their MCP registration is broken",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-699",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1133,
+    "verdict": "STALE_OR_FIXED",
+    "title": "pmat init --target agy writes one skill, not \"progressive skills\" (PMAT-INIT-002 claim 3)",
+    "rationale": "The defect (only 1 skill file, no reference/supporting hierarchy) is real but has already been formally recorded, not silently ignored: contracts/work/PMAT-INIT-002.yaml PO-C13 carries the exact same statement verbatim ('PARTIAL, RECORDED: claim 3's word \"progressive\" was not delivered...') with its own evidence_method reproducing the finding. The issue is asking for a DECISION (deliver the hierarchy vs soften the doc claim) that is not yet made, but the drift itself is already disclosed in-tree rather than hidden, which is why STALE_OR_FIXED fits better than an open severity - the tracking obligation this issue exists to force is done; what remains is a design choice, which is S4-grade work regardless.",
+    "evidence": "grep -n 'PARTIAL, RECORDED' contracts/work/PMAT-INIT-002.yaml -> lines 98 and 137, PO-C13, verbatim match to the issue's own quoted PMAT-INIT-002.yaml:97 text; evidence_method there is `cargo run -q --bin pmat -- init --target agy --path $d && find .agents/skills -type f` which is the same measurement the issue performed against the 3.34.0 release binary.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "Cosmetic/doc-accuracy only; agy init functions correctly, just as a single skill not a hierarchy.",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1132,
+    "verdict": "S3_MODERATE",
+    "title": "Enforcement metadata claims a required check that does not exist",
+    "rationale": "Live branch protection (5 contexts: ci/gate, feature-gate, docs build, pmat score, provable ladder) does NOT include mutation-diff, and required-status-checks.txt's contexts list AGREES with live (correct, no drift). But two artefacts have stale/false prose: (1) mutation-diff.yml:50-66 falsely claims mutation-diff IS a required check registered in branch protection, quoting a fake contexts list ending in 'mutation-diff' - live protection has no such entry; (2) required-status-checks.txt's comment claims the mutation-diff.yml workflow 'exists only on feat/cb-2100-gate-effect and is not on master' - false, it IS committed on master HEAD c30314fbf with a pull_request trigger. Net effect: mutation-diff is correctly NOT enforced (no false-green merge gap), but the documentation meant to be the single source of truth about enforcement contradicts itself and the live setting in two places. All 5 checks that ARE required each have a producing workflow with a pull_request trigger, so branch protection itself is not theatre today.",
+    "evidence": "gh api repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection --jq '.required_status_checks.contexts' -> [\"ci / gate\",\"feature-gate\",\"docs build (docs.rs environment)\",\"pmat score\",\"provable ladder\"] (no mutation-diff); cat .github/required-status-checks.txt lists the same 5 (matches live) with a comment saying mutation-diff.yml 'exists only on feat/cb-2100-gate-effect and is not on master' - but git ls-tree -r HEAD --name-only | grep mutation-diff shows .github/workflows/mutation-diff.yml IS tracked on master HEAD c30314fbf, and sed -n 79,92p mutation-diff.yml shows pull_request trigger types [opened,synchronize,reopened,labeled] - so that comment is stale/false; mutation-diff.yml:50-66 header comment falsely says 'REQUIRED CHECK...registered directly...Verified against the live setting' quoting a contexts list ending \"mutation-diff\" that does not match the live list just measured. Confirmed the other 5 required contexts each have a producing workflow with a pull_request trigger (ci.yml, docsrs.yml, feature-matrix.yml, quality-gate.yml).",
+    "verification": "REPRODUCED",
+    "user_impact": "No live merge-safety gap today: mutation-diff is correctly unenforced and required-status-checks.txt's contexts list matches live protection. The harm is that two artefacts whose entire purpose is documenting enforcement truth both assert false things that contradict each other and the live setting, which would mislead anyone reasoning about what blocks a merge, and (per the issue) risks a future accidental PATCH that adds mutation-diff to required contexts based on the false claim, which WOULD deadlock every PR since the job skips on unlabelled PRs and treats skipped as passing per the comment at mutation-diff.yml around line 70.",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-696",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1131,
+    "verdict": "S3_MODERATE",
+    "title": "quality-gate reports two different denominators for one tree in one JSON doc",
+    "rationale": "Reproduced the exact fixture from the issue on current master's installed pmat: a 2-file dir (lib.rs with a TODO, deploy.sh) run through `--checks satd` reports files_examined=2 (both files in the tree) but files_not_read.satd.discovered=1 (only lib.rs survives the SATD extension allowlist before deploy.sh is excluded) - two different denominators in one JSON document with no field documenting which population backs satd_violations. This matches the issue's own fixture result byte-for-byte (files_examined:2, discovered:1).",
+    "evidence": "cd $SCRATCH/fx1131 (lib.rs w/ '// TODO: fix this', deploy.sh) && pmat quality-gate --project-path . --checks satd --format json -> results.files_examined=2, results.files_not_read.satd={discovered:1,analyzed:1,not_read:{...all 0}}. Same numbers the issue quotes for its own fixture case.",
+    "verification": "REPRODUCED",
+    "user_impact": "A consumer parsing quality-gate JSON cannot tell which count is the denominator behind a violation ratio; two legitimate-looking totals disagree for the same tree with no documentation distinguishing raw file count from post-allowlist discovered count.",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1130,
+    "verdict": "S3_MODERATE",
+    "title": "Verify #1035 Cluster 2's three never-independently-checked comply-ladder rows",
+    "rationale": "This is a request to RUN `pmat comply check` against three local repos (whisper.apr, infra, rmedia) to verify three specific self-contradictory-looking rows (a ratio over 100%, a 'no files found' claim contradicted by 9 existing files, and two contract-count checks that disagree 27 vs 942 on the same repo). CONTEXT.md and the forbidden list both explicitly ban running `pmat comply check` in this session (saturates the machine at ~744% CPU, load 75), so the actual verification this issue asks for cannot be performed here. The three repos were confirmed to exist locally as of the issue's own 2026-09-02 measurement; I did not re-check repo existence or re-run comply. Internally the ask is legitimate: an unverified fleet-audit row is exactly the kind of number this project has repeatedly found to be wrong on closer inspection (see CLAUDE.md's ratchet/coherence sections), so this is real, bounded debt, not busywork.",
+    "evidence": "NOT CHECKED - `pmat comply check` is on the forbidden-commands list for this triage session and was not run against whisper.apr/infra/rmedia.",
+    "verification": "TICKET_TEXT_ONLY",
+    "user_impact": "No end-user impact; risk is that comply-ladder rows quoted elsewhere (fleet audits, release receipts) rest on unverified/self-contradictory data for these 3 repos.",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1129,
+    "verdict": "S2_SERIOUS",
+    "title": "quality-gate --checks security misses AWS-key-shaped literal",
+    "rationale": "Reproduced on current master's installed pmat with the issue's own fixture shape (4 planted secrets in one file directly under project root, single-directory walk so scope can't be blamed): only the hardcoded-password literal at line 2 is flagged (security_violations=1); the AKIA-shaped AWS access key at line 3 is not detected at all, matching the issue's finding that 'one of four fires' and the AKIA literal is specifically the one that does not. The headline 'pmat has no hardcoded-absolute-path detector' half of the parent cluster is out of scope here (already fixed per issue text via `analyze hardcoded-paths`); this is the narrower, still-open detector-breadth defect.",
+    "evidence": "$SCRATCH/fx1129/root_leak.rs: password/AKIA key/2 paths, 1 file directly under project root. pmat quality-gate --project-path . --checks security --format json -> security_violations=1, total_violations=2, violations=['[security] ./root_leak.rs:2 - Hardcoded password detected', '[scope] ... did NOT descend into subdirectories ...']. No violation reported for the AKIA key literal at line 3.",
+    "verification": "REPRODUCED",
+    "user_impact": "Security gate silently misses a real class of leaked secret (cloud access keys) while reporting pass/fail as if breadth were complete; a repo with only an AWS key leak and no password literal would show security_violations=0 and PASS.",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1128,
+    "verdict": "S3_MODERATE",
+    "title": "Two Dependabot advisory gates ship; only one wired, orphan is dead code, docs reference nonexistent files",
+    "rationale": "Confirmed both scripts exist (scripts/dependabot-alert-gate.sh singular 32K, scripts/dependabot-alerts-gate.sh plural 12K) and that ONLY the plural is invoked by a live workflow: feature-matrix.yml:549,587 call dependabot-alerts-gate.sh. The singular is referenced only inside a documentation comment block (quality-gate.yml lines ~83-100) that names .github/workflows/security-advisories.yml as the workflow that runs it - but that path does not exist as an active workflow, only as .github/workflows/security-advisories.yml.disabled (confirmed with `test -e`). So the comment block genuinely documents a non-existent live workflow, exactly as filed.",
+    "evidence": "ls -la scripts/dependabot* .github/dependabot-ack* .github/workflows/security-advisories* -> both scripts + .toml + .txt + '.yml.disabled' present; grep -n dependabot-alert(s)-gate.sh .github/workflows/*.yml -> only feature-matrix.yml:549/587 call the plural (live); test -e .github/workflows/security-advisories.yml -> DOES NOT EXIST (only the .disabled file); quality-gate.yml:83-100 comment names that nonexistent path and the singular (dead) script as 'the other half' of the security check.",
+    "verification": "REPRODUCED",
+    "user_impact": "No functional break (the live gate is correctly wired via the plural script); harm is a dead 32K script plus a 24-line doc block in quality-gate.yml pointing engineers at a workflow file that does not exist, which will mislead anyone auditing what the Dependabot gate actually does.",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-696",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1127,
+    "verdict": "S3_MODERATE",
+    "title": "quality_proxy child compilers have deadline+process-group but no memory bound",
+    "rationale": "Confirmed exactly as filed: `git grep -ni 'rlimit|setrlimit|RLIMIT_AS' -- src` outside memory_limiter.rs returns nothing, so no caller applies an address-space limit to the clippy/rustfmt child processes the quality proxy spawns. `git grep -n memory_limiter|MemoryLimiter -- src` shows it is reachable only via src/resources/resource_manager.rs, never from quality_proxy_analysis.rs (which only defines CLIPPY_TIMEOUT=60s/600s(test) and RUSTFMT_TIMEOUT=10s, no memory bound). Timeout and process-group kill (Task 4.2's first two asks) are genuinely delivered per the issue's own citations; the memory bound is genuinely absent.",
+    "evidence": "git grep -ni 'rlimit|setrlimit|RLIMIT_AS' -- src | grep -v memory_limiter.rs -> no output; git grep -n memory_limiter -- src | grep -v memory_limiter.rs -> only resource_manager.rs:19,23; sed -n 25,45p src/services/quality_proxy_analysis.rs -> CLIPPY_TIMEOUT/RUSTFMT_TIMEOUT consts, no rlimit/memory reference in that file.",
+    "verification": "REPRODUCED",
+    "user_impact": "A pathological macro expansion or similar in caller-supplied content sent through the MCP quality proxy can exhaust host memory before the timeout fires; the timeout/process-group kill bound time and PID fanout but not RSS/address-space.",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-694",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1125,
+    "verdict": "S4_TRIVIAL",
+    "title": "#1090 Task 3: decide, in writing, whether pmat ships a tamper-evident MCP audit ledger",
+    "rationale": "Confirmed the ledger's own prior releases already flag this as an open, undecided item rather than something freshly discovered: docs/audits/dispositions-3.39.0.json:172 and dispositions-3.40.0.json:207 both carry the identical rationale '#1090 Task 3 ... still undecided; no mcp-audit.jsonl or verify-audit-log surface found', so this has persisted across at least two releases without a decision. `git grep -rn mcp-audit|mcp_audit|verify-audit-log -- src docs` finds only those two disposition-ledger mentions and nothing else - no implementation, no CHANGELOG rejection entry (unlike sibling Task 1, which the issue itself cites as the model to follow). This is exactly the 'decision-to-write-down' shape the severity scale describes.",
+    "evidence": "git grep -rn 'mcp-audit|mcp_audit|verify-audit-log' -- src docs -> only docs/audits/dispositions-3.39.0.json:172 and dispositions-3.40.0.json:207, both stating the item is still undecided; no src/ implementation, no CHANGELOG.md rejection entry comparable to Task 1's.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "No user-facing effect either way yet; the open question is whether pmat should ship a tamper-evident MCP audit trail at all, which the issue argues has a different (narrower but real) value proposition than the already-rejected Task 1.",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1124,
+    "verdict": "S2_SERIOUS",
+    "title": "quality_proxy gates_run claims complexity ran for bash/C/TypeScript where heuristic can return a false-zero",
+    "rationale": "Partially confirmed, partially refuted. Direct measurement on current tree (pmat 3.39.0 installed binary + repo src at HEAD) shows TypeScript and C are now correctly analyzed via JavaScriptAnalyzer/CAnalyzer: a 15-branch if/else function in both big.ts and big.c yielded cyclomatic=16 (matches actual complexity), NOT the cc=1 constant the issue's 3.34.0 evidence showed. That part of #1124 is REFUTED on current master. However the underlying architecture bug is real for Bash: create_analyzer() maps Language::Bash to JavaScriptAnalyzer (src/cli/language_analyzer/mod.rs), whose is_function_declaration() only matches `function `/`=>`/`= function` JS-style syntax (javascript.rs:189-202) and never matches ordinary `name() { ... }` bash function syntax. extract_functions() therefore returns 0 functions for a typical bash file, max_function_cyclomatic (quality_proxy_analysis.rs:55-69) does unwrap_or(0) on the empty iterator giving 0, and complexity_stage (quality_proxy_analysis.rs:408-462) treats measure_complexity's Ok(_) (0 functions is not an Err) as a successful measurement, pushing GATE_COMPLEXITY into gates_run with max_complexity=0. So for bash specifically, gates_run still asserts complexity ran when nothing was actually extracted -- exactly the false-green pattern #1090/#1124 describe, just narrower in scope (bash-syntax functions only, not all 3 languages named).",
+    "evidence": "code read: src/cli/language_analyzer/mod.rs (create_analyzer Bash->JavaScriptAnalyzer), src/cli/language_analyzer/javascript.rs:189-202 (is_function_declaration, no bash `name(){}` pattern), src/services/quality_proxy_analysis.rs:55-69 (max_function_cyclomatic unwrap_or(0)) and :408-462 (complexity_stage pushes gates_run on any Ok, including 0 functions). Direct repro: `pmat analyze complexity --path big.ts/.c --format json` on a 15-branch function in /tmp scratch gave cyclomatic:16 for both TS and C (contradicts issue's cc=1 evidence at 3.34.0 -- TS/C portion appears fixed since). Could not invoke the quality_proxy MCP tool itself directly (no CLI shim found in budget) to confirm gates_run for bash end-to-end; inferred from the two functions' code paths.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "quality_proxy callers (MCP agents) gating bash scripts get a silent false pass on complexity for common bash function syntax -- a caller cannot ever fail max_complexity on such a file. TS/C no longer affected per direct measurement.",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1123,
+    "verdict": "S3_MODERATE",
+    "title": "resolve_import_to_node is O(imports x nodes) with a fresh allocation per candidate",
+    "rationale": "Confirmed the code shape is unchanged verbatim at src/graph/builder_analysis.rs:140-152: linear scan of node_map per import call, path_to_module allocates a String per candidate. Confirmed the issue's own caveat still holds: `git grep -n resolve_import_to_node -- src` returns 3 hits (the definition plus its own tests) -- no production caller found in this budget, meaning today's blast radius is limited or zero. Genuine algorithmic debt, no evidence of user-facing slowness since nothing calls it in production.",
+    "evidence": "sed -n '138,152p' src/graph/builder_analysis.rs matches the issue's quoted code exactly; `git grep -n resolve_import_to_node -- src | wc -l` = 3.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none currently observable -- function appears unreachable from any production caller within this repo's src tree.",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1122,
+    "verdict": "S4_TRIVIAL",
+    "title": "Docker artifacts publish stale tag vs crate version; docs pin a different stale tag",
+    "rationale": "The specific root-cause mechanism the issue names (a tag-triggered workflow auto-republishing every release under a hardcoded 2.10.0 tag) is FIXED: .github/workflows/docker-publish.yml now triggers only on workflow_dispatch (not tags), has a credential preflight that exits with a named error rather than a stack trace, and derives the pushed tag from Cargo.toml's version at build time (`steps.ver.outputs.version`) instead of a literal string -- the file's own header comment cites PMAT-675 (3.39.0) and #1122 explicitly as the reason. So no live automation can currently republish a stale version tag. Residual staleness remains only in two static files that nothing currently regenerates: docker-compose.yml still hardcodes `paiml/pmat:2.10.0` (3 occurrences) and docs/DOCKER.md still tells users to pull `paiml/pmat:2.12.0` (17 occurrences) against a 3.40.0 crate. This is stale documentation/config debt, not an active data-corruption or gate-false-green risk, and the publish workflow requires manual credentialed dispatch that is not routinely run.",
+    "evidence": "grep -n 'IMAGE_NAME\\|steps.ver' .github/workflows/docker-publish.yml shows workflow_dispatch trigger + version derived from Cargo.toml (lines 1-60); Cargo.toml version=3.40.0; docker-compose.yml lines 6,24,42 = paiml/pmat:2.10.0; `grep -c paiml/pmat:2.12.0 docs/DOCKER.md` = 17.",
+    "verification": "REPRODUCED",
+    "user_impact": "a user following docs/DOCKER.md today would pull a tag (2.12.0) the workflow has never produced from a 3.x build; a user running the checked-in docker-compose.yml gets a 2-major-version-old stale image. No worse than before, but not yet cleaned up.",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1121,
+    "verdict": "S3_MODERATE",
+    "title": "pmat analyze complexity is quadratic in functions-per-file on the heuristic path",
+    "rationale": "REPRODUCED on the installed binary (pmat 3.39.0) with a direct doubling measurement, as instructed. Generated synthetic C files (C maps to the heuristic path, not the Rust AST path) with N=2000, 4000, 8000 trivial one-branch functions and timed `pmat analyze complexity --path fN.c --format json` (3 runs each, results stable to within ~1%): 2000->0.057s, 4000->0.182s (3.16x), 8000->0.666s (3.66x). The ratio is rising toward 4x as N grows and fixed per-invocation overhead becomes negligible, consistent with the issue's own claimed 'measured 4x per doubling' and inconsistent with linear (~2x). Code-read confirms the shape: process_function_infos (mod.rs:235) calls estimate_complexity per function over the whole file content, and 7 of the LanguageAnalyzer impls (c.rs:41, javascript.rs, python.rs, rust.rs heuristic fallback, etc.) do `content.lines().collect()` inside estimate_complexity -- an O(F x L) reallocation per file, reached from every non-Rust file and any Rust file syn cannot parse.",
+    "evidence": "Ran (scratchpad /tmp/.../q1121): pmat analyze complexity --path f2000.c: 0.057/0.057/0.057s; f4000.c: 0.182/0.181/0.184s; f8000.c: 0.666/0.665/0.665s. Ratios: 4000/2000=3.16x, 8000/4000=3.66x. Code: src/cli/language_analyzer/mod.rs:235-251 process_function_infos, src/cli/language_analyzer/c.rs:41 `let lines: Vec<&str> = content.lines().collect()` inside estimate_complexity.",
+    "verification": "REPRODUCED",
+    "user_impact": "large non-Rust files (or unparseable Rust files) get measurably superlinear complexity-analysis time; at repo scale (many large files) this is real but bounded per-file cost, not a hang or correctness bug -- no wrong numbers, just slower.",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1120,
+    "verdict": "S3_MODERATE",
+    "title": "Blocking std::fs calls on two async hot paths",
+    "rationale": "Both call sites confirmed present verbatim at HEAD. (1) discover_project_structure (src/services/deep_context/analyzer_core/file_tree.rs:14, `pub(crate) async fn`) walks via build_file_tree_recursive which calls plain `std::fs::metadata`/`std::fs::read_dir` (confirmed at file_tree.rs:38,78) on the async runtime thread. (2) CargoDeadCodeAnalyzer::analyze (src/services/cargo_dead_code_analyzer/analysis.rs:27, `pub async fn`) calls try_load_cache/save_cache which do blocking `std::fs::read_to_string`/`std::fs::write` (cache_operations.rs:58,132). Both are genuine architecture defects: blocking calls inside async fns will stall the executing worker thread under a single/limited-thread tokio runtime. Did not reproduce the stall itself (would require a concurrency test harness, out of this triage's budget) so grading on code presence, not measured contention.",
+    "evidence": "sed -n '10,20p' analyzer_core/file_tree.rs shows the async fn; grep std::fs in file_tree.rs lines 38,78; sed -n '25,32p' cargo_dead_code_analyzer/analysis.rs shows async fn analyze calling try_load_cache; grep std::fs in cache_operations.rs lines 58,132.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "on a constrained tokio runtime (e.g. current_thread flavor, or a saturated worker pool under MCP concurrency) these calls can stall other in-flight async work sharing the runtime; no data corruption, and default multi-threaded tokio runtimes tolerate this better.",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1119,
+    "verdict": "S4_TRIVIAL",
+    "title": "Four independent McpRequest/McpResponse definitions",
+    "rationale": "Confirmed unchanged at HEAD: `git grep -n 'pub struct McpRequest\\|pub struct McpResponse' -- src` returns exactly the same 8 lines (4 struct pairs) the issue quotes: src/agents_md/bridge.rs, src/demo/adapters/mcp.rs, src/mcp_integration/types.rs, src/models/mcp_types.rs. This is real duplication and a maintenance/consistency risk (matches the pattern behind CRUX-08/09 per the issue), but is purely an internal-consistency/ergonomics concern -- nothing in this triage found a user-observable wire-contract mismatch caused by it today; it is a risk for future drift, not a currently reproducing user bug.",
+    "evidence": "git grep -n 'pub struct McpRequest\\|pub struct McpResponse' -- src: 8 hits across 4 files, byte-identical to the issue's own evidence block.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none observed today; latent risk that the 4 definitions drift and different transports disagree on the envelope shape (as already documented for other CRUX findings), but no currently-reproducing contract break located within this triage's scope.",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1118,
+    "verdict": "S4_TRIVIAL",
+    "title": "Commands is a 1,800+ line enum with 71+ variants",
+    "rationale": "Confirmed and slightly worse than filed: the `pub enum Commands` block now spans 1833 lines (was 1822 when #1118 was filed), and the whole file is 2378 lines (was ~2367). This is a real single-responsibility/OCP violation making every new subcommand touch one central file, but it is pure maintainer ergonomics -- it does not change CLI behavior, does not risk correctness, and has no user-visible effect. Grading on user impact per the batch instructions, not on aesthetics.",
+    "evidence": "awk '/pub enum Commands \\{/{s=NR} s&&/^\\}/{print NR-s+1\" lines\"}' src/cli/commands/commands_enum/definition.rs => 1833 lines; wc -l same file => 2378.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none to end users; slows contributor velocity when adding subcommands (every addition touches this one file plus dispatch match arms).",
+    "effort": "weeks",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1090,
+    "verdict": "TRACKER",
+    "title": "[EPIC] PMAT Deep MCP Capability Improvements & Defect Hardening",
+    "rationale": "This is an umbrella epic (Aug 2026) whose findings were subsequently re-triaged and split into 41 discrete open issues per CONTEXT.md's board facts, 17 of which are already folded into roadmap train tickets (PMAT-694..699) and confirmed still OPEN via `gh issue view --json state` for all 17 (#1074,#1124,#1127,#1128,#1131,#1132,#1134,#1135,#1137,#1138,#1140,#1141,#1144,#1145,#1156,#1162,#1202), plus this batch's own 24 untracked descendants (#999,#1014,#1017-1019,#1031,#1034-1035,#1090 itself,#1118-1123,#1125,#1129-1130,#1133,#1136,#1139,#1142-1143,#1153) also open. The epic itself represents no single unit of work; its value has already been realized by decomposition into the tickets above. It should stay open only as a pointer, or be closed by the orchestrator once every child is dispositioned -- not actioned directly.",
+    "evidence": "gh issue view for all 17 ticketed children returned state=OPEN for every one; CONTEXT.md board facts list the 24 untracked children, all present in the open-issue set this batch and its siblings are drawn from.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none directly -- epic itself does no work; its child issues carry whatever impact they individually have (see #1118-1124 above for this batch's slice).",
+    "effort": "unknown",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1074,
+    "verdict": "S3_MODERATE",
+    "title": "cargo deny 'advisories ok' is structurally blind to GHSA-only advisories",
+    "rationale": "cargo deny reads only RustSec (no thrift entry); GitHub Dependabot DB is a superset - confirmed architectural blind spot. But today Cargo.lock has no thrift dep and open Dependabot alert count is 0, so no live false-green exists right now. Folded into PMAT-696.",
+    "evidence": "cargo deny check advisories -> 'advisories ok' exit 0. gh api dependabot/alerts --paginate --jq open count -> 0, detail -> []. grep thrift in Cargo.lock -> no match (dep removed).",
+    "verification": "REPRODUCED",
+    "user_impact": "none today; blind spot would recur silently on a future GHSA-only advisory",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": "PMAT-696",
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1035,
+    "verdict": "TRACKER",
+    "title": "Root cause: pmat renders 'not measured' as 'measured and clean' (12-repo stack audit, 5 clusters)",
+    "rationale": "Umbrella writeup spanning 12 OTHER repos with a 5-cluster table, several items already marked FIXED in the body itself (CB-400, SATD ///, CB-402). Labeled disposition:reject but stays OPEN by board policy (human-authored items never closed on reject) - permanent record, not live work.",
+    "evidence": "gh issue view 1035: state=OPEN labels=[disposition:reject]; body table mixes FIXED/open sub-items, none a single pmat-actionable unit.",
+    "verification": "TICKET_TEXT_ONLY",
+    "user_impact": "none direct; documents a design gap, partially remediated per its own table",
+    "effort": "unknown",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1034,
+    "verdict": "TRACKER",
+    "title": "pmat comply: evidence-derived feature backlog (T0 done; 4 source premises corrected)",
+    "rationale": "Explicit tracking issue for a 9-ticket backlog from an external PDF audit; body is T0 corrections. Spot-checked 2 T0 claims: required_status_checks.contexts now has 5 entries incl 'provable ladder' (issue lists 4, stale), and .pmat-metrics.toml max_unwrap_calls is now 0 with explanatory comment matching CLAUDE.md's already-documented CB-2102 fix - i.e. already landed. Backlog .md file not found in tree.",
+    "evidence": "find -iname pmat-comply-evidence-backlog* -> none. gh api branches/master/protection contexts -> 5 entries incl 'provable ladder'. grep max_unwrap_calls .pmat-metrics.toml -> now 0 (issue cited old 570/100).",
+    "verification": "REPRODUCED",
+    "user_impact": "none direct; internal roadmap, several premises already stale",
+    "effort": "weeks",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1031,
+    "verdict": "TRACKER",
+    "title": "Complete AGY (Antigravity 2.0) Support & Comply Integration",
+    "rationale": "Ran the 5 falsifiable claims: `pmat init --target agy` in a scratch repo wrote AGENTS.md, .agents/hooks.json, .agents/mcp_config.json, .agents/skills/pmat-quality/SKILL.md successfully (4/5). The 5th (.agents/plugins.json) is explicitly REFUSED by pmat's own code, citing this exact issue #1031 as tracker, because no plugins.json schema exists anywhere to scaffold from. Genuine live tracker but now scoped to exactly one remaining item.",
+    "evidence": "`pmat init --target agy` -> '5 written, 0 already current, 0 kept, 1 refused'; refusal text cites issues/1031 verbatim and explains missing schema. hooks.json confirmed to contain PreToolUse matcher block.",
+    "verification": "REPRODUCED",
+    "user_impact": "low; 4/5 scaffold works, plugins.json shape genuinely missing, pmat refuses safely rather than guessing",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1019,
+    "verdict": "S3_MODERATE",
+    "title": "Config and contracts that nothing reads: dead keys / zero-assertion macros (root cause 3 of 4)",
+    "rationale": "Genuinely half-open on pmat's own side (the 'pmat-facing half' per its own text: pmat's generators write config nothing reads). Found inapplicable_pmat_toml_sections (quality_gate_project.rs:102) whose doc comment says '#1019 acceptance criterion 1, the half that was deferred' - ships SECTION-level checking for pmat.toml only; explicitly defers key-level checks and giving .pmat-gates.toml/.pmat-metrics.toml a schema as 'a separate change'. Matches separately-known defect: hooks_gates.rs generator has no production caller (pmat hooks install never writes .pmat-gates.toml). wos/duende/depyler numbers are fleet remediation (other repos), out of scope here, but the pmat generator-vs-reader mismatch is a live pmat defect.",
+    "evidence": "pmat query 'dead config keys unused toml' --include-source -> quality_gate_project.rs:102-120 doc comment citing '#1019 acceptance criterion 1, the half that was deferred', scoped to pmat.toml sections only, explicitly excludes .pmat-gates.toml/.pmat-metrics.toml pending a schema.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "low-moderate; editing pmat's generated .pmat-gates.toml can silently no-op; pmat.toml section-level case is already caught",
+    "effort": "days",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1018,
+    "verdict": "STALE_OR_FIXED",
+    "title": "~933 fleet tests cannot fail -- line coverage is the only metric with a floor (root cause 4 of 4)",
+    "rationale": "The pmat-side detector this epic asked for has shipped: `pmat analyze vacuous-tests` (aliases vacuous/fake-tests) exists, generic over --path, and its own --help text quotes this exact audit ('~933 tests whose bodies contain nothing that can fail') plus detects the early-return variant. pmat's detection gap is closed; remaining ~933 vacuous tests live in forjar/duende/rmedia/wos/depyler/pforge - those repos must run it and fix their own suites, not outstanding pmat work.",
+    "evidence": "`pmat analyze --help` lists vacuous-tests [aliases: vacuous, fake-tests]. `pmat analyze vacuous-tests --help` body verbatim matches the issue's '~933 tests' figure and early-return clause.",
+    "verification": "REPRODUCED",
+    "user_impact": "none on pmat users; detector shipped, remediation owned by 6 other repos",
+    "effort": "unknown",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1017,
+    "verdict": "STALE_OR_FIXED",
+    "title": "pmat cannot see unreachable code (fleet-wide epic, root cause 1 of 4)",
+    "rationale": "The pmat-side gap ('file universe is git ls-files + extension allowlist; nothing reconstructs the module graph') has shipped: `pmat analyze reachability` (aliases orphans/unreachable) exists, generic over --path, and per CHANGELOG.md 3.36.0 ('Unreachable files are ledgered and ratcheted', CRUX-12 #1157) pmat now ledgers its OWN 407 orphan / 82 quarantined files with CI failing on drift. Remaining ~475 orphaned files across 8 other repos is remediation work in THOSE repos, not this board.",
+    "evidence": "`pmat analyze --help` lists reachability [aliases: orphans, unreachable], generic -p/--path. CHANGELOG.md ~line222-225: orphan-files-ledger.md, orphan_files(407)/quarantined_files(82) ratchet metrics, CI reachability-ledger job fails on drift.",
+    "verification": "REPRODUCED",
+    "user_impact": "none on pmat users; detection gap closed, remaining scale lives in 8 other repos",
+    "effort": "unknown",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 1014,
+    "verdict": "STALE_OR_FIXED",
+    "title": "pmat comply check asks for ~4GB x CPU-count RAM (192GB on a 48-core box)",
+    "rationale": "Did not run `pmat comply check` (forbidden, saturates the machine). Instead read the concurrency source directly and found the exact fix already landed and citing this issue by number. `comply_concurrency` (check.rs:432) used to be rayon's default (one worker per CPU); its own doc comment states 'at ~4 GB per worker a 16-core box peaks near 64 GB and a 64-core box would ask for 256 GB... reached 58.7 GB against pmat itself and ~94 GB against aprender, driving load average to 75' -- i.e. this IS #1014, described in the code as a past-tense bug. The replacement `comply_concurrency_bound` (check.rs:463) bounds workers by available RAM / 8 (via COMPLY_BYTES_PER_WORKER) as well as CPU count, group count, and a ceiling, with `PMAT_COMPLY_JOBS` as an override, and a dedicated (not global) rayon pool so the inner per-group parallelism cannot re-expand past the outer bound. A test `the_bound_falls_with_available_memory_not_core_count` (check.rs:1441) explicitly encodes '#1014: a 48-core box asked for ~192 GB' and pins that 2GB available on a 48-core box authorises exactly 1 worker, not 48. This is a real, tested, already-shipped fix, not a declaration nothing enforces -- contradicting the framing that #1014's status is unknown.",
+    "evidence": "`nproc` -> 48 (this host). `pmat query --literal \"fn comply_concurrency\" --include-source` -> check.rs:422-441 doc comment names the #1014 symptom in past tense. `pmat query --literal \"COMPLY_BYTES_PER_WORKER\" --include-source` -> check.rs:447-472 `comply_concurrency_bound` (memory/8, capped by cpus/groups/ceiling) and check.rs:1441-1474 test citing '#1014: a 48-core box asked for ~192 GB' and asserting cramped-memory -> 1 worker.",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none currently -- the OOM/thrash risk this issue reports is bounded by a tested memory-aware worker cap already in master",
+    "effort": "hours",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  },
+  {
+    "issue": 999,
+    "verdict": "TRACKER",
+    "title": "Agent integration: pmat <-> Claude Code ultracode <-> Google Antigravity (EV-0..EV-6)",
+    "rationale": "An enhancement tracking issue for an EXTERNAL plan document (pmat-agent-integration-v2.md, dated 2026-08-14). Its own body states that the source document's claims are being re-verified against master before any of it is actioned, that each finding is one of CONFIRMED/FALSIFIED/STALE/UNVERIFIABLE, and that 'this issue will be updated with the verdict table, and the task list below re-ranked accordingly'. That verdict table has not been posted in the 25 days since. So the issue commits to no unit of work: the backlog under it is explicitly 'ranking subject to the verification results'. It is a placeholder for a decision, not outstanding engineering. It also overlaps the MACS-017/018/019 roadmap tickets (AGY translator, cross-system provenance, hybrid orchestration bridge), which cover the same integration ground.",
+    "evidence": "gh issue view 999 --json title,body,labels,createdAt -> labels [enhancement, disposition:defer], created 2026-08-14. Body verbatim: 'Its claims are being re-verified against current master before any of this is actioned' and 'This issue will be updated with the verdict table, and the task list below re-ranked accordingly.' No verdict table present in the body as of this snapshot (sha256 5861252aa...). Carried on the 3.40.0 disposition ledger (docs/audits/dispositions-3.40.0.json, first row) as defer(3.41.0) with the rationale 'Enhancement epic; explicitly still being re-verified against current master by its own text, not delivered.'",
+    "verification": "CODE_READ_ONLY",
+    "user_impact": "none - internal. No user of the published crate is affected by an unposted verdict table.",
+    "effort": "unknown",
+    "blocks_next_release": false,
+    "duplicate_of": null,
+    "mutation": {
+      "type": "none"
+    }
+  }
+]
