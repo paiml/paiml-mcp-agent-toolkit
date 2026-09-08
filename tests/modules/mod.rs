@@ -2,6 +2,14 @@
 //! This reduces coverage report time from 15+ min to <5 min
 //! by compiling all tests into a single binary instead of 192 separate ones.
 
+// PMAT-712 (#1228): the doc-drift guards spawn the pmat binary, so they must
+// spawn it hygienically — several env vars change what the binary DOES
+// (MCP_VERSION makes it ignore argv entirely; PMAT_QUIET and NO_COLOR change
+// the bytes an assertion reads). `src/services/test_env_hygiene.rs` enforces
+// this; declaring the helper here lets every module in the `all` target use it.
+#[path = "../support/pmat_cmd.rs"]
+pub(crate) mod pmat_cmd;
+
 mod agent_integration_tests;
 #[cfg(feature = "mcp-integration")]
 mod agent_mcp_server_tests;

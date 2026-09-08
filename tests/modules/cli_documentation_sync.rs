@@ -177,23 +177,30 @@ fn parse_cli_help_output(output: &[u8]) -> Vec<String> {
     commands
 }
 
-/// The binary this test grades.
+/// A pmat command that does not inherit the ambient environment.
 ///
-/// #1228: this hand-built `<repo>/target/{release,debug}/pmat`. Two things were
-/// wrong with that. The path was rooted at `CARGO_MANIFEST_DIR.parent()`, one level
-/// ABOVE the repository, so neither candidate existed and it fell through to the
-/// literal "pmat" — whatever was on PATH, typically a `cargo install`ed copy from an
-/// older release. And even rooted correctly it ignores `CARGO_TARGET_DIR`: on a
-/// machine that redirects the target directory (this repo's own does) the hand-built
-/// path finds a STALE `./target/release/pmat` while the real build is elsewhere —
-/// the same "grade the wrong binary" failure, wearing a different hat.
+/// #1228 got this twice wrong before landing here. It first hand-built
+/// `<repo>/target/{release,debug}/pmat`, rooted one level ABOVE the repository,
+/// so neither candidate existed and it fell through to the literal "pmat" on
+/// PATH — a `cargo install`ed copy from some older release, graded against
+/// current docs. Rooting it correctly still ignored `CARGO_TARGET_DIR`, which
+/// this repo redirects, so it then found a STALE `./target/release/pmat`.
 ///
-/// `CARGO_BIN_EXE_pmat` is set by Cargo for integration test targets, points at the
-/// binary Cargo just built for THIS test run, and honours the target directory. An
-/// earlier revision of this function claimed it was unavailable here; that was
-/// simply false, and measuring it took one `println!`.
-fn get_binary_path() -> String {
-    env!("CARGO_BIN_EXE_pmat").to_string()
+/// `pmat_cmd::pmat()` settles both: `CARGO_BIN_EXE_pmat` is the binary Cargo
+/// built for THIS run, and the environment is scrubbed. That second half is not
+/// incidental here — `MCP_VERSION` makes the binary ignore argv and start an MCP
+/// server, and `PMAT_QUIET`/`NO_COLOR` change the bytes these tests assert on.
+/// Enforced by `src/services/test_env_hygiene.rs`, which could not see these
+/// three files until they started naming the binary the way Cargo does.
+fn pmat_command() -> std::process::Command {
+    crate::modules::pmat_cmd::pmat()
+}
+/// The same binary as [`pmat_command`], as a string, for the doc examples that
+/// substitute it into a command line before parsing it.
+fn pmat_binary_path() -> String {
+    crate::modules::pmat_cmd::pmat_bin()
+        .to_string_lossy()
+        .to_string()
 }
 
 #[test]
@@ -207,8 +214,7 @@ fn test_cli_commands_match_documentation() {
     };
 
     // Get actual commands from CLI
-    let binary_path = get_binary_path();
-    let output = Command::new(&binary_path)
+    let output = pmat_command()
         .arg("--help")
         .output()
         .expect("Failed to run CLI");
@@ -245,7 +251,6 @@ fn test_cli_subcommands_match_documentation() {
     let Some(documented_commands) = parse_documented_cli_commands() else {
         return;
     };
-    let binary_path = get_binary_path();
 
     // Check subcommands for commands that have them
     for doc_cmd in &documented_commands {
@@ -254,7 +259,7 @@ fn test_cli_subcommands_match_documentation() {
         }
 
         // Get help for the parent command
-        let output = Command::new(&binary_path)
+        let output = pmat_command()
             .args([&doc_cmd.name, "--help"])
             .output()
             .expect("Failed to run CLI subcommand help");
@@ -282,7 +287,6 @@ fn test_cli_options_match_documentation() {
     let Some(documented_commands) = parse_documented_cli_commands() else {
         return;
     };
-    let binary_path = get_binary_path();
 
     for doc_cmd in &documented_commands {
         // Get help for each command
@@ -294,7 +298,7 @@ fn test_cli_options_match_documentation() {
             vec![&doc_cmd.name[..], "--help"]
         };
 
-        let output = Command::new(&binary_path).args(&args).output();
+        let output = pmat_command().args(&args).output();
 
         if let Ok(output) = output {
             if output.status.success() {
@@ -397,8 +401,7 @@ fn test_no_undocumented_commands() {
         return;
     };
 
-    let binary_path = get_binary_path();
-    let output = Command::new(&binary_path)
+    let output = pmat_command()
         .arg("--help")
         .output()
         .expect("Failed to run CLI");
@@ -477,7 +480,7 @@ fn test_documentation_examples_are_valid() {
             current_block.push('\n');
         }
     }
-    let binary_path = get_binary_path();
+    let binary_path = pmat_binary_path();
 
     for code_block in bash_blocks {
         // Skip comments and complex examples

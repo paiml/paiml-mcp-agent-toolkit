@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct DocumentedTool {
@@ -165,33 +165,31 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
     tools
 }
 
-/// The binary this test grades.
+/// A pmat command that does not inherit the ambient environment.
 ///
-/// #1228: this hand-built `<repo>/target/{release,debug}/pmat`. Two things were
-/// wrong with that. The path was rooted at `CARGO_MANIFEST_DIR.parent()`, one level
-/// ABOVE the repository, so neither candidate existed and it fell through to the
-/// literal "pmat" — whatever was on PATH, typically a `cargo install`ed copy from an
-/// older release. And even rooted correctly it ignores `CARGO_TARGET_DIR`: on a
-/// machine that redirects the target directory (this repo's own does) the hand-built
-/// path finds a STALE `./target/release/pmat` while the real build is elsewhere —
-/// the same "grade the wrong binary" failure, wearing a different hat.
+/// #1228 got this twice wrong before landing here. It first hand-built
+/// `<repo>/target/{release,debug}/pmat`, rooted one level ABOVE the repository,
+/// so neither candidate existed and it fell through to the literal "pmat" on
+/// PATH — a `cargo install`ed copy from some older release, graded against
+/// current docs. Rooting it correctly still ignored `CARGO_TARGET_DIR`, which
+/// this repo redirects, so it then found a STALE `./target/release/pmat`.
 ///
-/// `CARGO_BIN_EXE_pmat` is set by Cargo for integration test targets, points at the
-/// binary Cargo just built for THIS test run, and honours the target directory. An
-/// earlier revision of this function claimed it was unavailable here; that was
-/// simply false, and measuring it took one `println!`.
-fn get_binary_path() -> String {
-    env!("CARGO_BIN_EXE_pmat").to_string()
+/// `pmat_cmd::pmat()` settles both: `CARGO_BIN_EXE_pmat` is the binary Cargo
+/// built for THIS run, and the environment is scrubbed. That second half is not
+/// incidental here — `MCP_VERSION` makes the binary ignore argv and start an MCP
+/// server, and `PMAT_QUIET`/`NO_COLOR` change the bytes these tests assert on.
+/// Enforced by `src/services/test_env_hygiene.rs`, which could not see these
+/// three files until they started naming the binary the way Cargo does.
+fn pmat_command() -> std::process::Command {
+    crate::modules::pmat_cmd::pmat()
 }
 
 fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
     use std::io::{BufRead, BufReader};
     use std::time::{Duration, Instant};
 
-    let binary_path = get_binary_path();
-
     // Start the MCP server in MCP mode by setting MCP_VERSION environment variable
-    let mut child = Command::new(&binary_path)
+    let mut child = pmat_command()
         .env("MCP_VERSION", "1.0")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
