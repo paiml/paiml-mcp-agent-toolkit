@@ -5050,3 +5050,24 @@ roadmap:
   - kind:code
   - orch:fable
   notes: 'orch-basis:M>=3 — measured footprint: models/roadmap_types.rs (release field), services/work_sync (new pure engine over a GitHub snapshot), cli/commands/work_commands_work.rs + handlers/work_handlers/core_handlers (surface, fixers), scripts/ (control). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §5, §11 step 3. Branches from master; no code overlap with #1246/#1247 (steps 1-2).'
+- id: PMAT-721
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 3, the human half: resolve the 13 MACS items that all name #612 — which of MACS-004..MACS-016 is really #612 is a judgement, so this is a supervised one-off migration, never a sync auto-fix (goal-mode.md §5.4); the rest get their own issues or are cancelled'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-09T21:22:08Z
+  updated: 2026-09-09T21:22:08Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat work sync --check-only reports 0 COLLISION on master (today: 1 — #612 named by MACS-004, MACS-005, MACS-006, MACS-007, MACS-008, MACS-009, MACS-010, MACS-011, MACS-012, MACS-013, MACS-014, MACS-015, MACS-016)'
+  - 'each of the 13 items either names a distinct open issue that is its own, or is cancelled with a note saying which item kept #612'
+  - 'no auto-fix: the resolution is committed by a person under this ticket, and the sync is never given a rule for it (goal-mode.md §5.4, §12)'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:triage
+  - human
+  notes: 'Filed by PMAT-720 (goal-mode step 3) from the first real run of pmat work sync --check-only on this repository (107 findings: 1 COLLISION, 52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT). Which of the thirteen is really #612 is a judgement, and a sync that guesses is how the thirteen arose — a human owns this ticket. CB-2115 (step 4) cannot land green until it is done.'
