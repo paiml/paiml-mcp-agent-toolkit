@@ -110,7 +110,7 @@ equations:
     - "a selected candidate's context equals the required string"
     - "a display name equal to a required context never, on its own, satisfies reachability"
     - "`gate` and `ci / gate` are different contexts and may resolve to different jobs"
-    - "INV-2100-7: no gate name is hardcoded anywhere in the rule; the roots come from branch protection"
+    - "INV-2100-7: no gate name is hardcoded anywhere in the rule; the roots are branch protection UNIONED WITH repository rulesets (PMAT-717) — two independent mechanisms, either of which may be the only one a repository configures"
     preconditions:
     - "the candidate list enumerates every context this repository's workflows can produce; an external reusable callee is Opaque, never a Job"
     kani_harness: verify_select_ignores_display_names

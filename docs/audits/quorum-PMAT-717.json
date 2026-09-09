@@ -1,0 +1,258 @@
+{
+  "ticket": "PMAT-717",
+  "pr": 1245,
+  "branch": "PMAT-717-ruleset-aware-required",
+  "tool": "agy quorum via paiml-agy-delegate",
+  "width": 3,
+  "round": "b",
+  "judged_head": "c04a328cb",
+  "verdict_counts": {
+    "FAIL": 3,
+    "PASS": 0
+  },
+  "note": "Round A was discarded by the delegate: a stale mid-CI fact in the brief poisoned all three lanes. Round B is the record.",
+  "lanes": [
+    {
+      "lane": 1,
+      "conversation_id": "df74b21a-4be3-4951-af36-2f5c5dd485a1",
+      "verdict": "FAIL",
+      "summary": "The PR correctly implements ruleset parsing and handles error asymmetry properly (failing open to the manifest if branch protection fails). The count of ENFORCED rules remaining at 0 is honest, as the newly reached rules are neutered by a `continue-on-error: true` flag on the `gate` job. However, I am issuing a FAIL verdict because the PR failed to update the text of INV-2100-7, which still falsely claims 'The roots come from branch protection'. Similarly, the module-level docs in `required.rs` and the contract in `comply-gate-effect-v1.yaml` still omit rulesets as a source.",
+      "findings": [
+        {
+          "claim": "Item 1: `parse_ruleset_contexts` is robust against malformed JSON (empty arrays, wrong types, missing parameters) and explicitly prevents over-matching by checking `r.get(\"type\") == Some(\"required_status_checks\")`.",
+          "file": "src/services/gate_effect/required.rs",
+          "grounding": "asserted",
+          "line": 139
+        },
+        {
+          "claim": "Item 2: The code does not introduce asymmetric silent failures. If branch protection returns 404, `run_gh` returns `None` and the `?` aborts `fetch_live` before rules are checked, which gracefully falls back to the manifest exactly as the previous code did. A 404 on rules yields `[]` via `unwrap_or_default` and unions safely.",
+          "file": "src/services/gate_effect/required.rs",
+          "grounding": "asserted",
+          "line": 196
+        },
+        {
+          "claim": "Item 3: Both `gate` and `ci / gate` appear as distinct rows in the provided PR #1243 check rollup. `union_contexts` correctly deduplicates items while preserving the original order of the `protection` array.",
+          "file": "src/services/gate_effect/required.rs",
+          "grounding": "cited",
+          "line": 170
+        },
+        {
+          "claim": "Item 4: Exactly 2 of the 4 new tests (`the_root_set_is_the_union_of_protection_and_rulesets` and `the_union_is_deduplicated_and_order_stable`) would fail if `union_contexts` returned only the protection list. The other 2 test the parser directly and would falsely pass. All tests use string literals and do not hit the live network.",
+          "file": "src/services/gate_effect/tests_cb2100.rs",
+          "grounding": "asserted",
+          "line": 1261
+        },
+        {
+          "claim": "Item 5: Consumers like `read_manifest` handle the new line without breaking. `docs/status/unrun-tests-ledger.md` is legitimately in the diff because it correctly tracks the 4 newly executed lib tests added in this PR.",
+          "file": "docs/status/unrun-tests-ledger.md",
+          "grounding": "asserted",
+          "line": 17
+        },
+        {
+          "claim": "Item 6: The root set IS an input to the ENFORCED computation (`GateEffectReport`'s `required_contexts`). The newly reached rules are accurately scored as NEUTERED because the `gate` job carries `continue-on-error: true` (as stated in the manifest header), rendering all downstream invocations non-enforcing.",
+          "file": "src/services/gate_effect/ledger.rs",
+          "grounding": "asserted",
+          "line": 113
+        },
+        {
+          "claim": "Item 7: Doc/code contradictions. INV-2100-7's docstring still states 'The roots come from branch protection', contradicting the new logic. Additionally, `required.rs` module docs and `contracts/comply-gate-effect-v1.yaml` still list only the branch-protection API as the data source.",
+          "file": "src/services/gate_effect/tests_cb2100.rs",
+          "fix": "Update INV-2100-7 docstring, `required.rs` module docs, and `contracts/comply-gate-effect-v1.yaml` to explicitly include rulesets as a source for the required roots.",
+          "grounding": "asserted",
+          "line": 89
+        }
+      ],
+      "duration_seconds": 367.5
+    },
+    {
+      "lane": 2,
+      "conversation_id": "bcbeba4d-fc4c-4052-b3aa-e45e7a2230f2",
+      "verdict": "FAIL",
+      "summary": "The branch contains cosmetic fixes and false claims about the root cause of the 0 ENFORCED / 157 NEUTERED counts. The ENFORCED verdict is assigned to ALL rules identically based on `pmat comply check` invocations. Since `provable ladder` already reached a neutered `pmat comply check` (via `continue-on-error: true`), the status was already Neutered for all rules. Adding `gate` changed nothing because it doesn't reach any `pmat comply check`. Additionally, the PR accidentally includes an unrelated change to `unrun-tests-ledger.md`, and `fetch_live` still fails to read rulesets if branch protection is missing entirely.",
+      "findings": [
+        {
+          "claim": "parse_ruleset_contexts over-matches or fails on unexpected shapes",
+          "file": "src/services/gate_effect/required.rs",
+          "fix": "None needed.",
+          "grounding": "measured",
+          "line": 140
+        },
+        {
+          "claim": "fetch_live turns a previously-working analysis into a hard error if rules fetch fails",
+          "file": "src/services/gate_effect/required.rs",
+          "fix": "None needed.",
+          "grounding": "measured",
+          "line": 211
+        },
+        {
+          "claim": "The union double-counts a root because gate and ci / gate are the same check",
+          "file": "src/services/gate_effect/required.rs",
+          "fix": "None needed.",
+          "grounding": "measured",
+          "line": 146
+        },
+        {
+          "claim": "Exactly 2 of the new tests fail under the mutant where union_contexts returns only protection",
+          "file": "src/services/gate_effect/tests_cb2100.rs",
+          "fix": "None needed.",
+          "grounding": "measured",
+          "line": 1294
+        },
+        {
+          "claim": "The new tests assert on a LIVE network call",
+          "file": "src/services/gate_effect/tests_cb2100.rs",
+          "fix": "None needed.",
+          "grounding": "measured",
+          "line": 1270
+        },
+        {
+          "claim": "required-status-checks.txt is consumed by something that would break",
+          "file": ".github/required-status-checks.txt",
+          "fix": "None needed.",
+          "grounding": "measured",
+          "line": 30
+        },
+        {
+          "claim": "The ledger was hand-edited, not generated",
+          "file": "docs/status/comply-enforcement-ledger.md",
+          "fix": "None needed.",
+          "grounding": "measured",
+          "line": 194
+        },
+        {
+          "claim": "The fix changes the status of rules reachable ONLY through `gate`",
+          "file": "src/services/gate_effect/ledger.rs",
+          "fix": "The PR description's claim is false; the fix is cosmetic for the ENFORCED verdict because repo_status assigns a shared status to all rules.",
+          "grounding": "measured",
+          "line": 113
+        },
+        {
+          "claim": "The diff contains an unrelated change to docs/status/unrun-tests-ledger.md",
+          "file": "docs/status/unrun-tests-ledger.md",
+          "fix": "Revert the change to docs/status/unrun-tests-ledger.md.",
+          "grounding": "measured",
+          "line": 1
+        },
+        {
+          "claim": "If a repo has only rulesets and no branch protection, fetch_live will fail to read rulesets",
+          "file": "src/services/gate_effect/required.rs",
+          "fix": "Change fetch_live to handle missing branch protection without returning early.",
+          "grounding": "measured",
+          "line": 188
+        }
+      ],
+      "duration_seconds": 472.1
+    },
+    {
+      "lane": 3,
+      "conversation_id": "52e468dc-aec8-4f99-af78-2a6f4302a043",
+      "verdict": "FAIL",
+      "summary": "The PR fundamentally misdiagnoses the cause of the 157 NEUTERED rules (it's due to `continue-on-error: true`, not the missing root), embedding this false claim into module documentation and the ledger header. It also introduces a silent failure mode where ruleset contexts are entirely ignored if branch protection is disabled.",
+      "findings": [
+        {
+          "claim": "Silent-failure asymmetry (Item 2): `fetch_live` aborts if branch protection is unreadable (due to `run_gh(...)?)`), completely skipping the new ruleset API fetch and returning `None`. If a repository uses only rulesets and no branch protection, this change acts exactly like the old code, missing the rulesets and falling back to the manifest.",
+          "file": "src/services/gate_effect/required.rs",
+          "fix": "Remove the `?` on the branch protection fetch. Fetch both independently, and union their successes. Only return `None` if both fail.",
+          "grounding": "asserted",
+          "line": 204
+        },
+        {
+          "claim": "Honesty of the unchanged counts (Item 6): The PR falsely claims the 157 NEUTERED count was due to an incomplete root set. The root set IS an input to ENFORCED computation, but data flows via `reachable_jobs` (adds suppressions for `continue-on-error`) -> `graph::build` (creates DEAD edge for suppressions) -> `kernel::reachable` (ignores dead edges). The ONLY reachable `pmat comply check` is `provable-ladder` (which was ALREADY in the root set), and it carries `continue-on-error: true`. The count remains 0 ENFORCED because of `continue-on-error`, not the root set.",
+          "file": "docs/status/comply-enforcement-ledger.md",
+          "fix": "Acknowledge the true cause of the NEUTERED rules. Remove claims that the root set was responsible.",
+          "grounding": "measured",
+          "line": 1
+        },
+        {
+          "claim": "Doc/code contradiction (Item 7): The module-level comment explicitly codifies the false claim that 'Reading only branch protection made `gate` invisible, which is where 157 rules, 0 ENFORCED came from \u2014 an incomplete root set, not 157 broken rules.' This is demonstrably false. The same falsehood was added to `.github/required-status-checks.txt`.",
+          "file": "src/services/gate_effect/mod.rs",
+          "fix": "Remove the false assertion from the module documentation and the manifest header.",
+          "grounding": "asserted",
+          "line": 13
+        }
+      ],
+      "duration_seconds": 420.4
+    }
+  ],
+  "orchestrator_reverification": [
+    {
+      "finding": "fetch_live read branch protection with `?`, so the ruleset call was unreachable when protection did not answer",
+      "lanes": [
+        2,
+        3
+      ],
+      "verdict": "CONFIRMED",
+      "evidence": "read src/services/gate_effect/required.rs: `let out = run_gh(.. \"/protection\" ..)?;` precedes the rules call",
+      "action": "combine_live seam added; both endpoints fetched independently; None only when BOTH are silent"
+    },
+    {
+      "finding": "the causal claim is false \u2014 157/0 is not caused by the incomplete root set",
+      "lanes": [
+        2,
+        3
+      ],
+      "verdict": "CONFIRMED",
+      "evidence": "quality-gate.yml:299 `continue-on-error: true` on the only `pmat comply check` step (line 300), inside job `provable-ladder`, which branch protection ALREADY required. Every one of the 157 ledger rows states this cause verbatim.",
+      "action": "corrected in mod.rs, required.rs, tests_cb2100.rs, .github/required-status-checks.txt, contracts/comply-gate-effect-v1.yaml:113, and the PR body"
+    },
+    {
+      "finding": "INV-2100-7 still says 'the roots come from branch protection' outside mod.rs",
+      "lanes": [
+        1
+      ],
+      "verdict": "CONFIRMED",
+      "evidence": "git grep: tests_cb2100.rs:89 and contracts/comply-gate-effect-v1.yaml:113 both carried it; round 1 corrected only mod.rs",
+      "action": "both corrected; required.rs module doc and ContextSource::GitHubApi label also said branch-protection only"
+    },
+    {
+      "finding": "the unrun-tests-ledger.md change is unrelated to this PR",
+      "lanes": [
+        2
+      ],
+      "verdict": "REFUTED",
+      "evidence": "delta is +4 executed / +4 total, exactly this PR's new lib tests; the repo requires the ledger be re-rendered whenever a lib test is added. Lane 1 reached the opposite, correct conclusion.",
+      "action": "none"
+    },
+    {
+      "finding": "the union double-counts because `gate` and `ci / gate` are the same check",
+      "lanes": [
+        1,
+        2
+      ],
+      "verdict": "REFUTED by the lanes and by me",
+      "evidence": "gh pr view 1243 --json statusCheckRollup -> [\"ci / gate\",\"gate\"] \u2014 two distinct checks",
+      "action": "none"
+    }
+  ],
+  "mutations": [
+    {
+      "mutant": "union_contexts returns only the protection list",
+      "killed_by": [
+        "the_root_set_is_the_union_of_protection_and_rulesets",
+        "the_union_is_deduplicated_and_order_stable"
+      ],
+      "reverted": true
+    },
+    {
+      "mutant": "combine_live never returns None",
+      "killed_by": [
+        "neither_source_answering_is_unmeasured_not_empty"
+      ],
+      "reverted": true
+    }
+  ],
+  "gate": {
+    "cmd": "pmat verify --format json",
+    "ok": null,
+    "stages_measured": [
+      "format",
+      "satd",
+      "clippy",
+      "tests"
+    ],
+    "not_measured": [
+      "complexity"
+    ],
+    "note": "complexity declines on a clean tree; ok:null is that declination, not a failure"
+  }
+}

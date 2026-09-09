@@ -10,7 +10,9 @@
 //! 1. `PMAT_REQUIRED_STATUS_CHECKS` — comma-separated, explicit override. Used
 //!    by fixtures and by CI runners that already know the answer.
 //! 2. `.github/required-status-checks.txt` — one context per line, committed.
-//! 3. the GitHub branch-protection API via `gh`.
+//! 3. GitHub itself via `gh` — branch protection AND repository rulesets,
+//!    unioned. They are independent mechanisms (PMAT-717); reading only the
+//!    first missed every context required solely by the second.
 //!
 //! When 2 and 3 both answer they must agree. A committed manifest that has
 //! drifted from live branch protection is worse than no manifest: it is a
@@ -31,7 +33,7 @@ impl ContextSource {
         match self {
             ContextSource::Env => "PMAT_REQUIRED_STATUS_CHECKS",
             ContextSource::Manifest => ".github/required-status-checks.txt",
-            ContextSource::GitHubApi => "GitHub branch-protection API",
+            ContextSource::GitHubApi => "GitHub branch protection ∪ rulesets",
         }
     }
 }
@@ -127,13 +129,89 @@ fn read_manifest(project_path: &Path) -> Option<Vec<String>> {
     )
 }
 
+/// Every `required_status_checks` context in a `repos/{}/rules/branches/{}` body.
+///
+/// PMAT-717 (goal-mode.md step 0). Rulesets are a SECOND mechanism for requiring a
+/// check, independent of branch protection, and this module could not see them.
+///
+/// The body is the array `repos/{}/rules/branches/{}` returns: every rule that
+/// applies to the branch, of which only `required_status_checks` carries contexts.
+/// An unparsable body yields nothing rather than erroring — the CALLER decides
+/// whether "no ruleset" is a legitimate answer or an unmeasured one, and it has
+/// branch protection to compare against.
+pub(crate) fn parse_ruleset_contexts(body: &str) -> Vec<String> {
+    let Ok(rules) = serde_json::from_str::<serde_json::Value>(body) else {
+        return Vec::new();
+    };
+    let Some(rules) = rules.as_array() else {
+        return Vec::new();
+    };
+    rules
+        .iter()
+        .filter(|r| {
+            r.get("type").and_then(serde_json::Value::as_str) == Some("required_status_checks")
+        })
+        .filter_map(|r| {
+            r.get("parameters")?
+                .get("required_status_checks")?
+                .as_array()
+        })
+        .flatten()
+        .filter_map(|c| c.get("context")?.as_str())
+        .map(str::to_string)
+        .collect()
+}
+
+/// The root set: branch-protection contexts unioned with ruleset contexts.
+///
+/// PMAT-717: INV-2100-7 said "the roots come from branch protection". A context
+/// required only by a ruleset was therefore invisible, and every rule reachable
+/// only through it scored NEUTERED.
+///
+/// Branch protection's order is preserved and ruleset-only contexts are appended,
+/// so a diff of `.github/required-status-checks.txt` stays readable and a context
+/// required by BOTH mechanisms appears once.
+pub(crate) fn union_contexts(protection: Vec<String>, ruleset: Vec<String>) -> Vec<String> {
+    let mut out = protection;
+    for context in ruleset {
+        if !out.contains(&context) {
+            out.push(context);
+        }
+    }
+    out
+}
+
+/// Combine the two independent live sources into one root set.
+///
+/// PMAT-717. The two are INDEPENDENT: branch protection and rulesets each
+/// require checks on their own, and a repository may configure either, both, or
+/// neither. Rulesets are GitHub's successor to branch protection, so "only a
+/// ruleset" is not an exotic case — treating protection as mandatory would
+/// reproduce, one level down, the blindness this ticket removes.
+///
+/// `None` means NEITHER source answered — unmeasured, which the caller turns
+/// into an error. It must never mean "measured, and the answer is nothing": an
+/// empty root set would read as a repository nothing gates, and pass.
+pub(crate) fn combine_live(
+    protection: Option<Vec<String>>,
+    ruleset: Option<Vec<String>>,
+) -> Option<Vec<String>> {
+    if protection.is_none() && ruleset.is_none() {
+        return None;
+    }
+    Some(union_contexts(
+        protection.unwrap_or_default(),
+        ruleset.unwrap_or_default(),
+    ))
+}
+
 /// Ask GitHub. `None` on any failure — the caller turns that into an error when
 /// no other source answered.
 fn fetch_live(project_path: &Path) -> Option<Vec<String>> {
     let nwo = gh_json(project_path, &["repo", "view", "--json", "nameWithOwner"])?;
     let repo = json_string(&nwo, "nameWithOwner")?;
     let branch = default_branch(project_path)?;
-    let out = run_gh(
+    let protection = run_gh(
         project_path,
         &[
             "api",
@@ -141,14 +219,30 @@ fn fetch_live(project_path: &Path) -> Option<Vec<String>> {
             "--jq",
             ".required_status_checks.contexts[]?",
         ],
-    )?;
-    Some(
+    )
+    .map(|out| {
         out.lines()
             .map(str::trim)
             .filter(|l| !l.is_empty())
             .map(str::to_string)
-            .collect(),
+            .collect::<Vec<String>>()
+    });
+
+    // PMAT-717: a ruleset is a SECOND, independent way to require a check, and
+    // this function asked only about branch protection. On this repository the
+    // `gate` context is required by ruleset 13878864 and by nothing else, so it
+    // was absent from the root set entirely — CB-2100 could not see a gate the
+    // repository actually enforces.
+    //
+    // Neither call may gate the other: `combine_live` unions whatever answered
+    // and reports `None` only when both were silent.
+    let ruleset = run_gh(
+        project_path,
+        &["api", &format!("repos/{repo}/rules/branches/{branch}")],
     )
+    .map(|body| parse_ruleset_contexts(&body));
+
+    combine_live(protection, ruleset)
 }
 
 fn default_branch(project_path: &Path) -> Option<String> {

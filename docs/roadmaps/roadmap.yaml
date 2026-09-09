@@ -5014,6 +5014,15 @@ roadmap:
   assigned_to: null
   created: 2026-09-09T08:05:16Z
   updated: 2026-09-09T08:05:16Z
+- id: PMAT-717
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 0 (P2): make pmat comply gate-effect analysis ruleset-aware — required::resolve must union repos/{}/rules/branches/{} with branch protection, .github/required-status-checks.txt gains the context ''gate'' and loses its false ''unrequired top-level job'' sentence, and the enforcement ledger is regenerated. Until this lands every new CB rule lands NEUTERED (157/0 today is computed over an incomplete root set)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T09:34:30Z
+  updated: 2026-09-09T09:34:30Z
   spec: null
   acceptance_criteria: []
   phases: []
