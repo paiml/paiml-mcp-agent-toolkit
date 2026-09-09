@@ -160,14 +160,12 @@ impl CommandDispatcher {
                 verbose,
                 fix,
                 check_base,
-                allow_retitle,
             } => {
                 work_handlers::handle_work_validate(
                     path.clone(),
                     *verbose,
                     *fix,
                     check_base.clone(),
-                    allow_retitle.clone(),
                 )
                 .await
             }
@@ -188,6 +186,7 @@ impl CommandDispatcher {
                 level,
                 id,
                 github_issue,
+                sequential_id,
             } => {
                 work_handlers::handle_work_add(
                     title.clone(),
@@ -199,6 +198,7 @@ impl CommandDispatcher {
                     level.clone(),
                     id.clone(),
                     *github_issue,
+                    *sequential_id,
                 )
                 .await
             }

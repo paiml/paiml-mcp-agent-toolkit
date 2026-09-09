@@ -104,14 +104,7 @@ async fn work_validate_duplicate_ids_are_refused_and_both_lines_reported() {
     let first = line_of_nth_occurrence(DUPLICATE_FIXTURE, "- id: PMAT-654", 0);
     let second = line_of_nth_occurrence(DUPLICATE_FIXTURE, "- id: PMAT-654", 1);
 
-    let result = handle_work_validate(
-        Some(project.path().to_path_buf()),
-        false,
-        false,
-        None,
-        Vec::new(),
-    )
-    .await;
+    let result = handle_work_validate(Some(project.path().to_path_buf()), false, false, None).await;
 
     let error = result.err().map_or_else(String::new, |e| format!("{e:#}"));
     assert!(
@@ -138,14 +131,7 @@ async fn work_validate_duplicate_ids_are_refused_and_both_lines_reported() {
 async fn work_validate_duplicate_unparseable_roadmap_is_located_by_line() {
     let project = project_with_roadmap(UNPARSEABLE_FIXTURE);
 
-    let result = handle_work_validate(
-        Some(project.path().to_path_buf()),
-        false,
-        false,
-        None,
-        Vec::new(),
-    )
-    .await;
+    let result = handle_work_validate(Some(project.path().to_path_buf()), false, false, None).await;
 
     let error = result.err().map_or_else(String::new, |e| format!("{e:#}"));
     assert!(!error.is_empty(), "`status: bogus` must not validate");
@@ -161,14 +147,7 @@ async fn work_validate_duplicate_unparseable_roadmap_is_located_by_line() {
 async fn work_validate_duplicate_distinct_ids_still_validate() {
     let project = project_with_roadmap(VALID_FIXTURE);
 
-    let result = handle_work_validate(
-        Some(project.path().to_path_buf()),
-        false,
-        false,
-        None,
-        Vec::new(),
-    )
-    .await;
+    let result = handle_work_validate(Some(project.path().to_path_buf()), false, false, None).await;
 
     assert!(
         result.is_ok(),
@@ -183,7 +162,7 @@ async fn work_validate_duplicate_distinct_ids_still_validate() {
 async fn work_validate_duplicate_this_repositorys_roadmap_validates() {
     let project = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-    let result = handle_work_validate(Some(project), false, false, None, Vec::new()).await;
+    let result = handle_work_validate(Some(project), false, false, None).await;
 
     assert!(
         result.is_ok(),

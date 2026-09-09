@@ -140,11 +140,17 @@ async fn add_with_id(
     title: &str,
     id: Option<&str>,
 ) -> anyhow::Result<()> {
-    add_full(project, title, id, None).await
+    add_full(project, title, id, None, false).await
+}
+
+/// The sequential allocator, reached the one way that is still legal: an explicit
+/// `--sequential-id`. Used only as the CONTROL that reproduces the defect.
+async fn add_sequential(project: &std::path::Path, title: &str) -> anyhow::Result<()> {
+    add_full(project, title, None, None, true).await
 }
 
 async fn add_from_issue(project: &std::path::Path, title: &str, issue: u64) -> anyhow::Result<()> {
-    add_full(project, title, None, Some(issue)).await
+    add_full(project, title, None, Some(issue), false).await
 }
 
 async fn add_full(
@@ -152,6 +158,7 @@ async fn add_full(
     title: &str,
     id: Option<&str>,
     github_issue: Option<u64>,
+    sequential_id: bool,
 ) -> anyhow::Result<()> {
     crate::cli::handlers::work_handlers::handle_work_add(
         title.to_string(),
@@ -163,6 +170,7 @@ async fn add_full(
         None,
         id.map(str::to_string),
         github_issue,
+        sequential_id,
     )
     .await
 }
@@ -226,7 +234,7 @@ async fn an_explicit_id_pushes_the_high_water_mark_so_the_allocator_cannot_reiss
     add_with_id(dir.path(), "explicitly allocated", Some("PMAT-1207"))
         .await
         .expect("explicit id accepted");
-    add_with_id(dir.path(), "then an allocated one", None)
+    add_sequential(dir.path(), "then an allocated one")
         .await
         .expect("allocator still works");
     let raw =
@@ -325,10 +333,10 @@ async fn two_branches_that_cannot_see_each_other_still_cannot_collide() {
     // checkouts, does collide — which is the whole defect.
     let seq_a = roadmap_fixture();
     let seq_bse = roadmap_fixture();
-    add_with_id(seq_a.path(), "L0-1a the CUDA row", None)
+    add_sequential(seq_a.path(), "L0-1a the CUDA row")
         .await
         .expect("agent A, allocator");
-    add_with_id(seq_bse.path(), "BSE-09b merge=union", None)
+    add_sequential(seq_bse.path(), "BSE-09b merge=union")
         .await
         .expect("agent BSE, allocator");
     let sa = std::fs::read_to_string(seq_a.path().join("docs/roadmaps/roadmap.yaml"))
@@ -465,4 +473,44 @@ roadmap:
         !dupes.is_empty(),
         "PMAT-7 and PMAT-007 are the same number and were not reported as a duplicate"
     );
+}
+
+// ── Operator decisions on #1240 (2026-09-09): the collision-free path is
+// mandatory, and a ticket title is immutable.
+
+#[tokio::test]
+async fn work_add_refuses_the_sequential_allocator() {
+    let dir = roadmap_fixture();
+    let err = add_with_id(dir.path(), "minted from max+1", None)
+        .await
+        .expect_err("the sequential allocator must be refused");
+    let text = format!("{err}");
+    assert!(
+        text.contains("--github-issue"),
+        "the refusal must name the collision-free path: {text}"
+    );
+
+    let raw =
+        std::fs::read_to_string(dir.path().join("docs/roadmaps/roadmap.yaml")).expect("read back");
+    assert_eq!(
+        titles_by_id(&raw).len(),
+        titles_by_id(BASE).len(),
+        "a refused add must write nothing"
+    );
+}
+
+#[tokio::test]
+async fn the_two_deliberate_paths_still_work() {
+    let dir = roadmap_fixture();
+    add_from_issue(dir.path(), "from the issue number", 1065)
+        .await
+        .expect("--github-issue is the preferred path");
+    add_with_id(dir.path(), "explicitly allocated", Some("PMAT-2000"))
+        .await
+        .expect("--id remains available for a caller that allocated deliberately");
+    let raw =
+        std::fs::read_to_string(dir.path().join("docs/roadmaps/roadmap.yaml")).expect("read back");
+    let titles = titles_by_id(&raw);
+    assert!(titles.contains_key("PMAT-1065"));
+    assert!(titles.contains_key("PMAT-2000"));
 }
