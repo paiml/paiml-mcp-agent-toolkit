@@ -147,6 +147,7 @@ async fn add(checkout: &Path, title: &str) -> anyhow::Result<()> {
         None,
         None,
         None,
+        true, // --sequential-id: these tests exist to pin the allocator itself
     )
     .await
 }

@@ -230,7 +230,6 @@ roadmap:
                 false,
                 true, // fix flag
                 None, // check_base
-                Vec::new(), // allow_retitle
             )
             .await;
 
@@ -260,7 +259,6 @@ roadmap:
                 false,
                 false,
                 None, // check_base
-                Vec::new(), // allow_retitle
             )
             .await;
 
@@ -289,7 +287,6 @@ roadmap:
                 true, // verbose
                 false,
                 None, // check_base
-                Vec::new(), // allow_retitle
             )
             .await;
 

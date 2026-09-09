@@ -12,6 +12,7 @@ pub async fn handle_work_add(
     level: Option<String>,
     explicit_id: Option<String>,
     github_issue: Option<u64>,
+    sequential_id: bool,
 ) -> Result<()> {
     let claimed = level
         .as_deref()
@@ -90,20 +91,41 @@ pub async fn handle_work_add(
     // ticket, which is the hazard this whole flag exists to remove. Issue numbers
     // past 999 are unaffected; the padding only binds below 100.
     let derived = github_issue.map(|n| format!("PMAT-{n:03}"));
-    let next_id = match derived.as_deref().or(explicit_id.as_deref()) {
-        Some(id) => service.add_item_with_id(id, build)?,
-        None => service.add_item_with_next_id(build)?,
+    // #1240, operator decision 2026-09-09: the sequential allocator is REFUSED.
+    // `max(id) + 1` is derived from state one branch can see, so two agents
+    // working at once compute the same answer and the merge deletes one of the
+    // two tickets. Leaving it as a silent default meant the unsafe path was
+    // still the one anyone got by typing the obvious command.
+    //
+    // `add_item_with_next_id` is kept, not deleted: `work init` and the tests
+    // that pin PMAT-673/676/680 still exercise it, and it is the thing whose
+    // behaviour those tickets describe.
+    if sequential_id {
+        // The explicit opt-in. `build` is consumed here, so this branch returns
+        // the id and the common reporting below is reached the same way.
+        let next_id = service.add_item_with_next_id(build)?;
+        report_created(&next_id, &title, priority, description.as_deref(), tags.as_deref());
+        return Ok(());
+    }
+    let Some(id) = derived.as_deref().or(explicit_id.as_deref()) else {
+        anyhow::bail!(
+            "refusing to mint a ticket id from `max(id) + 1`.\n\n\
+             That number comes from what THIS branch can see, so two agents \
+             working at once both compute it, both are right locally, and the \
+             merge keeps one entry per id — silently deleting one of the two \
+             tickets while its DAG rows, receipt filenames, commit trailers and \
+             PR body go on citing that id (#1240).\n\n\
+             Pass one of:\n  \
+             --github-issue <N>   derive the id from the issue number. GitHub \
+             allocates those centrally, so two agents cannot be handed the same \
+             one. This is the path to prefer.\n  \
+             --id <ID>            an id you allocated deliberately from some \
+             other authority."
+        )
     };
+    let next_id = service.add_item_with_id(id, build)?;
 
-    println!("{}", c::pass(&format!("Created ticket: {}", c::path(&next_id))));
-    println!("   {} {}", c::label("Title:"), title);
-    println!("   {} {:?}", c::label("Priority:"), priority);
-    if let Some(desc) = description {
-        println!("   {} {}", c::label("Description:"), desc);
-    }
-    if let Some(t) = tags {
-        println!("   {} {}", c::label("Tags:"), t);
-    }
+    report_created(&next_id, &title, priority, description.as_deref(), tags.as_deref());
 
     if let Some(n) = github_issue {
         println!(
@@ -473,4 +495,24 @@ fn rebind_contract(
     }
     contract.save(project_path)?;
     Ok(changes)
+}
+
+/// What `work add` prints once a row has landed, whichever path minted the id.
+fn report_created(
+    id: &str,
+    title: &str,
+    priority: crate::cli::commands::WorkPriority,
+    description: Option<&str>,
+    tags: Option<&str>,
+) {
+    use crate::cli::colors as c;
+    println!("{}", c::pass(&format!("Created ticket: {}", c::path(id))));
+    println!("   {} {}", c::label("Title:"), title);
+    println!("   {} {:?}", c::label("Priority:"), priority);
+    if let Some(desc) = description {
+        println!("   {} {}", c::label("Description:"), desc);
+    }
+    if let Some(t) = tags {
+        println!("   {} {}", c::label("Tags:"), t);
+    }
 }

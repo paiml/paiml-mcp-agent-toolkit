@@ -4988,6 +4988,23 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-714
+  github_issue: null
+  item_type: task
+  title: 'roadmap ids: make the collision-free path mandatory — work add refuses the sequential allocator, and a ticket title is immutable (no --allow-retitle). Operator decision on #1240'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T07:37:54Z
+  updated: 2026-09-09T07:37:54Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
 - id: PMAT-715
   github_issue: null
   item_type: task

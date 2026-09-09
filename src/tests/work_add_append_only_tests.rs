@@ -99,6 +99,7 @@ async fn add(project: &Path, title: &str) -> anyhow::Result<()> {
         None,
         None,
         None,
+        true, // --sequential-id: these tests exist to pin the allocator itself
     )
     .await
 }
@@ -196,7 +197,6 @@ async fn work_add_append_only_add_appends_the_row_and_rewrites_nothing() {
         false,
         false,
         None,
-        Vec::new(),
     )
     .await
     .expect("what `add` wrote must validate");
