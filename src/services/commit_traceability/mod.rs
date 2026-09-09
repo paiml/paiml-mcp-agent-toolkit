@@ -22,6 +22,7 @@
 //! `src/cli/handlers/comply_handlers/check_handlers/check_traceability.rs`.
 
 use std::path::Path;
+use std::process::Command;
 
 #[cfg(test)]
 mod tests;
@@ -108,8 +109,6 @@ impl Measurement {
         matches!(self.range, Range::PullRequest { .. }) && self.findings.is_empty()
     }
 }
-
-use std::process::Command;
 
 /// Are the inputs there?
 pub fn inputs(project_path: &Path) -> Inputs {
@@ -239,7 +238,7 @@ pub fn measure_against(project_path: &Path, base: Option<&str>) -> Result<Measur
     }
 }
 
-fn default_branch_mode(project_path: &std::path::Path) -> Result<Measurement, String> {
+fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
     let since = run_git(
         project_path,
         &["describe", "--tags", "--abbrev=0", "--match", "v*", "HEAD"],
@@ -294,7 +293,8 @@ fn default_branch_mode(project_path: &std::path::Path) -> Result<Measurement, St
     })
 }
 
-fn pr_mode(project_path: &std::path::Path, resolved_base: String) -> Result<Measurement, String> {
+fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
+    use crate::models::roadmap::ItemStatus;
     let merge_base = run_git(project_path, &["merge-base", &resolved_base, "HEAD"])?;
     let commits_out = run_git(
         project_path,
@@ -354,22 +354,20 @@ fn pr_mode(project_path: &std::path::Path, resolved_base: String) -> Result<Meas
                 for id in ids {
                     commit_trailered = true;
                     if let Some(status) = roadmap_map.get(id) {
-                        if matches!(
-                            status,
-                            crate::models::roadmap::ItemStatus::Completed
-                                | crate::models::roadmap::ItemStatus::Cancelled
-                        ) {
-                            let status_str = match status {
-                                crate::models::roadmap::ItemStatus::Completed => "completed",
-                                crate::models::roadmap::ItemStatus::Cancelled => "cancelled",
-                                _ => unreachable!(),
-                            };
+                        // Terminal states, spelled as the roadmap serialises
+                        // them (`ItemStatus` is `rename_all = "lowercase"`).
+                        let terminal = match status {
+                            ItemStatus::Completed => Some("completed"),
+                            ItemStatus::Cancelled => Some("cancelled"),
+                            _ => None,
+                        };
+                        if let Some(status) = terminal {
                             findings.push(Finding {
                                 hash: hash.clone(),
                                 subject: subject.clone(),
                                 violation: Violation::TerminalTicket {
                                     id: id.to_string(),
-                                    status: status_str.to_string(),
+                                    status: status.to_string(),
                                 },
                             });
                         }

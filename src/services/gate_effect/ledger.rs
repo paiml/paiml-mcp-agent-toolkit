@@ -9,6 +9,7 @@
 //! left blank. "We could not tell" and "nothing gates it" are both findings,
 //! and the ledger says which.
 
+use super::invocation::Invocation;
 use super::roster::{self, Rule};
 use super::GateEffectReport;
 use crate::models::comply_config::{CheckSeverity, ComplyConfig};
@@ -115,10 +116,21 @@ pub fn rows(
 /// as enforced while leaving every other rule exactly as unreached as before.
 fn rule_status(report: &GateEffectReport, id: &str) -> (Status, String) {
     let reachable = report.graph.reachable_invocations();
-    if let Some(inv) = reachable
+    let enforcing: Vec<&Invocation> = reachable
         .iter()
         .filter_map(|&i| report.invocations.get(i))
-        .find(|inv| inv.enforces_rule(id))
+        .filter(|inv| inv.enforces_rule(id))
+        .collect();
+    // A step that runs the rule directly is the carrier; a hop into a script
+    // is named only when nothing runs it directly. The traceability job's
+    // CONTROL step reaches the same `--checks CB-2113` line through
+    // scripts/traceability-control.sh — against a planted fixture, not this
+    // tree — and discovery order put that hop first, so the ledger credited
+    // the fixture run with enforcing the rule on the repository.
+    if let Some(inv) = enforcing
+        .iter()
+        .find(|inv| inv.via == "run")
+        .or_else(|| enforcing.first())
     {
         return (
             Status::Enforced,

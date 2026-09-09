@@ -863,3 +863,50 @@ fn a_bare_checks_flag_restricts_the_roster_and_names_nothing() {
         why(&report)
     );
 }
+
+#[test]
+fn the_ledger_names_the_direct_step_over_a_control_hop_that_runs_the_same_rule() {
+    use super::ledger::{self, Status};
+    // The traceability job's shape: a control step that reaches the rule
+    // through a script (against a fixture), then the step that runs it on the
+    // tree. Both enforce CB-2100 here; the carrier must be the direct one.
+    let wf = r#"
+name: CI
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: control
+        run: bash scripts/control.sh
+      - name: the rule
+        run: pmat comply check --checks CB-2100
+"#;
+    let script = "#!/usr/bin/env bash\nset -uo pipefail\nrc=0\npmat comply check --checks CB-2100 --path \"$1\" || rc=$?\n[ \"$rc\" -eq 1 ] || exit 1\n";
+    let dir = fixture(&[
+        (".github/workflows/ci.yml", wf),
+        ("scripts/control.sh", script),
+    ]);
+    let report = run(&dir, &["quality"]);
+    assert!(
+        report.invocations.len() >= 2,
+        "both the hop and the direct step must be discovered: {}",
+        why(&report)
+    );
+    let rows = ledger::rows(
+        Path::new(env!("CARGO_MANIFEST_DIR")),
+        &report,
+        &ComplyConfig::default(),
+    )
+    .expect("roster is not empty");
+    let row = rows
+        .iter()
+        .find(|r| r.rule.id == "CB-2100")
+        .expect("CB-2100");
+    assert_eq!(row.status, Status::Enforced, "{row:?}");
+    assert!(
+        row.carrier.contains("step `the rule` (run") && !row.carrier.contains("control.sh"),
+        "the direct step is the carrier, not the fixture run inside the control: {}",
+        row.carrier
+    );
+}
