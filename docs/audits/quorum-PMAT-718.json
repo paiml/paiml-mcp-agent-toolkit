@@ -1,0 +1,250 @@
+{
+  "ticket": "PMAT-718",
+  "pr": 1246,
+  "branch": "PMAT-718-comply-checks-selector",
+  "tool": "agy quorum via paiml-agy-delegate",
+  "width": 3,
+  "judged_head": "a189bfedb",
+  "verdict_counts": {
+    "FAIL": 3,
+    "PASS": 0
+  },
+  "lanes": [
+    {
+      "lane": 1,
+      "conversation_id": "0c727136-ba3b-46c0-a095-0eaddc41a9cc",
+      "verdict": "FAIL",
+      "summary": "Adversarial review of PMAT-718-comply-checks-selector completed.\n\n1. **Gate Behavior:** The `--checks` flag correctly gates. It is not accepted-and-ignored anywhere. `comply report`, `comply ledger`, and the bare `pmat comply` route do not accept `--checks` via clap, safely avoiding the trap.\n2. **CLI Exits:** `pmat comply check --checks CB-21I3` exits 1. `--checks \"\"` and `--checks \" CB-030\"` are properly refused (exit 1). Duplicate valid checks (`--checks CB-030 --checks CB-030`) work and exit 0.\n3. **check_id Correctness:** Evaluated all 166 checks. No IDs are ambiguous (exactly 166 distinct IDs generated). No IDs contain spaces or mismatched colons. \n4. **Flag Interaction:** `select_checks` correctly runs before `retain_blocking_checks` and `summary` tallying. Testing a passing rule on a non-compliant repository successfully exits 0 (as a gate should). A failing selected rule strictly exits 1 and cannot be masked to exit 0.\n5. **Vacuous Tests:** FOUND. The tests `a_selected_check_keeps_its_own_verdict` and `an_empty_selection_selects_everything` are completely vacuous against all four mutants. The PR's claim that mutant (iii) [deselected checks removed] is killed by exactly one test is false; it is killed by three tests (`a_deselected_check_reports_skip_rather_than_disappearing`, `an_unknown_id_is_an_error`, and `a_check_with_no_cb_id_is_selected_by_its_name`). The clap wiring test is a genuine assertion due to formatting constraints isolating string slices.\n6. **Breakages:** No breakages. Callers passing `&[]` are properly evaluating all checks. `comply report` invokes `compute_compliance_report` directly, maintaining the full roster.\n7. **PR Honesty:** Confirmed 166 checks in/out. Verified git history contains only `feat` and `docs` commits with no separate RED commit.\n\nVerdict is FAIL due to the presence of vacuous tests asserting nothing about the change.",
+      "findings": [
+        {
+          "claim": "The flag actually gates and is not decorative",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "None required",
+          "grounding": "measured",
+          "line": 96
+        },
+        {
+          "claim": "The error is reachable in the CLI and exits 1",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "None required",
+          "grounding": "measured",
+          "line": 108
+        },
+        {
+          "claim": "Derived IDs are unambiguous and correctly formatted",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "None required",
+          "grounding": "measured",
+          "line": 74
+        },
+        {
+          "claim": "Selection correctly interacts with --failures-only and --strict",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "None required",
+          "grounding": "measured",
+          "line": 58
+        },
+        {
+          "claim": "Vacuous tests present: a_selected_check_keeps_its_own_verdict and an_empty_selection_selects_everything survive all 4 mutants. The PR's claim about mutant (iii) is incorrect (killed by 3 tests, not 1).",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "Remove or improve the vacuous tests to properly assert the behavior under mutation",
+          "grounding": "measured",
+          "line": 1434
+        },
+        {
+          "claim": "Existing callers behave identically and correctly pass &[]",
+          "file": "src/cli/handlers/comply_handlers/command_dispatch.rs",
+          "fix": "None required",
+          "grounding": "measured",
+          "line": 19
+        },
+        {
+          "claim": "The PR body honesty is verified (166 checks in/out, no RED commit)",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "None required",
+          "grounding": "measured",
+          "line": 1
+        }
+      ],
+      "duration_seconds": 631.3
+    },
+    {
+      "lane": 2,
+      "conversation_id": "f9bef082-8588-46f8-a9eb-9ec227e4a733",
+      "verdict": "FAIL",
+      "summary": "The core logic for `--checks` selection is robust. It properly gates the CLI, correctly computes rule IDs, correctly interacts with existing flags (`--strict`, `--failures-only`), and does not break existing routes like `comply report`. It never silently selects nothing on invalid input (like empty strings or typos). However, the PR body misrepresents the test suite's quality: two of the added tests (`a_selected_check_keeps_its_own_verdict` and `an_empty_selection_selects_everything`) are completely vacuous and pass even if `select_checks` does absolutely nothing. Additionally, the claim that each mutant is killed by exactly one test is false (mutant iii is killed by two). Therefore, the lane fails due to vacuous tests and inaccurate claims about test effectiveness.",
+      "findings": [
+        {
+          "claim": "Does the flag actually gate, or is it decorative?",
+          "file": "src/cli/commands/misc_commands_comply.rs",
+          "fix": "It actually gates. The clap parser only accepts `--checks` on the `comply check` subcommand (line 53). It is not accepted on `comply report` or `comply ledger`. `pmat comply` defaults to `Check` with an empty `checks` vector, which correctly selects all rules. The MCP tool `quality-gate` uses a separate command entirely. There is no path where `--checks` is accepted but ignored.",
+          "grounding": "cited",
+          "line": 53
+        },
+        {
+          "claim": "Is the error reachable in the real CLI, and does the PROCESS exit non-zero?",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "Yes. The error propagates up from `select_checks` (line 108) to `main` which exits 1. `--checks CB-21I3`, `--checks \"\"`, and `--checks \" CB-030\"` all produce an unknown ID error and exit 1. `--checks CB-030,` also exits 1 due to the empty trailing ID. Duplicate `--checks CB-030 --checks CB-030` parses correctly and works as intended. In no case does it silently select nothing.",
+          "grounding": "measured",
+          "line": 108
+        },
+        {
+          "claim": "`check_id` correctness",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "The implementation `name.split_once(\": \").map_or(name, |(id, _)| id)` (line 75) is correct. Extracting all unique names from the source reveals NO ambiguous IDs (no duplicates). There are NO names with `: ` where the prefix is a sentence rather than an ID, and NO names with leading/trailing spaces that would break shell matching.",
+          "grounding": "measured",
+          "line": 75
+        },
+        {
+          "claim": "Interaction with the flags already there",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "Selection correctly runs BEFORE `retain_blocking_checks` (line 58). `summary`/`is_compliant` are correctly re-tallied after selection (lines 59-60). `apply_exit_policy` guarantees that if a selected rule FAILS, `is_compliant` is false, and it will exit 1, even with `--strict`. A passing selected rule on a failing repo exits 0, which is correct (the user gated on a passing rule). No combination can make a failing selected rule produce exit 0.",
+          "grounding": "cited",
+          "line": 58
+        },
+        {
+          "claim": "Vacuous tests",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "Two tests are completely vacuous: `a_selected_check_keeps_its_own_verdict` and `an_empty_selection_selects_everything` pass under ALL FOUR mutants. The PR's claim that mutants (ii), (iii), (iv) are EACH killed by exactly one test is FALSE: mutant (iii) is killed by TWO tests (Test 1 which asserts length, and Test 5 which panics out-of-bounds on index 1). The clap wiring test (Test 6) correctly asserts on formatting because dropping the delimiter yields a single string `\"\\\"CB-2113,CB-030\\\"\"`, making the `contains(\"\\\"CB-2113\\\"\")` check fail, effectively killing mutant (iv).",
+          "grounding": "measured",
+          "line": 140
+        },
+        {
+          "claim": "What did it break?",
+          "file": "src/cli/command_dispatcher/command_routing.rs",
+          "fix": "Nothing. Callers in tests and the bare `pmat comply` route (line 308) pass an empty array, which safely selects the full roster. `comply report` goes through `handle_report`, which calls `compute_compliance_report` directly without `select_checks`, so it continues to see the full roster unharmed.",
+          "grounding": "cited",
+          "line": 308
+        },
+        {
+          "claim": "The honesty of the PR body",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "The claims \"166 checks in, 166 checks out\" and that RED was not committed separately are TRUE. The git log contains no separate RED commit, and the diff makes no changes to check definitions or counts. The only overstated claim was the test coverage concerning the mutants.",
+          "grounding": "measured",
+          "line": 0
+        }
+      ],
+      "duration_seconds": 627.0
+    },
+    {
+      "lane": 3,
+      "conversation_id": "638a45fe-95a6-4d51-a4db-32259bce1e61",
+      "verdict": "FAIL",
+      "summary": "The `--checks` flag correctly filters the report and enforces the appropriate exit codes, but fundamentally fails to gate execution. It runs all 166 checks (costing ~12GB memory and significant CPU time) before applying the filter, rendering the flag purely decorative for performance. Additionally, two of the added tests are completely vacuous against the requested mutants.",
+      "findings": [
+        {
+          "claim": "Execution is not gated. `compute_compliance_report` is called before `select_checks`, executing all 166 checks (12GB RAM) before dropping the unselected ones.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "Pass the `selected` slice into `compute_compliance_report` to actually bypass the heavy analysis.",
+          "grounding": "measured",
+          "line": 50
+        },
+        {
+          "claim": "Test `a_selected_check_keeps_its_own_verdict` is vacuous. If `select_checks` ignores its argument (mutant i), the test still passes.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "Rewrite the test to fail when the logic is broken, or drop it.",
+          "grounding": "asserted",
+          "line": 950
+        },
+        {
+          "claim": "Test `an_empty_selection_selects_everything` is vacuous. It passes against all 4 mutants.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check.rs",
+          "fix": "Rewrite the test to fail when the logic is broken, or drop it.",
+          "grounding": "asserted",
+          "line": 961
+        }
+      ],
+      "duration_seconds": 822.7
+    }
+  ],
+  "orchestrator_reverification": [
+    {
+      "finding": "the two control tests are vacuous \u2014 they survive all four mutants",
+      "lanes": [
+        1,
+        2,
+        3
+      ],
+      "verdict": "REFUTED",
+      "reasoning": "A control is SUPPOSED to survive the RED mutants; that is what makes it a control and not a second RED test. The right question is whether it dies under the mutant it exists for. Both do.",
+      "evidence": [
+        "mutant: selection marks SELECTED rules Pass (the 'gate that cannot fail') -> a_selected_check_keeps_its_own_verdict FAILED",
+        "mutant: remove the empty-selection early return -> an_empty_selection_selects_everything FAILED"
+      ],
+      "action": "none; the mutation table in the PR now names these two mutants so the criterion is visible"
+    },
+    {
+      "finding": "the claim 'each mutant is killed by exactly one test' is false",
+      "lanes": [
+        1,
+        2
+      ],
+      "verdict": "CONFIRMED \u2014 but it was my prompt, not the PR",
+      "evidence": "that phrasing appears in the quorum prompt I wrote, not in the PR body or commit message. The lanes correctly refuted it; the PR never asserted it. Mutant (iii) is killed by 2-3 tests.",
+      "action": "the PR's mutation table now names every killing test rather than implying one each"
+    },
+    {
+      "finding": "execution is not gated: all 166 rules run before the filter, ~12GB",
+      "lanes": [
+        3
+      ],
+      "verdict": "CONFIRMED as behaviour, REFRAMED as impact",
+      "evidence": [
+        "local default parallelism: 35.2 GB peak / 3m04s",
+        "local PMAT_COMPLY_JOBS=1 (CI's setting): 12.6 GB peak / 7m31s",
+        "CI run 34352005449 banner: 'comply: 17 group(s), 1 at a time (~4 GB peak; PMAT_COMPLY_JOBS overrides)' and the step COMPLETES on ubuntu-latest",
+        "so peak memory is a function of grouping, which CI already pins; --checks changes neither time nor memory"
+      ],
+      "action": "the PR already disclosed 'selection, not speed'; the numbers are now measured rather than estimated. Lazy evaluation would need every check to declare its id before running, which is a roster refactor, not this ticket."
+    },
+    {
+      "finding": "the flag is decorative / accepted-and-ignored somewhere",
+      "lanes": [
+        1,
+        2
+      ],
+      "verdict": "REFUTED by the lanes themselves",
+      "evidence": "clap accepts --checks only on `comply check`; `comply report`/`comply ledger` do not take it; the bare `pmat comply` route passes vec![] and selects everything",
+      "action": "none"
+    },
+    {
+      "finding": "a failing selected rule could exit 0",
+      "lanes": [
+        1,
+        2
+      ],
+      "verdict": "REFUTED by the lanes themselves",
+      "evidence": "selection runs before retain_blocking_checks; summary and is_compliant are re-tallied after; apply_exit_policy exits 1",
+      "action": "none"
+    },
+    {
+      "finding": "check_id yields ambiguous or malformed ids",
+      "lanes": [
+        1,
+        2
+      ],
+      "verdict": "REFUTED by the lanes themselves",
+      "evidence": "166 checks -> 166 distinct ids, no duplicates, no leading/trailing spaces, no sentence-prefix false positives",
+      "action": "none"
+    }
+  ],
+  "incidental_finding_confirmed_in_production": {
+    "what": "CI run 34352005449 shows the ladder step exiting 1 today ('comply: 5 check(s) failed -> exit 1', '##[error]Process completed with exit code 1') and continue-on-error swallowing it",
+    "why_it_matters": "independent production confirmation of the PMAT-717 finding that 0 ENFORCED is caused by continue-on-error at quality-gate.yml:299, not by the root set",
+    "also": "the same log shows CB-2100 now reporting SIX roots including `gate` \u2014 PMAT-717 is live and working on master"
+  },
+  "gate": {
+    "cmd": "pmat verify --format json",
+    "ok": null,
+    "stages_measured": [
+      "format",
+      "satd",
+      "clippy",
+      "tests"
+    ],
+    "not_measured": [
+      "complexity"
+    ],
+    "note": "complexity declines on a clean tree"
+  }
+}
