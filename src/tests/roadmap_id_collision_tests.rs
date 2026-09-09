@@ -377,20 +377,34 @@ async fn an_issue_number_whose_id_is_taken_is_refused_not_upserted() {
 // of that, so it reads a `title:` out of prose. These pin all three shapes.
 
 #[test]
-fn a_title_inside_a_block_scalar_is_prose_not_the_row_title() {
+fn a_block_scalar_quoting_a_row_does_not_invent_one() {
+    // The tracking `id_lines` has and `titles_by_id` needed: the body of
+    // `notes: |` is TEXT. A reviewer quoting a row inside a note must not
+    // declare it, or `titles_changed` compares against a ticket nobody minted.
+    //
+    // The earlier version of this test put only a `title:` in the block and
+    // passed even with block tracking removed — the indent check rejected it
+    // anyway, so it was measuring the wrong thing. Mutation caught that. A
+    // quoted `id:` is what actually needs the tracking.
     let raw = "\
 roadmap_version: '1.0'
 roadmap:
 - id: PMAT-001
   notes: |
-    A reviewer wrote this, quoting another row:
-    title: 'the WRONG title, it is inside a block scalar'
+    Quoting a row from another branch so the reader can compare:
+    - id: PMAT-999
+      title: 'a ticket that exists only inside this note'
   title: 'the real title'
 ";
+    let titles = titles_by_id(raw);
     assert_eq!(
-        titles_by_id(raw).get("PMAT-001").map(String::as_str),
+        titles.get("PMAT-001").map(String::as_str),
         Some("the real title"),
-        "a title: inside a block scalar was read as the row's title"
+        "the row's own title was lost to the prose above it"
+    );
+    assert!(
+        !titles.contains_key("PMAT-999"),
+        "a row quoted inside a block scalar was read as a real ticket: {titles:?}"
     );
 }
 

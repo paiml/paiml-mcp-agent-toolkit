@@ -147,6 +147,17 @@ fn clean_scalar(raw: &str) -> String {
     }
 }
 
+/// `<PREFIX>-<digits>` reduced to `<PREFIX>-<number>`, so that two spellings of
+/// one number compare equal.
+///
+/// `None` when the id does not end in digits — those compare by their text, which
+/// is the only thing they have.
+fn numeric_id_key(id: &str) -> Option<String> {
+    let (prefix, digits) = id.rsplit_once('-')?;
+    let number: u64 = digits.parse().ok()?;
+    Some(format!("{prefix}-{number}"))
+}
+
 /// Ids declared on more than one line, ordered by first occurrence, each with
 /// every line it was declared on.
 ///
@@ -157,7 +168,13 @@ pub fn duplicate_ids(raw: &str) -> Vec<(String, Vec<usize>)> {
     let mut first_seen: Vec<String> = Vec::new();
     let mut lines_by_id: HashMap<String, Vec<usize>> = HashMap::new();
     for (line, id) in id_lines(raw) {
-        let lines = lines_by_id.entry(id.clone()).or_default();
+        // Keyed by the NUMBER where there is one, not the spelling. PMAT-7 and
+        // PMAT-007 are one ticket to `max_id_number` (which parses the digits)
+        // and two tickets to a string compare, so the two spellings used to
+        // coexist with no duplicate reported while the allocator counted past
+        // both — an id that is simultaneously taken and free. PMAT-713.
+        let key = numeric_id_key(&id).unwrap_or_else(|| id.clone());
+        let lines = lines_by_id.entry(key.clone()).or_default();
         if lines.is_empty() {
             first_seen.push(id);
         }
@@ -166,7 +183,8 @@ pub fn duplicate_ids(raw: &str) -> Vec<(String, Vec<usize>)> {
     first_seen
         .into_iter()
         .filter_map(|id| {
-            let lines = lines_by_id.remove(&id)?;
+            let key = numeric_id_key(&id).unwrap_or_else(|| id.clone());
+            let lines = lines_by_id.remove(&key)?;
             (lines.len() > 1).then_some((id, lines))
         })
         .collect()
@@ -614,34 +632,79 @@ fn last_line_of_row(
 /// "right".
 #[must_use]
 pub fn titles_by_id(raw: &str) -> BTreeMap<String, String> {
-    let ids = id_lines(raw);
-    let lines: Vec<&str> = raw.lines().collect();
     let mut out = BTreeMap::new();
-    for (position, (line_no, id)) in ids.iter().enumerate() {
-        // `id_lines` is 1-based; rows run from this id to the next one.
-        let start = line_no.saturating_sub(1);
-        let end = ids
-            .get(position + 1)
-            .map_or(lines.len(), |(next, _)| next.saturating_sub(1));
-        let id_indent = lines
-            .get(start)
-            .map_or(0, |l| l.len() - l.trim_start().len());
-        for line in lines.iter().take(end).skip(start) {
-            let indent = line.len() - line.trim_start().len();
-            // A `title:` nested deeper belongs to a subtask, not this row; the
-            // sequence dash makes the id line's own indent two columns short,
-            // so accept the id line itself and anything at the key indent.
-            if indent < id_indent {
-                break;
+    // Indentation of the line that opened a block scalar; `None` outside one.
+    // Same rule `id_lines` uses, and for the same reason: the body of `notes: |`
+    // is TEXT. A reviewer quoting `title: …` in a note is not declaring one, and
+    // reading it as the row's title would make `titles_changed` report a
+    // collision on prose. `titles_by_id` did not inherit this and had to be told.
+    let mut block_opened_at: Option<usize> = None;
+    // Every row whose title has not been seen yet, with the indent its keys sit
+    // at. A LIST, not one current row: a subtask is declared inside its parent,
+    // so when the parent's own `title:` comes after the subtask block the parent
+    // must still be waiting for it. Dropping the parent on the subtask's id line
+    // is what left it titleless.
+    let mut pending: Vec<(String, usize)> = Vec::new();
+
+    for line in raw.lines() {
+        let indent = line.len() - line.trim_start().len();
+        if let Some(opened_at) = block_opened_at {
+            if line.trim().is_empty() || indent > opened_at {
+                continue;
             }
-            let trimmed = line.trim_start().trim_start_matches("- ");
-            if let Some(rest) = trimmed.strip_prefix("title:") {
-                out.insert(id.clone(), clean_scalar(rest));
-                break;
+            block_opened_at = None;
+        }
+
+        if let Some(id) = id_value_on_line(line) {
+            // A flow-style row declares both on one line: `- {id: X, title: Y}`.
+            if let Some(title) = title_in_flow_mapping(line) {
+                out.insert(id, title);
+            } else {
+                // The sequence dash puts the id two columns left of its siblings.
+                let key_indent = if strip_sequence_dash(line.trim_start()).is_some() {
+                    indent + 2
+                } else {
+                    indent
+                };
+                // A row at this indent or deeper is finished with; anything still
+                // waiting there never declared a title.
+                pending.retain(|(_, at)| *at < key_indent);
+                pending.push((id, key_indent));
             }
+        } else if let Some(rest) = line.trim_start().strip_prefix("title:") {
+            // Innermost first: the deepest row whose keys sit at this indent.
+            if let Some(position) = pending.iter().rposition(|(_, at)| *at == indent) {
+                let (id, _) = pending.remove(position);
+                out.insert(id, clean_scalar(rest));
+            }
+        }
+
+        if opens_block_scalar(line) {
+            block_opened_at = Some(indent);
         }
     }
     out
+}
+
+/// The `title` of a flow mapping such as `- {id: X, title: Y}`.
+///
+/// Flow rows yielded no title at all, so `titles_changed` silently ignored those
+/// ids — a collision check that skips the rows it cannot parse is the shape of
+/// the bug it was written for.
+fn title_in_flow_mapping(line: &str) -> Option<String> {
+    let inner = line.trim_start().trim_start_matches("- ").trim();
+    let inner = inner.strip_prefix('{')?.trim_end().trim_end_matches('}');
+    for field in inner.split(',') {
+        let field = field.trim();
+        for key in ["\"title\"", "'title'", "title"] {
+            if let Some(rest) = field.strip_prefix(key) {
+                if let Some(value) = rest.trim_start().strip_prefix(':') {
+                    return Some(clean_scalar(value));
+                }
+            }
+        }
+    }
+    None
 }
 
 /// An id whose title differs between two revisions of a roadmap.
