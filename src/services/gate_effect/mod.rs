@@ -38,10 +38,19 @@
 //! PMAT-717: that paragraph used to call the top-level job "unrequired", and on
 //! this repository it is not. `ci / gate` is required by branch protection and
 //! `gate` by active ruleset 13878864; both appear as distinct checks on a PR.
-//! Reading only branch protection made `gate` invisible, which is where
-//! "157 rules, 0 ENFORCED" came from — an incomplete root set, not 157 broken
-//! rules. Two contexts that differ only by a prefix are still two contexts, and
-//! the union is what INV-2100-7 now requires.
+//! Reading only branch protection made `gate` invisible. Two contexts that
+//! differ only by a prefix are still two contexts, and the union is what
+//! INV-2100-7 now requires.
+//!
+//! **What this does NOT explain.** A 3/3 quorum refuted the first version of
+//! this paragraph, which blamed "157 rules, 0 ENFORCED" on the incomplete root
+//! set. That is false, and the true cause was already documented one file over:
+//! the only `pmat comply check` invocation in CI is `quality-gate.yml:300`,
+//! whose step carries `continue-on-error: true` at line 299, and it sits in the
+//! `provable-ladder` job — which branch protection ALREADY required. The
+//! verdict reaches nothing whatever the root set contains. Widening the roots is
+//! necessary (a gate CB-2100 cannot see can never be scored) but it is not
+//! sufficient, and it moves no count on its own.
 //!
 //! Fails closed throughout: an unresolvable context list, an unparsable
 //! workflow, a workflow with no jobs, or a required context that resolves into

@@ -23,9 +23,14 @@
 # top-level job "unrequired". It is not, and has not been: it is required by
 # ACTIVE ruleset 13878864 "Green Main". Both contexts appear on a real PR
 # (measured on #1243). Because `required::resolve` read only branch protection,
-# `gate` was invisible to CB-2100, and THAT is where "157 rules, 0 ENFORCED"
-# came from — an incomplete root set, not 157 broken rules. A false sentence in a
-# manifest that exists to be cross-checked is the same defect one level up.
+# `gate` was invisible to CB-2100. A false sentence in a manifest that exists to
+# be cross-checked is the same defect one level up.
+#
+# This does NOT explain "157 rules, 0 ENFORCED", and an earlier draft of this
+# header wrongly said it did. That count comes from `quality-gate.yml:299` —
+# `continue-on-error: true` on the only step in CI that runs `pmat comply check`
+# — in the `provable-ladder` job, which branch protection already required. The
+# roots being short by one masked nothing about it.
 #
 # ── required by BRANCH PROTECTION
 ci / gate

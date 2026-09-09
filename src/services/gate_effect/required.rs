@@ -10,7 +10,9 @@
 //! 1. `PMAT_REQUIRED_STATUS_CHECKS` — comma-separated, explicit override. Used
 //!    by fixtures and by CI runners that already know the answer.
 //! 2. `.github/required-status-checks.txt` — one context per line, committed.
-//! 3. the GitHub branch-protection API via `gh`.
+//! 3. GitHub itself via `gh` — branch protection AND repository rulesets,
+//!    unioned. They are independent mechanisms (PMAT-717); reading only the
+//!    first missed every context required solely by the second.
 //!
 //! When 2 and 3 both answer they must agree. A committed manifest that has
 //! drifted from live branch protection is worse than no manifest: it is a
@@ -31,7 +33,7 @@ impl ContextSource {
         match self {
             ContextSource::Env => "PMAT_REQUIRED_STATUS_CHECKS",
             ContextSource::Manifest => ".github/required-status-checks.txt",
-            ContextSource::GitHubApi => "GitHub branch-protection API",
+            ContextSource::GitHubApi => "GitHub branch protection ∪ rulesets",
         }
     }
 }
@@ -181,21 +183,26 @@ pub(crate) fn union_contexts(protection: Vec<String>, ruleset: Vec<String>) -> V
 
 /// Combine the two independent live sources into one root set.
 ///
-/// PMAT-717 RED: this carries TODAY's semantics — branch protection is treated
-/// as mandatory, so a repository that requires checks ONLY through a ruleset
-/// reports nothing at all. Rulesets are an INDEPENDENT mechanism and are
-/// increasingly the only one a repository configures; making them readable only
-/// when branch protection also answers reproduces, one level down, the exact
-/// blindness this ticket exists to remove.
+/// PMAT-717. The two are INDEPENDENT: branch protection and rulesets each
+/// require checks on their own, and a repository may configure either, both, or
+/// neither. Rulesets are GitHub's successor to branch protection, so "only a
+/// ruleset" is not an exotic case — treating protection as mandatory would
+/// reproduce, one level down, the blindness this ticket removes.
 ///
 /// `None` means NEITHER source answered — unmeasured, which the caller turns
-/// into an error. It must never mean "measured, and the answer is nothing".
+/// into an error. It must never mean "measured, and the answer is nothing": an
+/// empty root set would read as a repository nothing gates, and pass.
 pub(crate) fn combine_live(
     protection: Option<Vec<String>>,
     ruleset: Option<Vec<String>>,
 ) -> Option<Vec<String>> {
-    let protection = protection?;
-    Some(union_contexts(protection, ruleset.unwrap_or_default()))
+    if protection.is_none() && ruleset.is_none() {
+        return None;
+    }
+    Some(union_contexts(
+        protection.unwrap_or_default(),
+        ruleset.unwrap_or_default(),
+    ))
 }
 
 /// Ask GitHub. `None` on any failure — the caller turns that into an error when
@@ -204,7 +211,7 @@ fn fetch_live(project_path: &Path) -> Option<Vec<String>> {
     let nwo = gh_json(project_path, &["repo", "view", "--json", "nameWithOwner"])?;
     let repo = json_string(&nwo, "nameWithOwner")?;
     let branch = default_branch(project_path)?;
-    let out = run_gh(
+    let protection = run_gh(
         project_path,
         &[
             "api",
@@ -212,29 +219,30 @@ fn fetch_live(project_path: &Path) -> Option<Vec<String>> {
             "--jq",
             ".required_status_checks.contexts[]?",
         ],
-    )?;
-    let protection: Vec<String> = out
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
-        .map(str::to_string)
-        .collect();
+    )
+    .map(|out| {
+        out.lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .map(str::to_string)
+            .collect::<Vec<String>>()
+    });
 
     // PMAT-717: a ruleset is a SECOND, independent way to require a check, and
     // this function asked only about branch protection. On this repository the
-    // `gate` context is required by ruleset 13878864 and by nothing else, so the
-    // root set was short by one and CB-2100 scored every rule reachable only
-    // through it as NEUTERED. A missing or unreadable ruleset endpoint yields an
-    // empty list, which unions to exactly the old answer — this cannot make a
-    // previously-visible root disappear.
+    // `gate` context is required by ruleset 13878864 and by nothing else, so it
+    // was absent from the root set entirely — CB-2100 could not see a gate the
+    // repository actually enforces.
+    //
+    // Neither call may gate the other: `combine_live` unions whatever answered
+    // and reports `None` only when both were silent.
     let ruleset = run_gh(
         project_path,
         &["api", &format!("repos/{repo}/rules/branches/{branch}")],
     )
-    .map(|body| parse_ruleset_contexts(&body))
-    .unwrap_or_default();
+    .map(|body| parse_ruleset_contexts(&body));
 
-    Some(union_contexts(protection, ruleset))
+    combine_live(protection, ruleset)
 }
 
 fn default_branch(project_path: &Path) -> Option<String> {

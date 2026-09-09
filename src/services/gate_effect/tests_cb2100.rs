@@ -86,8 +86,8 @@ fn the_rule_is_registered_as_cb_2100() {
     );
 }
 
-/// INV-2100-7. The roots come from branch protection; nothing in the rule may
-/// know the name of a gate. A rule that hardcodes `gate` reports a repository
+/// INV-2100-7. The roots come from branch protection unioned with repository
+/// rulesets (PMAT-717); nothing in the rule may know the name of a gate. A rule that hardcodes `gate` reports a repository
 /// as compliant on the day it renames a job — it fails its own INV-2100-3.
 #[test]
 fn inv_2100_7_no_gate_name_is_hardcoded_in_the_rule() {
@@ -1250,11 +1250,15 @@ fn a_discharged_claim_requires_something_that_actually_runs_kani() {
 
 // ── PMAT-717 / goal-mode.md step 0: the root set must include RULESET contexts.
 //
-// INV-2100-7 said "the roots come from branch protection". That is where the
-// 157-rules / 0-ENFORCED figure comes from: this repository's `gate` context is
-// required by an ACTIVE RULESET (13878864 "Green Main"), not by branch
-// protection, so the root set was short by one and every rule reachable only
-// through `gate` was scored NEUTERED.
+// INV-2100-7 said "the roots come from branch protection". This repository's
+// `gate` context is required by an ACTIVE RULESET (13878864 "Green Main") and by
+// nothing else, so the root set was short by one and CB-2100 could not see a
+// gate the repository really enforces.
+//
+// It is NOT where the 157-rules / 0-ENFORCED figure comes from — an earlier
+// draft of this comment claimed that and a 3/3 quorum refuted it. That figure is
+// `continue-on-error: true` at quality-gate.yml:299, on the only step in CI that
+// runs `pmat comply check`, inside a job branch protection already required.
 //
 // Measured on this repository:
 //   gh api repos/paiml/paiml-mcp-agent-toolkit/rules/branches/master
