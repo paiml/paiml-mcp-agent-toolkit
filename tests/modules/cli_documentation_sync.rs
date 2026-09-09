@@ -317,80 +317,6 @@ fn test_cli_options_match_documentation() {
     }
 }
 
-/// Top-level commands that `rust-docs/cli-reference.md` does not document yet.
-///
-/// A RATCHET, not an allow-list: this may only ever get SHORTER. It exists because
-/// the honest measurement is 60 undocumented commands out of 71, and a test that
-/// demanded all 60 be written today would simply be disabled tomorrow — which is
-/// how this suite came to assert nothing in the first place (#1228).
-///
-/// Adding a command without documenting it fails the test below. Documenting one
-/// without deleting its line here ALSO fails, so the list cannot rot into a
-/// permanent excuse. Emptying it is the goal; #1228 Step 3 (generate the reference
-/// from the command registry) is how that is meant to happen.
-const UNDOCUMENTED_AT_BASELINE: &[&str] = &[
-    "agent",
-    "agy",
-    "brick-score",
-    "cache",
-    "ci-local",
-    "comply",
-    "config",
-    "cuda-tdg",
-    "debug",
-    "demo-score",
-    "deps-audit",
-    "diagnose",
-    "embed",
-    "enforce",
-    "explain",
-    "extract",
-    "falsify",
-    "five-whys",
-    "hooks",
-    "infra-score",
-    "init",
-    "kaizen",
-    "localize",
-    "maintain",
-    "mcp",
-    "memory",
-    "oracle",
-    "org",
-    "perfection-score",
-    "popper-score",
-    "predict-quality",
-    "project-diag",
-    "prompt",
-    "qa-work",
-    "qdd",
-    "quality-gates",
-    "query",
-    "record-metric",
-    "red-team",
-    "report",
-    "repo-score",
-    "roadmap",
-    "rust-project-score",
-    "score",
-    "semantic",
-    "serve",
-    "show-metrics",
-    "spec",
-    "split",
-    "sql",
-    "stack",
-    "tdg",
-    "telemetry",
-    "test",
-    "test-discovery",
-    "test-stability",
-    "validate-docs",
-    "validate-readme",
-    "verify",
-    "work",
-];
-
 #[test]
 fn test_no_undocumented_commands() {
     // `None` means the document was never shipped (packaged crate); there is
@@ -425,65 +351,21 @@ fn test_no_undocumented_commands() {
         .filter(|c| *c != "help" && !documented_names.contains(c))
         .collect();
 
-    let newly_undocumented: Vec<&&str> = undocumented_now
-        .iter()
-        .filter(|c| !UNDOCUMENTED_AT_BASELINE.contains(c))
-        .collect();
+    // A HARD FAILURE, not a ratchet (operator decision, 2026-09-09). The 60-command
+    // exception list is gone and the debt it recorded is paid: every command has a
+    // section in the reference. A new command without one fails here immediately,
+    // which is the only version of this check that means anything — a list of 60
+    // exceptions nobody was going to shrink is a ratchet in name only.
     assert!(
-        newly_undocumented.is_empty(),
-        "{} new undocumented command(s): {:?}\n\
-         Document them in rust-docs/cli-reference.md as `### `<name>``, or, if that \
-         is genuinely out of scope, add them to UNDOCUMENTED_AT_BASELINE and say why \
-         in the commit message. The list may only shrink.",
-        newly_undocumented.len(),
-        newly_undocumented
-    );
-
-    let stale: Vec<&&str> = UNDOCUMENTED_AT_BASELINE
-        .iter()
-        .filter(|c| !undocumented_now.contains(c))
-        .collect();
-    assert!(
-        stale.is_empty(),
-        "{} entr(y/ies) in UNDOCUMENTED_AT_BASELINE {:?} are now documented or gone \
-         from the CLI. Delete them from the list — a ratchet that keeps satisfied \
-         entries stops measuring anything.",
-        stale.len(),
-        stale
+        undocumented_now.is_empty(),
+        "{} undocumented command(s): {:?}\n\nEvery command needs a `### `<name>`` \
+         section in rust-docs/cli-reference.md. A generated stub carrying the \
+         command's real name and its `--help` summary is enough to pass this; see \
+         the \"Commands not yet hand-documented\" section for the shape.",
+        undocumented_now.len(),
+        undocumented_now
     );
 }
-
-/// Documented examples that name a flag or subcommand the CLI does not have.
-///
-/// A RATCHET, like `UNDOCUMENTED_AT_BASELINE`: it may only ever get SHORTER. The
-/// honest measurement the moment this test could see anything at all was **16 of
-/// 79** examples drifted — the extractor had been reading one line per block and
-/// skipping any block that opened with a comment, which is nearly all of them.
-///
-/// Recorded rather than fixed here because the two are different jobs: deciding
-/// what `demo --web` or `analyze defect-prediction --explain` was MEANT to say
-/// needs someone who knows whether the flag was renamed, dropped, or never
-/// shipped, and guessing would replace drift with fiction. A new drifted example
-/// fails the test immediately; a line here that starts working ALSO fails it, so
-/// the list cannot rot. Emptying it is the goal.
-const DRIFTED_EXAMPLES_AT_BASELINE: &[&str] = &[
-    r#"paiml-mcp-agent-toolkit demo --web --port 8080"#,
-    r#"paiml-mcp-agent-toolkit demo --export markdown -o analysis.md"#,
-    r#"paiml-mcp-agent-toolkit demo --export sarif -o results.sarif"#,
-    r#"paiml-mcp-agent-toolkit scaffold rust \"#,
-    r#"paiml-mcp-agent-toolkit context rust"#,
-    r#"paiml-mcp-agent-toolkit context deno \"#,
-    r#"pmat analyze duplicates --gpu --perf --format json"#,
-    r#"pmat analyze defect-prediction --min-confidence 0.8"#,
-    r#"pmat analyze defect-prediction --explain --format detailed"#,
-    r#"pmat analyze defect-prediction --sarif -o defects.sarif"#,
-    r#"pmat analyze big-o --min-complexity "O(n^2)" --format json"#,
-    r#"pmat analyze makefile --min-severity error --format sarif"#,
-    r#"pmat analyze incremental-coverage --min-coverage 80.0 --fail-on-decrease"#,
-    r#"pmat analyze symbol-table --format ctags --include-private"#,
-    r#"pmat refactor serve --resume --auto-commit "refactor: {file}""#,
-    r#"pmat analyze web-assembly --include-binary --no-include-text"#,
-];
 
 #[test]
 fn test_documentation_examples_are_valid() {
@@ -596,40 +478,14 @@ fn test_documentation_examples_are_valid() {
         "examined 0 documented examples — the extractor matched nothing, which is \
          how this test passed while measuring nothing (#1228)"
     );
-    let new_drift: Vec<&String> = drifted
-        .iter()
-        .filter(|d| {
-            let command = d.lines().next().unwrap_or("").trim();
-            !DRIFTED_EXAMPLES_AT_BASELINE.contains(&command)
-        })
-        .collect();
+    // A HARD FAILURE, not a ratchet (operator decision, 2026-09-09). Every
+    // documented example must name something the CLI actually has.
     assert!(
-        new_drift.is_empty(),
-        "{} NEW drifted example(s) out of {examined} examined:\n{}\n\nFix the \
-         document, or, if the example is right and the CLI is wrong, fix the CLI. \
-         Adding a line to DRIFTED_EXAMPLES_AT_BASELINE needs a reason in the \
-         commit message — the list may only shrink.",
-        new_drift.len(),
-        new_drift
-            .iter()
-            .map(|d| d.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-
-    let fixed: Vec<&&str> = DRIFTED_EXAMPLES_AT_BASELINE
-        .iter()
-        .filter(|baseline| {
-            !drifted
-                .iter()
-                .any(|d| d.lines().next().unwrap_or("").trim() == **baseline)
-        })
-        .collect();
-    assert!(
-        fixed.is_empty(),
-        "{} entr(y/ies) in DRIFTED_EXAMPLES_AT_BASELINE now work: {fixed:?}\nDelete \
-         them from the list — a ratchet that keeps satisfied entries stops \
-         measuring anything.",
-        fixed.len()
+        drifted.is_empty(),
+        "{} of {examined} documented example(s) name something the CLI does not \
+         have:\n{}\n\nFix the document, or, if the example is right and the CLI is \
+         wrong, fix the CLI.",
+        drifted.len(),
+        drifted.join("\n")
     );
 }
