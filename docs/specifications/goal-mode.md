@@ -264,9 +264,10 @@ vendors: [cuda]    # optional; adds a vendor: role to E.1's required set
 escape hatch nobody can see is a hole, so `pmat comply report` lists every `historical`
 spec **by name** on every run.
 
-Epic membership is read from GitHub's native **sub-issue** relation, with an `Epic: #N`
-body line as a fallback recorded as `grounding: "asserted"` — the same distinction the
-quorum artifacts already draw.
+Epic membership is read from GitHub's native **sub-issue** relation, and only from it
+(operator decision, 2026-09-09). An `Epic: #N` line in an issue body is **not** accepted:
+a body line is prose that drifts, a sub-issue is a structural edge GitHub maintains, and
+accepting both would mean two answers to one question — doctrine 5.
 
 ### 4.4 Stress cases
 
@@ -382,7 +383,7 @@ legitimate quorum. That is what "pmat does not depend on Claude or agy" means co
 | **CB-2110** | E | every `active` spec names an open epic issue with ≥1 sub-issue | delete the `epic:` line | `traceability` → `gate` |
 | **CB-2111** | E.1 | every `active` spec has a review artifact whose hash matches and whose roles all PASS | **append one space to the spec** | `traceability` → `gate` |
 | **CB-2112** | A | every open item has a `github_issue`, open, whose number is the item's numeric tail | null one `github_issue` | `traceability` → `gate` |
-| **CB-2113** | C | every non-merge commit in the PR carries `Pmat-Ticket: <id>` naming a real, non-terminal item | `git commit --allow-empty -m 'no trailer' --no-verify` | `traceability` → `gate` |
+| **CB-2113** | C | every non-merge commit in `v<latest>..HEAD` carries `Pmat-Ticket: <id>` naming a real, non-terminal item | `git commit --allow-empty -m 'no trailer' --no-verify` | `traceability` → `gate` |
 | **CB-2114** | B, F1 | every open item has `release:`, its milestone exists, its issue is on it | remove one `release:` | `traceability` → `gate` |
 | **CB-2115** | D | the open sets are in bijection, and no matched pair has disagreed past the grace window | close one linked issue, leave the item open | `traceability` → `gate` |
 | **CB-2116** | B, F2 | (a) every commit in a tag's range carries a trailer for a ticket of that release; (b) `count(v<latest>..master) ≤ max_untagged_commits` | move a merged ticket's `release` | `traceability` → `gate` |
@@ -450,11 +451,12 @@ bypasses, and adding the trigger costs nothing.
    included. Caught by nothing.
 3. **Tags are mutable.** `git tag -d && git push --force` rewrites a boundary and
    CB-2116 would then measure the new one and pass. Needs org-level tag protection.
-4. **Squash merges erase trailers.** CB-2113 therefore measures the **PR's own commits**,
-   where they still exist and can still be fixed; CB-2116's tag-range leg is what would
-   notice a squashed master commit with no trailer. The durable fix is restricting
-   `allowed_merge_methods` to `merge`, which is an org action and is **recommended here,
-   not assumed**.
+4. **Merge commits only.** `allowed_merge_methods` is restricted to `merge` (operator
+   decision, 2026-09-09), so a branch's `Pmat-Ticket:` trailers survive onto master
+   instead of being collapsed into one squashed message. This is what lets CB-2113
+   measure **master**, not merely the PR — see §7. Setting it is a ruleset change on
+   `13878864`; until it is made, CB-2113 measures the PR's commits only and says so in
+   its output rather than pretending to cover master.
 5. **A trailer proves a claim, not the work.** `Pmat-Ticket: PMAT-999` on an unrelated
    diff passes CB-2113. Only a quorum reading the diff against the ticket defends this,
    and that is a skill, not a gate.
@@ -497,9 +499,14 @@ fixed tool list, and that is the defect not to repeat.
 
 ```toml
 [goal]
-max_tickets_per_release   = 25   # policy from the operator's "100 tickets → 4 releases"
+# A ticket COUNT is not the Rust idiom and this repository does not behave like one:
+# 11 releases in 24 days, 17 to 208 commits each, median 59. What Rust projects
+# actually key on is (a) semver semantics read from what is IN the release, and
+# (b) how much is sitting unreleased. Both are below; the ticket cap is opt-in and
+# unset by default.
+max_untagged_commits      = 60   # the repo's own MEDIAN commits-per-release. 44 today
 max_release_age_hours     = 72
-max_untagged_commits      = 60   # CB-2116(b); 44 today
+max_tickets_per_release   = 0    # 0 = no cap. Set it only if you want one
 staleness_grace_minutes   = 60
 
 [goal.drivers.pmat-implement]
@@ -519,12 +526,25 @@ pmat goal status | stop [--now] | ledger [--write]
 
 ### 10.3 Release boundary — when 100 tickets become 4 releases
 
-Evaluated after each ticket reaches `MERGED`; first to fire cuts:
+**The version number is derived, never chosen.** Semver semantics are read from the
+labels of the tickets in the release: any `breaking-change` → major; else any
+`enhancement`/`feature` → minor; else patch. That is the Rust idiom — the number
+describes what is in the release, so it cannot be argued about.
 
-1. **milestone drain** (primary) — zero open issues on the current milestone;
-2. **ticket budget** — `≥ max_tickets_per_release` closed since the last tag;
+**The boundary** is evaluated after each ticket reaches `MERGED`; first to fire cuts:
+
+1. **milestone drain** (primary) — zero open issues on the current milestone. Deterministic,
+   visible in GitHub's UI, and schedulable by a human;
+2. **unreleased volume** — `count(v<latest>..master) ≥ max_untagged_commits`. This is the
+   Rust-shaped trigger: it asks how much is sitting unreleased, not how many tickets were
+   closed. Default 60 is this repository's own median commits-per-release, measured over
+   `v3.30.0..v3.40.0`, not a number chosen for the document;
 3. **age** — `> max_release_age_hours` with ≥1 ticket closed;
-4. **explicit** — an item labelled `release-boundary` reaching `completed`.
+4. **explicit** — an item labelled `release-boundary` reaching `completed`;
+5. **ticket cap** — `≥ max_tickets_per_release`, only when that is set to a non-zero value.
+   Off by default: "100 tickets → 4 releases" was the operator's illustration of the
+   *shape*, and turning an illustration into a threshold is how an invented number becomes
+   a measurement nobody can trace.
 
 A cut: verify the drain → bump the version → regenerate `CHANGELOG.md` **from the
 trailers** in `v<prev>..HEAD` (this is *why* C is enforced — the changelog becomes
@@ -627,6 +647,7 @@ greps `CLAUDE.md` prescribes for this file class.
 | 13 items collide on #612 | roadmap parse | 13 of 61 open items carry an issue; **1 distinct** |
 | trailer coverage | `git log v3.39.0..master --no-merges --format='%(trailers:key=Pmat-Ticket,valueonly)'` | 30 of 81 (37%) |
 | untagged commits | `git rev-list --count v3.40.0..master` | 44 |
+| release cadence: 11 tags in 24 days, median 59 commits | `git tag --sort=creatordate` + `git rev-list --count <prev>..<tag>` | 17 min, 208 max, 59 median over `v3.30.0..v3.40.0` |
 | CB-148 cannot fail | `src/models/comply_config_impls.rs:127` | `unconfigured` → `Warning` → `should_fail(...)` = `false` |
 
 GOAL-MODE-SPEC-END
