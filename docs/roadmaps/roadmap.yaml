@@ -4906,36 +4906,7 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: 'Phase 2 landed the verdict RULE (hook_debt_scope.rs). Phase 3 landed the
-    two pieces between the rule and the command line, and did NOT land the flag.
-    Landed: staged_verdict / staged_verdict_for_file, which read git itself —
-    `git show :<path>` for the staged blob (the INDEX, not the working tree),
-    `git show HEAD:<path>` for its counterpart, `git diff --cached -U0` for the
-    ranges — and handle_analyze_complexity_diff_scoped in
-    src/cli/handlers/complexity_handlers/mod.rs, which prints the offender as
-    "<fn> - <metric> <measured> > <limit> (was <before>)" plus "Errors: N" and
-    returns Err so the exit is non-zero. 13 hook_debt_scope tests + 4
-    diff_scope entry-point tests, all over a real fixture repo for the git legs;
-    report O11 is allowed at the DEFAULT thresholds (10/15) and growth in a
-    touched function is refused naming the function. Mutation matrix, run and
-    reverted: judging every function instead of the touched ones leaves 13/13
-    and 4/4 GREEN (an untouched function measures identically at HEAD, so the
-    growth test already spares it — the touched filter is load-bearing only
-    where there is no HEAD counterpart), while the complete pre-BSE-12 rule
-    (that plus previous=None) turns 8 of 13 and 2 of 4 RED. NOT landed and NOT
-    startable in this ticket''s scope_paths: the `--diff-scope` flag. Declaring
-    `diff_scope: bool` on AnalyzeCommands::Complexity forces `diff_scope: false`
-    into 23 struct literals that rustc names across 6 files, none of them in
-    scope — src/cli/handlers/analysis_handlers/core_routes.rs (1, and it is also
-    where route_complexity_command must dispatch to the new handler),
-    src/cli/handlers/analysis/complexity.rs (4),
-    src/contracts/adapter_tests.rs (8),
-    src/contracts/cli_impl_tests_integration.rs (6),
-    src/contracts/cli_impl_tests_core.rs (3),
-    src/cli/commands/tests_cli_parsing.rs (1). Measured by adding the field and
-    running `cargo check -p pmat --all-targets --message-format short`, then
-    reverting. Until that lands the generated hook still measures WHOLE FILES
-    and its doctrine comment says so in those words.'
+  notes: 'Phase 2 landed the verdict RULE (hook_debt_scope.rs). Phase 3 landed the two pieces between the rule and the command line, and did NOT land the flag. Landed: staged_verdict / staged_verdict_for_file, which read git itself — `git show :<path>` for the staged blob (the INDEX, not the working tree), `git show HEAD:<path>` for its counterpart, `git diff --cached -U0` for the ranges — and handle_analyze_complexity_diff_scoped in src/cli/handlers/complexity_handlers/mod.rs, which prints the offender as "<fn> - <metric> <measured> > <limit> (was <before>)" plus "Errors: N" and returns Err so the exit is non-zero. 13 hook_debt_scope tests + 4 diff_scope entry-point tests, all over a real fixture repo for the git legs; report O11 is allowed at the DEFAULT thresholds (10/15) and growth in a touched function is refused naming the function. Mutation matrix, run and reverted: judging every function instead of the touched ones leaves 13/13 and 4/4 GREEN (an untouched function measures identically at HEAD, so the growth test already spares it — the touched filter is load-bearing only where there is no HEAD counterpart), while the complete pre-BSE-12 rule (that plus previous=None) turns 8 of 13 and 2 of 4 RED. NOT landed and NOT startable in this ticket''s scope_paths: the `--diff-scope` flag. Declaring `diff_scope: bool` on AnalyzeCommands::Complexity forces `diff_scope: false` into 23 struct literals that rustc names across 6 files, none of them in scope — src/cli/handlers/analysis_handlers/core_routes.rs (1, and it is also where route_complexity_command must dispatch to the new handler), src/cli/handlers/analysis/complexity.rs (4), src/contracts/adapter_tests.rs (8), src/contracts/cli_impl_tests_integration.rs (6), src/contracts/cli_impl_tests_core.rs (3), src/cli/commands/tests_cli_parsing.rs (1). Measured by adding the field and running `cargo check -p pmat --all-targets --message-format short`, then reverting. Until that lands the generated hook still measures WHOLE FILES and its doctrine comment says so in those words.'
 - id: PMAT-709
   github_issue: null
   item_type: task
@@ -5067,9 +5038,9 @@ roadmap:
   updated: 2026-09-09T20:21:16Z
   spec: null
   acceptance_criteria:
-  - 'a RoadmapItem without release serializes with no release key and one with release keeps it verbatim (cargo test --lib -- roadmap_types release_field); the 279-entry roadmap.yaml load->save round-trip is byte-identical'
-  - 'pmat work sync --check-only --snapshot <fixture> exits 1 and names every ORPHAN-ROADMAP, ORPHAN-GITHUB and COLLISION finding; on a coherent fixture it exits 0 (scripts/work-sync-control.sh, both arms observed)'
-  - 'a matched pair whose title or state word disagrees is reported only once now - max(item.updated, issue.updated_at) exceeds staleness_grace_minutes (default 60), never by count'
+  - a RoadmapItem without release serializes with no release key and one with release keeps it verbatim (cargo test --lib -- roadmap_types release_field); the 279-entry roadmap.yaml load->save round-trip is byte-identical
+  - pmat work sync --check-only --snapshot <fixture> exits 1 and names every ORPHAN-ROADMAP, ORPHAN-GITHUB and COLLISION finding; on a coherent fixture it exits 0 (scripts/work-sync-control.sh, both arms observed)
+  - a matched pair whose title or state word disagrees is reported only once now - max(item.updated, issue.updated_at) exceeds staleness_grace_minutes (default 60), never by count
   - '--direction github-to-yaml writes release: from the issue milestone title and never mints one; --direction yaml-to-github --dry-run names the issues it would create and creates none; every fixer skips a collided item and prints why'
   - 'pmat work sync --check-only on this repository reports the 13 open MACS items naming #612 as COLLISION, and a planned ticket for a human names them for resolution (never auto-fixed, spec 5.4)'
   phases: []
