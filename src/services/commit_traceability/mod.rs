@@ -45,8 +45,14 @@ pub const BASE_REF_ENV: &str = "GITHUB_BASE_REF";
 pub enum Inputs {
     /// `project_path` is not inside a git work tree.
     NotGit,
-    /// A repository, but no `docs/roadmaps/roadmap.yaml`.
+    /// A repository that has never committed `docs/roadmaps/roadmap.yaml`: a
+    /// structural absence, not a measurement failure.
     NoRoadmap,
+    /// `docs/roadmaps/roadmap.yaml` was committed and is now gone — from the
+    /// working tree, or removed in history. Deleting a gate's input is not a
+    /// way of passing it (the line CB-2102 draws for its own input), so the
+    /// check FAILS on this rather than skipping.
+    RoadmapDeleted,
     /// Both present; [`measure`] can run.
     Ready,
 }
@@ -125,7 +131,17 @@ pub fn inputs(project_path: &Path) -> Inputs {
         return Inputs::NotGit;
     }
     if !project_path.join(ROADMAP_PATH).exists() {
-        return Inputs::NoRoadmap;
+        // Never committed ⇒ absent by design. Committed at any point ⇒ deleted.
+        // An unreadable history is treated as "never": the fail-closed arm
+        // belongs to the deletion, and a repository with no history at all has
+        // nothing to have deleted.
+        return match crate::services::metrics_ratchet::history::was_ever_committed(
+            project_path,
+            ROADMAP_PATH,
+        ) {
+            Ok(true) => Inputs::RoadmapDeleted,
+            Ok(false) | Err(_) => Inputs::NoRoadmap,
+        };
     }
     Inputs::Ready
 }

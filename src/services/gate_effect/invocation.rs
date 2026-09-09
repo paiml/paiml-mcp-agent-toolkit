@@ -125,7 +125,14 @@ fn collect_from_script(
         };
         let mut suppressions = inherited.to_vec();
         suppressions.extend(effect::assess(script, idx));
-        let selected = parse_selected(script.lines().nth(idx).unwrap_or(""));
+        let line = script.lines().nth(idx).unwrap_or("");
+        if let Some(elsewhere) = foreign_tree(line) {
+            suppressions.push(format!(
+                "runs comply against another tree (--path {elsewhere}), so its verdict is not \
+                 evidence for this repository"
+            ));
+        }
+        let selected = parse_selected(line);
         if selected.is_some() {
             suppressions.push(roster_restriction_reason(&selected));
         }
@@ -237,6 +244,44 @@ fn roster_restriction_reason(selected: &Option<Vec<String>>) -> String {
               error-severity roster"
             .to_string(),
     }
+}
+
+/// The `--path`/`-p` argument on an invoking line, when it points somewhere
+/// other than this tree.
+///
+/// PMAT-719's control step runs the very same `pmat comply check --checks
+/// CB-2113` line as the gate, against a throwaway fixture (`--path "$repo"`).
+/// Read as an invocation of the rule it is one; read as evidence that the rule
+/// is enforced ON THIS REPOSITORY it is nothing of the kind, and a ledger that
+/// credited it would have kept CB-2113 "ENFORCED" after the real step was
+/// deleted. `.`, `./`, `$PWD` and `$GITHUB_WORKSPACE` are this tree; anything
+/// else — a variable, a temp dir, a sibling checkout — is another one.
+fn foreign_tree(line: &str) -> Option<String> {
+    let code = line.split('#').next().unwrap_or(line);
+    let toks: Vec<&str> = code.split_whitespace().collect();
+    let mut i = 0;
+    while i < toks.len() {
+        let t = toks[i];
+        let value = if let Some(v) = t.strip_prefix("--path=") {
+            Some(v.to_string())
+        } else if t == "--path" || t == "-p" {
+            toks.get(i + 1).map(|v| (*v).to_string())
+        } else {
+            None
+        };
+        if let Some(v) = value {
+            let bare = v.trim_matches(|c| c == '"' || c == '\'');
+            let here = matches!(
+                bare,
+                "." | "./" | "$PWD" | "${PWD}" | "$GITHUB_WORKSPACE" | "${GITHUB_WORKSPACE}"
+            );
+            if !here {
+                return Some(v);
+            }
+        }
+        i += 1;
+    }
+    None
 }
 
 /// Does `reason` read as [`roster_restriction_reason`]? Used to tell "nothing

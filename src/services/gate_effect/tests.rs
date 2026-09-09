@@ -893,6 +893,14 @@ jobs:
         "both the hop and the direct step must be discovered: {}",
         why(&report)
     );
+    assert!(
+        report
+            .invocations
+            .iter()
+            .any(|i| i.via == "indirect" && !i.enforces_rule("CB-2100")),
+        "the control's fixture run is discovered and NOT credited: {}",
+        why(&report)
+    );
     let rows = ledger::rows(
         Path::new(env!("CARGO_MANIFEST_DIR")),
         &report,
@@ -909,4 +917,85 @@ jobs:
         "the direct step is the carrier, not the fixture run inside the control: {}",
         row.carrier
     );
+}
+
+// ── PMAT-719 quorum findings (3/3 FAIL, adjudicated in the receipt) ─────────
+
+#[test]
+fn enforces_rule_needs_more_than_coverage() {
+    // Quorum lane 2: the mutant `enforces_rule == covers_rule` survived every
+    // fixture because the graph drops a suppressed leaf before the ledger ever
+    // asks. Pin the method itself.
+    use super::invocation::Invocation;
+    let inv = Invocation {
+        workflow: std::path::PathBuf::from(".github/workflows/ci.yml"),
+        job_id: "quality".into(),
+        step: "one rule".into(),
+        via: "run".into(),
+        suppressions: vec![
+            "step `one rule` carries continue-on-error, so its failure never fails the job".into(),
+        ],
+        selected: Some(vec!["CB-2100".into()]),
+    };
+    assert!(inv.covers_rule("CB-2100"));
+    assert!(
+        !inv.enforces_rule("CB-2100"),
+        "a covered rule behind a real suppression is not enforced"
+    );
+    assert!(!inv.is_enforcing());
+}
+
+#[test]
+fn an_invocation_that_points_comply_at_another_tree_is_not_evidence_for_this_one() {
+    // Quorum lanes 1-3: the control step runs the same `--checks CB-2113` line
+    // against a planted fixture (`--path "$repo"`). If the direct step were
+    // deleted, `rule_status`'s fallback would credit that fixture run with
+    // enforcing the rule on the repository. A `--path` that is not this tree
+    // is a suppression, so the hop is NEUTERED and the fallback cannot see it.
+    let wf = r#"
+name: CI
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: control only
+        run: bash scripts/control.sh
+"#;
+    let script = "#!/usr/bin/env bash\nset -uo pipefail\nrepo=$(mktemp -d)\nrc=0\npmat comply check --checks CB-2100 --path \"$repo\" || rc=$?\n[ \"$rc\" -eq 1 ] || exit 1\n";
+    let dir = fixture(&[
+        (".github/workflows/ci.yml", wf),
+        ("scripts/control.sh", script),
+    ]);
+    let report = run(&dir, &["quality"]);
+    assert_eq!(report.invocations.len(), 1, "{}", why(&report));
+    let inv = &report.invocations[0];
+    assert!(
+        inv.suppressions.iter().any(|s| s.contains("another tree")),
+        "the --path to a fixture must be named as the reason: {:?}",
+        inv.suppressions
+    );
+    assert!(
+        report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+        "a fixture run enforces nothing on this repository: {}",
+        why(&report)
+    );
+    // `--path .` and the workspace itself are this tree, not another one.
+    for here in [
+        "--path .",
+        "-p .",
+        "--path \"$GITHUB_WORKSPACE\"",
+        "--path=.",
+    ] {
+        let wf = format!(
+            "name: CI\njobs:\n  quality:\n    runs-on: ubuntu-latest\n    steps:\n      - run: pmat comply check --checks CB-2100 {here}\n"
+        );
+        let dir = fixture(&[(".github/workflows/ci.yml", &wf)]);
+        let report = run(&dir, &["quality"]);
+        assert!(
+            !report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+            "{here} is this tree: {}",
+            why(&report)
+        );
+    }
 }

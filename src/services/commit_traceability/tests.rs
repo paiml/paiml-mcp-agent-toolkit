@@ -398,3 +398,30 @@ fn cb_2113_is_registered_at_error_severity_with_its_title() {
     assert!(declared.enabled);
     assert_eq!(declared.severity, CheckSeverity::Error);
 }
+
+#[test]
+fn a_roadmap_that_was_committed_and_is_now_gone_is_not_an_absence() {
+    // Quorum lanes 1-3: `NoRoadmap` → Skip let `git rm docs/roadmaps/roadmap.yaml`
+    // pass the gate. CB-2102 draws the same line for its own input: never
+    // committed is a structural absence; committed-then-deleted is a deleted
+    // gate input, and deleting a gate's input is not a way of passing it.
+    let dir = repo();
+    on_feature(dir.path());
+    git(dir.path(), &["rm", "-q", ROADMAP_PATH]);
+    git(
+        dir.path(),
+        &[
+            "commit",
+            "-q",
+            "-m",
+            "drop the roadmap",
+            "-m",
+            "Pmat-Ticket: PMAT-001",
+        ],
+    );
+    assert_eq!(inputs(dir.path()), Inputs::RoadmapDeleted);
+    // Deleted only in the working tree, still in history: the same verdict.
+    let dir2 = repo();
+    std::fs::remove_file(dir2.path().join(ROADMAP_PATH)).expect("rm");
+    assert_eq!(inputs(dir2.path()), Inputs::RoadmapDeleted);
+}

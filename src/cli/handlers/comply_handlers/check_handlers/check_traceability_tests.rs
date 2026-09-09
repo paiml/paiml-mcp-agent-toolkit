@@ -88,4 +88,16 @@ mod tests_traceability {
         assert_eq!(checks.len(), 1);
         assert_eq!(checks[0].name, "CB-2113: Commit Traceability");
     }
+
+    #[test]
+    fn a_deleted_roadmap_is_not_measured_and_fails() {
+        let dir = repo_with_roadmap();
+        git(dir.path(), &["switch", "-q", "-c", "feature"]);
+        git(dir.path(), &["rm", "-q", "docs/roadmaps/roadmap.yaml"]);
+        git(dir.path(), &["commit", "-q", "-m", "drop", "-m", "Pmat-Ticket: PMAT-001"]);
+        let checks = build_traceability_checks(dir.path(), &crate::models::comply_config::ComplyConfig::default());
+        assert_eq!(checks[0].status, CheckStatus::Fail, "{}", checks[0].message);
+        assert!(checks[0].message.starts_with("not_measured:"), "{}", checks[0].message);
+        assert!(checks[0].message.contains("was committed and is now gone"), "{}", checks[0].message);
+    }
 }

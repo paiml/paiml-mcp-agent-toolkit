@@ -1,6 +1,23 @@
-/// CB-2113: Commit Traceability — every PR commit carries a Pmat-Ticket trailer naming a live roadmap item.
-/// The rule skips if not in git or lacking a roadmap. If HEAD is the default branch, commits are counted but not judged.
-/// Otherwise, it expects every non-merge commit added to base to carry a Pmat-Ticket trailer.
+/// CB-2113: Commit Traceability — every non-merge commit a pull request adds
+/// carries a `Pmat-Ticket:` trailer naming a real, non-terminal roadmap item
+/// (goal-mode.md §7, §8.4, §9). Engine: `src/services/commit_traceability/`.
+///
+/// Three verdict classes (§3.3), and the line between them is the point:
+/// * Skip — not a git repository, or a roadmap that was never committed: a
+///   structural absence, nothing this rule could have read.
+/// * Fail `not_measured:` — an input that was expected and could not be read:
+///   git failed, no base branch resolves, the roadmap does not parse, or the
+///   roadmap was committed and is now gone (deleting a gate's input is not a
+///   way of passing it).
+/// * Pass `not_applicable:` — HEAD is the default branch: the commits since
+///   the latest `v*` tag are counted and printed but not judged, because until
+///   merges are restricted to merge commits a squash rewrites the trailers
+///   this rule reads (§8.4). Never a silent pass: the reason and the count
+///   are in the message.
+///
+/// Everything else is measured: the commits `merge-base(base, HEAD)..HEAD`,
+/// each one either trailed with an id the roadmap holds in a non-terminal
+/// status, or named in the failure with the reason.
 pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck {
     use crate::services::commit_traceability::{self as ct, Inputs, Range};
     use crate::models::comply_config::CheckSeverity;
@@ -19,6 +36,12 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
             status: CheckStatus::Skip,
             severity: CheckSeverity::Info.into(),
             message: "no docs/roadmaps/roadmap.yaml — this project does not track work in a roadmap".to_string(),
+        },
+        Inputs::RoadmapDeleted => ComplianceCheck {
+            name: literal.to_string(),
+            status: CheckStatus::Fail,
+            severity: CheckSeverity::Error.into(),
+            message: "not_measured: docs/roadmaps/roadmap.yaml was committed and is now gone — deleting a gate's input is not a way of passing it (goal-mode.md doctrine 2)".to_string(),
         },
         Inputs::Ready => match ct::measure(project_path) {
             Err(e) => ComplianceCheck {
