@@ -13,13 +13,13 @@ mod tests_traceability {
             .args(args)
             .env("LC_ALL", "C")
             .output()
-            .unwrap();
+            .expect("git runs");
         assert!(out.status.success(), "git failed: {}", String::from_utf8_lossy(&out.stderr));
     }
 
     #[test]
     fn test_plain_tempdir() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let checks = build_traceability_checks(dir.path(), &crate::models::comply_config::ComplyConfig::default());
         assert_eq!(checks.len(), 1);
         assert_eq!(checks[0].status, CheckStatus::Skip);
@@ -28,7 +28,7 @@ mod tests_traceability {
 
     #[test]
     fn test_no_roadmap() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         git(dir.path(), &["init", "-q", "-b", "master"]);
         let checks = build_traceability_checks(dir.path(), &crate::models::comply_config::ComplyConfig::default());
         assert_eq!(checks[0].status, CheckStatus::Skip);
@@ -36,12 +36,12 @@ mod tests_traceability {
     }
 
     fn repo_with_roadmap() -> tempfile::TempDir {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         git(dir.path(), &["init", "-q", "-b", "master"]);
         let rm = dir.path().join("docs/roadmaps/roadmap.yaml");
-        std::fs::create_dir_all(rm.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(rm.parent().expect("parent")).expect("mkdir");
         let content = "roadmap_version: \"1.0\"\ngithub_enabled: false\ngithub_repo: null\nroadmap:\n  - id: PMAT-001\n    title: planned work\n    status: planned\n";
-        std::fs::write(&rm, content).unwrap();
+        std::fs::write(&rm, content).expect("write roadmap");
         git(dir.path(), &["add", "."]);
         git(dir.path(), &["commit", "-q", "-m", "roadmap"]);
         git(dir.path(), &["tag", "v0.1.0"]);
@@ -53,7 +53,7 @@ mod tests_traceability {
         let dir = repo_with_roadmap();
         git(dir.path(), &["switch", "-q", "-c", "feature"]);
         git(dir.path(), &["commit", "-q", "--allow-empty", "-m", "no trailer here"]);
-        let hash = std::str::from_utf8(&Command::new("git").arg("-C").arg(dir.path()).args(["rev-parse", "HEAD"]).output().unwrap().stdout).unwrap().trim().to_string();
+        let hash = std::str::from_utf8(&Command::new("git").arg("-C").arg(dir.path()).args(["rev-parse", "HEAD"]).output().expect("git runs").stdout).expect("utf-8").trim().to_string();
         
         let checks = build_traceability_checks(dir.path(), &crate::models::comply_config::ComplyConfig::default());
         assert_eq!(checks[0].status, CheckStatus::Fail);
