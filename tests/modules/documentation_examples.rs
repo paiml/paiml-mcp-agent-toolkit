@@ -190,7 +190,7 @@ fn known_commands() -> Vec<String> {
             if line.trim().is_empty() {
                 break;
             }
-            if let Some(name) = line.trim_start().split_whitespace().next() {
+            if let Some(name) = line.split_whitespace().next() {
                 if name.starts_with(|c: char| c.is_ascii_lowercase()) {
                     names.push(name.to_string());
                 }
