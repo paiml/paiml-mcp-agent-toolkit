@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct DocumentedTool {
@@ -32,18 +32,40 @@ struct ToolDefinition {
     input_schema: Option<Value>,
 }
 
-fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("docs/mcp-methods.md");
+/// The documentation this suite grades, or `None` when it was never shipped.
+///
+/// `None` has exactly ONE cause: the published crate excludes `/docs/`
+/// (Cargo.toml:26) while shipping `tests/`, so a consumer running `cargo test` on
+/// the crates.io tarball has the tests but not the document. That is not drift and
+/// not something this suite can measure, so it says so and stops.
+///
+/// Everything else PANICS. If `docs/` is present — which it is in every source
+/// checkout and every CI job — then a missing or renamed `mcp-methods.md` is drift, and
+/// #1228 is the record of what happens when that reads as "ok": five green tests,
+/// 0.00s, asserting nothing, while the document they guard drifted 60 commands.
+fn mcp_methods_doc() -> Option<String> {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    if !repo_root.join("docs").is_dir() {
+        eprintln!(
+            "NOT-SHIPPED: docs/ is absent, so this is the packaged crate rather \
+             than a source checkout; mcp-methods.md was never included. Nothing to compare."
+        );
+        return None;
+    }
+    let doc_path = repo_root.join("docs/mcp-methods.md");
+    Some(fs::read_to_string(&doc_path).unwrap_or_else(|e| {
+        panic!(
+            "mcp-methods.md not found at {} ({e}), but docs/ exists — so this is a \
+             source checkout and the document has been moved, renamed or deleted. \
+             That is drift; it must fail rather than skip (#1228).",
+            doc_path.display()
+        )
+    }))
+}
 
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!("Skipping test: mcp-methods.md not found at {:?}", doc_path);
-            return vec![];
-        }
+fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
+    let Some(content) = mcp_methods_doc() else {
+        return Default::default();
     };
 
     let mut tools = Vec::new();
@@ -143,30 +165,31 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
     tools
 }
 
-fn get_binary_path() -> String {
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let workspace_root = Path::new(manifest_dir).parent().unwrap();
-
-    let release_binary = workspace_root.join("target/release/pmat");
-    let debug_binary = workspace_root.join("target/debug/pmat");
-
-    if release_binary.exists() {
-        release_binary.to_string_lossy().to_string()
-    } else if debug_binary.exists() {
-        debug_binary.to_string_lossy().to_string()
-    } else {
-        "pmat".to_string()
-    }
+/// A pmat command that does not inherit the ambient environment.
+///
+/// #1228 got this twice wrong before landing here. It first hand-built
+/// `<repo>/target/{release,debug}/pmat`, rooted one level ABOVE the repository,
+/// so neither candidate existed and it fell through to the literal "pmat" on
+/// PATH — a `cargo install`ed copy from some older release, graded against
+/// current docs. Rooting it correctly still ignored `CARGO_TARGET_DIR`, which
+/// this repo redirects, so it then found a STALE `./target/release/pmat`.
+///
+/// `pmat_cmd::pmat()` settles both: `CARGO_BIN_EXE_pmat` is the binary Cargo
+/// built for THIS run, and the environment is scrubbed. That second half is not
+/// incidental here — `MCP_VERSION` makes the binary ignore argv and start an MCP
+/// server, and `PMAT_QUIET`/`NO_COLOR` change the bytes these tests assert on.
+/// Enforced by `src/services/test_env_hygiene.rs`, which could not see these
+/// three files until they started naming the binary the way Cargo does.
+fn pmat_command() -> std::process::Command {
+    crate::modules::pmat_cmd::pmat()
 }
 
 fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
     use std::io::{BufRead, BufReader};
     use std::time::{Duration, Instant};
 
-    let binary_path = get_binary_path();
-
     // Start the MCP server in MCP mode by setting MCP_VERSION environment variable
-    let mut child = Command::new(&binary_path)
+    let mut child = pmat_command()
         .env("MCP_VERSION", "1.0")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -374,17 +397,8 @@ fn test_mcp_tool_schemas_match_documentation() {
 #[test]
 #[ignore = "Documentation structure test - may fail during development"]
 fn test_mcp_methods_match_documentation() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("docs/mcp-methods.md");
-
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!("Skipping test: mcp-methods.md not found at {:?}", doc_path);
-            return;
-        }
+    let Some(content) = mcp_methods_doc() else {
+        return Default::default();
     };
 
     // Extract documented MCP methods from the "Available MCP Methods" section
@@ -422,17 +436,8 @@ fn test_mcp_methods_match_documentation() {
 #[test]
 #[ignore = "Documentation structure test - may fail during development"]
 fn test_mcp_error_codes_are_complete() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("docs/mcp-methods.md");
-
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!("Skipping test: mcp-methods.md not found at {:?}", doc_path);
-            return;
-        }
+    let Some(content) = mcp_methods_doc() else {
+        return Default::default();
     };
 
     // Extract error codes from documentation

@@ -3,41 +3,70 @@ use serde_json::Value;
 use std::fs;
 use std::path::Path;
 
-fn get_binary_path() -> String {
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let workspace_root = Path::new(manifest_dir).parent().unwrap();
-
-    let release_binary = workspace_root.join("target/release/pmat");
-    let debug_binary = workspace_root.join("target/debug/pmat");
-
-    if release_binary.exists() {
-        release_binary.to_string_lossy().to_string()
-    } else if debug_binary.exists() {
-        debug_binary.to_string_lossy().to_string()
-    } else {
-        "pmat".to_string()
+/// The documentation this suite grades, or `None` when it was never shipped.
+///
+/// `None` has exactly ONE cause: the published crate excludes `/rust-docs/`
+/// (Cargo.toml:26) while shipping `tests/`, so a consumer running `cargo test` on
+/// the crates.io tarball has the tests but not the document. That is not drift and
+/// not something this suite can measure, so it says so and stops.
+///
+/// Everything else PANICS. If `rust-docs/` is present — which it is in every source
+/// checkout and every CI job — then a missing or renamed `cli-reference.md` is drift, and
+/// #1228 is the record of what happens when that reads as "ok": five green tests,
+/// 0.00s, asserting nothing, while the document they guard drifted 60 commands.
+fn cli_reference() -> Option<String> {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    if !repo_root.join("rust-docs").is_dir() {
+        eprintln!(
+            "NOT-SHIPPED: rust-docs/ is absent, so this is the packaged crate rather \
+             than a source checkout; cli-reference.md was never included. Nothing to compare."
+        );
+        return None;
     }
+    let doc_path = repo_root.join("rust-docs/cli-reference.md");
+    Some(fs::read_to_string(&doc_path).unwrap_or_else(|e| {
+        panic!(
+            "cli-reference.md not found at {} ({e}), but rust-docs/ exists — so this is a \
+             source checkout and the document has been moved, renamed or deleted. \
+             That is drift; it must fail rather than skip (#1228).",
+            doc_path.display()
+        )
+    }))
+}
+
+/// A pmat command that does not inherit the ambient environment.
+///
+/// #1228 got this twice wrong before landing here. It first hand-built
+/// `<repo>/target/{release,debug}/pmat`, rooted one level ABOVE the repository,
+/// so neither candidate existed and it fell through to the literal "pmat" on
+/// PATH — a `cargo install`ed copy from some older release, graded against
+/// current docs. Rooting it correctly still ignored `CARGO_TARGET_DIR`, which
+/// this repo redirects, so it then found a STALE `./target/release/pmat`.
+///
+/// `pmat_cmd::pmat()` settles both: `CARGO_BIN_EXE_pmat` is the binary Cargo
+/// built for THIS run, and the environment is scrubbed. That second half is not
+/// incidental here — `MCP_VERSION` makes the binary ignore argv and start an MCP
+/// server, and `PMAT_QUIET`/`NO_COLOR` change the bytes these tests assert on.
+/// Enforced by `src/services/test_env_hygiene.rs`, which could not see these
+/// three files until they started naming the binary the way Cargo does.
+fn pmat_command() -> std::process::Command {
+    crate::modules::pmat_cmd::pmat()
+}
+/// The same binary as [`pmat_command`], as a string, for the doc examples that
+/// substitute it into a command line before parsing it.
+fn pmat_binary_path() -> String {
+    crate::modules::pmat_cmd::pmat_bin()
+        .to_string_lossy()
+        .to_string()
 }
 
 #[test]
 fn test_cli_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
-
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
+    let Some(content) = cli_reference() else {
+        return Default::default();
     };
     let code_block_regex = Regex::new(r"```bash\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
-    let binary_path = get_binary_path();
+    let binary_path = pmat_binary_path();
 
     for cap in code_block_regex.captures_iter(&content) {
         process_bash_code_block(&cap[1], &binary_path);
@@ -172,20 +201,8 @@ fn validate_command_arguments(parts: &[&str], original_line: &str) {
 
 #[test]
 fn test_mcp_json_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
-
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
+    let Some(content) = cli_reference() else {
+        return Default::default();
     };
     let json_block_regex = Regex::new(r"```json\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
 
@@ -254,20 +271,8 @@ fn validate_batch_request_array(array: &[Value]) {
 
 #[test]
 fn test_yaml_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
-
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
+    let Some(content) = cli_reference() else {
+        return Default::default();
     };
 
     // Extract YAML code blocks (like GitHub Actions examples)
@@ -295,20 +300,8 @@ fn test_yaml_examples_are_valid() {
 
 #[test]
 fn test_jsonc_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
-
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
+    let Some(content) = cli_reference() else {
+        return Default::default();
     };
 
     // Extract JSONC code blocks (JSON with comments, like VS Code config)
@@ -351,20 +344,8 @@ fn test_jsonc_examples_are_valid() {
 
 #[test]
 fn test_template_uri_examples_are_valid() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
-
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
+    let Some(content) = cli_reference() else {
+        return Default::default();
     };
 
     // Extract template URIs
@@ -398,20 +379,8 @@ fn test_template_uri_examples_are_valid() {
 
 #[test]
 fn test_performance_numbers_are_reasonable() {
-    let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("rust-docs/cli-reference.md");
-
-    let content = match fs::read_to_string(&doc_path) {
-        Ok(content) => content,
-        Err(_) => {
-            eprintln!(
-                "Skipping test: cli-reference.md not found at {:?}",
-                doc_path
-            );
-            return;
-        }
+    let Some(content) = cli_reference() else {
+        return Default::default();
     };
 
     // Check that documented performance numbers are reasonable
