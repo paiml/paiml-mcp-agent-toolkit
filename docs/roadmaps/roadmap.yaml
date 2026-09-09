@@ -4954,6 +4954,23 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-712
+  github_issue: null
+  item_type: task
+  title: 'cli_documentation_sync: 5 green tests assert nothing — two .parent() defects climb out of the repo (#1228). Step 1 remove .parent(), make a missing doc and a missing binary HARD failures, drop the PATH fallback; Step 2 add the falsifier leg that renames the doc aside and asserts the suite goes RED'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-08T14:23:29Z
+  updated: 2026-09-08T14:23:29Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
 - id: PMAT-713
   github_issue: null
   item_type: task

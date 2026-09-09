@@ -571,7 +571,7 @@ pmat analyze duplicates --detection-type all --threshold 0.8
 pmat analyze duplicates --gpu --perf --format json
 ```
 
-##### `analyze defect-probability`
+##### `analyze defect-prediction`
 
 **NEW**: ML-based defect prediction using feature vectors and confidence scoring.
 
@@ -585,13 +585,13 @@ pmat analyze duplicates --gpu --perf --format json
 **Examples:**
 ```bash
 # High-confidence defect predictions
-pmat analyze defect-probability --min-confidence 0.8
+pmat analyze defect-prediction --min-confidence 0.8
 
 # Detailed analysis with feature explanations
-pmat analyze defect-probability --explain --format detailed
+pmat analyze defect-prediction --explain --format detailed
 
 # IDE integration with SARIF output
-pmat analyze defect-probability --sarif -o defects.sarif
+pmat analyze defect-prediction --sarif -o defects.sarif
 ```
 
 ##### `analyze comprehensive`
@@ -703,7 +703,7 @@ pmat analyze big-o
 pmat analyze big-o --min-complexity "O(n^2)" --format json
 ```
 
-##### `analyze makefile-lint`
+##### `analyze makefile`
 
 **NEW**: Lint Makefiles with 50+ quality rules.
 
@@ -718,13 +718,13 @@ pmat analyze big-o --min-complexity "O(n^2)" --format json
 **Examples:**
 ```bash
 # Basic linting
-pmat analyze makefile-lint
+pmat analyze makefile
 
 # Fix issues automatically
-pmat analyze makefile-lint --fix
+pmat analyze makefile --fix
 
 # CI/CD integration
-pmat analyze makefile-lint --min-severity error --format sarif
+pmat analyze makefile --min-severity error --format sarif
 ```
 
 ##### `analyze proof-annotations`
@@ -987,7 +987,7 @@ pmat quality-gate \
   -o quality-results.xml
 ```
 
-##### `analyze assemblyscript`
+##### `analyze assembly-script`
 
 **NEW in v0.26.2**: Analyze AssemblyScript source code with WebAssembly-specific metrics.
 
@@ -1004,16 +1004,16 @@ pmat quality-gate \
 **Examples:**
 ```bash
 # Basic AssemblyScript analysis
-pmat analyze assemblyscript
+pmat analyze assembly-script
 
 # Full analysis with all features
-pmat analyze assemblyscript --wasm-complexity --memory-analysis --security
+pmat analyze assembly-script --wasm-complexity --memory-analysis --security
 
 # JSON output for tooling
-pmat analyze assemblyscript --format json -o analysis.json
+pmat analyze assembly-script --format json -o analysis.json
 ```
 
-##### `analyze webassembly`
+##### `analyze web-assembly`
 
 **NEW in v0.26.2**: Analyze WebAssembly binary and text formats.
 
@@ -1031,13 +1031,13 @@ pmat analyze assemblyscript --format json -o analysis.json
 **Examples:**
 ```bash
 # Analyze all WebAssembly files
-pmat analyze webassembly
+pmat analyze web-assembly
 
 # Only analyze binary WASM files
-pmat analyze webassembly --include-binary --no-include-text
+pmat analyze web-assembly --include-binary --no-include-text
 
 # Comprehensive analysis
-pmat analyze webassembly --memory-analysis --security --complexity
+pmat analyze web-assembly --memory-analysis --security --complexity
 ```
 
 ## Environment Variable Expansion

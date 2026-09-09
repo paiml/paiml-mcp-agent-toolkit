@@ -75,6 +75,34 @@ mod tests {
     /// new unhygienic spawns, which is the thing being prevented.
     const LEDGER: &[(&str, usize, &str)] = &[
         // ── Legitimate raw control ───────────────────────────────────────────
+        // ── Dead code the widened scanner exposed (#1228) ────────────────────
+        //
+        // These two files were invisible to this scanner until it learned to
+        // match a spawn whose argv[0] comes from a variable. They are unhygienic
+        // AND their `get_pmat_binary_path()` carries the very `.parent()` defect
+        // #1228 is about — `current_dir().parent()/target/debug/pmat`, one level
+        // ABOVE the repository, with a nested `cargo build` when it is missing.
+        //
+        // They have never run: 6 of 6 and 3 of 3 tests in them are `#[ignore]`d,
+        // which is why a helper that cannot work has never failed. Ledgered
+        // rather than migrated because migrating dead code proves nothing and
+        // would hide, behind a green diff, that these tests do not execute at
+        // all. Un-ignoring them is the real work and belongs with #1230, which
+        // is already about a guard whose tests are all ignored.
+        (
+            "tests/modules/predict_quality_integration_test.rs",
+            7,
+            "all 6 tests are #[ignore]d, so no spawn happens and no environment \
+             can leak. The 7 sites are 6 spawns plus the nested `cargo build` in \
+             `get_pmat_binary_path`, whose path climbs out of the repository \
+             (#1228). Un-ignore and migrate together, not separately.",
+        ),
+        (
+            "tests/modules/quality_gate_integration_test.rs",
+            6,
+            "all 3 tests are #[ignore]d, so no spawn happens and no environment \
+             can leak. Same `get_pmat_binary_path` defect as its sibling above.",
+        ),
         (
             "tests/e2e_cli_t.rs",
             1,
@@ -227,12 +255,32 @@ mod tests {
             let Ok(text) = std::fs::read_to_string(&file) else {
                 continue;
             };
+            // Whether this file gets the pmat path from a helper rather than
+            // naming Cargo's variable inline; if so, a bare `Command::new(` in it
+            // is very likely a pmat spawn.
+            let names_pmat_binary =
+                text.contains("pmat_binary_path()") || text.contains("pmat_cmd::pmat_bin()");
             for (i, raw) in text.lines().enumerate() {
                 let line = raw.trim_start();
                 if line.starts_with("//") {
                     continue; // prose, including several module headers
                 }
                 if line.contains("\"CARGO_BIN_EXE_pmat\"") || line.contains("cargo_bin(\"pmat\")") {
+                    found.push((rel.clone(), i + 1));
+                }
+                // #1228: a spawn whose argv[0] comes from a VARIABLE holding the
+                // pmat path was invisible here — this scanner matched only the
+                // two literal spellings, so `Command::new(test_args[0])` in
+                // tests/modules/cli_documentation_sync.rs passed the gate while
+                // handing the child the whole ambient environment. The gate was
+                // not wrong about what it checked; it was silent about what it
+                // could not see, which reads the same from the outside.
+                //
+                // Any `Command::new(` in a file that also names the pmat binary
+                // is a candidate. False positives are cheap (add the site to
+                // LEDGER with a reason, or route it through `pmat()`); a false
+                // NEGATIVE is what this whole module exists to prevent.
+                if line.contains("Command::new(") && names_pmat_binary {
                     found.push((rel.clone(), i + 1));
                 }
             }

@@ -830,18 +830,96 @@ jobs:
           path: /tmp/pmat-flag-efficacy-report.txt
           if-no-files-found: warn
 
+  # ── #1228: the CLI drift guard reported 5/5 green while asserting nothing.
+  # Three independent defects each made it vacuous on their own (two `.parent()`
+  # climbs out of the repo, plus a section marker that matched zero times in the
+  # document), so "the suite is green" carried no information at all.
+  #
+  # The fix is only trustworthy if the suite can still FAIL, so this leg proves it
+  # can, on every run: take the document away and the suite must go red naming the
+  # missing file; put it back and it must go green. A guard nobody has watched fail
+  # is indistinguishable from the one this replaced.
+  cli-doc-sync-falsifier:
+    name: falsification / cli-doc-sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TMPDIR: /tmp
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: cli-doc-sync-falsifier
+      - name: green, and measuring something
+        run: |
+          set -o pipefail
+          # Both filters go AFTER `--`: cargo takes ONE positional TESTNAME, libtest
+          # takes many. `cargo test --test all a:: b::` is a cargo usage error.
+          cargo test --test all --release -- \
+            modules::cli_documentation_sync:: modules::documentation_examples:: \
+            --nocapture 2>&1 | tee before.log
+          # Three ways this suite has reported ok while measuring nothing (#1228).
+          # All three are now impossible in code; assert it, because "impossible"
+          # is exactly what was believed about the last five.
+          for marker in "Skipping test" "No documented commands found" "NOT-SHIPPED"; do
+            if grep -qF "$marker" before.log; then
+              echo "::error::the suite emitted '$marker' — it reported ok without comparing anything (#1228)"
+              exit 1
+            fi
+          done
+      - name: RED with the document removed
+        run: |
+          mv rust-docs/cli-reference.md "$RUNNER_TEMP/cli-reference.md"
+          rc=0
+          # BOTH modules, matching the green step. Falsifying only one leaves the
+          # other free to go vacuous while this job still reports ok — which is
+          # the exact shape of the defect being fixed.
+          cargo test --test all --release -- \
+            modules::cli_documentation_sync:: modules::documentation_examples:: \
+            > after.log 2>&1 || rc=$?
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::the suite PASSED with rust-docs/cli-reference.md removed — it is measuring nothing (#1228)"
+            exit 1
+          fi
+          # It must fail because the DOCUMENT is gone, not because the binary is
+          # missing or the crate stopped compiling. rust-docs/ still exists, so the
+          # not-shipped branch must not be what fired.
+          if grep -qF "NOT-SHIPPED" after.log; then
+            echo "::error::took the packaged-crate branch inside a source checkout — the discriminator is wrong"
+            exit 1
+          fi
+          if ! grep -qF "cli-reference.md not found" after.log; then
+            echo "::error::failed, but not for the expected reason; it must name the missing document"
+            cat after.log
+            exit 1
+          fi
+      # `always()` so a failure above cannot leave the checkout mutated for any
+      # step that follows, and so the log of WHY is still the failure, not a
+      # confusing second error about a missing file.
+      - name: restore the document
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/cli-reference.md" ]; then
+            mv "$RUNNER_TEMP/cli-reference.md" rust-docs/cli-reference.md
+          fi
+      - name: green again once restored
+        run: |
+          cargo test --test all --release -- \
+            modules::cli_documentation_sync:: modules::documentation_examples::
+
   feature-gate:
     name: feature-gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, dependabot-alerts, unrun-tests, reachability-ledger, differential-corpus, flag-efficacy]
+    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, dependabot-alerts, unrun-tests, reachability-ledger, differential-corpus, flag-efficacy, cli-doc-sync-falsifier]
     if: always()
     steps:
       - name: Require every leg
         run: |
-          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.binary-size.result }}" "${{ needs.dependabot-alerts.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.reachability-ledger.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}"; do
+          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.binary-size.result }}" "${{ needs.dependabot-alerts.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.reachability-ledger.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}" "${{ needs.cli-doc-sync-falsifier.result }}"; do
             if [ "$r" != "success" ]; then
-              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} binary-size=${{ needs.binary-size.result }} dependabot-alerts=${{ needs.dependabot-alerts.result }} unrun-tests=${{ needs.unrun-tests.result }} reachability-ledger=${{ needs.reachability-ledger.result }}"
+              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} binary-size=${{ needs.binary-size.result }} dependabot-alerts=${{ needs.dependabot-alerts.result }} unrun-tests=${{ needs.unrun-tests.result }} reachability-ledger=${{ needs.reachability-ledger.result }} cli-doc-sync=${{ needs.cli-doc-sync-falsifier.result }}"
               exit 1
             fi
           done
