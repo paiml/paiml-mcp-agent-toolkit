@@ -457,7 +457,7 @@ pub enum Action {
 /// Plan the fixers for `direction` from a report. Pure.
 pub fn plan(
     _roadmap: &Roadmap,
-    _snapshot: &GithubSnapshot,
+    snapshot: &GithubSnapshot,
     report: &SyncReport,
     direction: Direction,
 ) -> Vec<Action> {
@@ -493,40 +493,43 @@ pub fn plan(
                     Direction::GithubToYaml => {
                         actions.push(Action::Skip {
                             id: id.clone(),
-                            reason: "yaml-to-github".to_string(),
+                            reason: "no issue — run --direction yaml-to-github to open one"
+                                .to_string(),
                         });
                     }
                 },
-                OrphanReason::IssueClosed => match direction {
-                    Direction::GithubToYaml | Direction::Full => {
-                        let n = github_issue.expect("issue closed must have a number");
-                        let status = if let Some(issue) = _snapshot.issue(n) {
-                            if issue.state_reason == Some(CloseReason::NotPlanned) {
-                                ItemStatus::Cancelled
+                OrphanReason::IssueClosed => {
+                    let n = github_issue.expect("issue closed must have a number");
+                    match direction {
+                        Direction::GithubToYaml | Direction::Full => {
+                            let status = if let Some(issue) = snapshot.issue(n) {
+                                if issue.state_reason == Some(CloseReason::NotPlanned) {
+                                    ItemStatus::Cancelled
+                                } else {
+                                    ItemStatus::Completed
+                                }
                             } else {
                                 ItemStatus::Completed
-                            }
-                        } else {
-                            ItemStatus::Completed
-                        };
-                        actions.push(Action::CloseItem {
+                            };
+                            actions.push(Action::CloseItem {
+                                id: id.clone(),
+                                number: n,
+                                status,
+                            });
+                        }
+                        Direction::YamlToGithub => {
+                            actions.push(Action::Skip {
                             id: id.clone(),
-                            number: n,
-                            status,
+                            reason: format!("#{n} is closed and GitHub is authoritative for state (§5.3) — run --direction github-to-yaml"),
                         });
+                        }
                     }
-                    Direction::YamlToGithub => {
-                        actions.push(Action::Skip {
-                            id: id.clone(),
-                            reason: "github-to-yaml (§5.3)".to_string(),
-                        });
-                    }
-                },
+                }
                 OrphanReason::IssueAbsent => {
                     actions.push(Action::Skip {
                         id: id.clone(),
                         reason: format!(
-                            "#{} does not exist",
+                            "#{} does not exist on GitHub — a human decides whether the number is a typo or the item is stale",
                             github_issue.expect("absent must have number")
                         ),
                     });
@@ -547,7 +550,8 @@ pub fn plan(
                 Direction::YamlToGithub => {
                     actions.push(Action::Skip {
                         id: format!("#{}", number),
-                        reason: "github-to-yaml".to_string(),
+                        reason: "the fix is on the roadmap side — run --direction github-to-yaml"
+                            .to_string(),
                     });
                 }
             },
@@ -558,30 +562,32 @@ pub fn plan(
                 roadmap: _,
                 github: _,
                 age_minutes: _,
-            } => match field {
-                DriftField::Release => match direction {
-                    Direction::GithubToYaml | Direction::Full => {
-                        let issue = _snapshot.issue(*number).expect("issue exists");
-                        actions.push(Action::SetRelease {
+            } => {
+                match field {
+                    DriftField::Release => match direction {
+                        Direction::GithubToYaml | Direction::Full => {
+                            let issue = snapshot.issue(*number).expect("issue exists");
+                            actions.push(Action::SetRelease {
+                                id: id.clone(),
+                                number: *number,
+                                release: issue.milestone.clone(),
+                            });
+                        }
+                        Direction::YamlToGithub => {
+                            actions.push(Action::Skip {
                             id: id.clone(),
-                            number: *number,
-                            release: issue.milestone.clone(),
+                            reason: "the fix is on the roadmap side — run --direction github-to-yaml".to_string(),
                         });
-                    }
-                    Direction::YamlToGithub => {
+                        }
+                    },
+                    DriftField::Title => {
                         actions.push(Action::Skip {
-                            id: id.clone(),
-                            reason: "github-to-yaml".to_string(),
-                        });
-                    }
-                },
-                DriftField::Title => {
-                    actions.push(Action::Skip {
                         id: id.clone(),
-                        reason: "title (§5.3)".to_string(),
+                        reason: "the title differs and no side is authoritative for it (§5.3): reported, never written".to_string(),
                     });
+                    }
                 }
-            },
+            }
         }
     }
     actions
