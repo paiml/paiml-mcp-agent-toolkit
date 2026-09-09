@@ -228,8 +228,189 @@ pub fn is_open(item: &RoadmapItem) -> bool {
 }
 
 /// Judge the roadmap against the snapshot. Pure; deterministic order.
-pub fn check(_roadmap: &Roadmap, _snapshot: &GithubSnapshot, _settings: &Settings) -> SyncReport {
-    SyncReport::default()
+pub fn check(roadmap: &Roadmap, snapshot: &GithubSnapshot, settings: &Settings) -> SyncReport {
+    let mut report = SyncReport::default();
+
+    let mut open_items = Vec::new();
+    for item in &roadmap.roadmap {
+        if is_open(item) {
+            open_items.push(item);
+        }
+    }
+    report.open_items = open_items.len();
+
+    let mut g_issues = Vec::new();
+    for issue in &snapshot.issues {
+        if issue.in_universe() {
+            g_issues.push(issue);
+        }
+    }
+    report.open_issues = g_issues.len();
+
+    let mut named_issues: BTreeMap<u64, BTreeSet<String>> = BTreeMap::new();
+    for item in &open_items {
+        if let Some(n) = item.github_issue {
+            named_issues.entry(n).or_default().insert(item.id.clone());
+        }
+    }
+
+    let mut collided_ids: BTreeSet<String> = BTreeSet::new();
+    let mut collisions = Vec::new();
+    for (n, ids) in &named_issues {
+        if ids.len() >= 2 {
+            collisions.push(Finding::Collision {
+                number: *n,
+                ids: ids.iter().cloned().collect(),
+            });
+            for id in ids {
+                collided_ids.insert(id.clone());
+            }
+        }
+    }
+    collisions.sort_by_key(|f| match f {
+        Finding::Collision { number, .. } => *number,
+        _ => 0,
+    });
+    report.findings.extend(collisions);
+
+    let mut orphan_roadmap = Vec::new();
+    let mut matched_pairs = Vec::new(); // (item, issue)
+
+    for item in &open_items {
+        if collided_ids.contains(&item.id) {
+            continue;
+        }
+        match item.github_issue {
+            None => {
+                orphan_roadmap.push(Finding::OrphanRoadmap {
+                    id: item.id.clone(),
+                    title: item.title.clone(),
+                    github_issue: None,
+                    reason: OrphanReason::NoIssue,
+                });
+            }
+            Some(n) => {
+                if let Some(issue) = snapshot.issue(n) {
+                    if issue.state == IssueState::Closed {
+                        orphan_roadmap.push(Finding::OrphanRoadmap {
+                            id: item.id.clone(),
+                            title: item.title.clone(),
+                            github_issue: Some(n),
+                            reason: OrphanReason::IssueClosed,
+                        });
+                    } else {
+                        // Open
+                        matched_pairs.push((item, issue));
+                    }
+                } else {
+                    orphan_roadmap.push(Finding::OrphanRoadmap {
+                        id: item.id.clone(),
+                        title: item.title.clone(),
+                        github_issue: Some(n),
+                        reason: OrphanReason::IssueAbsent,
+                    });
+                }
+            }
+        }
+    }
+    orphan_roadmap.sort_by_key(|f| match f {
+        Finding::OrphanRoadmap { id, .. } => id.clone(),
+        _ => String::new(),
+    });
+    report.findings.extend(orphan_roadmap);
+
+    report.matched = matched_pairs.len();
+
+    let mut orphan_github = Vec::new();
+    for issue in &g_issues {
+        if !named_issues.contains_key(&issue.number) {
+            orphan_github.push(Finding::OrphanGithub {
+                number: issue.number,
+                title: issue.title.clone(),
+                milestone: issue.milestone.clone(),
+            });
+        }
+    }
+    orphan_github.sort_by_key(|f| match f {
+        Finding::OrphanGithub { number, .. } => *number,
+        _ => 0,
+    });
+    report.findings.extend(orphan_github);
+
+    let mut drift_findings = Vec::new();
+    for (item, issue) in matched_pairs {
+        let title_differs = item.title.trim() != issue.title.trim();
+        let release_differs = item.release != issue.milestone;
+
+        if title_differs || release_differs {
+            let item_dt = chrono::DateTime::parse_from_rfc3339(&item.updated)
+                .map(|dt| dt.with_timezone(&Utc));
+            let age_minutes = match item_dt {
+                Ok(dt) => {
+                    let max_dt = if dt > issue.updated_at {
+                        dt
+                    } else {
+                        issue.updated_at
+                    };
+                    (settings.now - max_dt).num_minutes()
+                }
+                Err(_) => i64::MAX,
+            };
+
+            if age_minutes < settings.grace.num_minutes() {
+                if title_differs {
+                    report.tolerated += 1;
+                }
+                if release_differs {
+                    report.tolerated += 1;
+                }
+            } else {
+                if title_differs {
+                    drift_findings.push(Finding::Drift {
+                        id: item.id.clone(),
+                        number: issue.number,
+                        field: DriftField::Title,
+                        roadmap: item.title.clone(),
+                        github: issue.title.clone(),
+                        age_minutes,
+                    });
+                }
+                if release_differs {
+                    drift_findings.push(Finding::Drift {
+                        id: item.id.clone(),
+                        number: issue.number,
+                        field: DriftField::Release,
+                        roadmap: item.release.clone().unwrap_or_default(),
+                        github: issue.milestone.clone().unwrap_or_default(),
+                        age_minutes,
+                    });
+                }
+            }
+        }
+    }
+
+    drift_findings.sort_by(|a, b| {
+        let (id_a, field_a) = match a {
+            Finding::Drift { id, field, .. } => (id, field),
+            _ => unreachable!(),
+        };
+        let (id_b, field_b) = match b {
+            Finding::Drift { id, field, .. } => (id, field),
+            _ => unreachable!(),
+        };
+        let f_a = match field_a {
+            DriftField::Title => 0,
+            DriftField::Release => 1,
+        };
+        let f_b = match field_b {
+            DriftField::Title => 0,
+            DriftField::Release => 1,
+        };
+        id_a.cmp(id_b).then(f_a.cmp(&f_b))
+    });
+    report.findings.extend(drift_findings);
+
+    report
 }
 
 /// Which side the fixers write to.
@@ -277,22 +458,193 @@ pub enum Action {
 pub fn plan(
     _roadmap: &Roadmap,
     _snapshot: &GithubSnapshot,
-    _report: &SyncReport,
-    _direction: Direction,
+    report: &SyncReport,
+    direction: Direction,
 ) -> Vec<Action> {
-    Vec::new()
+    let mut actions = Vec::new();
+    for finding in &report.findings {
+        match finding {
+            Finding::Collision { ids, number } => {
+                for id in ids {
+                    let other_ids: Vec<String> = ids.iter().filter(|x| *x != id).cloned().collect();
+                    actions.push(Action::Skip {
+                        id: id.clone(),
+                        reason: format!(
+                            "COLLISION with #{} (§5.4): also named by {}",
+                            number,
+                            other_ids.join(", ")
+                        ),
+                    });
+                }
+            }
+            Finding::OrphanRoadmap {
+                id,
+                title,
+                github_issue,
+                reason,
+            } => match reason {
+                OrphanReason::NoIssue => match direction {
+                    Direction::YamlToGithub | Direction::Full => {
+                        actions.push(Action::CreateIssue {
+                            id: id.clone(),
+                            title: title.clone(),
+                        });
+                    }
+                    Direction::GithubToYaml => {
+                        actions.push(Action::Skip {
+                            id: id.clone(),
+                            reason: "yaml-to-github".to_string(),
+                        });
+                    }
+                },
+                OrphanReason::IssueClosed => match direction {
+                    Direction::GithubToYaml | Direction::Full => {
+                        let n = github_issue.expect("issue closed must have a number");
+                        let status = if let Some(issue) = _snapshot.issue(n) {
+                            if issue.state_reason == Some(CloseReason::NotPlanned) {
+                                ItemStatus::Cancelled
+                            } else {
+                                ItemStatus::Completed
+                            }
+                        } else {
+                            ItemStatus::Completed
+                        };
+                        actions.push(Action::CloseItem {
+                            id: id.clone(),
+                            number: n,
+                            status,
+                        });
+                    }
+                    Direction::YamlToGithub => {
+                        actions.push(Action::Skip {
+                            id: id.clone(),
+                            reason: "github-to-yaml (§5.3)".to_string(),
+                        });
+                    }
+                },
+                OrphanReason::IssueAbsent => {
+                    actions.push(Action::Skip {
+                        id: id.clone(),
+                        reason: format!(
+                            "#{} does not exist",
+                            github_issue.expect("absent must have number")
+                        ),
+                    });
+                }
+            },
+            Finding::OrphanGithub {
+                number,
+                title,
+                milestone,
+            } => match direction {
+                Direction::GithubToYaml | Direction::Full => {
+                    actions.push(Action::CreateItem {
+                        number: *number,
+                        title: title.clone(),
+                        release: milestone.clone(),
+                    });
+                }
+                Direction::YamlToGithub => {
+                    actions.push(Action::Skip {
+                        id: format!("#{}", number),
+                        reason: "github-to-yaml".to_string(),
+                    });
+                }
+            },
+            Finding::Drift {
+                id,
+                number,
+                field,
+                roadmap: _,
+                github: _,
+                age_minutes: _,
+            } => match field {
+                DriftField::Release => match direction {
+                    Direction::GithubToYaml | Direction::Full => {
+                        let issue = _snapshot.issue(*number).expect("issue exists");
+                        actions.push(Action::SetRelease {
+                            id: id.clone(),
+                            number: *number,
+                            release: issue.milestone.clone(),
+                        });
+                    }
+                    Direction::YamlToGithub => {
+                        actions.push(Action::Skip {
+                            id: id.clone(),
+                            reason: "github-to-yaml".to_string(),
+                        });
+                    }
+                },
+                DriftField::Title => {
+                    actions.push(Action::Skip {
+                        id: id.clone(),
+                        reason: "title (§5.3)".to_string(),
+                    });
+                }
+            },
+        }
+    }
+    actions
 }
 
 /// Apply the roadmap-side actions (`LinkIssue`, `CreateItem`, `CloseItem`,
 /// `SetRelease`) to `roadmap`; `CreateIssue` and `Skip` are no-ops here. Returns
 /// how many actions changed something. Every touched item gets `updated = now`.
-pub fn apply_to_roadmap(_roadmap: &mut Roadmap, _actions: &[Action], _now: DateTime<Utc>) -> usize {
-    0
-}
+pub fn apply_to_roadmap(roadmap: &mut Roadmap, actions: &[Action], now: DateTime<Utc>) -> usize {
+    let mut count = 0;
+    let now_str = now.to_rfc3339();
 
-// Keep the collection imports live for the engine body that lands next.
-#[allow(dead_code)]
-type Groups = BTreeMap<u64, BTreeSet<String>>;
+    for action in actions {
+        match action {
+            Action::LinkIssue { id, number } => {
+                if let Some(item) = roadmap.roadmap.iter_mut().find(|i| &i.id == id) {
+                    item.github_issue = Some(*number);
+                    item.updated = now_str.clone();
+                    count += 1;
+                }
+            }
+            Action::CreateItem {
+                number,
+                title,
+                release,
+            } => {
+                let id = format!("GH-{}", number);
+                if !roadmap.roadmap.iter().any(|i| i.id == id) {
+                    let mut item = RoadmapItem::from_github_issue(*number, title.clone());
+                    item.release = release.clone();
+                    item.created = now_str.clone();
+                    item.updated = now_str.clone();
+                    roadmap.roadmap.push(item);
+                    count += 1;
+                }
+            }
+            Action::CloseItem {
+                id,
+                number: _,
+                status,
+            } => {
+                if let Some(item) = roadmap.roadmap.iter_mut().find(|i| &i.id == id) {
+                    item.status = *status;
+                    item.updated = now_str.clone();
+                    count += 1;
+                }
+            }
+            Action::SetRelease {
+                id,
+                number: _,
+                release,
+            } => {
+                if let Some(item) = roadmap.roadmap.iter_mut().find(|i| &i.id == id) {
+                    item.release = release.clone();
+                    item.updated = now_str.clone();
+                    count += 1;
+                }
+            }
+            Action::CreateIssue { .. } | Action::Skip { .. } => {}
+        }
+    }
+    count
+}
 
 #[cfg(test)]
 mod tests;
