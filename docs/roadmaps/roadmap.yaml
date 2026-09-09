@@ -5056,3 +5056,26 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-720
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 3: release: field on roadmap items (a projection of the GitHub milestone; pmat work sync is its only writer); pmat work sync made real — --check-only reports ORPHAN-ROADMAP / ORPHAN-GITHUB / COLLISION and time-bounded field drift, --direction yaml-to-github|github-to-yaml fix the orphans, a COLLISION is never auto-fixed; the 13 #612 collisions filed for a human under their own ticket'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T20:21:16Z
+  updated: 2026-09-09T20:21:16Z
+  spec: null
+  acceptance_criteria:
+  - 'a RoadmapItem without release serializes with no release key and one with release keeps it verbatim (cargo test --lib -- roadmap_types release_field); the 279-entry roadmap.yaml load->save round-trip is byte-identical'
+  - 'pmat work sync --check-only --snapshot <fixture> exits 1 and names every ORPHAN-ROADMAP, ORPHAN-GITHUB and COLLISION finding; on a coherent fixture it exits 0 (scripts/work-sync-control.sh, both arms observed)'
+  - 'a matched pair whose title or state word disagrees is reported only once now - max(item.updated, issue.updated_at) exceeds staleness_grace_minutes (default 60), never by count'
+  - '--direction github-to-yaml writes release: from the issue milestone title and never mints one; --direction yaml-to-github --dry-run names the issues it would create and creates none; every fixer skips a collided item and prints why'
+  - 'pmat work sync --check-only on this repository reports the 13 open MACS items naming #612 as COLLISION, and a planned ticket for a human names them for resolution (never auto-fixed, spec 5.4)'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: models/roadmap_types.rs (release field), services/work_sync (new pure engine over a GitHub snapshot), cli/commands/work_commands_work.rs + handlers/work_handlers/core_handlers (surface, fixers), scripts/ (control). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §5, §11 step 3. Branches from master; no code overlap with #1246/#1247 (steps 1-2).'
