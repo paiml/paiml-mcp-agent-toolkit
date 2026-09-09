@@ -1,22 +1,40 @@
-# The required status check CONTEXT STRINGS for master, as branch protection
-# reports them. Read by CB-2100 (comply gate-effect verification) so the rule
-# can be evaluated on a runner that has no admin read on the repository.
+# The required status check CONTEXT STRINGS for master. Read by CB-2100 (comply
+# gate-effect verification) so the rule can be evaluated on a runner that has no
+# admin read on the repository.
 #
-# This file is CROSS-CHECKED, not trusted: whenever the branch-protection API
-# is reachable, CB-2100 fails on any disagreement between the two. Do not edit
-# it to make a gate look reachable — regenerate it from the API:
+# TWO MECHANISMS REQUIRE CHECKS HERE, and this file is the UNION of both.
+# Regenerate it from the API — both halves:
 #
 #   gh api repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection \
 #     --jq '.required_status_checks.contexts[]'
+#   gh api repos/paiml/paiml-mcp-agent-toolkit/rules/branches/master \
+#     --jq '.[]|select(.type=="required_status_checks")
+#            |.parameters.required_status_checks[].context'
+#
+# This file is CROSS-CHECKED, not trusted: whenever the APIs are reachable,
+# CB-2100 fails on any disagreement. Do not edit it to make a gate look reachable.
 #
 # Note that these are CONTEXTS, not job names. `ci / gate` is a job inside the
-# reusable workflow ci.yml calls; the unrequired top-level job in ci.yml whose
-# display name is `gate` reports as plain `gate` and is a different check.
+# reusable workflow .github/workflows/ci.yml calls; the top-level job in that
+# file whose display name is `gate` reports as plain `gate`, and they are two
+# different checks.
+#
+# PMAT-717 (goal-mode.md step 0), 2026-09-09. This header used to call that
+# top-level job "unrequired". It is not, and has not been: it is required by
+# ACTIVE ruleset 13878864 "Green Main". Both contexts appear on a real PR
+# (measured on #1243). Because `required::resolve` read only branch protection,
+# `gate` was invisible to CB-2100, and THAT is where "157 rules, 0 ENFORCED"
+# came from — an incomplete root set, not 157 broken rules. A false sentence in a
+# manifest that exists to be cross-checked is the same defect one level up.
+#
+# ── required by BRANCH PROTECTION
 ci / gate
 feature-gate
 docs build (docs.rs environment)
 pmat score
 provable ladder
+# ── required by RULESET 13878864 "Green Main" (enforcement: active)
+gate
 #
 # NOT LISTED, DELIBERATELY: `mutation-diff`. It was added to live branch
 # protection mid-session by an agent, and reverted. The workflow that produces

@@ -132,9 +132,32 @@ fn read_manifest(project_path: &Path) -> Option<Vec<String>> {
 /// PMAT-717 (goal-mode.md step 0). Rulesets are a SECOND mechanism for requiring a
 /// check, independent of branch protection, and this module could not see them.
 ///
-/// TODO(PMAT-717): returns nothing — the RED state. The real parser follows.
-pub(crate) fn parse_ruleset_contexts(_body: &str) -> Vec<String> {
-    Vec::new()
+/// The body is the array `repos/{}/rules/branches/{}` returns: every rule that
+/// applies to the branch, of which only `required_status_checks` carries contexts.
+/// An unparsable body yields nothing rather than erroring — the CALLER decides
+/// whether "no ruleset" is a legitimate answer or an unmeasured one, and it has
+/// branch protection to compare against.
+pub(crate) fn parse_ruleset_contexts(body: &str) -> Vec<String> {
+    let Ok(rules) = serde_json::from_str::<serde_json::Value>(body) else {
+        return Vec::new();
+    };
+    let Some(rules) = rules.as_array() else {
+        return Vec::new();
+    };
+    rules
+        .iter()
+        .filter(|r| {
+            r.get("type").and_then(serde_json::Value::as_str) == Some("required_status_checks")
+        })
+        .filter_map(|r| {
+            r.get("parameters")?
+                .get("required_status_checks")?
+                .as_array()
+        })
+        .flatten()
+        .filter_map(|c| c.get("context")?.as_str())
+        .map(str::to_string)
+        .collect()
 }
 
 /// The root set: branch-protection contexts unioned with ruleset contexts.
@@ -143,9 +166,17 @@ pub(crate) fn parse_ruleset_contexts(_body: &str) -> Vec<String> {
 /// required only by a ruleset was therefore invisible, and every rule reachable
 /// only through it scored NEUTERED.
 ///
-/// TODO(PMAT-717): today's behaviour — protection only. The union follows.
-pub(crate) fn union_contexts(protection: Vec<String>, _ruleset: Vec<String>) -> Vec<String> {
-    protection
+/// Branch protection's order is preserved and ruleset-only contexts are appended,
+/// so a diff of `.github/required-status-checks.txt` stays readable and a context
+/// required by BOTH mechanisms appears once.
+pub(crate) fn union_contexts(protection: Vec<String>, ruleset: Vec<String>) -> Vec<String> {
+    let mut out = protection;
+    for context in ruleset {
+        if !out.contains(&context) {
+            out.push(context);
+        }
+    }
+    out
 }
 
 /// Ask GitHub. `None` on any failure — the caller turns that into an error when
@@ -163,13 +194,28 @@ fn fetch_live(project_path: &Path) -> Option<Vec<String>> {
             ".required_status_checks.contexts[]?",
         ],
     )?;
-    Some(
-        out.lines()
-            .map(str::trim)
-            .filter(|l| !l.is_empty())
-            .map(str::to_string)
-            .collect(),
+    let protection: Vec<String> = out
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(str::to_string)
+        .collect();
+
+    // PMAT-717: a ruleset is a SECOND, independent way to require a check, and
+    // this function asked only about branch protection. On this repository the
+    // `gate` context is required by ruleset 13878864 and by nothing else, so the
+    // root set was short by one and CB-2100 scored every rule reachable only
+    // through it as NEUTERED. A missing or unreadable ruleset endpoint yields an
+    // empty list, which unions to exactly the old answer — this cannot make a
+    // previously-visible root disappear.
+    let ruleset = run_gh(
+        project_path,
+        &["api", &format!("repos/{repo}/rules/branches/{branch}")],
     )
+    .map(|body| parse_ruleset_contexts(&body))
+    .unwrap_or_default();
+
+    Some(union_contexts(protection, ruleset))
 }
 
 fn default_branch(project_path: &Path) -> Option<String> {
