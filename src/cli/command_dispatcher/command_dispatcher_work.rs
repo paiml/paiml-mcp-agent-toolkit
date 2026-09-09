@@ -154,7 +154,24 @@ impl CommandDispatcher {
                 direction,
                 path,
                 dry_run,
-            } => work_handlers::handle_work_sync(*direction, path.clone(), *dry_run).await,
+                check_only,
+                snapshot,
+                write_snapshot,
+                grace_minutes,
+                format,
+            } => {
+                work_handlers::handle_work_sync(work_handlers::SyncOptions {
+                    direction: *direction,
+                    path: path.clone(),
+                    dry_run: *dry_run,
+                    check_only: *check_only,
+                    snapshot: snapshot.clone(),
+                    write_snapshot: write_snapshot.clone(),
+                    grace_minutes: *grace_minutes,
+                    json: matches!(format, crate::cli::commands::SyncOutputFormat::Json),
+                })
+                .await
+            }
             WorkCommands::Validate {
                 path,
                 verbose,

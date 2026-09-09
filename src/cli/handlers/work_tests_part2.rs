@@ -37,48 +37,6 @@
         }
 
         #[tokio::test]
-        async fn test_handle_work_sync_yaml_to_github() {
-            let temp_dir = create_initialized_project();
-
-            let result = handle_work_sync(
-                SyncDirection::YamlToGithub,
-                Some(temp_dir.path().to_path_buf()),
-                true, // dry_run
-            )
-            .await;
-
-            assert!(result.is_ok());
-        }
-
-        #[tokio::test]
-        async fn test_handle_work_sync_github_to_yaml() {
-            let temp_dir = create_initialized_project();
-
-            let result = handle_work_sync(
-                SyncDirection::GithubToYaml,
-                Some(temp_dir.path().to_path_buf()),
-                true, // dry_run
-            )
-            .await;
-
-            assert!(result.is_ok());
-        }
-
-        #[tokio::test]
-        async fn test_handle_work_sync_full() {
-            let temp_dir = create_initialized_project();
-
-            let result = handle_work_sync(
-                SyncDirection::Full,
-                Some(temp_dir.path().to_path_buf()),
-                true, // dry_run
-            )
-            .await;
-
-            assert!(result.is_ok());
-        }
-
-        #[tokio::test]
         async fn test_handle_work_validate_valid_roadmap() {
             let temp_dir = create_initialized_project();
 

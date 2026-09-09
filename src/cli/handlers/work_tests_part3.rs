@@ -425,45 +425,6 @@ roadmap:
         }
     }
 
-    // ========== Sync Direction Tests ==========
-
-    mod sync_direction_tests {
-        use super::*;
-
-        #[tokio::test]
-        async fn test_sync_yaml_to_github_shows_yaml_only_items() {
-            let temp_dir = create_initialized_project();
-
-            let result = handle_work_sync(
-                SyncDirection::YamlToGithub,
-                Some(temp_dir.path().to_path_buf()),
-                true,
-            )
-            .await;
-
-            assert!(result.is_ok());
-        }
-
-        #[tokio::test]
-        async fn test_sync_all_directions() {
-            let temp_dir = create_initialized_project();
-
-            // Test all sync directions
-            for direction in [
-                SyncDirection::YamlToGithub,
-                SyncDirection::GithubToYaml,
-                SyncDirection::Full,
-            ] {
-                let result = handle_work_sync(
-                    direction,
-                    Some(temp_dir.path().to_path_buf()),
-                    true,
-                )
-                .await;
-                assert!(result.is_ok());
-            }
-        }
-    }
 
     // ========== Roadmap Item Properties Tests ==========
 

@@ -414,7 +414,9 @@ pub enum WorkCommands {
         active: bool,
     },
 
-    /// Synchronize GitHub and YAML
+    /// Synchronize GitHub and YAML (goal-mode.md §5): judge the roadmap/GitHub
+    /// bijection, then fix the orphans in the chosen direction. A COLLISION is
+    /// reported and never fixed.
     #[command(visible_aliases = &["sy"])]
     Sync {
         /// Sync direction
@@ -425,9 +427,33 @@ pub enum WorkCommands {
         #[arg(short, long)]
         path: Option<PathBuf>,
 
-        /// Dry run (show what would be synced)
+        /// Dry run: print the plan, write nothing (to GitHub or the roadmap)
         #[arg(long)]
         dry_run: bool,
+
+        /// Report only (§5.1/§5.2): print every finding, write nothing, exit 1 when
+        /// any finding exists. The gate-shaped mode; `--direction` is ignored.
+        #[arg(long)]
+        check_only: bool,
+
+        /// Judge a GitHub snapshot read from this JSON file instead of fetching one
+        /// with `gh` (written by --write-snapshot, or by hand for a control)
+        #[arg(long)]
+        snapshot: Option<PathBuf>,
+
+        /// Write the fetched GitHub snapshot to this file before judging, so the run
+        /// can be replayed offline
+        #[arg(long)]
+        write_snapshot: Option<PathBuf>,
+
+        /// §5.2 grace window in minutes: a title or release disagreement younger
+        /// than this is tolerated, not reported
+        #[arg(long, default_value_t = 60)]
+        grace_minutes: i64,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "text")]
+        format: SyncOutputFormat,
     },
 
     /// Initialize roadmap and hooks
