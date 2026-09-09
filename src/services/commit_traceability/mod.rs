@@ -109,9 +109,44 @@ impl Measurement {
     }
 }
 
+use std::process::Command;
+
 /// Are the inputs there?
-pub fn inputs(_project_path: &Path) -> Inputs {
-    unimplemented_stub("inputs")
+pub fn inputs(project_path: &Path) -> Inputs {
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(project_path)
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .env("LC_ALL", "C")
+        .output();
+    if match out {
+        Ok(o) => !o.status.success(),
+        Err(_) => true,
+    } {
+        return Inputs::NotGit;
+    }
+    if !project_path.join(ROADMAP_PATH).exists() {
+        return Inputs::NoRoadmap;
+    }
+    Inputs::Ready
+}
+
+fn run_git(project_path: &Path, args: &[&str]) -> Result<String, String> {
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(project_path)
+        .args(args)
+        .env("LC_ALL", "C")
+        .output()
+        .map_err(|e| format!("git {:?} failed: {}", args, e))?;
+    if !out.status.success() {
+        return Err(format!(
+            "git {:?}: {}",
+            args.first().unwrap_or(&""),
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
 /// Measure, resolving the base from [`BASE_REF_ENV`] when it is set and from
@@ -128,13 +163,238 @@ pub fn measure(project_path: &Path) -> Result<Measurement, String> {
 
 /// [`measure`] with the base branch named explicitly (`None` = discover it:
 /// `origin/HEAD`, then `origin/master`, `origin/main`, `master`, `main`).
-pub fn measure_against(_project_path: &Path, _base: Option<&str>) -> Result<Measurement, String> {
-    unimplemented_stub("measure_against")
+pub fn measure_against(project_path: &Path, base: Option<&str>) -> Result<Measurement, String> {
+    let resolved_base = if let Some(b) = base {
+        if run_git(
+            project_path,
+            &["rev-parse", "--verify", "-q", &format!("{b}^{{commit}}")],
+        )
+        .is_ok()
+        {
+            b.to_string()
+        } else if run_git(
+            project_path,
+            &[
+                "rev-parse",
+                "--verify",
+                "-q",
+                &format!("origin/{b}^{{commit}}"),
+            ],
+        )
+        .is_ok()
+        {
+            format!("origin/{b}")
+        } else {
+            return Err(format!("base {b} not found"));
+        }
+    } else {
+        let mut candidates = vec![];
+        if let Ok(sym_ref) = run_git(
+            project_path,
+            &["symbolic-ref", "-q", "refs/remotes/origin/HEAD"],
+        ) {
+            if let Some(stripped) = sym_ref.strip_prefix("refs/remotes/") {
+                candidates.push(stripped.to_string());
+            }
+        }
+        candidates.extend_from_slice(&[
+            "origin/master".to_string(),
+            "origin/main".to_string(),
+            "master".to_string(),
+            "main".to_string(),
+        ]);
+
+        let mut found = None;
+        for c in candidates {
+            if run_git(
+                project_path,
+                &["rev-parse", "--verify", "-q", &format!("{c}^{{commit}}")],
+            )
+            .is_ok()
+            {
+                found = Some(c);
+                break;
+            }
+        }
+        found.ok_or_else(|| "no base to measure against".to_string())?
+    };
+
+    let head_commit = run_git(project_path, &["rev-parse", "HEAD"])?;
+    let base_commit = run_git(
+        project_path,
+        &["rev-parse", &format!("{resolved_base}^{{commit}}")],
+    )?;
+    let current_branch =
+        run_git(project_path, &["rev-parse", "--abbrev-ref", "HEAD"]).unwrap_or_default();
+    let base_short = resolved_base
+        .strip_prefix("origin/")
+        .unwrap_or(&resolved_base);
+
+    let is_default_branch = head_commit == base_commit || current_branch == base_short;
+
+    if is_default_branch {
+        default_branch_mode(project_path)
+    } else {
+        pr_mode(project_path, resolved_base)
+    }
 }
 
-/// RED scaffold (PMAT-719): the API is fixed so the falsification suite
-/// compiles and fails on its assertions rather than on the build. Replaced by
-/// the implementation in the same ticket; nothing may ship while this exists.
-fn unimplemented_stub<T>(what: &str) -> T {
-    panic!("commit_traceability::{what} is not implemented yet (PMAT-719 RED)")
+fn default_branch_mode(project_path: &std::path::Path) -> Result<Measurement, String> {
+    let since = run_git(
+        project_path,
+        &["describe", "--tags", "--abbrev=0", "--match", "v*", "HEAD"],
+    )
+    .ok();
+
+    let range_arg = if let Some(ref s) = since {
+        format!("{s}..HEAD")
+    } else {
+        "HEAD".to_string()
+    };
+
+    let commits_out = run_git(
+        project_path,
+        &[
+            "log",
+            "--no-merges",
+            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)",
+            &range_arg,
+        ],
+    )?;
+    let mut commits = 0;
+    let mut trailered = 0;
+    if !commits_out.is_empty() {
+        for line in commits_out.split('\n') {
+            if line.trim().is_empty() {
+                continue;
+            }
+            commits += 1;
+            let parts: Vec<&str> = line.split('\x1f').collect();
+            if parts.len() >= 3 {
+                let tr = parts[2].trim();
+                if !tr.is_empty() {
+                    let ids: Vec<&str> = tr
+                        .split(',')
+                        .map(|s| s.trim())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                    if !ids.is_empty() {
+                        trailered += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(Measurement {
+        range: Range::DefaultBranch { since },
+        commits,
+        trailered,
+        findings: vec![],
+    })
+}
+
+fn pr_mode(project_path: &std::path::Path, resolved_base: String) -> Result<Measurement, String> {
+    let merge_base = run_git(project_path, &["merge-base", &resolved_base, "HEAD"])?;
+    let commits_out = run_git(
+        project_path,
+        &[
+            "log",
+            "--no-merges",
+            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)",
+            &format!("{merge_base}..HEAD"),
+        ],
+    )?;
+
+    let rm_path = project_path.join(ROADMAP_PATH);
+    let roadmap = crate::services::roadmap_service::RoadmapService::new(rm_path)
+        .load()
+        .map_err(|e| format!("roadmap parse error: {}", e))?;
+
+    let mut roadmap_map = std::collections::HashMap::new();
+    for item in roadmap.roadmap {
+        roadmap_map.insert(item.id, item.status);
+    }
+
+    let mut commits = 0;
+    let mut trailered = 0;
+    let mut findings = vec![];
+
+    if !commits_out.is_empty() {
+        for line in commits_out.split('\n') {
+            if line.trim().is_empty() {
+                continue;
+            }
+            commits += 1;
+            let parts: Vec<&str> = line.split('\x1f').collect();
+            if parts.len() < 2 {
+                continue;
+            }
+            let hash = parts[0].to_string();
+            let subject = parts[1].to_string();
+            let tr = if parts.len() >= 3 {
+                parts[2].trim()
+            } else {
+                ""
+            };
+
+            let ids: Vec<&str> = tr
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if ids.is_empty() {
+                findings.push(Finding {
+                    hash: hash.clone(),
+                    subject: subject.clone(),
+                    violation: Violation::NoTrailer,
+                });
+            } else {
+                let mut commit_trailered = false;
+                for id in ids {
+                    commit_trailered = true;
+                    if let Some(status) = roadmap_map.get(id) {
+                        if matches!(
+                            status,
+                            crate::models::roadmap::ItemStatus::Completed
+                                | crate::models::roadmap::ItemStatus::Cancelled
+                        ) {
+                            let status_str = match status {
+                                crate::models::roadmap::ItemStatus::Completed => "completed",
+                                crate::models::roadmap::ItemStatus::Cancelled => "cancelled",
+                                _ => unreachable!(),
+                            };
+                            findings.push(Finding {
+                                hash: hash.clone(),
+                                subject: subject.clone(),
+                                violation: Violation::TerminalTicket {
+                                    id: id.to_string(),
+                                    status: status_str.to_string(),
+                                },
+                            });
+                        }
+                    } else {
+                        findings.push(Finding {
+                            hash: hash.clone(),
+                            subject: subject.clone(),
+                            violation: Violation::UnknownTicket(id.to_string()),
+                        });
+                    }
+                }
+                if commit_trailered {
+                    trailered += 1;
+                }
+            }
+        }
+    }
+
+    Ok(Measurement {
+        range: Range::PullRequest {
+            base: resolved_base,
+            merge_base,
+        },
+        commits,
+        trailered,
+        findings,
+    })
 }

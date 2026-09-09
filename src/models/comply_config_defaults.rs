@@ -321,6 +321,17 @@ fn default_checks() -> HashMap<String, CheckConfig> {
             options: HashMap::new(),
         },
     );
+    // CB-2113: Commit Traceability — every PR commit carries a Pmat-Ticket trailer naming a live roadmap item; Error so it is a member of the roster CB-2100 verifies.
+    checks.insert(
+        "cb-2113".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
 
     // CB-2101: Threshold Coherence — every number `.pmat-metrics.toml` writes
     // down must bound something this tree measures. Declared Error for the same
