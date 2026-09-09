@@ -4988,6 +4988,23 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-714
+  github_issue: null
+  item_type: task
+  title: 'roadmap ids: make the collision-free path mandatory — work add refuses the sequential allocator, and a ticket title is immutable (no --allow-retitle). Operator decision on #1240'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T07:37:54Z
+  updated: 2026-09-09T07:37:54Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
 - id: PMAT-716
   github_issue: null
   item_type: task
@@ -5004,4 +5021,38 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:docs
+  notes: null
+- id: PMAT-715
+  github_issue: null
+  item_type: task
+  title: 'cli-reference: convert both ratchets to hard failures and clear the debt they recorded — document the 60 undocumented commands, fix or remove the 16 drifted examples (#1228 step 3, forced by the operator decision to make them hard failures)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T08:05:16Z
+  updated: 2026-09-09T08:05:16Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-717
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 0 (P2): make pmat comply gate-effect analysis ruleset-aware — required::resolve must union repos/{}/rules/branches/{} with branch protection, .github/required-status-checks.txt gains the context ''gate'' and loses its false ''unrequired top-level job'' sentence, and the enforcement ledger is regenerated. Until this lands every new CB rule lands NEUTERED (157/0 today is computed over an incomplete root set)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T09:34:30Z
+  updated: 2026-09-09T09:34:30Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
   notes: null

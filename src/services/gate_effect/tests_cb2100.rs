@@ -86,8 +86,8 @@ fn the_rule_is_registered_as_cb_2100() {
     );
 }
 
-/// INV-2100-7. The roots come from branch protection; nothing in the rule may
-/// know the name of a gate. A rule that hardcodes `gate` reports a repository
+/// INV-2100-7. The roots come from branch protection unioned with repository
+/// rulesets (PMAT-717); nothing in the rule may know the name of a gate. A rule that hardcodes `gate` reports a repository
 /// as compliant on the day it renames a job — it fails its own INV-2100-3.
 #[test]
 fn inv_2100_7_no_gate_name_is_hardcoded_in_the_rule() {
@@ -1246,4 +1246,134 @@ fn a_discharged_claim_requires_something_that_actually_runs_kani() {
              not discharged"
         );
     }
+}
+
+// ── PMAT-717 / goal-mode.md step 0: the root set must include RULESET contexts.
+//
+// INV-2100-7 said "the roots come from branch protection". This repository's
+// `gate` context is required by an ACTIVE RULESET (13878864 "Green Main") and by
+// nothing else, so the root set was short by one and CB-2100 could not see a
+// gate the repository really enforces.
+//
+// It is NOT where the 157-rules / 0-ENFORCED figure comes from — an earlier
+// draft of this comment claimed that and a 3/3 quorum refuted it. That figure is
+// `continue-on-error: true` at quality-gate.yml:299, on the only step in CI that
+// runs `pmat comply check`, inside a job branch protection already required.
+//
+// Measured on this repository:
+//   gh api repos/paiml/paiml-mcp-agent-toolkit/rules/branches/master
+//     -> required_status_checks[].context == ["gate"]
+//   gh api repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection
+//     -> ["ci / gate","feature-gate","docs build (docs.rs environment)",
+//         "pmat score","provable ladder"]
+//   both appear as DISTINCT checks on PR #1243.
+
+#[test]
+fn ruleset_contexts_are_parsed_from_the_rules_api_shape() {
+    // The real shape of `gh api repos/{}/rules/branches/{}`: an array of rules,
+    // only some of which are required_status_checks.
+    let body = r#"[
+      {"type":"pull_request","parameters":{"required_approving_review_count":0}},
+      {"type":"required_status_checks","parameters":{
+         "required_status_checks":[{"context":"gate"},
+                                   {"context":"another / one"}]}}
+    ]"#;
+    let got = super::required::parse_ruleset_contexts(body);
+    assert_eq!(
+        got,
+        vec!["gate".to_string(), "another / one".to_string()],
+        "a rules-API body must yield every required_status_checks context"
+    );
+}
+
+#[test]
+fn a_body_with_no_status_check_rule_yields_nothing_rather_than_erroring() {
+    let body = r#"[{"type":"pull_request","parameters":{}}]"#;
+    assert!(super::required::parse_ruleset_contexts(body).is_empty());
+}
+
+#[test]
+fn the_root_set_is_the_union_of_protection_and_rulesets() {
+    // The defect, in one assertion: protection alone misses `gate`.
+    let protection = vec![
+        "ci / gate".to_string(),
+        "feature-gate".to_string(),
+        "provable ladder".to_string(),
+    ];
+    let ruleset = vec!["gate".to_string()];
+
+    let union = super::required::union_contexts(protection.clone(), ruleset);
+
+    assert!(
+        union.contains(&"gate".to_string()),
+        "the ruleset's context is missing from the root set — this is the \
+         157/0 defect: a rule reachable only through `gate` scores NEUTERED"
+    );
+    assert!(
+        union.contains(&"ci / gate".to_string()),
+        "branch protection's contexts must survive the union"
+    );
+    assert_eq!(union.len(), 4, "union, not concatenation: {union:?}");
+}
+
+#[test]
+fn the_union_is_deduplicated_and_order_stable() {
+    // A context required by BOTH mechanisms appears once, and protection's
+    // order is preserved so a diff of the manifest stays readable.
+    let union = super::required::union_contexts(
+        vec!["b".to_string(), "a".to_string()],
+        vec!["a".to_string(), "c".to_string()],
+    );
+    assert_eq!(
+        union,
+        vec!["b".to_string(), "a".to_string(), "c".to_string()]
+    );
+}
+
+// ── PMAT-717 round 2. A 3/3 agy quorum refuted the first round of this change on
+// two counts, both re-measured by hand before this commit:
+//
+//   1. `fetch_live` read branch protection with `?`, so the ruleset call was
+//      unreachable whenever protection did not answer. Rulesets are GitHub's
+//      SUCCESSOR to branch protection and a modern repository may configure ONLY
+//      rulesets — on such a repository this "fix" behaved exactly like the bug.
+//   2. the causal claim was false. See the note above `fn combine_live`.
+//
+// The seam is `combine_live`, so the asymmetry is testable without a network.
+
+#[test]
+fn a_ruleset_only_repository_still_yields_its_roots() {
+    // No branch protection at all — the modern GitHub configuration. The
+    // ruleset answered, so the root set is measured and it is the ruleset's.
+    let got = super::required::combine_live(None, Some(vec!["gate".to_string()]));
+    assert_eq!(
+        got,
+        Some(vec!["gate".to_string()]),
+        "a repository that requires checks only through a ruleset reported NO \
+         roots — reading rulesets only when branch protection also answers is \
+         the same blindness one level down"
+    );
+}
+
+#[test]
+fn protection_only_is_unchanged_by_the_ruleset_call() {
+    // Control: the overwhelmingly common case must be byte-identical to before.
+    let protection = vec!["ci / gate".to_string(), "provable ladder".to_string()];
+    assert_eq!(
+        super::required::combine_live(Some(protection.clone()), None),
+        Some(protection),
+        "adding a second source must not disturb a repository that has only the first"
+    );
+}
+
+#[test]
+fn neither_source_answering_is_unmeasured_not_empty() {
+    // Control, and the one that keeps this rule failing closed: `None` must mean
+    // "we could not find out", never "we looked, and nothing gates this repo".
+    assert_eq!(
+        super::required::combine_live(None, None),
+        None,
+        "two silent sources must stay unmeasured — an empty root set would read \
+         as a repository with no gates and pass"
+    );
 }
