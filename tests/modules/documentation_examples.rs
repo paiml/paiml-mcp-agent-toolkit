@@ -167,34 +167,57 @@ fn validate_binary_path(command: &str, expected_binary_path: &str) {
     );
 }
 
+/// Every top-level command the binary actually has, read from `--help`.
+///
+/// #1228: this used to be a hardcoded list of 14 command names. pmat has 71, so
+/// the list was 57 commands out of date and rejected examples for commands that
+/// exist — the same hand-maintained-inventory defect the reference itself had.
+/// Asking the binary removes the second inventory instead of updating it.
+fn known_commands() -> Vec<String> {
+    let output = pmat_command()
+        .arg("--help")
+        .output()
+        .expect("spawn pmat --help");
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut names = Vec::new();
+    let mut in_commands = false;
+    for line in text.lines() {
+        if line.starts_with("Commands:") {
+            in_commands = true;
+            continue;
+        }
+        if in_commands {
+            if line.trim().is_empty() {
+                break;
+            }
+            if let Some(name) = line.trim_start().split_whitespace().next() {
+                if name.starts_with(|c: char| c.is_ascii_lowercase()) {
+                    names.push(name.to_string());
+                }
+            }
+        }
+    }
+    assert!(
+        !names.is_empty(),
+        "parsed no commands from `pmat --help` — this check would otherwise accept \
+         anything (#1228)"
+    );
+    names
+}
+
 fn validate_command_arguments(parts: &[&str], original_line: &str) {
     if parts.len() <= 1 {
         return;
     }
 
-    let valid_commands = [
-        "generate",
-        "scaffold",
-        "list",
-        "search",
-        "validate",
-        "context",
-        "analyze",
-        "demo",
-        "serve",
-        "refactor",
-        "quality-gate",
-        "diagnose",
-        "report",
-        "enforce",
-        "--help",
-        "--version",
-        "--mode",
-    ];
-
     let first_arg = parts[1];
+    // A global flag rather than a subcommand.
+    if first_arg.starts_with('-') {
+        return;
+    }
+    let known = known_commands();
     assert!(
-        valid_commands.contains(&first_arg),
+        known.iter().any(|c| c == first_arg),
         "Example uses unknown command: {first_arg} in line: {original_line}"
     );
 }

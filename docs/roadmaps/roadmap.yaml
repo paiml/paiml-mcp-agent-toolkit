@@ -4988,3 +4988,20 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-715
+  github_issue: null
+  item_type: task
+  title: 'cli-reference: convert both ratchets to hard failures and clear the debt they recorded — document the 60 undocumented commands, fix or remove the 16 drifted examples (#1228 step 3, forced by the operator decision to make them hard failures)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T08:05:16Z
+  updated: 2026-09-09T08:05:16Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
