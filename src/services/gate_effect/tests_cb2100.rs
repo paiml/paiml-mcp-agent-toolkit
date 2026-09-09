@@ -1247,3 +1247,81 @@ fn a_discharged_claim_requires_something_that_actually_runs_kani() {
         );
     }
 }
+
+// ── PMAT-717 / goal-mode.md step 0: the root set must include RULESET contexts.
+//
+// INV-2100-7 said "the roots come from branch protection". That is where the
+// 157-rules / 0-ENFORCED figure comes from: this repository's `gate` context is
+// required by an ACTIVE RULESET (13878864 "Green Main"), not by branch
+// protection, so the root set was short by one and every rule reachable only
+// through `gate` was scored NEUTERED.
+//
+// Measured on this repository:
+//   gh api repos/paiml/paiml-mcp-agent-toolkit/rules/branches/master
+//     -> required_status_checks[].context == ["gate"]
+//   gh api repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection
+//     -> ["ci / gate","feature-gate","docs build (docs.rs environment)",
+//         "pmat score","provable ladder"]
+//   both appear as DISTINCT checks on PR #1243.
+
+#[test]
+fn ruleset_contexts_are_parsed_from_the_rules_api_shape() {
+    // The real shape of `gh api repos/{}/rules/branches/{}`: an array of rules,
+    // only some of which are required_status_checks.
+    let body = r#"[
+      {"type":"pull_request","parameters":{"required_approving_review_count":0}},
+      {"type":"required_status_checks","parameters":{
+         "required_status_checks":[{"context":"gate"},
+                                   {"context":"another / one"}]}}
+    ]"#;
+    let got = super::required::parse_ruleset_contexts(body);
+    assert_eq!(
+        got,
+        vec!["gate".to_string(), "another / one".to_string()],
+        "a rules-API body must yield every required_status_checks context"
+    );
+}
+
+#[test]
+fn a_body_with_no_status_check_rule_yields_nothing_rather_than_erroring() {
+    let body = r#"[{"type":"pull_request","parameters":{}}]"#;
+    assert!(super::required::parse_ruleset_contexts(body).is_empty());
+}
+
+#[test]
+fn the_root_set_is_the_union_of_protection_and_rulesets() {
+    // The defect, in one assertion: protection alone misses `gate`.
+    let protection = vec![
+        "ci / gate".to_string(),
+        "feature-gate".to_string(),
+        "provable ladder".to_string(),
+    ];
+    let ruleset = vec!["gate".to_string()];
+
+    let union = super::required::union_contexts(protection.clone(), ruleset);
+
+    assert!(
+        union.contains(&"gate".to_string()),
+        "the ruleset's context is missing from the root set — this is the \
+         157/0 defect: a rule reachable only through `gate` scores NEUTERED"
+    );
+    assert!(
+        union.contains(&"ci / gate".to_string()),
+        "branch protection's contexts must survive the union"
+    );
+    assert_eq!(union.len(), 4, "union, not concatenation: {union:?}");
+}
+
+#[test]
+fn the_union_is_deduplicated_and_order_stable() {
+    // A context required by BOTH mechanisms appears once, and protection's
+    // order is preserved so a diff of the manifest stays readable.
+    let union = super::required::union_contexts(
+        vec!["b".to_string(), "a".to_string()],
+        vec!["a".to_string(), "c".to_string()],
+    );
+    assert_eq!(
+        union,
+        vec!["b".to_string(), "a".to_string(), "c".to_string()]
+    );
+}

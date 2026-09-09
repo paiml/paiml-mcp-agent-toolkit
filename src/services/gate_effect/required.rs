@@ -127,6 +127,27 @@ fn read_manifest(project_path: &Path) -> Option<Vec<String>> {
     )
 }
 
+/// Every `required_status_checks` context in a `repos/{}/rules/branches/{}` body.
+///
+/// PMAT-717 (goal-mode.md step 0). Rulesets are a SECOND mechanism for requiring a
+/// check, independent of branch protection, and this module could not see them.
+///
+/// TODO(PMAT-717): returns nothing — the RED state. The real parser follows.
+pub(crate) fn parse_ruleset_contexts(_body: &str) -> Vec<String> {
+    Vec::new()
+}
+
+/// The root set: branch-protection contexts unioned with ruleset contexts.
+///
+/// PMAT-717: INV-2100-7 said "the roots come from branch protection". A context
+/// required only by a ruleset was therefore invisible, and every rule reachable
+/// only through it scored NEUTERED.
+///
+/// TODO(PMAT-717): today's behaviour — protection only. The union follows.
+pub(crate) fn union_contexts(protection: Vec<String>, _ruleset: Vec<String>) -> Vec<String> {
+    protection
+}
+
 /// Ask GitHub. `None` on any failure — the caller turns that into an error when
 /// no other source answered.
 fn fetch_live(project_path: &Path) -> Option<Vec<String>> {
