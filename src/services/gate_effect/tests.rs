@@ -811,3 +811,55 @@ fn a_root_that_reaches_only_a_subset_invocation_carries_it() {
         effects[0]
     );
 }
+
+#[test]
+fn checks_ids_are_parsed_in_every_spelling_the_job_might_use() {
+    let cases: &[(&str, &[&str])] = &[
+        (
+            "pmat comply check --checks=CB-2100,CB-2102",
+            &["CB-2100", "CB-2102"],
+        ),
+        (
+            "pmat comply check --checks cb-2100 --checks CB-2102",
+            &["CB-2100", "CB-2102"],
+        ),
+        (
+            "pmat comply check --checks CB-2100 CB-2102 --strict",
+            &["CB-2100", "CB-2102"],
+        ),
+    ];
+    for (line, want) in cases {
+        let wf = format!(
+            "name: CI\njobs:\n  quality:\n    runs-on: ubuntu-latest\n    steps:\n      - run: {line}\n"
+        );
+        let dir = fixture(&[(".github/workflows/ci.yml", &wf)]);
+        let report = run(&dir, &["quality"]);
+        let inv = report.invocations.first().expect("one invocation");
+        let want: Vec<String> = want.iter().map(|s| (*s).to_string()).collect();
+        assert_eq!(inv.selected.as_deref(), Some(want.as_slice()), "{line}");
+        assert!(inv.enforces_rule("cb-2100"), "case-insensitive: {line}");
+        assert!(
+            !inv.is_enforcing(),
+            "a subset run never stands for the roster: {line}"
+        );
+    }
+}
+
+#[test]
+fn a_bare_checks_flag_restricts_the_roster_and_names_nothing() {
+    let wf = "name: CI\njobs:\n  quality:\n    runs-on: ubuntu-latest\n    steps:\n      - run: pmat comply check --checks\n";
+    let dir = fixture(&[(".github/workflows/ci.yml", wf)]);
+    let report = run(&dir, &["quality"]);
+    let inv = report.invocations.first().expect("one invocation");
+    assert_eq!(
+        inv.selected.as_deref(),
+        Some(&[][..]),
+        "restricted, attribution unknown"
+    );
+    assert!(!inv.enforces_rule("CB-2100"));
+    assert!(
+        report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+        "{}",
+        why(&report)
+    );
+}

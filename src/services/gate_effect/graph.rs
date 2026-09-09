@@ -57,6 +57,17 @@ impl Enforcement {
             .map(|(_, inv)| *inv)
             .collect()
     }
+
+    /// Every invocation reachable from the union of the roots: indices into the
+    /// invocation list, in discovery order. Used to attribute enforcement per
+    /// rule rather than all-or-nothing for the whole roster.
+    pub fn reachable_invocations(&self) -> Vec<usize> {
+        self.invocation_nodes
+            .iter()
+            .filter(|(node, _)| kernel::reachable(self.node_count, &self.edges, &self.roots, *node))
+            .map(|(_, inv)| *inv)
+            .collect()
+    }
 }
 
 /// Node keys for jobs, so the same job reached from two contexts is one node.
@@ -136,9 +147,12 @@ impl Builder<'_> {
     }
 
     /// An invocation hangs off its own job, and the edge is live exactly when
-    /// nothing suppressed it. `Invocation::suppressions` already carries the
-    /// job-level and edge-level reasons folded in by the closure walk, so a
-    /// neutered invocation is a dead leaf however it was neutered.
+    /// nothing *other than a roster restriction* suppressed it.
+    /// `Invocation::suppressions` already carries the job-level and edge-level
+    /// reasons folded in by the closure walk, so a neutered invocation is a
+    /// dead leaf however it was neutered — but a `--checks CB-2100` run whose
+    /// only suppression is naming that subset is still a live carrier for the
+    /// rules it names (`Invocation::carries_selected_rules`).
     fn add_invocations(&mut self, invocations: &[Invocation]) {
         for (i, inv) in invocations.iter().enumerate() {
             let key: JobKey = (inv.workflow.clone(), inv.job_id.clone());
@@ -153,7 +167,7 @@ impl Builder<'_> {
             ));
             self.graph
                 .edges
-                .push(edge(from, node, inv.suppressions.is_empty()));
+                .push(edge(from, node, inv.carries_selected_rules()));
             self.graph.invocation_nodes.push((node, i));
         }
     }

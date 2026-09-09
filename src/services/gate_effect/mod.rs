@@ -321,9 +321,22 @@ fn finish(
     // graph, by the kernel `KANI-2100-1` proves. Asking it context-by-context
     // would let one healthy check answer for four.
     report.graph = graph::build(&set, &report.resolutions, &report.invocations);
-    if !report.graph.any_invocation_reachable() {
-        report.unreachable_rules = report.rules.clone();
-    }
+    // A rule is reachable when *some* reachable invocation enforces it — never
+    // all-or-nothing. A full-roster enforcing invocation still clears every
+    // rule (it enforces all of them); a `--checks CB-2100` run clears only
+    // CB-2100, and every other error-severity rule stays unreachable.
+    let reachable: Vec<&Invocation> = report
+        .graph
+        .reachable_invocations()
+        .into_iter()
+        .filter_map(|i| report.invocations.get(i))
+        .collect();
+    report.unreachable_rules = report
+        .rules
+        .iter()
+        .filter(|rule| !reachable.iter().any(|inv| inv.enforces_rule(rule)))
+        .cloned()
+        .collect();
     report
 }
 
