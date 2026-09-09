@@ -12,6 +12,7 @@ mod work_ledger_delegate_tests {
 
     fn item(id: &str) -> crate::models::roadmap::RoadmapItem {
         crate::models::roadmap::RoadmapItem {
+            release: None,
             id: id.to_string(),
             github_issue: Some(985),
             item_type: crate::models::roadmap::ItemType::Task,

@@ -57,6 +57,7 @@ pub async fn handle_work_add(
     // processes minted the same id and the second silently replaced the first
     // ticket.
     let build = move |id: String| crate::models::roadmap::RoadmapItem {
+        release: None,
         id,
         github_issue,
         item_type: crate::models::roadmap::ItemType::Task,

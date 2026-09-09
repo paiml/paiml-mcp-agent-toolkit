@@ -937,6 +937,8 @@ roadmap:
             out.contains("release:") && out.contains("3.41.0"),
             "the release key was dropped on the way through RoadmapItem:\n{out}"
         );
+        let again: Roadmap = serde_yaml_ng::from_str(&out).expect("the output parses");
+        assert_eq!(again.roadmap[0].release.as_deref(), Some("3.41.0"));
     }
 
     #[test]

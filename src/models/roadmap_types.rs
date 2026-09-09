@@ -133,6 +133,15 @@ pub struct RoadmapItem {
     /// Additional notes/documentation (markdown)
     #[serde(default)]
     pub notes: Option<String>,
+
+    /// The release this ticket ships in: a bare semver string ("3.41.0"), never
+    /// "v3.41.0". A PROJECTION of the GitHub milestone of the same title
+    /// (RR-RELEASE, goal-mode.md §4.1); `pmat work sync` is the only writer.
+    /// `None` on a completed or cancelled item means the item predates release
+    /// tracking; `None` on an open item is a CB-2114 violation. `default` +
+    /// `skip_serializing_if` so every existing entry round-trips unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release: Option<String>,
 }
 
 fn default_item_type() -> ItemType {

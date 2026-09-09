@@ -44,6 +44,7 @@ fn main() -> Result<()> {
     println!("=== Example 2: Add Work Items ===");
 
     let item1 = RoadmapItem {
+        release: None,
         id: "PERF-001".to_string(),
         github_issue: None,
         item_type: ItemType::Task,
@@ -73,6 +74,7 @@ fn main() -> Result<()> {
     println!("   Priority: {:?}", item1.priority);
 
     let item2 = RoadmapItem {
+        release: None,
         id: "BUG-042".to_string(),
         github_issue: Some(42),
         item_type: ItemType::Bug,
