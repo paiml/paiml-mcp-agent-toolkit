@@ -229,6 +229,8 @@ roadmap:
                 Some(temp_dir.path().to_path_buf()),
                 false,
                 true, // fix flag
+                None, // check_base
+                Vec::new(), // allow_retitle
             )
             .await;
 
@@ -257,6 +259,8 @@ roadmap:
                 Some(temp_dir.path().to_path_buf()),
                 false,
                 false,
+                None, // check_base
+                Vec::new(), // allow_retitle
             )
             .await;
 
@@ -284,6 +288,8 @@ roadmap:
                 Some(temp_dir.path().to_path_buf()),
                 true, // verbose
                 false,
+                None, // check_base
+                Vec::new(), // allow_retitle
             )
             .await;
 

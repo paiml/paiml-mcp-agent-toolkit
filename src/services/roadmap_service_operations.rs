@@ -190,6 +190,59 @@ impl RoadmapService {
         // Lock released automatically
     }
 
+    /// Append a row under an id the CALLER allocated (#1240).
+    ///
+    /// The allocator computes `max(id) + 1` from what this branch can see, and
+    /// two agents working at once see the same max. Neither is wrong locally;
+    /// the merge is where the clash appears, and it resolves to one entry per
+    /// id — deleting a ticket while every artefact citing it survives. An id
+    /// from an authority that cannot collide (the GitHub issue number these
+    /// tickets already carry) removes the class rather than narrowing it.
+    ///
+    /// The write still goes through the same exclusive lock and the same
+    /// text-level validator, and an id already in use is refused rather than
+    /// upserted: a caller-supplied id must not be able to overwrite a row the
+    /// way the allocator's duplicate once did (PMAT-673).
+    pub fn add_item_with_id(
+        &self,
+        id: &str,
+        build: impl FnOnce(String) -> RoadmapItem,
+    ) -> Result<String> {
+        let authority = self.id_authority();
+        let mut lock = Self::acquire_write_lock_at(&authority.lock_path)?;
+        let raw = fs::read_to_string(&self.roadmap_path).unwrap_or_default();
+        crate::services::roadmap_text::check_roadmap_text(&raw, &self.roadmap_path)
+            .map_err(|invalid| anyhow::anyhow!("{invalid}"))?;
+        if crate::services::roadmap_text::id_lines(&raw)
+            .iter()
+            .any(|(_, seen)| seen == id)
+        {
+            anyhow::bail!(
+                "id {id} is already in use in {}. Pick an id that is free, or drop --id and \
+                 let the allocator choose. Reusing an id is exactly the failure --id exists to \
+                 avoid (#1240).",
+                self.roadmap_path.display()
+            );
+        }
+        let item = build(id.to_string());
+        let block = crate::services::roadmap_text::render_item_block(
+            &item,
+            crate::services::roadmap_text::row_indent(&raw),
+        );
+        let appended = crate::services::roadmap_text::append_item(&raw, &block);
+        fs::write(&self.roadmap_path, appended)
+            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
+        // Keep the shared high-water mark ahead of a caller-supplied id, so the
+        // allocator cannot later hand out an id this call already spent.
+        if let Some(number) = id.rsplit('-').next().and_then(|n| n.parse::<u32>().ok()) {
+            let ahead = number.saturating_add(1);
+            if roadmap_id_authority::high_water_mark(&mut lock).is_none_or(|mark| mark < ahead) {
+                roadmap_id_authority::write_high_water_mark(&mut lock, ahead)?;
+            }
+        }
+        Ok(id.to_string())
+    }
+
     /// Replace ONE row's raw text — the row declaring `id` — with `item`.
     ///
     /// PMAT-679 (#1193, #1169). `pmat work edit` saved through the whole model

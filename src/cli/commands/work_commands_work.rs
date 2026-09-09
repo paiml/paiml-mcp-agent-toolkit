@@ -33,6 +33,33 @@ pub enum WorkCommands {
         /// claim follows the evidence: L1 unbound, L2 when bound with --implements.
         #[arg(long)]
         level: Option<String>,
+
+        /// Bind this GitHub issue and derive the ticket id from it (#1240)
+        ///
+        /// This is the collision-proof path, and the reason is structural rather
+        /// than careful: GitHub allocates issue numbers from ONE authority, so
+        /// two agents on two branches cannot be handed the same number no matter
+        /// what either can see of the other. `max(id) + 1` has the opposite
+        /// property — both branches read the same roadmap, both compute the same
+        /// answer, and the merge deletes one of the two tickets.
+        ///
+        /// Mints `PMAT-<N>` and records `github_issue: <N>`, so the ticket and
+        /// the issue that authorised its id stay joined. Prefer this over the
+        /// allocator whenever an issue exists.
+        #[arg(long, value_name = "N", conflicts_with = "id")]
+        github_issue: Option<u64>,
+
+        /// Mint this exact id instead of allocating the next one (#1240)
+        ///
+        /// The allocator derives `max(id) + 1` from state this branch can see,
+        /// which is safe alone and unsafe in parallel: two agents both read the
+        /// same max and both mint the same id, and the merge deletes one of the
+        /// two tickets. Pass an id you allocated from an authority that cannot
+        /// collide — the GitHub issue number every one of these tickets already
+        /// carries is one — and the allocator is not consulted. An id already in
+        /// use is refused.
+        #[arg(long, value_name = "ID")]
+        id: Option<String>,
     },
 
     /// List all work tickets (READ)
@@ -420,6 +447,34 @@ pub enum WorkCommands {
         /// Fix issues automatically where possible
         #[arg(long)]
         fix: bool,
+
+        /// Refuse any ticket id whose title changed since <REF> (#1240)
+        ///
+        /// A ticket id means one piece of work, so its title is immutable once
+        /// minted. Two agents on parallel branches both read the same
+        /// `max(id)` and both mint `max+1`; neither is wrong locally, and the
+        /// merge resolves the clash to one entry per id — silently DELETING
+        /// one agent's ticket while its DAG rows, receipt filenames, commit
+        /// trailers and PR body go on citing that id. Afterwards the ids ARE
+        /// unique, so a uniqueness check passes: uniqueness is preserved by
+        /// the loss. A changed title is the same event, visible, and needs no
+        /// state beyond the ref you already have.
+        #[arg(long, value_name = "REF")]
+        check_base: Option<String>,
+
+        /// A ticket id whose title is ALLOWED to have changed (repeatable)
+        ///
+        /// `pmat work edit --title` renames a ticket on purpose — a typo fix, a
+        /// re-scope — and `--check-base` cannot tell that apart from a reused id
+        /// by looking at titles alone. Without an escape the check would fire on
+        /// honest edits, and a gate that cries wolf is a gate someone turns off,
+        /// which would leave the defect it was built for uncaught.
+        ///
+        /// So the rename is allowed, but it has to be SAID: naming the id here is
+        /// a reviewable claim that this title changed because someone meant it
+        /// to, not because two branches both minted the id.
+        #[arg(long, value_name = "ID")]
+        allow_retitle: Vec<String>,
     },
 
     /// Auto-fix common roadmap.yaml issues (Part B: UX Improvements)

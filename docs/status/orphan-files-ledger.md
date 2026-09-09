@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4447 tracked `.rs` files: 3958 reachable from 138 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35910 lines, 2022 `#[test]` fns).
+4448 tracked `.rs` files: 3959 reachable from 138 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35922 lines, 2022 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -106,9 +106,9 @@ same change; do not edit counts by hand.
 | `src/cli/handlers/tdg_handlers_coverage_tests2.rs` | quarantined-#1023 | 33 | 1143 |
 | `src/cli/handlers/work_handlers_tests.rs` | quarantined-#1023 | 0 | 9 |
 | `src/cli/handlers/work_tests_part1.rs` | quarantined-#1023 | 40 | 504 |
-| `src/cli/handlers/work_tests_part2.rs` | quarantined-#1023 | 36 | 500 |
+| `src/cli/handlers/work_tests_part2.rs` | quarantined-#1023 | 36 | 506 |
 | `src/cli/handlers/work_tests_part3.rs` | quarantined-#1023 | 18 | 500 |
-| `src/cli/handlers/work_tests_part4.rs` | quarantined-#1023 | 18 | 396 |
+| `src/cli/handlers/work_tests_part4.rs` | quarantined-#1023 | 18 | 402 |
 | `src/cli/proof_annotation_formatter/coverage_tests.rs` | quarantined-#1023 | 0 | 10 |
 | `src/cli/proof_annotation_formatter/coverage_tests_part1.rs` | quarantined-#1023 | 16 | 400 |
 | `src/cli/proof_annotation_formatter/coverage_tests_part2.rs` | quarantined-#1023 | 15 | 400 |

@@ -4971,3 +4971,20 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-713
+  github_issue: null
+  item_type: task
+  title: 'roadmap ticket ids collide across concurrent branches and the merge DELETES one — validate passes because uniqueness is preserved by the loss (#1240). Make it DETECTABLE: a ticket id''s title is immutable once minted, so a merge that rewrites an existing id''s title is a collision, checkable against the base ref with no new state. Plus work add --id <explicit> and --check-base <ref>'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-08T16:56:01Z
+  updated: 2026-09-08T16:56:01Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null

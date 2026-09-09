@@ -10,6 +10,8 @@ pub async fn handle_work_add(
     path: Option<PathBuf>,
     create_github: bool,
     level: Option<String>,
+    explicit_id: Option<String>,
+    github_issue: Option<u64>,
 ) -> Result<()> {
     let claimed = level
         .as_deref()
@@ -53,9 +55,9 @@ pub async fn handle_work_add(
     // followed by `upsert_item`, with the lock released in between: two
     // processes minted the same id and the second silently replaced the first
     // ticket.
-    let next_id = service.add_item_with_next_id(move |id| crate::models::roadmap::RoadmapItem {
+    let build = move |id: String| crate::models::roadmap::RoadmapItem {
         id,
-        github_issue: None,
+        github_issue,
         item_type: crate::models::roadmap::ItemType::Task,
         title: item_title,
         status: crate::models::roadmap::ItemStatus::Planned,
@@ -70,7 +72,28 @@ pub async fn handle_work_add(
         estimated_effort: None,
         labels,
         notes: None,
-    })?;
+    };
+    // #1240, ask 1: the id space is collision-proof exactly when the number
+    // comes from an authority both branches must go through. A GitHub issue
+    // number is one — GitHub allocates it centrally, so two agents cannot be
+    // handed the same one whatever either can see of the other. `max(id) + 1`
+    // has the opposite property: both branches read the same roadmap, both
+    // compute the same answer, and the merge deletes one of the two tickets.
+    //
+    // Order matters. `--github-issue` derives the id, `--id` takes one the
+    // caller already allocated, and only with neither is the sequential
+    // allocator consulted — the unsafe-in-parallel path is now the fallback
+    // rather than the default.
+    // `{n:03}` is not cosmetic: the allocator mints `PMAT-{next:03}`
+    // (roadmap_service_operations.rs), so an unpadded `PMAT-2` would be a
+    // DIFFERENT id from the existing `PMAT-002` — two rows that read as the same
+    // ticket, which is the hazard this whole flag exists to remove. Issue numbers
+    // past 999 are unaffected; the padding only binds below 100.
+    let derived = github_issue.map(|n| format!("PMAT-{n:03}"));
+    let next_id = match derived.as_deref().or(explicit_id.as_deref()) {
+        Some(id) => service.add_item_with_id(id, build)?,
+        None => service.add_item_with_next_id(build)?,
+    };
 
     println!("{}", c::pass(&format!("Created ticket: {}", c::path(&next_id))));
     println!("   {} {}", c::label("Title:"), title);
@@ -80,6 +103,13 @@ pub async fn handle_work_add(
     }
     if let Some(t) = tags {
         println!("   {} {}", c::label("Tags:"), t);
+    }
+
+    if let Some(n) = github_issue {
+        println!(
+            "   {} #{n} (the id was derived from it, so it cannot collide — #1240)",
+            c::label("GitHub issue:")
+        );
     }
 
     // Create GitHub issue if requested
