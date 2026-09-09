@@ -5,6 +5,10 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  # PMAT-719 (goal-mode.md §7.1): a gate that is not evaluated on the merge
+  # queue is a gate the queue bypasses. No queue is known to be enabled; the
+  # trigger costs nothing and closes the hole before anyone opens it.
+  merge_group:
   workflow_dispatch:
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -28,7 +32,7 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate]
+    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability]
     if: always()
     steps:
       - name: Check required jobs
@@ -37,7 +41,8 @@ jobs:
           for j in "ci:${{ needs.ci.result }}" \
                    "windows-check:${{ needs.windows-check.result }}" \
                    "reusable-pin-drift:${{ needs.reusable-pin-drift.result }}" \
-                   "roadmap-validate:${{ needs.roadmap-validate.result }}"; do
+                   "roadmap-validate:${{ needs.roadmap-validate.result }}" \
+                   "traceability:${{ needs.traceability.result }}"; do
             name=${j%%:*}
             result=${j#*:}
             if [ "$result" != "success" ]; then
@@ -84,6 +89,44 @@ jobs:
           echo "control: a duplicated id is refused"
       - name: pmat work validate (0 = valid, 1 = invalid or unreadable)
         run: ./target/debug/pmat work validate
+
+  # PMAT-719 (goal-mode.md §7.1, step 2 of §11): the first CB rule wired into
+  # the required `gate` context OUTSIDE the `Ladder gate — pmat comply` step,
+  # which is `continue-on-error` and has been red on pre-existing failures for
+  # long enough that its 157 rules are all NEUTERED. This job carries exactly
+  # the rules it names with `--checks` (PMAT-718) — an id no rule provides is
+  # a hard error there, so a typo cannot select nothing and go green — and it
+  # sits in `gate`'s `needs` AND in its result loop, so a red verdict fails the
+  # required check. `pmat comply ledger` attributes the run to the named rules.
+  #
+  # CB-2113: every non-merge commit a pull request adds carries a
+  # `Pmat-Ticket:` trailer naming a real, non-terminal roadmap item. On a push
+  # to master the rule reports not_applicable with the measured count (§8.4:
+  # master is not judged until merges are restricted to merge commits). The
+  # rule is offline — git and the roadmap file — so it needs no token and runs
+  # on fork pull requests too.
+  #
+  # CONTROL FIRST, as roadmap-validate does: the gate is run against fixtures
+  # planted with the defect it exists to catch, and must go RED there before
+  # its GREEN on this tree is believed. `fetch-depth: 0` + `fetch-tags` because
+  # the rule reads `merge-base` against the base branch and the latest `v*` tag.
+  traceability:
+    name: traceability
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: build pmat from this tree
+        run: cargo build --bin pmat --locked
+      - name: control — a commit with no Pmat-Ticket trailer must be refused (exit 1)
+        run: bash scripts/traceability-control.sh ./target/debug/pmat
+      - name: the closed loop holds (CB-2113)
+        run: ./target/debug/pmat comply check --checks CB-2113
 
   # Two consumers of one reusable workflow on two different refs is drift, and
   # what it silently drifts is the GATES.
