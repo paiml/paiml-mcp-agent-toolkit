@@ -86,8 +86,7 @@
                 Some(temp_dir.path().to_path_buf()),
                 false, // verbose
                 false, // fix
-                None,  // check_base
-                Vec::new(), // allow_retitle
+                None, // check_base
             )
             .await;
 
@@ -102,8 +101,7 @@
                 Some(temp_dir.path().to_path_buf()),
                 true,  // verbose
                 false, // fix
-                None,  // check_base
-                Vec::new(), // allow_retitle
+                None, // check_base
             )
             .await;
 
@@ -115,7 +113,7 @@
             let temp_dir = TempDir::new().unwrap();
 
             let result =
-                handle_work_validate(Some(temp_dir.path().to_path_buf()), false, false, None, Vec::new()).await;
+                handle_work_validate(Some(temp_dir.path().to_path_buf()), false, false, None).await;
 
             assert!(result.is_err());
         }
@@ -380,7 +378,7 @@
             std::fs::write(&roadmap_path, "invalid: yaml: content:").unwrap();
 
             let result =
-                handle_work_validate(Some(temp_dir.path().to_path_buf()), false, false, None, Vec::new()).await;
+                handle_work_validate(Some(temp_dir.path().to_path_buf()), false, false, None).await;
 
             assert!(result.is_err());
         }
@@ -408,8 +406,7 @@ roadmap:
                 Some(temp_dir.path().to_path_buf()),
                 true,  // verbose
                 false, // fix
-                None,  // check_base
-                Vec::new(), // allow_retitle
+                None, // check_base
             )
             .await;
 

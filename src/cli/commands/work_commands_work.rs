@@ -49,6 +49,23 @@ pub enum WorkCommands {
         #[arg(long, value_name = "N", conflicts_with = "id")]
         github_issue: Option<u64>,
 
+        /// Use the sequential `max(id) + 1` allocator (UNSAFE in parallel)
+        ///
+        /// #1240, operator decision 2026-09-09: this is no longer what you get by
+        /// typing the obvious command, because the obvious command must not be
+        /// the unsafe one. Two agents on two branches both read the same roadmap,
+        /// both compute the same next number, and the merge deletes one of the
+        /// two tickets.
+        ///
+        /// It is kept, explicitly, for the one caller that legitimately wants it:
+        /// the tests that pin the allocator's own locking guarantees (PMAT-673,
+        /// PMAT-676, PMAT-680 — cross-process, cross-worktree, high-water mark).
+        /// Deleting the flag would delete that coverage along with it. Anyone
+        /// else passing this is opting into a known defect in writing, and
+        /// `git grep -- --sequential-id` says who.
+        #[arg(long, conflicts_with_all = ["id", "github_issue"])]
+        sequential_id: bool,
+
         /// Mint this exact id instead of allocating the next one (#1240)
         ///
         /// The allocator derives `max(id) + 1` from state this branch can see,
@@ -462,19 +479,6 @@ pub enum WorkCommands {
         #[arg(long, value_name = "REF")]
         check_base: Option<String>,
 
-        /// A ticket id whose title is ALLOWED to have changed (repeatable)
-        ///
-        /// `pmat work edit --title` renames a ticket on purpose — a typo fix, a
-        /// re-scope — and `--check-base` cannot tell that apart from a reused id
-        /// by looking at titles alone. Without an escape the check would fire on
-        /// honest edits, and a gate that cries wolf is a gate someone turns off,
-        /// which would leave the defect it was built for uncaught.
-        ///
-        /// So the rename is allowed, but it has to be SAID: naming the id here is
-        /// a reviewable claim that this title changed because someone meant it
-        /// to, not because two branches both minted the id.
-        #[arg(long, value_name = "ID")]
-        allow_retitle: Vec<String>,
     },
 
     /// Auto-fix common roadmap.yaml issues (Part B: UX Improvements)

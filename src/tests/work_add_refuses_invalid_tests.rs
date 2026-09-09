@@ -111,6 +111,7 @@ async fn add(project: &Path, title: &str) -> anyhow::Result<()> {
         None,
         None,
         None,
+        true, // --sequential-id: these tests exist to pin the allocator itself
     )
     .await
 }
@@ -245,7 +246,6 @@ async fn work_add_refuses_invalid_clean_roadmap_still_mints_and_still_validates(
         false,
         false,
         None,
-        Vec::new(),
     )
     .await
     .expect("what `add` and `edit` wrote must validate");
