@@ -142,6 +142,9 @@ pub enum OrphanReason {
     IssueClosed,
     /// No issue with that number is in the snapshot.
     IssueAbsent,
+    /// The issue is open but carries the `no-roadmap` label, so it is outside
+    /// **G** (§5.1): the item points out of the universe. Quorum finding, PMAT-720.
+    IssueExcluded,
 }
 
 /// Which field of a matched pair disagrees (§5.2).
@@ -298,8 +301,14 @@ pub fn check(roadmap: &Roadmap, snapshot: &GithubSnapshot, settings: &Settings) 
                             github_issue: Some(n),
                             reason: OrphanReason::IssueClosed,
                         });
+                    } else if !issue.in_universe() {
+                        orphan_roadmap.push(Finding::OrphanRoadmap {
+                            id: item.id.clone(),
+                            title: item.title.clone(),
+                            github_issue: Some(n),
+                            reason: OrphanReason::IssueExcluded,
+                        });
                     } else {
-                        // Open
                         matched_pairs.push((item, issue));
                     }
                 } else {
@@ -531,6 +540,15 @@ pub fn plan(
                         reason: format!(
                             "#{} does not exist on GitHub — a human decides whether the number is a typo or the item is stale",
                             github_issue.expect("absent must have number")
+                        ),
+                    });
+                }
+                OrphanReason::IssueExcluded => {
+                    actions.push(Action::Skip {
+                        id: id.clone(),
+                        reason: format!(
+                            "#{} carries the no-roadmap label, so it is outside the universe (§5.1) — a human removes the label or cancels the item",
+                            github_issue.expect("excluded must have number")
                         ),
                     });
                 }

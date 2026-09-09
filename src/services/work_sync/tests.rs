@@ -182,6 +182,46 @@ fn an_open_issue_no_item_names_is_an_orphan_github() {
 }
 
 #[test]
+fn an_open_item_naming_a_no_roadmap_issue_is_an_orphan_roadmap() {
+    // Quorum finding (PMAT-720): the issue is open, so it used to read as a
+    // matched pair; but it is outside G, so the item points out of the universe.
+    let mut bot = issue(9, "bump deps", IssueState::Open);
+    bot.labels.push(NO_ROADMAP_LABEL.to_string());
+    let r = roadmap(vec![open("A", "bump deps", Some(9))]);
+    let s = snapshot(vec![bot]);
+    let report = check(&r, &s, &now());
+    assert_eq!(
+        report.findings,
+        vec![Finding::OrphanRoadmap {
+            id: "A".to_string(),
+            title: "bump deps".to_string(),
+            github_issue: Some(9),
+            reason: OrphanReason::IssueExcluded,
+        }]
+    );
+    assert_eq!((report.matched, report.open_issues), (0, 0));
+    for d in [
+        Direction::YamlToGithub,
+        Direction::GithubToYaml,
+        Direction::Full,
+    ] {
+        let actions = plan(&r, &s, &report, d);
+        assert_eq!(actions.len(), 1, "{d:?}: {actions:?}");
+        let Action::Skip { id, reason } = &actions[0] else {
+            unreachable!(
+                "{d:?}: an excluded issue is a human's call, never written: {:?}",
+                actions[0]
+            )
+        };
+        assert_eq!(id, "A");
+        assert!(
+            reason.contains("no-roadmap") && reason.contains("#9"),
+            "{reason}"
+        );
+    }
+}
+
+#[test]
 fn a_no_roadmap_label_takes_an_issue_out_of_the_universe() {
     let mut bot = issue(9, "bump deps", IssueState::Open);
     bot.labels.push(NO_ROADMAP_LABEL.to_string());
@@ -440,13 +480,11 @@ fn yaml_to_github_leaves_a_closed_issue_to_the_other_direction() {
     let s = snapshot(vec![issue(7, "alpha", IssueState::Closed)]);
     let actions = plan_for(&r, &s, Direction::YamlToGithub);
     assert_eq!(actions.len(), 1, "{actions:?}");
-    match &actions[0] {
-        Action::Skip { id, reason } => {
-            assert_eq!(id, "A");
-            assert!(reason.contains("github-to-yaml"), "{reason}");
-        }
-        other => panic!("expected a Skip, got {other:?}"),
-    }
+    let Action::Skip { id, reason } = &actions[0] else {
+        unreachable!("expected a Skip, got {:?}", actions[0])
+    };
+    assert_eq!(id, "A");
+    assert!(reason.contains("github-to-yaml"), "{reason}");
 }
 
 #[test]
@@ -468,15 +506,13 @@ fn a_collided_item_is_skipped_by_every_direction() {
             .collect();
         assert_eq!(skips.len(), 2, "{d:?}: {actions:?}");
         for a in &actions {
-            match a {
-                Action::Skip { reason, .. } => {
-                    assert!(
-                        reason.contains("COLLISION") && reason.contains("#612"),
-                        "{reason}"
-                    );
-                }
-                other => panic!("{d:?} must not write for a collided item: {other:?}"),
-            }
+            let Action::Skip { reason, .. } = a else {
+                unreachable!("{d:?} must not write for a collided item: {:?}", a)
+            };
+            assert!(
+                reason.contains("COLLISION") && reason.contains("#612"),
+                "{reason}"
+            );
         }
     }
 }
@@ -556,10 +592,13 @@ fn a_title_drift_is_reported_and_never_written() {
     for d in [Direction::YamlToGithub, Direction::GithubToYaml] {
         let actions = plan_for(&r, &s, d);
         assert_eq!(actions.len(), 1, "{d:?}: {actions:?}");
-        match &actions[0] {
-            Action::Skip { reason, .. } => assert!(reason.contains("title"), "{reason}"),
-            other => panic!("{d:?}: title has no assigned authority (§5.3): {other:?}"),
-        }
+        let Action::Skip { reason, .. } = &actions[0] else {
+            unreachable!(
+                "{d:?}: title has no assigned authority (§5.3): {:?}",
+                actions[0]
+            )
+        };
+        assert!(reason.contains("title"), "{reason}");
     }
 }
 
@@ -569,34 +608,71 @@ fn an_absent_issue_is_a_human_decision() {
     for d in [Direction::YamlToGithub, Direction::GithubToYaml] {
         let actions = plan_for(&r, &snapshot(vec![]), d);
         assert_eq!(actions.len(), 1, "{d:?}: {actions:?}");
-        match &actions[0] {
-            Action::Skip { reason, .. } => assert!(reason.contains("#77"), "{reason}"),
-            other => panic!("{d:?}: an absent issue is not fixable: {other:?}"),
-        }
+        let Action::Skip { reason, .. } = &actions[0] else {
+            unreachable!("{d:?}: an absent issue is not fixable: {:?}", actions[0])
+        };
+        assert!(reason.contains("#77"), "{reason}");
     }
 }
 
 #[test]
 fn full_is_the_union_of_both_directions() {
-    let r = roadmap(vec![open("A", "alpha", None)]);
-    let s = snapshot(vec![issue(9, "nine", IssueState::Open)]);
-    let actions = plan_for(&r, &s, Direction::Full);
-    assert!(
-        actions.contains(&Action::CreateIssue {
-            id: "A".to_string(),
-            title: "alpha".to_string()
-        }),
-        "{actions:?}"
+    // Computed, not assumed (quorum finding): Full's writes are exactly the
+    // writes of the two directions put together, and Full skips nothing that
+    // either direction would have written.
+    let mut stale = open("Z", "zed", Some(3));
+    stale.release = Some("1.0.0".to_string());
+    let r = roadmap(vec![open("A", "alpha", None), stale]);
+    let mut three = issue(3, "zed", IssueState::Open);
+    three.milestone = Some("2.0.0".to_string());
+    let s = snapshot(vec![three, issue(9, "nine", IssueState::Open)]);
+    let writes = |d: Direction| -> Vec<String> {
+        let mut w: Vec<String> = plan_for(&r, &s, d)
+            .into_iter()
+            .filter(|a| !matches!(a, Action::Skip { .. }))
+            .map(|a| format!("{a:?}"))
+            .collect();
+        w.sort();
+        w
+    };
+    let mut union = writes(Direction::YamlToGithub);
+    union.extend(writes(Direction::GithubToYaml));
+    union.sort();
+    let full = writes(Direction::Full);
+    assert_eq!(full, union, "Full must be the union of the two directions");
+    assert_eq!(
+        full.len(),
+        3,
+        "CreateIssue A, CreateItem 9, SetRelease Z: {full:?}"
     );
     assert!(
-        actions.contains(&Action::CreateItem {
-            number: 9,
-            title: "nine".to_string(),
-            release: None
-        }),
-        "{actions:?}"
+        plan_for(&r, &s, Direction::Full)
+            .iter()
+            .all(|a| !matches!(a, Action::Skip { .. })),
+        "nothing here is a collision, a title drift or an absent issue, so Full skips nothing"
     );
-    assert_eq!(actions.len(), 2);
+}
+
+#[test]
+fn yaml_to_github_leaves_a_stale_release_to_the_other_direction() {
+    let mut a = open("A", "alpha", Some(1));
+    a.release = Some("3.41.0".to_string());
+    let mut one = issue(1, "alpha", IssueState::Open);
+    one.milestone = Some("3.42.0".to_string());
+    let actions = plan_for(
+        &roadmap(vec![a]),
+        &snapshot(vec![one]),
+        Direction::YamlToGithub,
+    );
+    assert_eq!(actions.len(), 1, "{actions:?}");
+    let Action::Skip { id, reason } = &actions[0] else {
+        unreachable!(
+            "release is projected from the milestone, never pushed to it (§4.1): {:?}",
+            actions[0]
+        )
+    };
+    assert_eq!(id, "A");
+    assert!(reason.contains("github-to-yaml"), "{reason}");
 }
 
 #[test]

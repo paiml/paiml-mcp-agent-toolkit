@@ -253,6 +253,9 @@ fn render_finding(f: &Finding) -> String {
                 engine::OrphanReason::IssueAbsent => {
                     format!("#{} does not exist", github_issue.unwrap_or(0))
                 }
+                engine::OrphanReason::IssueExcluded => {
+                    format!("#{} is labelled no-roadmap", github_issue.unwrap_or(0))
+                }
             };
             format!("{} {:<18} {}", c::warn("ORPHAN-ROADMAP"), c::path(id), why)
         }
@@ -364,6 +367,21 @@ fn gh_json(args: &[&str]) -> Result<serde_json::Value> {
     serde_json::from_slice(&out.stdout).context("gh printed something that is not JSON")
 }
 
+/// A page cap that was reached is a snapshot that may be missing things, and a
+/// snapshot that may be missing issues cannot prove coherence: an absent issue
+/// reads as no ORPHAN-GITHUB. Refused, never read as a pass (quorum finding).
+fn refuse_truncation(count: usize, cap: usize, what: &str) -> Result<()> {
+    if count >= cap {
+        bail!(
+            "the GitHub snapshot is truncated: {what} returned {count}, the request cap of {cap}; a snapshot that may be missing {what} cannot prove coherence — raise the cap"
+        );
+    }
+    Ok(())
+}
+
+const ISSUE_CAP: usize = 5000;
+const MILESTONE_CAP: usize = 100;
+
 /// Take a snapshot of every issue (open and closed — a closed issue must be
 /// told apart from an absent one) and every milestone, through `gh`.
 pub(super) fn fetch_snapshot(repo: &str) -> Result<GithubSnapshot> {
@@ -375,14 +393,24 @@ pub(super) fn fetch_snapshot(repo: &str) -> Result<GithubSnapshot> {
         "--state",
         "all",
         "--limit",
-        "5000",
+        &ISSUE_CAP.to_string(),
         "--json",
         "number,title,state,stateReason,labels,milestone,updatedAt",
     ])?;
+    refuse_truncation(
+        issues.as_array().map(Vec::len).unwrap_or(0),
+        ISSUE_CAP,
+        "issues",
+    )?;
     let milestones = gh_json(&[
         "api",
-        &format!("repos/{repo}/milestones?state=all&per_page=100"),
+        &format!("repos/{repo}/milestones?state=all&per_page={MILESTONE_CAP}"),
     ])?;
+    refuse_truncation(
+        milestones.as_array().map(Vec::len).unwrap_or(0),
+        MILESTONE_CAP,
+        "milestones",
+    )?;
     parse_snapshot(repo, Utc::now(), &issues, &milestones)
 }
 
@@ -574,6 +602,36 @@ mod tests {
         o.check_only = true;
         let err = handle_work_sync(o).await.expect_err("missing file");
         assert!(err.to_string().contains("cannot read snapshot"), "{err}");
+    }
+
+    #[test]
+    fn a_snapshot_at_the_page_cap_is_refused() {
+        refuse_truncation(ISSUE_CAP - 1, ISSUE_CAP, "issues").expect("under the cap is fine");
+        let err = refuse_truncation(ISSUE_CAP, ISSUE_CAP, "issues").expect_err("at the cap");
+        assert!(err.to_string().contains("truncated"), "{err}");
+        assert!(refuse_truncation(MILESTONE_CAP, MILESTONE_CAP, "milestones").is_err());
+    }
+
+    #[test]
+    fn report_json_carries_the_verdict_and_the_classes() {
+        let mut r = crate::models::roadmap::Roadmap::new(Some("paiml/pmat".to_string()));
+        r.roadmap.push(crate::models::roadmap::RoadmapItem::new(
+            "A".to_string(),
+            "alpha".to_string(),
+        ));
+        let s = GithubSnapshot::from_json(&snap("")).expect("snapshot");
+        let report = engine::check(&r, &s, &Settings::new(Utc::now(), 60));
+        let doc: serde_json::Value =
+            serde_json::from_str(&report_json(&report, &s, 60).expect("json")).expect("parses");
+        assert_eq!(doc["coherent"], serde_json::json!(false));
+        assert_eq!(doc["grace_minutes"], serde_json::json!(60));
+        assert_eq!(doc["counts"]["ORPHAN-ROADMAP"], serde_json::json!(1));
+        assert_eq!(
+            doc["findings"][0]["class"],
+            serde_json::json!("ORPHAN-ROADMAP")
+        );
+        assert_eq!(doc["findings"][0]["reason"], serde_json::json!("no-issue"));
+        assert_eq!(doc["open_items"], serde_json::json!(1));
     }
 
     #[test]

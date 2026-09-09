@@ -1,0 +1,406 @@
+{
+ "ticket": "PMAT-720",
+ "branch": "PMAT-720-work-sync-release-field",
+ "judged_head": "a6b84ef3e",
+ "range": "origin/master...a6b84ef3e (10 commits)",
+ "tool": "agy 1.1.28 via paiml-agy-delegate ae316b64958e9d9f3, mode grillme, sandboxed",
+ "width": 3,
+ "conversations": [
+  "69fae3b4-ed3d-4874-9b4e-ee080d290e33",
+  "c3bcc3d0-63a0-49fe-8bdd-0d3282977035",
+  "61781d12-c55d-46d2-80dc-690ffc7680e2"
+ ],
+ "verdict_counts": {
+  "FAIL": 3,
+  "PASS": 0
+ },
+ "agreed": false,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "FAIL",
+   "summary": "The diff successfully implements the work sync engine in a pure, testable manner, but contains a logic hole in the bijection (a `no-roadmap` issue bypasses checks), a specification contradiction regarding authoritative fields, and tests that do not actually verify their namesake logic. Truncation of issues via `gh` reads as false coherence for `OrphanGithub`.",
+   "findings": [
+    {
+     "claim": "An open item pointing to a `no-roadmap` open issue escapes `OrphanRoadmap`, `OrphanGithub`, and `Collision`. It lands in `matched_pairs` because `snapshot.issue(n)` ignores `in_universe()`.",
+     "file": "src/services/work_sync/mod.rs",
+     "grounding": "measured",
+     "line": 293
+    },
+    {
+     "claim": "The spec contradicts itself: §5.3 lists `release` as roadmap-authoritative, but §4.1 correctly calls it a projection. The code implements §4.1.",
+     "file": "docs/specifications/goal-mode.md",
+     "grounding": "cited",
+     "line": 312
+    },
+    {
+     "claim": "The snapshot truncates issues at 5000, which hides `OrphanGithub` findings and reads as false coherence. Milestone truncation (100) does nothing because `snapshot.milestones` is completely ignored by the engine.",
+     "file": "src/cli/handlers/work_handlers/core_handlers/sync.rs",
+     "grounding": "cited",
+     "line": 378
+    },
+    {
+     "claim": "The test `full_is_the_union_of_both_directions` never computes the union. It only calls `Direction::Full` and asserts the result, surviving a mutant where `YamlToGithub` is broken.",
+     "file": "src/services/work_sync/tests.rs",
+     "grounding": "cited",
+     "line": 464
+    },
+    {
+     "claim": "The commit message for 6d6d75168 falsely claims to rewrite three `notes:` fields; it actually rewrites one `notes:` field and three `acceptance_criteria` items. The arm 4 control script will fail on legitimate future manual edits that serde reformats.",
+     "file": "docs/roadmaps/roadmap.yaml",
+     "grounding": "measured",
+     "line": 4906
+    }
+   ]
+  },
+  {
+   "lane": 2,
+   "verdict": "FAIL",
+   "summary": "Adversarial review completed. The diff fails the specification due to several critical flaws: an item can escape all finding classes by naming a 'no-roadmap' issue, 'gh issue list' truncation masks 'ORPHAN-GITHUB' findings as coherence, and the control script's Arm 4 passes for the wrong reason by blinding the engine to real issues.",
+   "findings": [
+    {
+     "claim": "The bijection check allows an open item to escape all finding classes if it names an open issue labelled 'no-roadmap'",
+     "file": "src/services/work_sync/mod.rs",
+     "fix": "Check !issue.in_universe() for the item loop, or verify issue validity against g_issues.",
+     "grounding": "asserted",
+     "line": 309
+    },
+    {
+     "claim": "gh issue list silently truncates at 5000, hiding ORPHAN-GITHUB issues and reading as coherence",
+     "file": "src/cli/handlers/work_handlers/core_handlers/sync.rs",
+     "fix": "Add pagination to the gh issue list command to fetch all issues.",
+     "grounding": "asserted",
+     "line": 80
+    },
+    {
+     "claim": "Control script Arm 4 passes for the wrong reason because the snapshot is missing all real issues, forcing IssueAbsent skips",
+     "file": "scripts/work-sync-control.sh",
+     "fix": "Provide a realistic mock snapshot in Arm 4 or change the verification strategy.",
+     "grounding": "asserted",
+     "line": 70
+    }
+   ]
+  },
+  {
+   "lane": 3,
+   "verdict": "FAIL",
+   "summary": "Completed an adversarial review of the PMAT-720 PR against the specification. Found multiple flaws leading to a FAIL verdict: the grace window is incorrectly applied per-pair instead of per-field, breaking staleness calculations; Arm 4 of the control script passes vacuously due to an empty snapshot bypassing all drift mutation; test coverage is missing for JSON stdout and release skipping; and the open-item universe widening breaks downstream consistency with CB-2114. All 9 questions have been answered with concrete file/line evidence.",
+   "findings": [
+    {
+     "claim": "The open-item universe widening in check() defies the spec's strict {planned, inprogress} scope for CB-2114, causing inconsistent downstream inheritance.",
+     "file": "src/services/work_sync/mod.rs",
+     "grounding": "cited",
+     "line": 1329
+    },
+    {
+     "claim": "The grace window is applied per-pair. A recent update to one field resets the age clock, hiding stale drift on the other field.",
+     "file": "src/services/work_sync/mod.rs",
+     "grounding": "cited",
+     "line": 1648
+    },
+    {
+     "claim": "The spec §5.3 contradicts §4.1 by listing release as roadmap-authoritative. The code implements §4.1, but §5.3 needs amendment.",
+     "file": "docs/specifications/goal-mode.md",
+     "grounding": "cited",
+     "line": 1
+    },
+    {
+     "claim": "The test check_only_passes_on_a_bijection sets json = true but fails to capture or assert stdout, surviving a mutant that breaks JSON formatting.",
+     "file": "src/cli/handlers/work_handlers/core_handlers/sync.rs",
+     "grounding": "cited",
+     "line": 508
+    },
+    {
+     "claim": "No test in tests.rs asserts the Skip reason for DriftField::Release in the YamlToGithub direction.",
+     "file": "src/services/work_sync/tests.rs",
+     "grounding": "cited",
+     "line": 2517
+    },
+    {
+     "claim": "Arm 4 of the control script passes for the wrong reason: by feeding a 1-issue fake snapshot, all real items become IssueAbsent (which plan() Skips on github-to-yaml), bypassing all drift mutations to fake a perfect round-trip.",
+     "file": "scripts/work-sync-control.sh",
+     "grounding": "cited",
+     "line": 100
+    },
+    {
+     "claim": "Arm 4 will fail on a legitimate future edit if the user hand-wraps a YAML string, as the serializer will reformat it to a single line and break the byte-for-byte diff.",
+     "file": "scripts/work-sync-control.sh",
+     "grounding": "cited",
+     "line": 107
+    }
+   ]
+  }
+ ],
+ "dedup": [
+  {
+   "file": "docs/roadmaps/roadmap.yaml",
+   "line": 4906,
+   "lanes_agreeing": [
+    1
+   ],
+   "claims": [
+    "The commit message for 6d6d75168 falsely claims to rewrite three `notes:` fields; it actually rewrites one `notes:` field and three `acceptance_criteria` items. The arm 4 control script will fail on legitimate future manual edits that serde reformats."
+   ]
+  },
+  {
+   "file": "docs/specifications/goal-mode.md",
+   "line": 1,
+   "lanes_agreeing": [
+    3
+   ],
+   "claims": [
+    "The spec §5.3 contradicts §4.1 by listing release as roadmap-authoritative. The code implements §4.1, but §5.3 needs amendment."
+   ]
+  },
+  {
+   "file": "docs/specifications/goal-mode.md",
+   "line": 312,
+   "lanes_agreeing": [
+    1
+   ],
+   "claims": [
+    "The spec contradicts itself: §5.3 lists `release` as roadmap-authoritative, but §4.1 correctly calls it a projection. The code implements §4.1."
+   ]
+  },
+  {
+   "file": "scripts/work-sync-control.sh",
+   "line": 70,
+   "lanes_agreeing": [
+    2
+   ],
+   "claims": [
+    "Control script Arm 4 passes for the wrong reason because the snapshot is missing all real issues, forcing IssueAbsent skips"
+   ]
+  },
+  {
+   "file": "scripts/work-sync-control.sh",
+   "line": 100,
+   "lanes_agreeing": [
+    3
+   ],
+   "claims": [
+    "Arm 4 of the control script passes for the wrong reason: by feeding a 1-issue fake snapshot, all real items become IssueAbsent (which plan() Skips on github-to-yaml), bypassing all drift mutations to fake a perfect round-trip."
+   ]
+  },
+  {
+   "file": "scripts/work-sync-control.sh",
+   "line": 107,
+   "lanes_agreeing": [
+    3
+   ],
+   "claims": [
+    "Arm 4 will fail on a legitimate future edit if the user hand-wraps a YAML string, as the serializer will reformat it to a single line and break the byte-for-byte diff."
+   ]
+  },
+  {
+   "file": "src/cli/handlers/work_handlers/core_handlers/sync.rs",
+   "line": 80,
+   "lanes_agreeing": [
+    2
+   ],
+   "claims": [
+    "gh issue list silently truncates at 5000, hiding ORPHAN-GITHUB issues and reading as coherence"
+   ]
+  },
+  {
+   "file": "src/cli/handlers/work_handlers/core_handlers/sync.rs",
+   "line": 378,
+   "lanes_agreeing": [
+    1
+   ],
+   "claims": [
+    "The snapshot truncates issues at 5000, which hides `OrphanGithub` findings and reads as false coherence. Milestone truncation (100) does nothing because `snapshot.milestones` is completely ignored by the engine."
+   ]
+  },
+  {
+   "file": "src/cli/handlers/work_handlers/core_handlers/sync.rs",
+   "line": 508,
+   "lanes_agreeing": [
+    3
+   ],
+   "claims": [
+    "The test check_only_passes_on_a_bijection sets json = true but fails to capture or assert stdout, surviving a mutant that breaks JSON formatting."
+   ]
+  },
+  {
+   "file": "src/services/work_sync/mod.rs",
+   "line": 293,
+   "lanes_agreeing": [
+    1
+   ],
+   "claims": [
+    "An open item pointing to a `no-roadmap` open issue escapes `OrphanRoadmap`, `OrphanGithub`, and `Collision`. It lands in `matched_pairs` because `snapshot.issue(n)` ignores `in_universe()`."
+   ]
+  },
+  {
+   "file": "src/services/work_sync/mod.rs",
+   "line": 309,
+   "lanes_agreeing": [
+    2
+   ],
+   "claims": [
+    "The bijection check allows an open item to escape all finding classes if it names an open issue labelled 'no-roadmap'"
+   ]
+  },
+  {
+   "file": "src/services/work_sync/mod.rs",
+   "line": 1329,
+   "lanes_agreeing": [
+    3
+   ],
+   "claims": [
+    "The open-item universe widening in check() defies the spec's strict {planned, inprogress} scope for CB-2114, causing inconsistent downstream inheritance."
+   ]
+  },
+  {
+   "file": "src/services/work_sync/mod.rs",
+   "line": 1648,
+   "lanes_agreeing": [
+    3
+   ],
+   "claims": [
+    "The grace window is applied per-pair. A recent update to one field resets the age clock, hiding stale drift on the other field."
+   ]
+  },
+  {
+   "file": "src/services/work_sync/tests.rs",
+   "line": 464,
+   "lanes_agreeing": [
+    1
+   ],
+   "claims": [
+    "The test `full_is_the_union_of_both_directions` never computes the union. It only calls `Direction::Full` and asserts the result, surviving a mutant where `YamlToGithub` is broken."
+   ]
+  },
+  {
+   "file": "src/services/work_sync/tests.rs",
+   "line": 2517,
+   "lanes_agreeing": [
+    3
+   ],
+   "claims": [
+    "No test in tests.rs asserts the Skip reason for DriftField::Release in the YamlToGithub direction."
+   ]
+  }
+ ],
+ "uncovered": [
+  {
+   "item": "Q1 set predicate, widened open-item universe",
+   "token": "blocked",
+   "lanes_hit": 0
+  }
+ ],
+ "partial_reasons": [],
+ "coverage_source": "lanes",
+ "orchestrator_adjudication": [
+  {
+   "finding": "An open item naming an open issue labelled no-roadmap lands in matched_pairs; it escapes all three set classes (mod.rs Some(n) arm)",
+   "lanes": [
+    1,
+    2
+   ],
+   "verdict": "CONFIRMED",
+   "action": "OrphanReason::IssueExcluded: the item is ORPHAN-ROADMAP; every direction skips it naming the label and #n; test an_open_item_naming_a_no_roadmap_issue_is_an_orphan_roadmap (check + plan), mutant 'treat excluded as matched' dies under it"
+  },
+  {
+   "finding": "gh issue list --limit 5000 and milestones per_page=100 truncate silently; a truncated snapshot reads as coherence",
+   "lanes": [
+    1,
+    2
+   ],
+   "verdict": "CONFIRMED",
+   "action": "refuse_truncation(count, cap, what): a result at the cap is an error naming the cap, never a report; test a_snapshot_at_the_page_cap_is_refused; the engine's milestones field stays unused until CB-2114 (step 5) needs RR-RELEASE validity"
+  },
+  {
+   "finding": "Control arm 4 passes for the wrong reason: its 1-issue snapshot makes every real item IssueAbsent, so no fixer path is exercised on the real roadmap",
+   "lanes": [
+    2,
+    3
+   ],
+   "verdict": "REFUTED",
+   "action": "arm 4 proves the serializer (byte-for-byte round trip of 5052 lines through a real save), not the fixers — arms 1-3 do; a snapshot naming real issues would let a control modify the repository's own entries. The header now says so in those words"
+  },
+  {
+   "finding": "goal-mode.md §5.3 lists release as roadmap-authoritative while §4.1 calls it a projection; the code implements §4.1",
+   "lanes": [
+    1,
+    3
+   ],
+   "verdict": "CONFIRMED",
+   "action": "§5.3 amended in this PR: release is held on the roadmap but decided by the milestone (§4.1, RR-RELEASE); pmat work sync projects it and is its only writer. Flagged for the operator in the PR body"
+  },
+  {
+   "finding": "The grace window is applied per pair, not per field; a recent update to one field hides stale drift on the other",
+   "lanes": [
+    3
+   ],
+   "verdict": "REFUTED",
+   "action": "§5.2 defines the clock per pair — now − max(item.updated, issue.updated_at) — and neither surface carries per-field timestamps; per-field tolerance would invent a clock the data does not have"
+  },
+  {
+   "finding": "Widening the open-item universe to every non-terminal status (blocked, review) defies the spec's {planned, inprogress} and breaks CB-2114 consistency",
+   "lanes": [
+    3
+   ],
+   "verdict": "REFUTED",
+   "action": "deliberate and documented in the module doc: a blocked item with no issue is as invisible to GitHub as a planned one; is_open() is pub so CB-2114/CB-2115 inherit one definition by construction; test blocked_and_review_items_are_open. Lane 3's citation (mod.rs:1329) is past EOF"
+  },
+  {
+   "finding": "full_is_the_union_of_both_directions never computes the union",
+   "lanes": [
+    1
+   ],
+   "verdict": "CONFIRMED",
+   "action": "the test now computes the sorted write-sets of both directions and asserts Full equals their union (three writes) and skips nothing"
+  },
+  {
+   "finding": "check_only_passes_on_a_bijection sets json=true but asserts nothing about stdout",
+   "lanes": [
+    3
+   ],
+   "verdict": "CONFIRMED",
+   "action": "report_json is asserted directly: report_json_carries_the_verdict_and_the_classes parses the document and checks coherent, grace_minutes, counts and the first finding's class and reason; control arm 2 asserts the same shape end to end"
+  },
+  {
+   "finding": "No test asserts the Skip reason for a release drift in the yaml-to-github direction",
+   "lanes": [
+    3
+   ],
+   "verdict": "CONFIRMED",
+   "action": "yaml_to_github_leaves_a_stale_release_to_the_other_direction"
+  },
+  {
+   "finding": "Commit 6d6d75168's message says three notes: fields; the diff re-flows one notes: field (PMAT-707, 30 lines to 1) and re-quotes PMAT-720's three acceptance_criteria strings",
+   "lanes": [
+    1
+   ],
+   "verdict": "CONFIRMED",
+   "action": "recorded here and in the receipt rather than rewriting history the quorum already judged; values proven equal by parsing both sides (python yaml.safe_load, 278 items, equal)"
+  },
+  {
+   "finding": "Arm 4 will fail on a legitimate future hand-wrapped edit",
+   "lanes": [
+    3
+   ],
+   "verdict": "REFUTED as a defect",
+   "action": "that is the invariant: a hand-wrapped entry re-flows on the next save and buries real diffs (§4.2); the failure message names the measured canonicaliser (pmat work edit <id> --priority <its current priority>)"
+  },
+  {
+   "finding": "The brief said 11 commits; the range has 10",
+   "lanes": [
+    "delegate"
+   ],
+   "verdict": "CONFIRMED",
+   "action": "orchestrator's counting error in the prompt; no effect on the review (the range was named explicitly)"
+  },
+  {
+   "finding": "Three of lane 3's citations are past EOF (mod.rs:1329, mod.rs:1648, tests.rs:2517)",
+   "lanes": [
+    "delegate"
+   ],
+   "verdict": "CONFIRMED",
+   "action": "those three claims were re-grounded by the orchestrator before adjudication (grace per pair: refuted on the spec's formula; universe widening: refuted; release-skip test: confirmed and added)"
+  }
+ ],
+ "summary": "3/3 FAIL. 13 distinct claims after the orchestrator's own dedup: 9 CONFIRMED (two engine holes, one spec contradiction, three test strengthenings, one commit-message correction, two brief/citation errors on the review side) and fixed or recorded in the same PR; 4 REFUTED with the reasoning recorded. Every CONFIRMED engine fix carries a test its mutant kills."
+}

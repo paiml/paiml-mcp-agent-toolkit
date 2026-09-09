@@ -308,8 +308,9 @@ items may be wrong forever and nobody chooses which three.
 ### 5.3 `RR-COHERENCE` — which side wins
 
 > **GitHub is authoritative for existence and open/closed state. The roadmap is
-> authoritative for plan — `spec`, `acceptance_criteria`, `phases`, `priority`,
-> `release`.**
+> authoritative for plan — `spec`, `acceptance_criteria`, `phases`, `priority`.
+> `release` is held on the roadmap but decided by the milestone (§4.1, RR-RELEASE):
+> `pmat work sync` projects it and is its only writer.**
 
 Disjoint field sets, so there is never a merge conflict and never a prompt.
 

@@ -14,7 +14,11 @@
 #   arm 3  DRY   --dry-run on arm 1's fixture                            exit 0, the roadmap's bytes unchanged,
 #                                                                        the plan names the two writes and the two COLLISION skips
 #   arm 4  RT    this repository's docs/roadmaps/roadmap.yaml through a real github-to-yaml write:
-#                one orphan issue becomes GH-999999 and every pre-existing line is byte-identical (§4.2)
+#                one orphan issue becomes GH-999999 and every pre-existing line is byte-identical (§4.2).
+#                This arm proves the SERIALIZER, not the fixers (arms 1-3 do): its snapshot names none of
+#                the real issues on purpose, so every real item is skipped and the only write is the
+#                appended control item — a real issue in that snapshot would let the arm modify the
+#                repository's own entries, which is not what a control is for.
 #
 # Exit: 0 every arm behaved · 1 an arm did not (named on stderr) · 2 usage,
 # missing binary, jq absent. The binary is an ARGUMENT, never resolved from PATH.
