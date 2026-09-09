@@ -305,6 +305,7 @@ impl CommandDispatcher {
                     failures_only: false,
                     format: crate::cli::commands::ComplyOutputFormat::Text,
                     include_project: vec![],
+                    checks: vec![],
                 });
                 handlers::comply_handlers::handle_comply_command(cmd).await
             }

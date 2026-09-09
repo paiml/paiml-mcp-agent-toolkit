@@ -5031,3 +5031,20 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-718
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 1 (P1): pmat comply check --checks <CSV> selects rules by id — a deselected rule reports Skip(not selected), never absent, and an unknown id is a hard error because that is how a typo''d gate becomes a green gate'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T12:38:41Z
+  updated: 2026-09-09T12:38:41Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null

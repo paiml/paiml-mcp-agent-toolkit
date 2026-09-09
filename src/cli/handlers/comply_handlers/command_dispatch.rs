@@ -13,8 +13,9 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             failures_only,
             format,
             include_project,
+            checks,
         } => {
-            let result = handle_check(&path, strict, failures_only, format).await;
+            let result = handle_check(&path, strict, failures_only, format, &checks).await;
             if !include_project.is_empty() {
                 if let Err(e) = check_file_health_multi(&path, &include_project) {
                     eprintln!("Cross-stack health check warning: {}", e);
