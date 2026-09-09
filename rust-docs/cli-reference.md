@@ -126,15 +126,10 @@ paiml-mcp-agent-toolkit demo --protocol cli --show-api
 # Analyze GitHub repository with MCP protocol
 paiml-mcp-agent-toolkit demo --url https://github.com/user/repo --protocol mcp
 
-# Web-based interactive demo
-paiml-mcp-agent-toolkit demo --web --port 8080
 
 # Compare all protocols
 paiml-mcp-agent-toolkit demo --protocol all --format json
 
-# Export analysis results
-paiml-mcp-agent-toolkit demo --export markdown -o analysis.md
-paiml-mcp-agent-toolkit demo --export sarif -o results.sarif
 ```
 
 ### `generate` (aliases: `gen`, `g`)
@@ -225,12 +220,6 @@ pub fn scaffold_parallel(templates: Vec<TemplateRequest>) -> Result<Vec<Generate
 #### Examples
 
 ```bash
-# Scaffold complete Rust project
-paiml-mcp-agent-toolkit scaffold rust \
-  -t makefile,readme,gitignore \
-  -p project_name=my-cli \
-  -p author="Jane Doe" \
-  --parallel 4
 ```
 
 ### `list`
@@ -315,14 +304,7 @@ pub struct CacheHierarchy {
 #### Examples
 
 ```bash
-# Analyze current Rust project
-paiml-mcp-agent-toolkit context rust
 
-# Analyze specific project as JSON
-paiml-mcp-agent-toolkit context deno \
-  -p /path/to/project \
-  -o context.json \
-  --format json
 ```
 
 ### `analyze`
@@ -567,8 +549,6 @@ pmat analyze duplicates --detection-type exact
 # Comprehensive semantic duplicate detection
 pmat analyze duplicates --detection-type all --threshold 0.8
 
-# GPU-accelerated analysis with performance metrics
-pmat analyze duplicates --gpu --perf --format json
 ```
 
 ##### `analyze defect-prediction`
@@ -584,14 +564,8 @@ pmat analyze duplicates --gpu --perf --format json
 
 **Examples:**
 ```bash
-# High-confidence defect predictions
-pmat analyze defect-prediction --min-confidence 0.8
 
-# Detailed analysis with feature explanations
-pmat analyze defect-prediction --explain --format detailed
 
-# IDE integration with SARIF output
-pmat analyze defect-prediction --sarif -o defects.sarif
 ```
 
 ##### `analyze comprehensive`
@@ -699,8 +673,6 @@ pmat analyze name-similarity "proces" --phonetic --top-k 5
 # Basic Big-O analysis
 pmat analyze big-o
 
-# Find quadratic or worse complexity
-pmat analyze big-o --min-complexity "O(n^2)" --format json
 ```
 
 ##### `analyze makefile`
@@ -723,8 +695,6 @@ pmat analyze makefile
 # Fix issues automatically
 pmat analyze makefile --fix
 
-# CI/CD integration
-pmat analyze makefile --min-severity error --format sarif
 ```
 
 ##### `analyze proof-annotations`
@@ -763,8 +733,6 @@ pmat analyze proof-annotations --property-type nullability --high-confidence-onl
 # Check coverage for PR
 pmat analyze incremental-coverage --base-branch main
 
-# Enforce minimum coverage
-pmat analyze incremental-coverage --min-coverage 80.0 --fail-on-decrease
 ```
 
 ##### `analyze symbol-table`
@@ -783,8 +751,6 @@ pmat analyze incremental-coverage --min-coverage 80.0 --fail-on-decrease
 # Generate symbol table
 pmat analyze symbol-table --format json -o symbols.json
 
-# Generate ctags format
-pmat analyze symbol-table --format ctags --include-private
 ```
 
 ### `refactor`
@@ -879,8 +845,6 @@ Batch refactoring server for large-scale operations.
 # Batch refactoring
 pmat refactor serve --config refactor.json
 
-# Resume with auto-commit
-pmat refactor serve --resume --auto-commit "refactor: {file}"
 ```
 
 ##### `refactor status`
@@ -1033,8 +997,6 @@ pmat analyze assembly-script --format json -o analysis.json
 # Analyze all WebAssembly files
 pmat analyze web-assembly
 
-# Only analyze binary WASM files
-pmat analyze web-assembly --include-binary --no-include-text
 
 # Comprehensive analysis
 pmat analyze web-assembly --memory-analysis --security --complexity
@@ -1083,3 +1045,601 @@ pub fn expand_env_vars(template: &str) -> String {
 - **Parallel File I/O**: Bounded concurrent file operations
 - **Lock-Free Caching**: `DashMap` for thread-safe template access
 - **Work Stealing**: Rayon-based parallel iteration
+
+## Commands not yet hand-documented
+
+The sections below are generated from the CLI's own `--help`, one per command that
+this reference did not cover. They exist so the drift guard can be a HARD FAILURE
+rather than a ratchet: a new command with no entry here now fails
+`test_no_undocumented_commands` immediately, instead of being added to a list of
+60 exceptions that nobody was going to shrink (#1228).
+
+A generated stub is not a hand-written section and does not pretend to be. It
+carries the command's real name and its real summary, which is what the guard
+checks; the argument tables, examples and prose are still owed. #1228 step 3 —
+generating the WHOLE reference from the command registry and deleting the
+markdown-parsing test — is the proper end of this road.
+
+### `agent`
+
+[NOT AVAILABLE in the default build] Claude Code background agent — needs --features agent-daemon
+
+Aliases: `ag`
+
+```bash
+pmat agent --help
+```
+
+### `agy`
+
+Google Anti-Gravity customizations translator
+
+Aliases: `antigravity`
+
+```bash
+pmat agy --help
+```
+
+### `brick-score`
+
+ComputeBrick profiling score (0-100 scale) for trueno/realizar ecosystem
+
+Aliases: `brick`, `computebrick`
+
+```bash
+pmat brick-score --help
+```
+
+### `cache`
+
+Cache strategy management and optimization
+
+```bash
+pmat cache --help
+```
+
+### `ci-local`
+
+Run local CI simulation (quality gates, clippy, tests, cross-compilation)
+
+Aliases: `ci`, `local-ci`
+
+```bash
+pmat ci-local --help
+```
+
+### `comply`
+
+PMAT compliance checking and migration system (runs check by default)
+
+Aliases: `compliance`
+
+```bash
+pmat comply --help
+```
+
+### `config`
+
+Configuration management and settings
+
+```bash
+pmat config --help
+```
+
+### `cuda-tdg`
+
+CUDA-SIMD Technical Debt Gradient (100-point Popper falsification scoring) Analyzes CUDA PTX, SIMD (AVX2/AVX-512/NEON), and WGPU code for defects Integrates Toyota Production System principles with falsificationist methodology
+
+Aliases: `gpu-tdg`, `simd-tdg`
+
+```bash
+pmat cuda-tdg --help
+```
+
+### `debug`
+
+Time-travel debugging commands for execution traces
+
+Aliases: `dbg`
+
+```bash
+pmat debug --help
+```
+
+### `demo-score`
+
+Score demo/book repository quality (0-10 Category G scale)
+
+Aliases: `book-score`, `score-demo`
+
+```bash
+pmat demo-score --help
+```
+
+### `deps-audit`
+
+Audit dependencies for Sovereign AI stack migration
+
+Aliases: `deps`, `audit-deps`
+
+```bash
+pmat deps-audit --help
+```
+
+### `diagnose`
+
+Run self-diagnostics to verify all features are working
+
+Aliases: `diag`, `doctor`
+
+```bash
+pmat diagnose --help
+```
+
+### `embed`
+
+Manage semantic search embeddings for code search
+
+Aliases: `emb`
+
+```bash
+pmat embed --help
+```
+
+### `enforce`
+
+Enforce extreme quality standards using state machine
+
+Aliases: `enf`
+
+```bash
+pmat enforce --help
+```
+
+### `explain`
+
+Explain what a check, metric, or grade means
+
+Aliases: `explain-check`, `what-is`
+
+```bash
+pmat explain --help
+```
+
+### `extract`
+
+Extract function boundaries from a single file (tree-sitter, no index)
+
+Aliases: `ext`
+
+```bash
+pmat extract --help
+```
+
+### `falsify`
+
+Falsify claims in a work item, spec, or ticket against the codebase
+
+Aliases: `falsify-spec`
+
+```bash
+pmat falsify --help
+```
+
+### `five-whys`
+
+Five Whys root cause analysis (Toyota Way methodology) This is the ONLY acceptable debugging method per CLAUDE.md policy
+
+Aliases: `why`, `debug-whys`
+
+```bash
+pmat five-whys --help
+```
+
+### `hooks`
+
+Pre-commit hook management and installation
+
+Aliases: `hook`, `h`
+
+```bash
+pmat hooks --help
+```
+
+### `infra-score`
+
+Infrastructure Score (0-100 + 12 bonus) for CI/CD quality
+
+Aliases: `infra`, `ci-score`
+
+```bash
+pmat infra-score --help
+```
+
+### `init`
+
+Bootstrap an agent-ready workspace: quality hook, MCP registration, skill and root rules file
+
+Aliases: `bootstrap`
+
+```bash
+pmat init --help
+```
+
+### `kaizen`
+
+Autonomous continuous improvement (Toyota Way Kaizen) Scans, fixes, commits, and files GitHub issues for remaining findings
+
+Aliases: `improve`
+
+```bash
+pmat kaizen --help
+```
+
+### `localize`
+
+Fault localization using Spectrum-Based Fault Localization (SBFL) Identify suspicious code locations based on test coverage data
+
+Aliases: `fault`, `fl`
+
+```bash
+pmat localize --help
+```
+
+### `maintain`
+
+Project maintenance commands (cleanup, validation, reports)
+
+Aliases: `maint`, `m`
+
+```bash
+pmat maintain --help
+```
+
+### `mcp`
+
+Connect pmat to an MCP client: every transport, in one place
+
+```bash
+pmat mcp --help
+```
+
+### `memory`
+
+Memory management and optimization
+
+```bash
+pmat memory --help
+```
+
+### `oracle`
+
+PMAT Oracle - PDCA loop for automated quality improvement (Toyota Way) Converges ANY Rust project toward perfect quality using CITL signals
+
+Aliases: `fix`, `pdca`
+
+```bash
+pmat oracle --help
+```
+
+### `org`
+
+[NOT AVAILABLE in the default build] Organizational intelligence — needs --features org-intelligence
+
+Aliases: `organization`
+
+```bash
+pmat org --help
+```
+
+### `perfection-score`
+
+Unified 200-point Perfection Score (master-plan-pmat-work-system.md) Aggregates TDG, Repo Score, Rust Score, Coverage, Mutation, Docs, Performance
+
+Aliases: `perfection`, `perfect`, `ps`
+
+```bash
+pmat perfection-score --help
+```
+
+### `popper-score`
+
+Calculate Popper Falsifiability Score (0-100 scale)
+
+Aliases: `popper`, `falsifiability`
+
+```bash
+pmat popper-score --help
+```
+
+### `predict-quality`
+
+Predict when quality metrics will exceed thresholds (Phase 4 O(1) Quality Gates)
+
+Aliases: `predict`
+
+```bash
+pmat predict-quality --help
+```
+
+### `project-diag`
+
+Rust project diagnostics (20 checks across 5 categories)
+
+Aliases: `pdiag`, `proj-diag`
+
+```bash
+pmat project-diag --help
+```
+
+### `prompt`
+
+AI prompt generation (defect-aware, ticket-based, spec-based)
+
+Aliases: `p`
+
+```bash
+pmat prompt --help
+```
+
+### `qa-work`
+
+QA validation after work completion with Toyota Way quality gates
+
+Aliases: `qa`, `quality`
+
+```bash
+pmat qa-work --help
+```
+
+### `qdd`
+
+Quality-Driven Development (QDD) tool for creating and refactoring code with guaranteed quality
+
+Aliases: `qd`
+
+```bash
+pmat qdd --help
+```
+
+### `quality-gates`
+
+Run configurable quality gates on the current project
+
+Aliases: `gates`, `qg`
+
+```bash
+pmat quality-gates --help
+```
+
+### `query`
+
+Semantic code search with quality annotations (RAG-powered)
+
+Aliases: `q`, `search-code`
+
+```bash
+pmat query --help
+```
+
+### `record-metric`
+
+Record a quality metric observation (Phase 3.4 O(1) Quality Gates - CI/CD)
+
+Aliases: `record`
+
+```bash
+pmat record-metric --help
+```
+
+### `red-team`
+
+Red Team Mode: Automated hallucination detection for commits and code
+
+Aliases: `rt`, `hallucination-detect`
+
+```bash
+pmat red-team --help
+```
+
+### `report`
+
+Generate enhanced analysis reports
+
+Aliases: `r`, `rep`
+
+```bash
+pmat report --help
+```
+
+### `repo-score`
+
+Calculate repository health score (0-100 scale)
+
+Aliases: `health`
+
+```bash
+pmat repo-score --help
+```
+
+### `roadmap`
+
+Roadmap management with PDMT todos and quality gates
+
+Aliases: `road`, `rm`
+
+```bash
+pmat roadmap --help
+```
+
+### `rust-project-score`
+
+Calculate Rust project quality score (0-289 scale; the reported total excludes categories that do not apply to the project)
+
+Aliases: `rust-score`
+
+```bash
+pmat rust-project-score --help
+```
+
+### `score`
+
+Unified quality score — geometric composite (0-100)
+
+```bash
+pmat score --help
+```
+
+### `semantic`
+
+Semantic code search using embeddings
+
+Aliases: `sem`, `find-code`
+
+```bash
+pmat semantic --help
+```
+
+### `serve`
+
+Serve the MCP tool surface over streamable HTTP (`--transport http`)
+
+Aliases: `server`, `api`
+
+```bash
+pmat serve --help
+```
+
+### `show-metrics`
+
+Show quality metrics and trends (Phase 3 O(1) Quality Gates)
+
+Aliases: `metrics`, `trends`
+
+```bash
+pmat show-metrics --help
+```
+
+### `spec`
+
+Specification management and validation
+
+Aliases: `specification`
+
+```bash
+pmat spec --help
+```
+
+### `split`
+
+Analyze and suggest semantic file splits using Louvain community detection
+
+Aliases: `sp`
+
+```bash
+pmat split --help
+```
+
+### `sql`
+
+Direct SQL access to the function index database
+
+```bash
+pmat sql --help
+```
+
+### `stack`
+
+Cross-repo dependency coordination for the sovereign AI stack
+
+Aliases: `stk`
+
+```bash
+pmat stack --help
+```
+
+### `tdg`
+
+Grade technical debt and code quality (TDG - Technical Debt Grading)
+
+Aliases: `grade`, `debt-grade`
+
+```bash
+pmat tdg --help
+```
+
+### `telemetry`
+
+Telemetry and system monitoring
+
+```bash
+pmat telemetry --help
+```
+
+### `test`
+
+Performance testing per SPECIFICATION.md Section 30
+
+```bash
+pmat test --help
+```
+
+### `test-discovery`
+
+Systematic test discovery and fixing
+
+Aliases: `test-fix`, `fix-tests`
+
+```bash
+pmat test-discovery --help
+```
+
+### `test-stability`
+
+Detect flaky and timeout-sensitive tests
+
+Aliases: `test-flaky`, `flaky`
+
+```bash
+pmat test-stability --help
+```
+
+### `validate-docs`
+
+Validate documentation links
+
+Aliases: `docs`, `doc`
+
+```bash
+pmat validate-docs --help
+```
+
+### `validate-readme`
+
+Validate README/documentation for factual accuracy and hallucinations
+
+Aliases: `readme`, `hallucination`
+
+```bash
+pmat validate-readme --help
+```
+
+### `verify`
+
+Pre-flight verification for autonomous agents: run the CI-faithful gate set (format, complexity, satd, clippy, tests) fail-fast before committing
+
+Aliases: `preflight`, `vfy`
+
+```bash
+pmat verify --help
+```
+
+### `work`
+
+Unified GitHub/YAML workflow management
+
+Aliases: `w`
+
+```bash
+pmat work --help
+```
