@@ -369,3 +369,86 @@ async fn an_issue_number_whose_id_is_taken_is_refused_not_upserted() {
         "the existing row must be untouched"
     );
 }
+
+// ── The YAML shapes `titles_by_id` gets wrong (quorum on PMAT-713, 3/3 lanes).
+//
+// `id_lines` already tracks block scalars, because a reviewer's note quoting
+// `id: PMAT-001` must not be read as a declaration. `titles_by_id` inherited none
+// of that, so it reads a `title:` out of prose. These pin all three shapes.
+
+#[test]
+fn a_title_inside_a_block_scalar_is_prose_not_the_row_title() {
+    let raw = "\
+roadmap_version: '1.0'
+roadmap:
+- id: PMAT-001
+  notes: |
+    A reviewer wrote this, quoting another row:
+    title: 'the WRONG title, it is inside a block scalar'
+  title: 'the real title'
+";
+    assert_eq!(
+        titles_by_id(raw).get("PMAT-001").map(String::as_str),
+        Some("the real title"),
+        "a title: inside a block scalar was read as the row's title"
+    );
+}
+
+#[test]
+fn a_flow_style_row_still_has_a_title() {
+    let raw = "\
+roadmap_version: '1.0'
+roadmap:
+- {id: PMAT-001, title: 'written inline'}
+";
+    assert_eq!(
+        titles_by_id(raw).get("PMAT-001").map(String::as_str),
+        Some("written inline"),
+        "a flow-style row yielded no title, so titles_changed silently ignores that id"
+    );
+}
+
+#[test]
+fn a_subtask_before_the_parents_title_does_not_leave_the_parent_titleless() {
+    let raw = "\
+roadmap_version: '1.0'
+roadmap:
+- id: PMAT-001
+  subtasks:
+  - id: PMAT-001a
+    title: 'the subtask title'
+  title: 'the parent title'
+";
+    let titles = titles_by_id(raw);
+    assert_eq!(
+        titles.get("PMAT-001").map(String::as_str),
+        Some("the parent title"),
+        "the parent lost its title because a subtask was declared first"
+    );
+    assert_eq!(
+        titles.get("PMAT-001a").map(String::as_str),
+        Some("the subtask title")
+    );
+}
+
+/// `max_id_number` reads `PMAT-7` and `PMAT-007` as the same integer 7, but
+/// `duplicate_ids` compares the id STRINGS, so the two spellings coexist without
+/// a duplicate error while the allocator counts past both. Two rows that are the
+/// same ticket by number and different tickets by string is the exact ambiguity
+/// this ticket exists to remove.
+#[test]
+fn two_spellings_of_one_number_are_a_duplicate() {
+    let raw = "\
+roadmap_version: '1.0'
+roadmap:
+- id: PMAT-7
+  title: 'minted unpadded'
+- id: PMAT-007
+  title: 'minted padded'
+";
+    let dupes = crate::services::roadmap_text::duplicate_ids(raw);
+    assert!(
+        !dupes.is_empty(),
+        "PMAT-7 and PMAT-007 are the same number and were not reported as a duplicate"
+    );
+}
