@@ -709,3 +709,105 @@ fn counter_an_unsuppressed_make_to_make_hop_is_still_enforcement() {
     let report = run(&dir, &["quality"]);
     assert!(report.passed(), "{}", why(&report));
 }
+
+// ── PMAT-719: a `--checks` subset run enforces the rules it names ───────────
+//
+// goal-mode.md §7.1 wires one rule into `gate` through
+// `pmat comply check --checks CB-2113`. Before this, an invocation naming a
+// subset was a suppression on the whole roster and nothing more, so the ledger
+// wrote the rule it DID carry as NEUTERED — a gate reported as theater while it
+// was failing builds. The roster-level verdict must not change: a subset run
+// still cannot stand in for every error-severity rule
+// (`a_rule_subsetting_invocation_cannot_stand_for_the_whole_roster`, above).
+
+const SUBSET_WORKFLOW: &str = r#"
+name: CI
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: one rule
+        run: pmat comply check --checks CB-2100
+"#;
+
+#[test]
+fn a_rule_subsetting_invocation_enforces_exactly_the_rules_it_names() {
+    let dir = fixture(&[(".github/workflows/ci.yml", SUBSET_WORKFLOW)]);
+    let report = run(&dir, &["quality"]);
+    assert!(
+        !report.passed(),
+        "a subset run never enforces the whole roster: {}",
+        why(&report)
+    );
+    assert!(
+        !report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+        "CB-2100 is named by the invocation and reachable from the root: {}",
+        why(&report)
+    );
+    assert!(
+        report.unreachable_rules.iter().any(|r| r == "CB-2102"),
+        "CB-2102 is not named, so nothing reaches it: {}",
+        why(&report)
+    );
+}
+
+#[test]
+fn a_subset_invocation_behind_continue_on_error_enforces_nothing() {
+    let wf = SUBSET_WORKFLOW.replace(
+        "      - name: one rule\n",
+        "      - name: one rule\n        continue-on-error: true\n",
+    );
+    let dir = fixture(&[(".github/workflows/ci.yml", &wf)]);
+    let report = run(&dir, &["quality"]);
+    assert!(
+        report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+        "naming a rule on a step whose failure cannot fail the job enforces it no more \
+         than not naming it: {}",
+        why(&report)
+    );
+}
+
+#[test]
+fn the_ledger_attributes_a_subset_invocation_to_the_rules_it_names() {
+    use super::ledger::{self, Status};
+    let dir = fixture(&[(".github/workflows/ci.yml", SUBSET_WORKFLOW)]);
+    let report = run(&dir, &["quality"]);
+    let rows = ledger::rows(
+        Path::new(env!("CARGO_MANIFEST_DIR")),
+        &report,
+        &ComplyConfig::default(),
+    )
+    .expect("roster is not empty");
+    let row = |id: &str| rows.iter().find(|r| r.rule.id == id).expect(id);
+    assert_eq!(
+        row("CB-2100").status,
+        Status::Enforced,
+        "{:?}",
+        row("CB-2100")
+    );
+    assert!(
+        row("CB-2100").carrier.contains("quality") && row("CB-2100").carrier.contains("CB-2100"),
+        "the carrier names the job and the selection: {}",
+        row("CB-2100").carrier
+    );
+    assert_ne!(
+        row("CB-2102").status,
+        Status::Enforced,
+        "{:?}",
+        row("CB-2102")
+    );
+}
+
+#[test]
+fn a_root_that_reaches_only_a_subset_invocation_carries_it() {
+    let dir = fixture(&[(".github/workflows/ci.yml", SUBSET_WORKFLOW)]);
+    let report = run(&dir, &["quality"]);
+    let effects = report.context_effects();
+    assert_eq!(effects.len(), 1);
+    assert!(
+        effects[0].1.carries(),
+        "a required check that reaches a rule invocation, however narrow, carries it: {:?}",
+        effects[0]
+    );
+}
