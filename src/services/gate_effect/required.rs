@@ -179,6 +179,25 @@ pub(crate) fn union_contexts(protection: Vec<String>, ruleset: Vec<String>) -> V
     out
 }
 
+/// Combine the two independent live sources into one root set.
+///
+/// PMAT-717 RED: this carries TODAY's semantics — branch protection is treated
+/// as mandatory, so a repository that requires checks ONLY through a ruleset
+/// reports nothing at all. Rulesets are an INDEPENDENT mechanism and are
+/// increasingly the only one a repository configures; making them readable only
+/// when branch protection also answers reproduces, one level down, the exact
+/// blindness this ticket exists to remove.
+///
+/// `None` means NEITHER source answered — unmeasured, which the caller turns
+/// into an error. It must never mean "measured, and the answer is nothing".
+pub(crate) fn combine_live(
+    protection: Option<Vec<String>>,
+    ruleset: Option<Vec<String>>,
+) -> Option<Vec<String>> {
+    let protection = protection?;
+    Some(union_contexts(protection, ruleset.unwrap_or_default()))
+}
+
 /// Ask GitHub. `None` on any failure — the caller turns that into an error when
 /// no other source answered.
 fn fetch_live(project_path: &Path) -> Option<Vec<String>> {

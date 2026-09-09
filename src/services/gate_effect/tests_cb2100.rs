@@ -1325,3 +1325,51 @@ fn the_union_is_deduplicated_and_order_stable() {
         vec!["b".to_string(), "a".to_string(), "c".to_string()]
     );
 }
+
+// ── PMAT-717 round 2. A 3/3 agy quorum refuted the first round of this change on
+// two counts, both re-measured by hand before this commit:
+//
+//   1. `fetch_live` read branch protection with `?`, so the ruleset call was
+//      unreachable whenever protection did not answer. Rulesets are GitHub's
+//      SUCCESSOR to branch protection and a modern repository may configure ONLY
+//      rulesets — on such a repository this "fix" behaved exactly like the bug.
+//   2. the causal claim was false. See the note above `fn combine_live`.
+//
+// The seam is `combine_live`, so the asymmetry is testable without a network.
+
+#[test]
+fn a_ruleset_only_repository_still_yields_its_roots() {
+    // No branch protection at all — the modern GitHub configuration. The
+    // ruleset answered, so the root set is measured and it is the ruleset's.
+    let got = super::required::combine_live(None, Some(vec!["gate".to_string()]));
+    assert_eq!(
+        got,
+        Some(vec!["gate".to_string()]),
+        "a repository that requires checks only through a ruleset reported NO \
+         roots — reading rulesets only when branch protection also answers is \
+         the same blindness one level down"
+    );
+}
+
+#[test]
+fn protection_only_is_unchanged_by_the_ruleset_call() {
+    // Control: the overwhelmingly common case must be byte-identical to before.
+    let protection = vec!["ci / gate".to_string(), "provable ladder".to_string()];
+    assert_eq!(
+        super::required::combine_live(Some(protection.clone()), None),
+        Some(protection),
+        "adding a second source must not disturb a repository that has only the first"
+    );
+}
+
+#[test]
+fn neither_source_answering_is_unmeasured_not_empty() {
+    // Control, and the one that keeps this rule failing closed: `None` must mean
+    // "we could not find out", never "we looked, and nothing gates this repo".
+    assert_eq!(
+        super::required::combine_live(None, None),
+        None,
+        "two silent sources must stay unmeasured — an empty root set would read \
+         as a repository with no gates and pass"
+    );
+}
