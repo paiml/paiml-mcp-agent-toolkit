@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4460 tracked `.rs` files: 3971 reachable from 138 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35840 lines, 2017 `#[test]` fns).
+4461 tracked `.rs` files: 3971 reachable from 138 target root(s), 408 orphaned (126931 lines, 6295 `#[test]` fns), 82 quarantined (35840 lines, 2017 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -119,6 +119,7 @@ same change; do not edit counts by hand.
 | `src/cli/stubs_refactor_patch.rs` | pending-#1017 | 0 | 65 |
 | `src/cli/symbol_table_helpers/tests_boundary.rs` | pending-#1017 | 5 | 96 |
 | `src/cli/symbol_table_helpers/tests_context.rs` | pending-#1017 | 13 | 454 |
+| `src/cli/test_clap_checks.rs` | pending-#1017 | 1 | 11 |
 | `src/contracts/adapter_coverage_tests.rs` | quarantined-#1023 | 55 | 1071 |
 | `src/contracts/comprehensive_tests.rs` | pending-#1017 | 12 | 470 |
 | `src/contracts/http_impl/error.rs` | pending-#1017 | 0 | 49 |
