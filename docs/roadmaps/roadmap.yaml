@@ -5237,3 +5237,26 @@ roadmap:
   labels:
   - kind:code
   notes: 'Filed by PMAT-724 from PR #1250''s first CI run - the traceability job went red at the direct CB-2113 step (11 of 59 non-merge commits, no Pmat-Ticket trailer) although every commit had passed the commit-msg hook. Root cause, measured - the messages carried Pmat-Ticket in a paragraph above the Co-Authored-By block, git parses only the last paragraph as trailers, and the hook''s PATTERN fallback (PMAT-[0-9]+|#[0-9]+) matched the subject. The checkout''s hook was STRICT=0 as well - pmat hooks install --strict does write STRICT=1 (measured in a throwaway repo), but strict changes nothing when the fallback matches first. Branch fix was a message-only rewrite (12 commits, trees byte-identical), recorded in docs/audits/impl-PMAT-724-receipt.md under Post-PR. Hook template - src/cli/handlers/hooks_command_handlers/hooks_command.rs generate_commit_msg_hook; rule - src/services/commit_traceability/mod.rs.'
+- id: PMAT-728
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 6: CB-2110 spec epics (invariant E) — every active spec names an open epic issue with a sub-issue, read from GitHub''s sub-issue relation; CB-148 retired; front-matter on the 43 specs; control first, the gate step withheld until the epics exist'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-10T12:27:23Z
+  updated: 2026-09-10T12:27:23Z
+  spec: null
+  acceptance_criteria:
+  - 'CB-2110: Spec Epics fails on the §7 falsifier (delete the epic: line of an active spec), on a closed, absent or unlabelled epic and on an epic with zero sub-issues; passes an active spec whose epic is open, labelled epic and has a sub-issue; exempts historical and superseded specs from the epic leg, never the parse leg, and prints every exempt spec by name - each arm in scripts/spec-epic-control.sh and each test naming the mutant it dies under'
+  - a snapshot that lacks the sub-issue count for a named epic is not_measured and fails, never read as zero (doctrine 2); the live reader fills the count for issues labelled epic from GitHub's sub-issue relation (§4.3) and pmat work sync --write-snapshot carries it
+  - 'pmat comply check prints CB-148: RETIRED — superseded by CB-2110 as a Skip row; the detector and its predicate are deleted, not patched (§11)'
+  - 'the 43 specs without front-matter carry epic: null, status: active, vendors: [] (goal-mode.md''s own header); no spec is marked historical or superseded by this ticket - that classification is the operator''s and is filed with the epic creation'
+  - the control runs in the traceability job before the CB-2113 step; the direct --checks CB-2110 step is withheld with this tree's measurement (every spec NO-EPIC) beside the withheld CB-2115 step and filed as its own ticket; pmat comply ledger lists CB-2110 NEUTERED among 162 rules; pmat verify --format json is ok:true on the committed tree
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: services/work_sync (snapshot field + live sub-issue count), services/spec_epic (new - front-matter parser + predicate), comply check_handlers (the CB-2110 rule, the GitHub preamble split from the roadmap preamble, CB-148 retired, comply report lists the exempt specs), comply_cb_detect (detector deleted), scripts/spec-epic-control.sh, .github/workflows/ci.yml, docs/specifications (44 files), README, ledgers. Stacked on PMAT-724 (#1250). Step 6 is the largest human step in goal-mode.md §11 - the epics do not exist (three issues carry the epic label today, none a spec''s, all with zero sub-issues), so the rule lands with its control and every spec reads NO-EPIC until the operator creates the epics and fills epic:, and that flip is the follow-on ticket.'
