@@ -6070,3 +6070,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1296
+  github_issue: 1296
+  item_type: task
+  title: pmat comply check --checks runs all 21 rule groups and only relabels the rest Skip — select before running (the CB-2113 step takes 9.5 min in CI to report one rule)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T20:45:01Z
+  updated: 2026-09-10T20:45:01Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
