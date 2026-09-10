@@ -5227,11 +5227,11 @@ roadmap:
   github_issue: 1289
   item_type: task
   title: 'the commit-msg hook accepts a PMAT-NNN mention anywhere in the message while CB-2113 accepts only a Pmat-Ticket trailer in the last paragraph: 11 commits passed the hook and were refused in CI on #1250 (goal-mode doctrine 5, §9)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T12:13:39Z
-  updated: 2026-09-10T18:18:08.278327787+00:00
+  updated: 2026-09-10T23:33:55Z
   spec: null
   acceptance_criteria:
   - 'one predicate, two callers: the commit-msg hook that pmat hooks install writes refuses (strict) or warns (non-strict) exactly when CB-2113 would refuse the same message - the fallback that accepts a ticket or issue reference outside the trailer block is removed, or CB-2113 is widened to accept it, and the receipt names which and why'
@@ -5242,7 +5242,7 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: 'Filed by PMAT-724 from PR #1250''s first CI run - the traceability job went red at the direct CB-2113 step (11 of 59 non-merge commits, no Pmat-Ticket trailer) although every commit had passed the commit-msg hook. Root cause, measured - the messages carried Pmat-Ticket in a paragraph above the Co-Authored-By block, git parses only the last paragraph as trailers, and the hook''s PATTERN fallback (PMAT-[0-9]+|#[0-9]+) matched the subject. The checkout''s hook was STRICT=0 as well - pmat hooks install --strict does write STRICT=1 (measured in a throwaway repo), but strict changes nothing when the fallback matches first. Branch fix was a message-only rewrite (12 commits, trees byte-identical), recorded in docs/audits/impl-PMAT-724-receipt.md under Post-PR. Hook template - src/cli/handlers/hooks_command_handlers/hooks_command.rs generate_commit_msg_hook; rule - src/services/commit_traceability/mod.rs.'
+  notes: 'Filed by PMAT-724 from PR #1250''s first CI run - the traceability job went red at the direct CB-2113 step (11 of 59 non-merge commits, no Pmat-Ticket trailer) although every commit had passed the commit-msg hook. Root cause, measured - the messages carried Pmat-Ticket in a paragraph above the Co-Authored-By block, git parses only the last paragraph as trailers, and the hook''s PATTERN fallback (PMAT-[0-9]+|#[0-9]+) matched the subject. The checkout''s hook was STRICT=0 as well - pmat hooks install --strict does write STRICT=1 (measured in a throwaway repo), but strict changes nothing when the fallback matches first. Branch fix was a message-only rewrite (12 commits, trees byte-identical), recorded in docs/audits/impl-PMAT-724-receipt.md under Post-PR. Hook template - src/cli/handlers/hooks_command_handlers/hooks_command.rs generate_commit_msg_hook; rule - src/services/commit_traceability/mod.rs. PMAT-1296: completed — #1297 merged (6593cf309): with a roadmap the commit-msg hook applies CB-2113''s predicate and CB-2113 names the remedy for the violation it found; #1289 closed in the same step.'
 - id: PMAT-728
   github_issue: null
   item_type: task
