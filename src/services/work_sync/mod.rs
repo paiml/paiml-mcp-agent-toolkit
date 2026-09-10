@@ -28,10 +28,12 @@
 //! to GitHub as a `planned` one. The specification names the first two; the enum
 //! has four, and a bijection that ignores two of them has a hole.
 
+use crate::cli::colors as c;
 use crate::models::roadmap::{ItemStatus, Roadmap, RoadmapItem};
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+pub mod github;
 
 /// Issues carrying this label are outside the roadmap's universe (§5.1, §9).
 pub const NO_ROADMAP_LABEL: &str = "no-roadmap";
@@ -188,6 +190,61 @@ pub enum Finding {
 }
 
 impl Finding {
+    pub fn render(&self) -> String {
+        match self {
+            Finding::Collision { number, ids } => format!(
+                "{} #{} ← {} ({} items)",
+                c::fail("COLLISION     "),
+                number,
+                ids.join(", "),
+                ids.len()
+            ),
+            Finding::OrphanRoadmap {
+                id,
+                github_issue,
+                reason,
+                ..
+            } => {
+                let why = match reason {
+                    OrphanReason::NoIssue => "no issue".to_string(),
+                    OrphanReason::IssueClosed => {
+                        format!("#{} is closed", github_issue.unwrap_or(0))
+                    }
+                    OrphanReason::IssueAbsent => {
+                        format!("#{} does not exist", github_issue.unwrap_or(0))
+                    }
+                    OrphanReason::IssueExcluded => {
+                        format!("#{} is labelled no-roadmap", github_issue.unwrap_or(0))
+                    }
+                };
+                format!("{} {:<18} {}", c::warn("ORPHAN-ROADMAP"), c::path(id), why)
+            }
+            Finding::OrphanGithub { number, title, .. } => format!(
+                "{} {:<18} {}",
+                c::warn("ORPHAN-GITHUB "),
+                format!("#{number}"),
+                title
+            ),
+            Finding::Drift {
+                id,
+                number,
+                field,
+                roadmap,
+                github,
+                age_minutes,
+            } => format!(
+                "{} {} #{} {:?}: {:?} ≠ {:?} ({} min)",
+                c::warn("DRIFT         "),
+                c::path(id),
+                number,
+                field,
+                roadmap,
+                github,
+                age_minutes
+            ),
+        }
+    }
+
     /// The spec's class name: `ORPHAN-ROADMAP`, `ORPHAN-GITHUB`, `COLLISION`, `DRIFT`.
     pub fn class(&self) -> &'static str {
         match self {

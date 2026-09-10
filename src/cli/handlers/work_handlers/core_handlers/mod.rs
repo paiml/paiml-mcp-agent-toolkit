@@ -7,7 +7,7 @@
 mod checkpoint;
 mod commit;
 mod contract;
-mod github;
+pub mod github;
 mod handlers;
 mod helpers;
 mod resolution;

@@ -12,13 +12,11 @@ use crate::cli::colors as c;
 use crate::cli::commands::SyncDirection;
 use crate::services::roadmap_service::RoadmapService;
 use crate::services::work_sync::{
-    self as engine, Action, CloseReason, Direction, Finding, GithubSnapshot, IssueSnapshot,
-    IssueState, MilestoneSnapshot, Settings, SyncReport,
+    self as engine, Action, Direction, GithubSnapshot, Settings, SyncReport,
 };
 use anyhow::{bail, Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use std::path::PathBuf;
-use std::process::Command;
 
 /// Everything `pmat work sync` was asked to do.
 #[derive(Debug, Clone)]
@@ -53,13 +51,10 @@ pub async fn handle_work_sync(opts: SyncOptions) -> Result<()> {
     };
 
     let snapshot = match &opts.snapshot {
-        Some(p) => {
-            let text = std::fs::read_to_string(p)
-                .with_context(|| format!("cannot read snapshot {}", p.display()))?;
-            GithubSnapshot::from_json(&text)?
-        }
-        None => fetch_snapshot(&repo)?,
-    };
+        Some(p) => engine::github::SnapshotSource::File(p.clone()),
+        None => engine::github::SnapshotSource::Live { repo: repo.clone() },
+    }
+    .load()?;
     if let Some(p) = &opts.write_snapshot {
         std::fs::write(p, snapshot.to_json()?)
             .with_context(|| format!("cannot write snapshot {}", p.display()))?;
@@ -208,7 +203,7 @@ fn print_report(report: &SyncReport, snapshot: &GithubSnapshot, grace: i64) {
         c::number(&report.tolerated.to_string()),
     );
     for f in &report.findings {
-        println!("   {}", render_finding(f));
+        println!("   {}", f.render());
     }
     if report.is_coherent() {
         println!(
@@ -227,61 +222,6 @@ fn print_report(report: &SyncReport, snapshot: &GithubSnapshot, grace: i64) {
                 report.count("DRIFT"),
             ))
         );
-    }
-}
-
-fn render_finding(f: &Finding) -> String {
-    match f {
-        Finding::Collision { number, ids } => format!(
-            "{} #{} ← {} ({} items)",
-            c::fail("COLLISION     "),
-            number,
-            ids.join(", "),
-            ids.len()
-        ),
-        Finding::OrphanRoadmap {
-            id,
-            github_issue,
-            reason,
-            ..
-        } => {
-            let why = match reason {
-                engine::OrphanReason::NoIssue => "no issue".to_string(),
-                engine::OrphanReason::IssueClosed => {
-                    format!("#{} is closed", github_issue.unwrap_or(0))
-                }
-                engine::OrphanReason::IssueAbsent => {
-                    format!("#{} does not exist", github_issue.unwrap_or(0))
-                }
-                engine::OrphanReason::IssueExcluded => {
-                    format!("#{} is labelled no-roadmap", github_issue.unwrap_or(0))
-                }
-            };
-            format!("{} {:<18} {}", c::warn("ORPHAN-ROADMAP"), c::path(id), why)
-        }
-        Finding::OrphanGithub { number, title, .. } => format!(
-            "{} {:<18} {}",
-            c::warn("ORPHAN-GITHUB "),
-            format!("#{number}"),
-            title
-        ),
-        Finding::Drift {
-            id,
-            number,
-            field,
-            roadmap,
-            github,
-            age_minutes,
-        } => format!(
-            "{} {} #{} {:?}: {:?} ≠ {:?} ({} min)",
-            c::warn("DRIFT         "),
-            c::path(id),
-            number,
-            field,
-            roadmap,
-            github,
-            age_minutes
-        ),
     }
 }
 
@@ -350,142 +290,11 @@ fn print_plan(actions: &[Action], direction: SyncDirection, dry_run: bool) {
     }
 }
 
-// ── the network edge ─────────────────────────────────────────────────────────
-
-fn gh_json(args: &[&str]) -> Result<serde_json::Value> {
-    let out = Command::new("gh")
-        .args(args)
-        .output()
-        .context("failed to run gh — is it installed and authenticated? (or pass --snapshot)")?;
-    if !out.status.success() {
-        bail!(
-            "gh {} failed: {}",
-            args.join(" "),
-            String::from_utf8_lossy(&out.stderr).trim()
-        );
-    }
-    serde_json::from_slice(&out.stdout).context("gh printed something that is not JSON")
-}
-
-/// A page cap that was reached is a snapshot that may be missing things, and a
-/// snapshot that may be missing issues cannot prove coherence: an absent issue
-/// reads as no ORPHAN-GITHUB. Refused, never read as a pass (quorum finding).
-fn refuse_truncation(count: usize, cap: usize, what: &str) -> Result<()> {
-    if count >= cap {
-        bail!(
-            "the GitHub snapshot is truncated: {what} returned {count}, the request cap of {cap}; a snapshot that may be missing {what} cannot prove coherence — raise the cap"
-        );
-    }
-    Ok(())
-}
-
-const ISSUE_CAP: usize = 5000;
-const MILESTONE_CAP: usize = 100;
-
-/// Take a snapshot of every issue (open and closed — a closed issue must be
-/// told apart from an absent one) and every milestone, through `gh`.
-pub(super) fn fetch_snapshot(repo: &str) -> Result<GithubSnapshot> {
-    let issues = gh_json(&[
-        "issue",
-        "list",
-        "--repo",
-        repo,
-        "--state",
-        "all",
-        "--limit",
-        &ISSUE_CAP.to_string(),
-        "--json",
-        "number,title,state,stateReason,labels,milestone,updatedAt",
-    ])?;
-    refuse_truncation(
-        issues.as_array().map(Vec::len).unwrap_or(0),
-        ISSUE_CAP,
-        "issues",
-    )?;
-    let milestones = gh_json(&[
-        "api",
-        &format!("repos/{repo}/milestones?state=all&per_page={MILESTONE_CAP}"),
-    ])?;
-    refuse_truncation(
-        milestones.as_array().map(Vec::len).unwrap_or(0),
-        MILESTONE_CAP,
-        "milestones",
-    )?;
-    parse_snapshot(repo, Utc::now(), &issues, &milestones)
-}
-
-/// Turn `gh issue list --json …` and `gh api …/milestones` output into a
-/// snapshot. Pure, so a fixture can prove the field mapping.
-pub(super) fn parse_snapshot(
-    repo: &str,
-    taken_at: DateTime<Utc>,
-    issues: &serde_json::Value,
-    milestones: &serde_json::Value,
-) -> Result<GithubSnapshot> {
-    let mut out = Vec::new();
-    for v in issues
-        .as_array()
-        .context("gh issue list did not return an array")?
-    {
-        let number = v["number"].as_u64().context("an issue without a number")?;
-        let state = match v["state"].as_str().unwrap_or("") {
-            "OPEN" => IssueState::Open,
-            "CLOSED" => IssueState::Closed,
-            other => bail!("issue #{number}: unknown state {other:?}"),
-        };
-        let state_reason = match v["stateReason"].as_str().unwrap_or("") {
-            "COMPLETED" => Some(CloseReason::Completed),
-            "NOT_PLANNED" => Some(CloseReason::NotPlanned),
-            "DUPLICATE" => Some(CloseReason::Duplicate),
-            _ => None,
-        };
-        let updated_at = v["updatedAt"]
-            .as_str()
-            .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-            .map(|d| d.with_timezone(&Utc))
-            .with_context(|| format!("issue #{number}: updatedAt is not RFC 3339"))?;
-        out.push(IssueSnapshot {
-            number,
-            title: v["title"].as_str().unwrap_or("").to_string(),
-            state,
-            state_reason,
-            labels: v["labels"]
-                .as_array()
-                .map(|a| {
-                    a.iter()
-                        .filter_map(|l| l["name"].as_str().map(str::to_string))
-                        .collect()
-                })
-                .unwrap_or_default(),
-            milestone: v["milestone"]["title"].as_str().map(str::to_string),
-            updated_at,
-        });
-    }
-    let mut ms = Vec::new();
-    for v in milestones.as_array().unwrap_or(&Vec::new()) {
-        let title = match v["title"].as_str() {
-            Some(t) => t.to_string(),
-            None => continue,
-        };
-        let state = if v["state"].as_str() == Some("closed") {
-            IssueState::Closed
-        } else {
-            IssueState::Open
-        };
-        ms.push(MilestoneSnapshot { title, state });
-    }
-    Ok(GithubSnapshot {
-        repo: repo.to_string(),
-        taken_at,
-        issues: out,
-        milestones: ms,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::roadmap::ItemStatus;
+
     use tempfile::TempDir;
 
     const ROADMAP: &str =
@@ -605,14 +414,6 @@ mod tests {
     }
 
     #[test]
-    fn a_snapshot_at_the_page_cap_is_refused() {
-        refuse_truncation(ISSUE_CAP - 1, ISSUE_CAP, "issues").expect("under the cap is fine");
-        let err = refuse_truncation(ISSUE_CAP, ISSUE_CAP, "issues").expect_err("at the cap");
-        assert!(err.to_string().contains("truncated"), "{err}");
-        assert!(refuse_truncation(MILESTONE_CAP, MILESTONE_CAP, "milestones").is_err());
-    }
-
-    #[test]
     fn report_json_carries_the_verdict_and_the_classes() {
         let mut r = crate::models::roadmap::Roadmap::new(Some("paiml/pmat".to_string()));
         r.roadmap.push(crate::models::roadmap::RoadmapItem::new(
@@ -632,36 +433,5 @@ mod tests {
         );
         assert_eq!(doc["findings"][0]["reason"], serde_json::json!("no-issue"));
         assert_eq!(doc["open_items"], serde_json::json!(1));
-    }
-
-    #[test]
-    fn parse_snapshot_reads_gh_json() {
-        let issues = serde_json::json!([
-            {"number": 7, "title": "seven", "state": "CLOSED", "stateReason": "NOT_PLANNED",
-             "labels": [{"name": "bug"}, {"name": "no-roadmap"}], "milestone": {"title": "3.42.0"},
-             "updatedAt": "2026-09-09T10:00:00Z"},
-            {"number": 8, "title": "eight", "state": "OPEN", "stateReason": null,
-             "labels": [], "milestone": null, "updatedAt": "2026-09-09T11:00:00Z"}
-        ]);
-        let milestones = serde_json::json!([{"title": "3.42.0", "state": "open"}, {"title": "3.40.0", "state": "closed"}]);
-        let s = parse_snapshot("paiml/pmat", Utc::now(), &issues, &milestones).expect("parses");
-        let seven = s.issue(7).expect("seven");
-        assert_eq!(seven.state, IssueState::Closed);
-        assert_eq!(seven.state_reason, Some(CloseReason::NotPlanned));
-        assert_eq!(seven.labels, vec!["bug", "no-roadmap"]);
-        assert_eq!(seven.milestone.as_deref(), Some("3.42.0"));
-        assert!(!seven.in_universe());
-        let eight = s.issue(8).expect("eight");
-        assert_eq!(eight.state, IssueState::Open);
-        assert_eq!(eight.state_reason, None);
-        assert!(eight.milestone.is_none());
-        assert!(eight.in_universe());
-        assert_eq!(s.milestones.len(), 2);
-        assert_eq!(s.milestones[1].state, IssueState::Closed);
-
-        let bad = serde_json::json!([{"number": 1, "title": "x", "state": "MAYBE", "updatedAt": "2026-09-09T11:00:00Z"}]);
-        assert!(parse_snapshot("r", Utc::now(), &bad, &serde_json::json!([])).is_err());
-        let bad_time = serde_json::json!([{"number": 1, "title": "x", "state": "OPEN", "updatedAt": "yesterday"}]);
-        assert!(parse_snapshot("r", Utc::now(), &bad_time, &serde_json::json!([])).is_err());
     }
 }
