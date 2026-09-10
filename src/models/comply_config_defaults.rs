@@ -321,9 +321,31 @@ fn default_checks() -> HashMap<String, CheckConfig> {
             options: HashMap::new(),
         },
     );
+    // CB-2112: Ticket Linkage — every open item names an open issue numbered as the item's numeric tail (goal-mode.md §11); Error so it is a member of the roster CB-2100 verifies.
+    checks.insert(
+        "cb-2112".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     // CB-2113: Commit Traceability — every PR commit carries a Pmat-Ticket trailer naming a live roadmap item; Error so it is a member of the roster CB-2100 verifies.
     checks.insert(
         "cb-2113".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
+    // CB-2114: Release Binding — every open item carries a release: naming an existing milestone its issue is on (goal-mode.md §11); Error so it is a member of the roster CB-2100 verifies.
+    checks.insert(
+        "cb-2114".to_string(),
         CheckConfig {
             enabled: true,
             severity: CheckSeverity::Error,

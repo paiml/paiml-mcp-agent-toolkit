@@ -2,16 +2,24 @@
 //! (invariant A — every open item names an open issue numbered as the item's
 //! numeric tail) and CB-2114 (invariants B/F1 — every open item carries a
 //! `release:` naming an existing milestone its issue is on).
-//!
-//! RED stub: the surface the tests name, with bodies that judge nothing. The
-//! implementation phase replaces the bodies.
 
-use super::GithubSnapshot;
+use super::{is_open, GithubSnapshot};
 use crate::models::roadmap::Roadmap;
 
 /// The trailing ASCII-digit run of an item id, or `None` when there is none.
-pub fn numeric_tail(_id: &str) -> Option<u64> {
-    None
+pub fn numeric_tail(id: &str) -> Option<u64> {
+    if id.is_empty() {
+        return None;
+    }
+    let mut i = id.len();
+    while i > 0 && id.as_bytes()[i - 1].is_ascii_digit() {
+        i -= 1;
+    }
+    if i == id.len() {
+        None
+    } else {
+        id[i..].parse().ok()
+    }
 }
 
 /// One CB-2112 finding: why an open item is not linked to its own open issue.
@@ -56,7 +64,23 @@ impl LinkFinding {
     }
     /// Plain-text rendering (the printer paints).
     pub fn render(&self) -> String {
-        format!("{} {}", self.class(), self.id())
+        match self {
+            Self::NoIssue { id, .. } => format!("NO-ISSUE {id}: github_issue is null"),
+            Self::IssueClosed { id, number } => format!("ISSUE-CLOSED {id}: #{number} is closed"),
+            Self::IssueAbsent { id, number } => {
+                format!("ISSUE-ABSENT {id}: #{number} does not exist on GitHub")
+            }
+            Self::IssueExcluded { id, number } => {
+                format!("ISSUE-EXCLUDED {id}: #{number} is labelled no-roadmap")
+            }
+            Self::TailMismatch { id, number, tail } => {
+                if let Some(t) = tail {
+                    format!("TAIL-MISMATCH {id}: names #{number} but its numeric tail is {t}")
+                } else {
+                    format!("TAIL-MISMATCH {id}: names #{number} but the id has no numeric tail")
+                }
+            }
+        }
     }
 }
 
@@ -69,8 +93,49 @@ pub struct LinkReport {
 }
 
 /// Judge invariant A over the roadmap and the snapshot.
-pub fn ticket_linkage(_roadmap: &Roadmap, _snapshot: &GithubSnapshot) -> LinkReport {
-    LinkReport::default()
+pub fn ticket_linkage(roadmap: &Roadmap, snapshot: &GithubSnapshot) -> LinkReport {
+    let mut report = LinkReport::default();
+    for item in &roadmap.roadmap {
+        if !is_open(item) {
+            continue;
+        }
+        report.open_items += 1;
+        if let Some(n) = item.github_issue {
+            if let Some(issue) = snapshot.issue(n) {
+                if issue.state == super::IssueState::Closed {
+                    report.findings.push(LinkFinding::IssueClosed {
+                        id: item.id.clone(),
+                        number: n,
+                    });
+                } else if !issue.in_universe() {
+                    report.findings.push(LinkFinding::IssueExcluded {
+                        id: item.id.clone(),
+                        number: n,
+                    });
+                } else if numeric_tail(&item.id) != Some(n) {
+                    report.findings.push(LinkFinding::TailMismatch {
+                        id: item.id.clone(),
+                        number: n,
+                        tail: numeric_tail(&item.id),
+                    });
+                } else {
+                    report.linked += 1;
+                }
+            } else {
+                report.findings.push(LinkFinding::IssueAbsent {
+                    id: item.id.clone(),
+                    number: n,
+                });
+            }
+        } else {
+            report.findings.push(LinkFinding::NoIssue {
+                id: item.id.clone(),
+                title: item.title.clone(),
+            });
+        }
+    }
+    report.findings.sort_by(|a, b| a.id().cmp(b.id()));
+    report
 }
 
 /// One CB-2114 finding: why an open item is not bound to its release.
@@ -116,7 +181,19 @@ impl ReleaseFinding {
     }
     /// Plain-text rendering (the printer paints).
     pub fn render(&self) -> String {
-        format!("{} {}", self.class(), self.id())
+        match self {
+            Self::NoRelease { id, .. } => format!("NO-RELEASE {id}: release is null"),
+            Self::Prefixed { id, release } => format!("PREFIXED {id}: release {release:?} carries a v — the key is the bare semver string (goal-mode.md §4.1)"),
+            Self::NoMilestone { id, release } => format!("NO-MILESTONE {id}: no milestone titled {release:?}"),
+            Self::NoIssue { id, release } => format!("NO-ISSUE {id}: release {release:?} cannot be checked against a milestone — github_issue is null (CB-2112)"),
+            Self::NotOnMilestone { id, number, release, actual } => {
+                if let Some(m) = actual {
+                    format!("NOT-ON-MILESTONE {id}: #{number} is on milestone {m:?}, not {release:?}")
+                } else {
+                    format!("NOT-ON-MILESTONE {id}: #{number} is on no milestone")
+                }
+            }
+        }
     }
 }
 
@@ -129,6 +206,50 @@ pub struct ReleaseReport {
 }
 
 /// Judge invariants B/F1 over the roadmap and the snapshot.
-pub fn release_binding(_roadmap: &Roadmap, _snapshot: &GithubSnapshot) -> ReleaseReport {
-    ReleaseReport::default()
+pub fn release_binding(roadmap: &Roadmap, snapshot: &GithubSnapshot) -> ReleaseReport {
+    let mut report = ReleaseReport::default();
+    for item in &roadmap.roadmap {
+        if !is_open(item) {
+            continue;
+        }
+        report.open_items += 1;
+        if let Some(release) = &item.release {
+            if release.starts_with('v') || release.starts_with('V') {
+                report.findings.push(ReleaseFinding::Prefixed {
+                    id: item.id.clone(),
+                    release: release.clone(),
+                });
+            } else if !snapshot.milestones.iter().any(|m| m.title == *release) {
+                report.findings.push(ReleaseFinding::NoMilestone {
+                    id: item.id.clone(),
+                    release: release.clone(),
+                });
+            } else if let Some(n) = item.github_issue {
+                let issue = snapshot.issue(n);
+                let actual = issue.and_then(|i| i.milestone.clone());
+                if issue.is_none() || actual.as_deref() != Some(release) {
+                    report.findings.push(ReleaseFinding::NotOnMilestone {
+                        id: item.id.clone(),
+                        number: n,
+                        release: release.clone(),
+                        actual,
+                    });
+                } else {
+                    report.bound += 1;
+                }
+            } else {
+                report.findings.push(ReleaseFinding::NoIssue {
+                    id: item.id.clone(),
+                    release: release.clone(),
+                });
+            }
+        } else {
+            report.findings.push(ReleaseFinding::NoRelease {
+                id: item.id.clone(),
+                title: item.title.clone(),
+            });
+        }
+    }
+    report.findings.sort_by(|a, b| a.id().cmp(b.id()));
+    report
 }

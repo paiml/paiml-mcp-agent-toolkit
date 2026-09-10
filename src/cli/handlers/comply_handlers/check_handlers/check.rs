@@ -480,6 +480,16 @@ fn build_all_compliance_checks(
                 )
             }),
         ),
+        (
+            "ticket-release",
+            Box::new(move || {
+                build_ticket_release_checks(
+                    project_path,
+                    comply_config,
+                    overrides.github_snapshot.as_deref(),
+                )
+            }),
+        ),
     ];
     run_check_groups(groups)
 }
@@ -1566,6 +1576,7 @@ include!("check_threshold_coherence.rs");
 include!("check_builders_coherence.rs");
 include!("check_traceability.rs");
 include!("check_builders_traceability.rs");
+include!("check_roadmap_inputs.rs");
 include!("check_roadmap_coherence.rs");
 include!("check_builders_roadmap_coherence.rs");
 include!("check_ticket_linkage.rs");
