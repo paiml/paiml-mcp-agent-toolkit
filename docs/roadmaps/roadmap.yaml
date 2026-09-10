@@ -3030,14 +3030,14 @@ roadmap:
   labels: []
   notes: null
 - id: PMAT-619
-  github_issue: null
+  github_issue: 1260
   item_type: task
   title: 'DEBT: Pre-commit complexity hook false-negative on zero-code repos'
   status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-04-17T13:25:07Z
-  updated: 2026-04-17T13:26:37.167936474+00:00
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3050,11 +3050,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Spec 27: Work Contract Binding — implements[] field + bind/unbind CLI + CB-1600..1609'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-04-17T15:43:47Z
-  updated: 2026-04-17T20:49:52.129861993+00:00
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - Implements docs/specifications/components/pmat-work-contract-binding.md. Adds ContractBinding struct to WorkContract, --implements flag, YAML resolution, SHA drift detection.
@@ -3066,16 +3066,16 @@ roadmap:
   - contract-binding
   - provable-contracts
   - component-27
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — struct ContractBinding (src/cli/handlers/work_contract_core.rs, src/services/contract_index.rs); `pmat work edit --implements` exists; CB-1600..1609 in check_binding_scope.rs; commit b6d7bebf1 ''feat(comply): complete CB-16xx spec — Components 27-31 (#302)''; verify settled: check_binding_scope::tests_sha_equation::sha_drift_fails_on_edit, ::sha_drift_passes_when_aligned and ::sha_drift_skips_without_bindings are in the lib suite; binding YAML resolution is covered by resolve_binding_files_finds_local_binding (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-621
-  github_issue: null
+  github_issue: 1261
   item_type: task
   title: 'Spec 28: Work Verification Ladder — typed VerificationLevel enum + L0-L5 gates + CB-1610..1619'
   status: inprogress
   priority: high
   assigned_to: null
   created: 2026-04-17T15:43:49Z
-  updated: 2026-04-17T20:52:15.650885405+00:00
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'Implements docs/specifications/components/pmat-work-verification-ladder.md. Replaces verification_level: String with typed enum, adds pmat work verify command, per-level completion gates.'
@@ -3089,14 +3089,14 @@ roadmap:
   - component-28
   notes: null
 - id: PMAT-622
-  github_issue: null
+  github_issue: 1262
   item_type: task
   title: 'Spec 29: Falsification Unification — ProvableContract variant + unified roster + CB-1620..1629'
   status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-04-17T15:43:51Z
-  updated: 2026-04-17T20:52:22.751458649+00:00
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - Implements docs/specifications/components/pmat-work-falsification-unification.md. Adds FalsificationMethod::ProvableContract variant, unified pmat work falsify runner consuming YAML tests.
@@ -3110,14 +3110,14 @@ roadmap:
   - component-29
   notes: null
 - id: PMAT-623
-  github_issue: null
+  github_issue: 1263
   item_type: task
   title: 'Spec 30: Work Compile-Time Codegen — #[pmat_work_contract] proc macro + CB-1630..1639'
   status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-04-17T15:43:54Z
-  updated: 2026-04-17T20:52:23.554060205+00:00
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - Implements docs/specifications/components/pmat-work-compile-time-codegen.md. New pmat-work-macros crate, pmat work codegen command, generated contracts/work/&lt;ID&gt;.rs modules with debug_assert wrappers.
@@ -3134,11 +3134,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Spec 31: Work CoT Proof Derivation — structured ChainOfThoughtStep + CB-1640..1649'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-04-17T15:43:55Z
-  updated: 2026-04-17T20:52:24.358195404+00:00
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - Implements docs/specifications/components/pmat-work-cot-proof-derivation.md. Restructures CoT as {assumption, implication, evidence_method, discharged_by}, auto-derives proof obligations and falsifiable claims.
@@ -3150,7 +3150,7 @@ roadmap:
   - cot-proof-derivation
   - provable-contracts
   - component-31
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — the ac''s CoT restructure ({assumption, implication, evidence_method, discharged_by}) and derivation shipped as MACS-007/008/009 in #613; their tests pass on 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json); CB-1640..1649 present (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-625
   github_issue: null
   item_type: task
@@ -3223,11 +3223,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Phase 1: cover rust_wasm_analyzer::analyze_impl_method branches'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-04-23T16:58:28Z
-  updated: 2026-04-23T16:58:37Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - 'Target src/services/rust_wasm_analyzer.rs analyze_impl_method (lines 114-141). Previously untested: the method_attr || impl_attr disjunction at line 120 and the !is_wasm_bindgen && !is_no_mangle && !is_extern_c guard at line 124. Add 6 tests: bindgen on method, bindgen on impl-block (inheritance), non-boundary None, extern C ABI, no_mangle only, and full-file dispatcher picks up impl methods. Module is feature-gated behind deep-wasm.'
@@ -3236,7 +3236,7 @@ roadmap:
   estimated_effort: null
   labels:
   - deferred:3.41.0
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — da9da093b ''test(coverage): cover rust_wasm_analyzer::analyze_impl_method branches (PMAT-629) (#494)'' — exactly the ac''s target; the 3.39.0 row said ''no matching test-addition commits found'' (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: MACS-000
   github_issue: 612
   item_type: task
@@ -3334,14 +3334,14 @@ roadmap:
   labels: []
   notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-006
-  github_issue: null
+  github_issue: 1254
   item_type: task
   title: 'MACS-006 remainder: a test that a completed ticket''s receipt records claimed_level and achieved_level (spec test ledger::receipt_records_both_levels) — CB-1653 and the receipt fields shipped in #613'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-09-10T17:16:59Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3350,14 +3350,14 @@ roadmap:
   labels: []
   notes: 'Partly shipped in PR #613 (squash d629a105f): CB-1653 in check_macs_ladder.rs with cb1653_red_on_drift and cb1653_green_after_fix, and the receipt fields claimed_level/achieved_level set by with_ladder (work_ledger_receipt.rs:153, called from core_handlers/contract.rs:391). Not shipped: the block''s test ledger::receipt_records_both_levels — no lib test exercises with_ladder or a receipt carrying both levels (the CB-1653 tests hand-write that JSON, check_macs_tests_ladder.rs:38). Re-planned by PMAT-721 with github_issue null so pmat work sync --direction yaml-to-github mints its own issue; #612 is closed and was the umbrella for all thirteen (docs/audits/triage-PMAT-721-ledger.json).'
 - id: MACS-007
-  github_issue: null
+  github_issue: 1255
   item_type: task
   title: 'MACS-007 remainder: pmat work status must still render chain-of-thought steps after the v2 schema (spec invariant cot::status_renders_v2) — the v2 schema, parser and migration shipped in #613'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-09-10T17:16:59Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3446,14 +3446,14 @@ roadmap:
   labels: []
   notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-013
-  github_issue: null
+  github_issue: 1256
   item_type: task
   title: 'MACS-013 remainder: CB-1655 warns instead of failing on a stale ROADMAP.yaml and its stale arm is untested (spec test comply::cb1655_red_when_ledger_newer_than_artifact); decide whether the rendered ROADMAP.yaml survives now that docs/roadmaps/roadmap.yaml is the live roadmap — pmat roadmap sync shipped in #613'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-09-10T17:16:59Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3574,14 +3574,14 @@ roadmap:
   labels: []
   notes: 'PMAT-721: cancelled as a duplicate of MACS-014. Created 2026-07-02T16:54:11, in the same second as the other three rows whose id carries a space, by a contract binding that wrote ''<ticket> <contract>/<equation>'' as the id; the equation is contracts/macs-artifacts-v1.yaml#manifest_faithful, MACS-014''s own contract_yaml. Nothing depends on this id: it appears only in the rendered ROADMAP.yaml and in docs/audits/dispositions-3.39.0.json, a historical record (docs/audits/triage-PMAT-721-ledger.json).'
 - id: MACS-017
-  github_issue: null
+  github_issue: 1257
   item_type: task
   title: MACS-017 Anti-Gravity Customizations Translator
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-07-04T08:19:46Z
-  updated: 2026-07-04T08:19:46Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - A new pmat agy sync command that transpiles or maps PMAT's strict skill requirements and contracts into Google Anti-Gravity's AGENTS.md rules and skills.json formats.
@@ -3591,14 +3591,14 @@ roadmap:
   labels: []
   notes: null
 - id: MACS-018
-  github_issue: null
+  github_issue: 1258
   item_type: task
   title: MACS-018 Cross-System Provenance Unification (AGY + Fable)
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-07-04T08:20:00Z
-  updated: 2026-07-04T08:20:00Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - Extend AgentProvenance (MACS-001) to support GoogleAntiGravity variants with Subagent Task IDs and Conversation IDs. Add a parser that extracts Anti-Gravity transcript bounds to inject into FalsificationReceipts.
@@ -3608,14 +3608,14 @@ roadmap:
   labels: []
   notes: null
 - id: MACS-019
-  github_issue: null
+  github_issue: 1259
   item_type: task
   title: MACS-019 Hybrid Orchestration Bridge (Ultracode + AGY)
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-07-04T08:20:00Z
-  updated: 2026-07-04T08:20:00Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - Define an orchestration adapter pmat work delegate --agy which translates PMAT contract requirements into Anti-Gravity define_subagent/invoke_subagent tool sequences, allowing AGY agents to deterministically resolve PMAT-verified work.
@@ -3658,14 +3658,14 @@ roadmap:
   labels: []
   notes: null
 - id: PMAT-632
-  github_issue: null
+  github_issue: 1264
   item_type: task
   title: 'paiml-implement discover.sh: gate_cmd fell back to ''cargo test --workspace'' on pmat although ''make gate-artifact'' and the CLAUDE.md-mandated ''pmat verify'' exist'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-02T16:16:48Z
-  updated: 2026-09-02T16:16:48Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3675,14 +3675,14 @@ roadmap:
   - deferred:3.41.0
   notes: null
 - id: PMAT-633
-  github_issue: null
+  github_issue: 1265
   item_type: task
   title: 'binary size: no per-crate ratchet — .text grew ~3.4 MiB since ece3baf11 (pmat +1.9 MiB, pmcp +0.7, reqwest/h2/tokio ~+0.3, clap usage/error-context/suggestions +85 KiB); .pmat-metrics.toml''s ''42 MB'' is a 2025-11-23 comment nothing reads; add cargo-bloat --crates to nightly with a per-crate baseline (CRUX-05 five-whys)'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-02T16:37:48Z
-  updated: 2026-09-02T16:37:48Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3724,14 +3724,14 @@ roadmap:
   labels: []
   notes: null
 - id: PMAT-636
-  github_issue: null
+  github_issue: 1266
   item_type: task
   title: 'CB-200: the lib test the_committed_baseline_is_the_measured_count is Unmeasurable in CI (no .pmat/context.db there) and passes; locally, a cold index of master by the 3.35.0 binary reads 1709 below-A vs the 1688 banked 2026-08-22 — the ratchet drifted 21 with no leg able to see it'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-02T17:02:05Z
-  updated: 2026-09-02T17:02:05Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3757,14 +3757,14 @@ roadmap:
   labels: []
   notes: null
 - id: PMAT-638
-  github_issue: null
+  github_issue: 1267
   item_type: task
   title: pmat work complete runs quality gates that hang past 2 min on this repo and the only documented bypass is --skip-quality; a ticket whose PR merged green cannot be closed without a skip — separate the state transition from the gate, or bound the gate
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-02T17:35:52Z
-  updated: 2026-09-02T17:35:52Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3774,14 +3774,14 @@ roadmap:
   - deferred:3.41.0
   notes: null
 - id: PMAT-639
-  github_issue: null
+  github_issue: 1268
   item_type: task
   title: 'TDG dead_code component is hardcoded 0.0 while carrying weight 0.20 (CB-128 ''6th dimension''): every TDG grade includes a 20% term that was never measured — integrate CargoDeadCodeAnalyzer or mark the component not-measured and stop weighting it (found by CRUX-01''s strict SATD stage, tdg_calculator_core.rs:110)'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-02T17:49:52Z
-  updated: 2026-09-02T17:49:52Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3892,14 +3892,14 @@ roadmap:
   labels: []
   notes: null
 - id: PMAT-646
-  github_issue: null
+  github_issue: 1269
   item_type: task
   title: 'CI: pull_request synchronize/ready_for_review events on PR #1164 created no workflow runs (3 events, 07:41–07:51Z); workflow_dispatch on the same head did'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-03T07:59:51Z
-  updated: 2026-09-03T07:59:51Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'Observed during PMAT-642. Pushes ce2178577 and a80527dcb and the ready-for-review event produced zero runs (actions/runs?head_sha= → 0; check-suites empty) while #1155''s push at 07:37Z produced runs. githubstatus: Actions/Webhooks/PRs operational. Workaround used: gh workflow run for ci.yml, feature-matrix.yml, docsrs.yml, quality-gate.yml on the branch. Also: master has had no push-triggered runs since 2026-08-21 (auto-merge pushes?) — separate observation. Root cause not established.'
@@ -3910,14 +3910,14 @@ roadmap:
   - deferred:3.41.0
   notes: null
 - id: PMAT-647
-  github_issue: null
+  github_issue: 1270
   item_type: task
   title: models::quality_gate::QualityGateResults still carries duplicate_violations after CRUX-02 renamed the CLI gate's field to identical_files
   status: planned
   priority: low
   assigned_to: null
   created: 2026-09-03T07:59:51Z
-  updated: 2026-09-03T07:59:51Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'CRUX-02 (PMAT-642) renamed the CLI results field; src/models/quality_gate.rs is a separate results type (used by no MCP or CLI surface found by grep) that keeps the misleading name. Decide: delete the orphan model or rename with its consumers. Follow-up, not in PMAT-642''s scope.'
@@ -4016,11 +4016,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'git_context tests fail in any git worktree: the repo-path helper requires .git/HEAD, but a worktree''s .git is a file'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-03T21:34:43Z
-  updated: 2026-09-03T21:34:43Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - 'src/models/git_context.rs tests: repo_path() walks up from CARGO_MANIFEST_DIR looking for .git/HEAD; in a linked worktree .git is a file (''gitdir: …''), so the walk falls through to manifest_dir.parent() (not a repo) and four tests fail: test_is_git_repo_returns_true_for_git_repo, test_from_current_dir_extracts_commit_sha, test_from_current_dir_extracts_author_info, test_git_context_serialization. Seen by the aprender session on #1166 and by pmat verify on the AD-02 worktree (PMAT-652). Fix: accept a .git file (or ask git rev-parse --show-toplevel). Linked: PMAT-652.'
@@ -4029,16 +4029,16 @@ roadmap:
   estimated_effort: null
   labels:
   - deferred:3.41.0
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — 97d994f78 ''fix(test): git_context tests accept a linked worktree, where .git is a file (PMAT-654)'' (2026-09-03) is on master; get_repo_root accepts .git as a file (src/models/git_context.rs, the PMAT-654 comment); the 3.39.0 row named a different sha (beee475ce) as not merged (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-653
-  github_issue: null
+  github_issue: 1271
   item_type: task
   title: 'the_cargo_engine_attributes_the_decision_to_rustc hits the analyzer''s 600 s dead-code timeout on a coverage-instrumented shared runner (red ci/coverage on docs-only #1173; green on master minutes apart)'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-03T21:01:33Z
-  updated: 2026-09-03T21:01:33Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'src/cli/handlers/dead_code_library_disclosure_tests.rs:231 — the test runs the real cargo dead-code analyzer (cargo check on a fixture) with the library default 600 s budget. Under llvm-cov instrumentation on a runner shared with 16 other jobs it exceeded 600 s once (run 33796915546); same test passed on 627fb6a85 and c1c2dd1ad. The test asserts a decision attribution, not a wall-clock bound: give it its own explicit budget (or a pre-warmed fixture) so a slow runner cannot turn it red. Not a rerun: the PR was re-measured on a new head after a cascade merge.'
@@ -4066,14 +4066,14 @@ roadmap:
   labels: []
   notes: null
 - id: PMAT-659
-  github_issue: null
+  github_issue: 1272
   item_type: task
   title: 'hooks install --stack has no strict mode: the stack installer writes its own lightweight pre-commit hook and no commit-msg hook'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-04T00:41:54Z
-  updated: 2026-09-04T00:41:54Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'AD-03 (PMAT-655) made --strict --stack an explicit refusal instead of a silent drop. Close the gap: the stack installer should generate the same strict pre-commit hook and the commit-msg hook in every stack repository, honouring [hooks] strict per repository. Control: pmat hooks install --stack --strict in a fixture stack of two repositories refuses an untrailered commit in both.'
@@ -4294,14 +4294,14 @@ roadmap:
   - kind:code
   notes: null
 - id: PMAT-677
-  github_issue: null
+  github_issue: 1273
   item_type: task
   title: 'dogfood skill identity: rename to .claude/skills/pmat-dogfood with explicit name: pmat-dogfood so a user-scope dogfood skill cannot shadow it'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - '.claude/skills/dogfood/SKILL.md has no name: field; on a host with ~/.claude/skills/dogfood/ (this workstation has one) the user-scope skill wins and the repo skill never loads (aprender #2332 precedent). Fleet standard: dir .claude/skills/pmat-dogfood/, frontmatter name: pmat-dogfood, read-only, deterministic receipt, ≤3 read-only subagents, orchestrator sole receipt writer, Agent descriptions prefixed <ticket>/ph<i>; make dogfood-install symlink target updated. Falsifier: a make-level check asserting ^name: pmat-dogfood$ in the frontmatter; deleting the line → RED.'
@@ -4313,14 +4313,14 @@ roadmap:
   - kind:code
   notes: null
 - id: PMAT-678
-  github_issue: null
+  github_issue: 1274
   item_type: task
   title: 'publish poka-yoke: make publish-from-tag TAG=vX.Y.Z publishes only from a detached worktree of the tag; .claude/agent-memory/ gitignored; --locked on release-verify'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - '3.38.0: cargo publish --dry-run --locked refused the tree because untracked .claude/agent-memory/ counts as dirty; the operator moved it aside by hand. Structural fix: Makefile target publish-from-tag TAG= that refuses when TAG is absent or not on master, git worktree add --detach, env -u CARGO_REGISTRY_TOKEN cargo publish --dry-run --locked then cargo publish --locked, worktree removed. Belt: .claude/agent-memory/ in .gitignore; --locked on release-verify''s cargo install. Falsifier: with an untracked file in the main tree the target still dry-runs clean from the worktree; a non-existent tag exits 2 before any cargo call; dropping --detach → the zero-untracked-files assertion RED.'
@@ -4368,14 +4368,14 @@ roadmap:
   - kind:code
   notes: null
 - id: PMAT-681
-  github_issue: null
+  github_issue: 1275
   item_type: task
   title: 'harness gate declaration: a Makefile gate target running pmat verify so paiml-implement discovery yields gate_cmd_fallback=false'
   status: planned
   priority: low
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'paiml-implement discover.sh probes make -n gate; absent, it falls back to cargo test --workspace (gate_cmd_fallback=true on both 3.38.0 tickets) while the gate that actually runs is pmat verify. Add gate: target running pmat verify --format json. Falsifier: discovery on this repo yields gate_cmd_fallback=false and gate_cmd=make gate.'
@@ -4406,14 +4406,14 @@ roadmap:
   - release
   notes: null
 - id: PMAT-683
-  github_issue: null
+  github_issue: 1276
   item_type: task
   title: 'blocking mutants: measure a runtime baseline from three master runs before making the mutants job a gate'
   status: planned
   priority: low
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'ci.yml''s mutants job is needs: [gate], continue-on-error: true, master-push only — audit, not gate (fleet-wide pattern). Converting it to blocking needs a measured runtime baseline first (basis= from three master runs), then a ratchet. Filed for 3.40.0.'
@@ -4425,14 +4425,14 @@ roadmap:
   - deferred:3.41.0
   notes: null
 - id: PMAT-684
-  github_issue: null
+  github_issue: 1277
   item_type: task
   title: '3.40.0: revive the three closed 3.38-era PRs on post-3.39.0 master — #1177 (AD-05 quality-gate file-size/churn/lint, PMAT-657), #1184 (PMAT-666 hooks split), #1180 (PMAT-661 work link + CB-1340)'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-06T07:56:01Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'All three were 40 commits behind master at 3.38.0 with conflicts in docs/roadmaps/roadmap.yaml (RS root cause) and the ledgers; #1177 and #1184 red on ci / test at their heads, #1180 conflicts in ticket_crud.rs with PMAT-673. Closed with five-whys lines in their bodies; the branches remain. Revive each on the new master, one PR per ticket.'
@@ -4557,11 +4557,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'documentation_scorer tests score the temp dir''s PARENT: score_changelog looks at project_path.parent()/CHANGELOG.md, so a stray /tmp/CHANGELOG.md (216 KB, left by another session 2026-09-06 19:17 local) fails test_changelog_missing, test_changelog_minimal and test_recommendations_empty_project on every tree; isolate the tests (TMPDIR-independent fixture root) or scope the workspace lookup to a real Cargo workspace'
-  status: planned
+  status: completed
   priority: low
   assigned_to: null
   created: 2026-09-06T19:21:25Z
-  updated: 2026-09-08T12:15:30Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4569,16 +4569,16 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — #1227 merged 2026-09-08 from PMAT-689-hermetic-changelog-scope (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-690
-  github_issue: null
+  github_issue: 1278
   item_type: task
   title: 'flag-efficacy sweep: show-metrics and comply report baselines are intermittently nondeterministic — skipped whole as [nondeterministic baseline] in the 3.39.0 sweep and in PMAT-688 sweep 3, but checked flag-by-flag in PMAT-688 sweep 2 (show-metrics --failures-only Effective there); by hand two consecutive show-metrics runs on the dumped corpus are byte-identical. Find what changes between the harness''s two baseline runs (a concurrent writer to .pmat-metrics/trends, or PageRank hotness) and pin it, so the two commands'' 21 flags are measured every sweep'
   status: planned
   priority: low
   assigned_to: null
   created: 2026-09-06T19:45:30Z
-  updated: 2026-09-06T19:45:30Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4605,14 +4605,14 @@ roadmap:
   - kind:triage
   notes: null
 - id: PMAT-692
-  github_issue: null
+  github_issue: 1279
   item_type: task
   title: 'deps: flate2 1.1.10 moves to miniz_oxide 0.9 and adds zlib-rs 0.6.7 while another dependency still resolves miniz_oxide 0.8.9 — dependabot #1210 (closed) would land a duplicate crate version and a new transitive crate; deny.toml multiple-versions = warn so CI cannot refuse it. Either pin flate2''s backend (default-features = false + rust_backend) or make multiple-versions = deny with an allowlist, then re-take the pmcp 2.19.3 / lru 0.18.4 / toml 1.1.5 bumps'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-07T07:23:43Z
-  updated: 2026-09-07T07:23:43Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4640,14 +4640,14 @@ roadmap:
   - kind:code
   notes: null
 - id: PMAT-694
-  github_issue: null
+  github_issue: 1202
   item_type: task
   title: '[train/CF] ci/coverage flake root cause (#1202, absorbs #1127): quality_proxy tests compile the host workspace with a nested cargo clippy under llvm-cov (>600 s); move them to a <=50-line fixture crate under tests/fixtures/quality_proxy with its own CARGO_TARGET_DIR, env -u LLVM_PROFILE_FILE/CARGO_LLVM_COV/RUSTFLAGS, a deadline, a process group and prlimit --as in one spawn fn'
   status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:25Z
-  updated: 2026-09-07T08:03:00.462661306+00:00
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4656,16 +4656,16 @@ roadmap:
   labels:
   - deferred:3.41.0
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1202, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-695
-  github_issue: null
+  github_issue: 1156
   item_type: task
   title: '[train/HB] hermetic build.rs (#1156): vendor gridjs/mermaid/d3 under assets/vendor with a committed SHA256SUMS; build.rs reads and verifies, no network, no rerun-if-changed on gitignored paths; clean-room gate step runs with --network none'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:26Z
-  updated: 2026-09-07T07:56:26Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4674,16 +4674,16 @@ roadmap:
   labels:
   - deferred:3.41.0
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1156, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-696
-  github_issue: null
+  github_issue: 1128
   item_type: task
   title: '[train/GT] gate-metadata truth (#1128, #1132, honest half of #1074): delete the orphan Dependabot advisory gate and the stale quality-gate.yml lines; required-status-checks.txt generated from live protection (make required-checks-sync) with an offline check in ci/gate that every listed check is a declared job; cargo deny wrapper prints scope: rustsec-only, never ok'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:28Z
-  updated: 2026-09-07T07:56:28Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4692,16 +4692,16 @@ roadmap:
   labels:
   - deferred:3.41.0
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1128, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-697
-  github_issue: null
+  github_issue: 1124
   item_type: task
   title: '[train/HN] honest not-measured (#1124, #1162, #1131): one typed Measured(x) | NotMeasured{reason} at the model layer rendered verbatim; gates_run complexity = not_measured for bash/C/TS; tdg check-regression delta 0 on an unedited file; quality-gate emits exactly one files_examined'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:29Z
-  updated: 2026-09-07T07:56:29Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4710,16 +4710,16 @@ roadmap:
   labels:
   - deferred:3.41.0
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1124, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-698
-  github_issue: null
+  github_issue: 1137
   item_type: task
   title: '[train/CT] config truth (#1137, #1138): config --show prints the resolved config every reader consumes; restore the .pmat-gates.toml section the default reader needs and make its guard test assert presence'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:30Z
-  updated: 2026-09-07T07:56:30Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4728,16 +4728,16 @@ roadmap:
   labels:
   - deferred:3.41.0
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1137, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-699
-  github_issue: null
+  github_issue: 1141
   item_type: task
   title: '[train/DC] dead surface deletion (#1141, #1144, #1135, #1140, #1134, #1145): remove src/protocol and src/state (zero inbound edges), the simulated refactor.* MCP engine and the two dead MCP tool inventories; fix vacuous-tests --help figures, pmat init next-command, MCP_VERSION == negotiated version; SemVer: pub mod removal permitted at minor because crates.io reverse deps = 0'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:31Z
-  updated: 2026-09-07T07:56:31Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4746,7 +4746,7 @@ roadmap:
   labels:
   - deferred:3.41.0
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1141, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-700
   github_issue: null
   item_type: task
@@ -4765,14 +4765,14 @@ roadmap:
   - kind:code
   notes: null
 - id: PMAT-701
-  github_issue: null
+  github_issue: 1280
   item_type: task
   title: '[train/IP] infra pin bump 3.39.0 -> 3.40.0 in machines/{lambda-labs,intel,mini,gx10}/forjar.yaml (paiml/infra); forjar apply -f machines/$(hostname)/forjar.yaml on this host only; pmat --version == 3.40.0'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:33Z
-  updated: 2026-09-07T07:56:33Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4783,14 +4783,14 @@ roadmap:
   - kind:code
   notes: null
 - id: PMAT-702
-  github_issue: null
+  github_issue: 1281
   item_type: task
   title: '[train/PK] crate package at 99.6% of crates.io''s 10 MB ceiling after PMAT-695 (9,956,257 B; 43,743 B headroom): carve the package before any packaged addition — measure cargo package --list per-file sizes, exclude non-build inputs (large fixtures, docs already excluded?), consider shipping only the gz assets the server reads; an oversized upload returns a bare 503, not a size error'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-07T10:29:03Z
-  updated: 2026-09-07T10:29:03Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4819,14 +4819,14 @@ roadmap:
   - kind:code
   notes: null
 - id: PMAT-704
-  github_issue: null
+  github_issue: 1282
   item_type: task
   title: 'quality proxy sibling: auto_clippy_fix_core.rs:22 (the auto_clippy_fix MCP tool) spawns cargo clippy with tokio::process::Command and inherits the parent env — no instrumentation scrub, no deadline, no process group, no address-space cap; route it through the quality proxy''s child_command (PMAT-694) so no spawn can miss the caps'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-07T11:49:41Z
-  updated: 2026-09-07T11:49:41Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4854,14 +4854,14 @@ roadmap:
   - kind:code
   notes: null
 - id: PMAT-706
-  github_issue: null
+  github_issue: 1283
   item_type: task
   title: 'fleet unified-gate: the cpu-gates job cancels pmat''s clean room at 30 minutes (run 34150721411, killed mid GATE B1 at 18:43:26 after starting 18:13:13) while the same Mode A+B passes in ~35 min locally in the fleet''s own container — every pmat tag therefore fails ''gate / gate'' on a timeout, not on content. Raise timeout-minutes for the pmat repo case or split Mode A and Mode B into two jobs'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-07T18:51:56Z
-  updated: 2026-09-07T18:51:56Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4872,14 +4872,14 @@ roadmap:
   - kind:code
   notes: null
 - id: PMAT-708
-  github_issue: null
+  github_issue: 1284
   item_type: task
   title: 'flake: a_crate_that_does_not_compile_is_reported_as_not_measured is nondeterministic in ci/test — PASSED on PR #1215 (run on 07af99725, with the PMAT-705 lockfile fix) and FAILED identically on PR #1222 (job in run for c0d3faeee, same fix present): not_measured None, violations [], not_applicable None, i.e. the analyzer reports a clean full measurement for a crate that cannot compile. Suspect the dead-code cache (PMAT-648 keyed on git write-tree) returning a hit across fixtures, or a shared .pmat cache dir in CI; the local run is green either way'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-07T20:15:35Z
-  updated: 2026-09-07T20:15:35Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4893,11 +4893,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'BSE-12: pre-commit debt rule scoped to the diff''s touched functions — a one-line change in an undebted function commits; growth in a touched function is refused'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-07T20:09:56Z
-  updated: 2026-09-07T20:09:56Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - 'Spec: paiml/infra docs/specifications/build-system-enhancement.md BSE-12 (report O11). Scope src/quality/git_hooks.rs, git_hooks_install.rs, git_hooks_tests.rs. A: cargo test -p <crate> hook_debt_scope. Mutation: compare the whole file -> the first case goes RED. Contract pv: the hook''s verdict is a function of the diff''s touched functions only. Doctrine: pre-commit is feedback, not a gate (ci / gate enforces), so scoping feedback to the diff costs no enforcement. Metric: decompositions per one-line fix 11 -> <= 1.'
@@ -4906,16 +4906,16 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: 'Phase 2 landed the verdict RULE (hook_debt_scope.rs). Phase 3 landed the two pieces between the rule and the command line, and did NOT land the flag. Landed: staged_verdict / staged_verdict_for_file, which read git itself — `git show :<path>` for the staged blob (the INDEX, not the working tree), `git show HEAD:<path>` for its counterpart, `git diff --cached -U0` for the ranges — and handle_analyze_complexity_diff_scoped in src/cli/handlers/complexity_handlers/mod.rs, which prints the offender as "<fn> - <metric> <measured> > <limit> (was <before>)" plus "Errors: N" and returns Err so the exit is non-zero. 13 hook_debt_scope tests + 4 diff_scope entry-point tests, all over a real fixture repo for the git legs; report O11 is allowed at the DEFAULT thresholds (10/15) and growth in a touched function is refused naming the function. Mutation matrix, run and reverted: judging every function instead of the touched ones leaves 13/13 and 4/4 GREEN (an untouched function measures identically at HEAD, so the growth test already spares it — the touched filter is load-bearing only where there is no HEAD counterpart), while the complete pre-BSE-12 rule (that plus previous=None) turns 8 of 13 and 2 of 4 RED. NOT landed and NOT startable in this ticket''s scope_paths: the `--diff-scope` flag. Declaring `diff_scope: bool` on AnalyzeCommands::Complexity forces `diff_scope: false` into 23 struct literals that rustc names across 6 files, none of them in scope — src/cli/handlers/analysis_handlers/core_routes.rs (1, and it is also where route_complexity_command must dispatch to the new handler), src/cli/handlers/analysis/complexity.rs (4), src/contracts/adapter_tests.rs (8), src/contracts/cli_impl_tests_integration.rs (6), src/contracts/cli_impl_tests_core.rs (3), src/cli/commands/tests_cli_parsing.rs (1). Measured by adding the field and running `cargo check -p pmat --all-targets --message-format short`, then reverting. Until that lands the generated hook still measures WHOLE FILES and its doctrine comment says so in those words.'
+  notes: 'Phase 2 landed the verdict RULE (hook_debt_scope.rs). Phase 3 landed the two pieces between the rule and the command line, and did NOT land the flag. Landed: staged_verdict / staged_verdict_for_file, which read git itself — `git show :<path>` for the staged blob (the INDEX, not the working tree), `git show HEAD:<path>` for its counterpart, `git diff --cached -U0` for the ranges — and handle_analyze_complexity_diff_scoped in src/cli/handlers/complexity_handlers/mod.rs, which prints the offender as "<fn> - <metric> <measured> > <limit> (was <before>)" plus "Errors: N" and returns Err so the exit is non-zero. 13 hook_debt_scope tests + 4 diff_scope entry-point tests, all over a real fixture repo for the git legs; report O11 is allowed at the DEFAULT thresholds (10/15) and growth in a touched function is refused naming the function. Mutation matrix, run and reverted: judging every function instead of the touched ones leaves 13/13 and 4/4 GREEN (an untouched function measures identically at HEAD, so the growth test already spares it — the touched filter is load-bearing only where there is no HEAD counterpart), while the complete pre-BSE-12 rule (that plus previous=None) turns 8 of 13 and 2 of 4 RED. NOT landed and NOT startable in this ticket''s scope_paths: the `--diff-scope` flag. Declaring `diff_scope: bool` on AnalyzeCommands::Complexity forces `diff_scope: false` into 23 struct literals that rustc names across 6 files, none of them in scope — src/cli/handlers/analysis_handlers/core_routes.rs (1, and it is also where route_complexity_command must dispatch to the new handler), src/cli/handlers/analysis/complexity.rs (4), src/contracts/adapter_tests.rs (8), src/contracts/cli_impl_tests_integration.rs (6), src/contracts/cli_impl_tests_core.rs (3), src/cli/commands/tests_cli_parsing.rs (1). Measured by adding the field and running `cargo check -p pmat --all-targets --message-format short`, then reverting. Until that lands the generated hook still measures WHOLE FILES and its doctrine comment says so in those words. PMAT-1253 (goal-mode §5.1): completed — #1223 merged 2026-09-08 (''diff-scoped complexity gate judges only the functions the diff touches (BSE-12, PMAT-707)''); the item''s notes say Phase 3 did NOT land the CLI flag; checked separately; `pmat analyze complexity --diff-scope` exists (#1223); complexity_gate_tests::dropping_the_flag_from_the_generated_hook_goes_red and ::complexity_gate_scopes_rust_to_the_diff_only pass — 26 BSE-12 tests, 0 failed, on this tree; the item''s notes describe Phase 3, before #1223''s last phase (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-709
-  github_issue: null
+  github_issue: 1285
   item_type: task
   title: 'pmat hooks install fails in a linked git worktree: joins .git/hooks while .git is a file (os error 20); resolve via git rev-parse --git-path hooks'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-07T21:35:13Z
-  updated: 2026-09-07T21:35:13Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'Found 2026-09-07 by two BSE-12 workers in .claude/worktrees/bse-12: pmat hooks install --strict --force exits 1 ''Not a directory (os error 20)''. Every paiml-implement worker runs in a linked worktree. Fix: resolve the hooks dir with git rev-parse --git-path hooks (honours core.hooksPath and worktrees) instead of joining .git/hooks.'
@@ -4929,11 +4929,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'cli_documentation_sync: 5 green tests assert nothing — two .parent() defects climb out of the repo (#1228). Step 1 remove .parent(), make a missing doc and a missing binary HARD failures, drop the PATH fallback; Step 2 add the falsifier leg that renames the doc aside and asserts the suite goes RED'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-08T14:23:29Z
-  updated: 2026-09-08T14:23:29Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4941,16 +4941,16 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — #1237 merged 2026-09-09 from PMAT-712-cli-doc-sync-vacuous (closes #1228) (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-713
   github_issue: null
   item_type: task
   title: 'roadmap ticket ids collide across concurrent branches and the merge DELETES one — validate passes because uniqueness is preserved by the loss (#1240). Make it DETECTABLE: a ticket id''s title is immutable once minted, so a merge that rewrites an existing id''s title is a collision, checkable against the base ref with no new state. Plus work add --id <explicit> and --check-base <ref>'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-08T16:56:01Z
-  updated: 2026-09-08T16:56:01Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4958,16 +4958,16 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — #1241 merged 2026-09-09 (d3eef0198); #1240''s last comment: ''All three asks are on master — #1241, merged as d3eef0198'' (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-714
   github_issue: null
   item_type: task
   title: 'roadmap ids: make the collision-free path mandatory — work add refuses the sequential allocator, and a ticket title is immutable (no --allow-retitle). Operator decision on #1240'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-09T07:37:54Z
-  updated: 2026-09-09T07:37:54Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4975,16 +4975,16 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — #1242 merged 2026-09-09 from PMAT-714-mandatory-issue-ids; `pmat work add --github-issue N` mints PMAT-N (ticket_crud.rs:94) (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-716
   github_issue: null
   item_type: task
   title: 'goal-mode spec: pmat comply as a closed loop over specs, tickets, commits, releases and tags (invariants A-G); pmat goal driver mode'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-09T09:09:43Z
-  updated: 2026-09-09T09:09:43Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4992,16 +4992,16 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:docs
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — #1244 merged 2026-09-09 — docs/specifications/goal-mode.md is on master (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-715
   github_issue: null
   item_type: task
   title: 'cli-reference: convert both ratchets to hard failures and clear the debt they recorded — document the 60 undocumented commands, fix or remove the 16 drifted examples (#1228 step 3, forced by the operator decision to make them hard failures)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-09T08:05:16Z
-  updated: 2026-09-09T08:05:16Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5009,16 +5009,16 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — #1243 merged 2026-09-09 from PMAT-715-cli-reference-hard-failure (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-717
   github_issue: null
   item_type: task
   title: 'goal-mode step 0 (P2): make pmat comply gate-effect analysis ruleset-aware — required::resolve must union repos/{}/rules/branches/{} with branch protection, .github/required-status-checks.txt gains the context ''gate'' and loses its false ''unrequired top-level job'' sentence, and the enforcement ledger is regenerated. Until this lands every new CB rule lands NEUTERED (157/0 today is computed over an incomplete root set)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-09T09:34:30Z
-  updated: 2026-09-09T09:34:30Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5026,16 +5026,16 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — #1245 merged 2026-09-09 from PMAT-717-ruleset-aware-required (goal-mode step 0) (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-718
   github_issue: null
   item_type: task
   title: 'goal-mode step 1 (P1): pmat comply check --checks <CSV> selects rules by id — a deselected rule reports Skip(not selected), never absent, and an unknown id is a hard error because that is how a typo''d gate becomes a green gate'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-09T12:38:41Z
-  updated: 2026-09-09T12:38:41Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5043,16 +5043,16 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: null
+  notes: 'PMAT-1253 (goal-mode §5.1): completed — merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729 (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-719
   github_issue: null
   item_type: task
   title: 'goal-mode step 2: CB-2113 commit traceability — every non-merge commit in the PR range carries Pmat-Ticket naming a real, non-terminal roadmap item; scripts/traceability-control.sh proves the gate can fail; a traceability job wired into gate''s needs and result loop; merge_group trigger; the enforcement ledger attributes a --checks subset run to the rules it names instead of neutering the roster'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-09T14:40:27Z
-  updated: 2026-09-09T14:40:27Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - pmat comply check --checks CB-2113 exits 1 on a fixture branch whose commit carries no Pmat-Ticket trailer, and 0 once the trailer names a planned roadmap item (scripts/traceability-control.sh, both arms observed)
@@ -5066,16 +5066,16 @@ roadmap:
   labels:
   - kind:code
   - orch:fable
-  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2113 + builder + severity default), services/gate_effect (invocation/ledger per-rule attribution), .github/workflows/ci.yml + scripts/ (job, control, merge_group), docs/status ledgers. Spec: docs/specifications/goal-mode.md §7, §7.1, §8.4, §11 step 2. Depends on PMAT-718 (#1246): the job selects its rule with --checks.'
+  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2113 + builder + severity default), services/gate_effect (invocation/ledger per-rule attribution), .github/workflows/ci.yml + scripts/ (job, control, merge_group), docs/status ledgers. Spec: docs/specifications/goal-mode.md §7, §7.1, §8.4, §11 step 2. Depends on PMAT-718 (#1246): the job selects its rule with --checks. PMAT-1253 (goal-mode §5.1): completed — merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729 (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-720
   github_issue: null
   item_type: task
   title: 'goal-mode step 3: release: field on roadmap items (a projection of the GitHub milestone; pmat work sync is its only writer); pmat work sync made real — --check-only reports ORPHAN-ROADMAP / ORPHAN-GITHUB / COLLISION and time-bounded field drift, --direction yaml-to-github|github-to-yaml fix the orphans, a COLLISION is never auto-fixed; the 13 #612 collisions filed for a human under their own ticket'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-09T20:21:16Z
-  updated: 2026-09-09T20:21:16Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - a RoadmapItem without release serializes with no release key and one with release keeps it verbatim (cargo test --lib -- roadmap_types release_field); the 279-entry roadmap.yaml load->save round-trip is byte-identical
@@ -5089,16 +5089,16 @@ roadmap:
   labels:
   - kind:code
   - orch:fable
-  notes: 'orch-basis:M>=3 — measured footprint: models/roadmap_types.rs (release field), services/work_sync (new pure engine over a GitHub snapshot), cli/commands/work_commands_work.rs + handlers/work_handlers/core_handlers (surface, fixers), scripts/ (control). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §5, §11 step 3. Branches from master; no code overlap with #1246/#1247 (steps 1-2).'
+  notes: 'orch-basis:M>=3 — measured footprint: models/roadmap_types.rs (release field), services/work_sync (new pure engine over a GitHub snapshot), cli/commands/work_commands_work.rs + handlers/work_handlers/core_handlers (surface, fixers), scripts/ (control). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §5, §11 step 3. Branches from master; no code overlap with #1246/#1247 (steps 1-2). PMAT-1253 (goal-mode §5.1): completed — merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729 (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-721
   github_issue: null
   item_type: task
   title: 'goal-mode step 3, the human half: resolve the 13 MACS items that all name #612 — which of MACS-004..MACS-016 is really #612 is a judgement, so this is a supervised one-off migration, never a sync auto-fix (goal-mode.md §5.4); the rest get their own issues or are cancelled'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-09T21:22:08Z
-  updated: 2026-09-10T18:14:33Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - 'pmat work sync --check-only reports 0 COLLISION on master (today: 1 — #612 named by MACS-004, MACS-005, MACS-006, MACS-007, MACS-008, MACS-009, MACS-010, MACS-011, MACS-012, MACS-013, MACS-014, MACS-015, MACS-016)'
@@ -5110,16 +5110,16 @@ roadmap:
   labels:
   - kind:triage
   - human
-  notes: 'Filed by PMAT-720 (goal-mode step 3) from the first real run of pmat work sync --check-only on this repository (107 findings: 1 COLLISION, 52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT). Which of the thirteen is really #612 is a judgement, and a sync that guesses is how the thirteen arose — a human owns this ticket. CB-2115 (step 4) cannot land green until it is done. Resolved on 2026-09-10 by the orchestrator under the operator''s delegation, quoted verbatim: "pmat-implement docs/specifications/goal-mode.md autonomously (you merge, triage tickets, pull requests, and label, tag, close/open)". 10 of the 13 shipped in #613 and are completed; MACS-006, MACS-007 and MACS-013 are re-planned for their unshipped remainder; the four rows whose id carries a space are cancelled as duplicates. Evidence: docs/audits/triage-PMAT-721-ledger.json, docs/audits/quorum-PMAT-721.json, docs/audits/impl-PMAT-721-receipt.md. It stays inprogress in its own PR: CB-2113 refuses a Pmat-Ticket trailer naming a terminal item, and #1252''s first CI run caught this ticket marking itself completed. PMAT-1253''s PR marks it completed.'
+  notes: 'Filed by PMAT-720 (goal-mode step 3) from the first real run of pmat work sync --check-only on this repository (107 findings: 1 COLLISION, 52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT). Which of the thirteen is really #612 is a judgement, and a sync that guesses is how the thirteen arose — a human owns this ticket. CB-2115 (step 4) cannot land green until it is done. Resolved on 2026-09-10 by the orchestrator under the operator''s delegation, quoted verbatim: "pmat-implement docs/specifications/goal-mode.md autonomously (you merge, triage tickets, pull requests, and label, tag, close/open)". 10 of the 13 shipped in #613 and are completed; MACS-006, MACS-007 and MACS-013 are re-planned for their unshipped remainder; the four rows whose id carries a space are cancelled as duplicates. Evidence: docs/audits/triage-PMAT-721-ledger.json, docs/audits/quorum-PMAT-721.json, docs/audits/impl-PMAT-721-receipt.md. It stays inprogress in its own PR: CB-2113 refuses a Pmat-Ticket trailer naming a terminal item, and #1252''s first CI run caught this ticket marking itself completed. PMAT-1253''s PR marks it completed. PMAT-1253: marked completed here, after #1252 — its own PR could not: CB-2113 refuses a Pmat-Ticket trailer naming a terminal item, so a ticket is completed by the next ticket''s PR.'
 - id: PMAT-722
   github_issue: null
   item_type: task
   title: 'goal-mode step 4: CB-2115 roadmap coherence — the open roadmap items and the open GitHub issues are in bijection and no matched pair has disagreed past the grace window (goal-mode.md §5, §7); Skip on a project with no roadmap or no GitHub repository, Fail not_measured when the snapshot cannot be read, never a silent pass; the control (scripts/roadmap-coherence-control.sh) runs in the traceability job now, and the direct gate step waits for master to measure coherent (§5.4 step 3)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T05:55:07Z
-  updated: 2026-09-10T05:55:07Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - 'pmat comply check --checks CB-2115 exits 1 on a fixture whose open item names a closed issue (the §7 falsifier: close one linked issue, leave the item open) and 0 on a fixture whose open items and open issues are in bijection (scripts/roadmap-coherence-control.sh, both arms observed)'
@@ -5133,16 +5133,16 @@ roadmap:
   labels:
   - kind:code
   - orch:fable
-  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2115 + builder + severity default), services/work_sync (github.rs reader moved out of the work handler), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §5, §7 row CB-2115, §11 step 4. Stacked on #1246 -> #1247 and #1248: needs the --checks selector, the traceability job and the sync engine.'
+  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2115 + builder + severity default), services/work_sync (github.rs reader moved out of the work handler), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §5, §7 row CB-2115, §11 step 4. Stacked on #1246 -> #1247 and #1248: needs the --checks selector, the traceability job and the sync engine. PMAT-1253 (goal-mode §5.1): completed — merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729 (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-723
-  github_issue: null
+  github_issue: 1286
   item_type: task
   title: 'goal-mode step 4b: CB-2115 becomes a gate — add pmat comply check --checks CB-2113,CB-2115 (with GH_TOKEN) to the traceability job once pmat work sync --check-only exits 0 on master; blocked on PMAT-721 (the thirteen #612 collisions) and on running the sync fixers (52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB at PMAT-720''s measurement)'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-10T06:34:18Z
-  updated: 2026-09-10T06:34:18Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - pmat work sync --check-only exits 0 on master, measured and quoted in the receipt before the step is added (goal-mode.md §5.4 step 3, §13 items 4-5)
@@ -5158,11 +5158,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'goal-mode step 5: CB-2112 (A, every open item names an open issue whose number is its numeric tail) and CB-2114 (B/F1, every open item carries release:, the milestone exists, the issue is on it) — control first in the traceability job, the direct step withheld while master violates both (doctrine 6, §5.4)'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-10T08:58:49Z
-  updated: 2026-09-10T08:58:49Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - 'pmat comply check --checks CB-2112 --github-snapshot F exits 1 on a fixture whose open item has github_issue: null (the §7 falsifier), on one naming a closed or absent issue, and on one whose id tail differs from the issue number; exits 0 when every open item names an open issue numbered as its tail (scripts/ticket-release-control.sh, every arm observed)'
@@ -5176,16 +5176,16 @@ roadmap:
   labels:
   - kind:code
   - orch:fable
-  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (two rules + builder + severity defaults), services/work_sync (the linkage and release predicates), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §7 rows CB-2112 and CB-2114, §11 step 5. Stacked on #1249: needs CheckOverrides/--github-snapshot, SnapshotSource and the release: field. The numeric-tail clause is PMAT-714 (#1240) ids: pmat work add --github-issue N mints PMAT-N.'
+  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (two rules + builder + severity defaults), services/work_sync (the linkage and release predicates), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §7 rows CB-2112 and CB-2114, §11 step 5. Stacked on #1249: needs CheckOverrides/--github-snapshot, SnapshotSource and the release: field. The numeric-tail clause is PMAT-714 (#1240) ids: pmat work add --github-issue N mints PMAT-N. PMAT-1253 (goal-mode §5.1): completed — merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729 (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-725
-  github_issue: null
+  github_issue: 1287
   item_type: task
   title: 'goal-mode step 5b: CB-2112 and CB-2114 become gates — every open item re-minted from its issue (id tail = issue number, the PMAT-714 path) and bound to its milestone by the sync, then the traceability job runs pmat comply check --checks CB-2112,CB-2113,CB-2114,CB-2115 with GH_TOKEN; blocked on PMAT-723 (the fixers) and on a human deciding the re-mint of the open ids'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-10T10:31:06Z
-  updated: 2026-09-10T10:31:06Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'pmat comply check --checks CB-2112,CB-2114 exits 0 on master against a fresh snapshot of paiml/paiml-mcp-agent-toolkit, measured and quoted in the receipt before the step is added (goal-mode.md doctrine 6: a rule red on the day it lands gets disabled)'
@@ -5198,14 +5198,14 @@ roadmap:
   - kind:code
   notes: Filed by PMAT-724 (goal-mode step 5). The rules, their control (scripts/ticket-release-control.sh, 17 arms, runs in the traceability job) and their ledger rows exist; only the direct invocation is withheld (§5.4, doctrine 6). The exact step is a comment in .github/workflows/ci.yml beside the withheld CB-2115 step.
 - id: PMAT-726
-  github_issue: null
+  github_issue: 1288
   item_type: task
   title: 'lib tests that call std::env::set_current_dir race the rest of the cargo test --lib process: 16 files under src/ (52 sites; hooks_command_handlers_tests 12, defect_report_service_tests 10, deep_context_config_tests 10, scaffold/tests 7) chdir the whole test binary into tempdirs, and a tempdir dropped while another test spawns cargo or resolves a relative path fails that test with ENOENT — observed on PMAT-724 as quality_proxy_property_tests::test_advisory_mode_reports_the_verdict_and_returns_the_content (''Failed to determine current directory'', ''cargo is not on PATH''), green 3 of 3 in isolation'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-10T11:15:16Z
-  updated: 2026-09-10T11:15:16Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'git grep -c set_current_dir -- src/*.rs reports 0 sites in test code: every test that needs a working directory passes it to the command (Command::current_dir) or the API under test instead of moving the process, or the ones that cannot are serialised behind one lock and restore the previous directory on every exit path (RAII guard), and say why'
@@ -5218,14 +5218,14 @@ roadmap:
   - kind:code
   notes: Filed by PMAT-724 (goal-mode step 5) from its second pmat verify run (21448 passed, 1 failed, 154 ignored); the third run and the isolation reruns are quoted in docs/audits/impl-PMAT-724-receipt.md. Related traps on record - the lib suite fails a different set per TMPDIR, and vacuous tests hide env races.
 - id: PMAT-727
-  github_issue: null
+  github_issue: 1289
   item_type: task
   title: 'the commit-msg hook accepts a PMAT-NNN mention anywhere in the message while CB-2113 accepts only a Pmat-Ticket trailer in the last paragraph: 11 commits passed the hook and were refused in CI on #1250 (goal-mode doctrine 5, §9)'
   status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-10T12:13:39Z
-  updated: 2026-09-10T12:13:39Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'one predicate, two callers: the commit-msg hook that pmat hooks install writes refuses (strict) or warns (non-strict) exactly when CB-2113 would refuse the same message - the fallback that accepts a ticket or issue reference outside the trailer block is removed, or CB-2113 is widened to accept it, and the receipt names which and why'
@@ -5241,11 +5241,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'goal-mode step 6: CB-2110 spec epics (invariant E) — every active spec names an open epic issue with a sub-issue, read from GitHub''s sub-issue relation; CB-148 retired; front-matter on the 43 specs; control first, the gate step withheld until the epics exist'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-10T12:27:23Z
-  updated: 2026-09-10T12:27:23Z
+  updated: 2026-09-10T18:16:38Z
   spec: null
   acceptance_criteria:
   - 'CB-2110: Spec Epics fails on the §7 falsifier (delete the epic: line of an active spec), on a closed, absent or unlabelled epic and on an epic with zero sub-issues; passes an active spec whose epic is open, labelled epic and has a sub-issue; exempts historical and superseded specs from the epic leg, never the parse leg, and prints every exempt spec by name - each arm in scripts/spec-epic-control.sh and each test naming the mutant it dies under'
@@ -5259,16 +5259,16 @@ roadmap:
   labels:
   - kind:code
   - orch:fable
-  notes: 'orch-basis:M>=3 — measured footprint: services/work_sync (snapshot field + live sub-issue count), services/spec_epic (new - front-matter parser + predicate), comply check_handlers (the CB-2110 rule, the GitHub preamble split from the roadmap preamble, CB-148 retired, comply report lists the exempt specs), comply_cb_detect (detector deleted), scripts/spec-epic-control.sh, .github/workflows/ci.yml, docs/specifications (44 files), README, ledgers. Stacked on PMAT-724 (#1250). Step 6 is the largest human step in goal-mode.md §11 - the epics do not exist (three issues carry the epic label today, none a spec''s, all with zero sub-issues), so the rule lands with its control and every spec reads NO-EPIC until the operator creates the epics and fills epic:, and that flip is the follow-on ticket.'
+  notes: 'orch-basis:M>=3 — measured footprint: services/work_sync (snapshot field + live sub-issue count), services/spec_epic (new - front-matter parser + predicate), comply check_handlers (the CB-2110 rule, the GitHub preamble split from the roadmap preamble, CB-148 retired, comply report lists the exempt specs), comply_cb_detect (detector deleted), scripts/spec-epic-control.sh, .github/workflows/ci.yml, docs/specifications (44 files), README, ledgers. Stacked on PMAT-724 (#1250). Step 6 is the largest human step in goal-mode.md §11 - the epics do not exist (three issues carry the epic label today, none a spec''s, all with zero sub-issues), so the rule lands with its control and every spec reads NO-EPIC until the operator creates the epics and fills epic:, and that flip is the follow-on ticket. PMAT-1253 (goal-mode §5.1): completed — merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729 (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-729
-  github_issue: null
+  github_issue: 1290
   item_type: task
   title: 'goal-mode step 6 flip: create one epic per active spec, add the tickets'' issues as its sub-issues, fill epic: in the front-matter, classify the historical and superseded specs, then run --checks CB-2110 in the traceability job'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-09-10T13:31:43Z
-  updated: 2026-09-10T13:31:43Z
+  updated: 2026-09-10T18:18:08.278327787+00:00
   spec: null
   acceptance_criteria:
   - 'one open GitHub issue labelled epic exists per active spec under docs/specifications, its sub-issues are the issues of the tickets that implement that spec (GitHub''s native sub-issue relation, goal-mode.md §4.3 - never a label or a title convention), and the spec''s front-matter epic: names it'
@@ -5297,4 +5297,738 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:triage
+  notes: null
+- id: GH-999
+  github_issue: 999
+  item_type: task
+  title: 'Agent integration: pmat ↔ Claude Code ultracode ↔ Google Antigravity (EV-0..EV-6)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1014
+  github_issue: 1014
+  item_type: task
+  title: pmat comply check asks for ~4 GB x CPU-count of RAM — 192 GB on a 48-core box
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1031
+  github_issue: 1031
+  item_type: task
+  title: Complete AGY (Antigravity 2.0) Support & Comply Integration
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1034
+  github_issue: 1034
+  item_type: task
+  title: 'pmat comply: evidence-derived feature backlog (T0 done; 4 source premises corrected)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1035
+  github_issue: 1035
+  item_type: task
+  title: 'Root cause: pmat renders ''not measured'' as ''measured and clean'' — 12-repo stack audit, 5 clusters'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1074
+  github_issue: 1074
+  item_type: task
+  title: cargo deny reports 'advisories ok' on a tree with an open moderate vulnerability — GHSA-only advisories are invisible to the only blocking security gate
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1090
+  github_issue: 1090
+  item_type: task
+  title: '[EPIC] PMAT Deep MCP Capability Improvements & Defect Hardening'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1118
+  github_issue: 1118
+  item_type: task
+  title: Commands is a 1,822-line enum with 71 variants — every new subcommand edits one file
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1119
+  github_issue: 1119
+  item_type: task
+  title: Four independent McpRequest / McpResponse definitions
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1120
+  github_issue: 1120
+  item_type: task
+  title: Blocking std::fs calls on two async hot paths (discover_project_structure, CargoDeadCodeAnalyzer::analyze)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1121
+  github_issue: 1121
+  item_type: task
+  title: pmat analyze complexity is quadratic in functions-per-file on every heuristic path (measured 4x per doubling)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1122
+  github_issue: 1122
+  item_type: task
+  title: Docker artifacts publish paiml/pmat:2.10.0 from a 3.35.0 crate; docs pin 2.12.0
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1123
+  github_issue: 1123
+  item_type: task
+  title: resolve_import_to_node is O(imports x nodes) with a fresh allocation per candidate
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1125
+  github_issue: 1125
+  item_type: task
+  title: '#1090 Task 3: decide, in writing, whether pmat ships a tamper-evident MCP audit ledger'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1127
+  github_issue: 1127
+  item_type: task
+  title: quality_proxy's child compilers have a deadline and a process group but no memory bound
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.42.0
+- id: GH-1129
+  github_issue: 1129
+  item_type: task
+  title: 'quality-gate --checks security: scope is now disclosed, breadth is not — an AWS-key-shaped literal is not detected'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1130
+  github_issue: 1130
+  item_type: task
+  title: 'Verify #1035 Cluster 2''s three never-independently-checked comply-ladder rows (whisper.apr CB-1206, infra CB-1308, rmedia CB-1210 vs CB-1339)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1131
+  github_issue: 1131
+  item_type: task
+  title: quality-gate reports two different denominators for one tree inside one JSON document
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1132
+  github_issue: 1132
+  item_type: task
+  title: Enforcement metadata claims a required check that does not exist — mutation-diff.yml and required-status-checks.txt contradict each other and both contradict live protection (CRUX-14a leg 7)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1133
+  github_issue: 1133
+  item_type: task
+  title: pmat init --target agy writes one skill, not "progressive skills" (PMAT-INIT-002 claim 3, PO-C13)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1134
+  github_issue: 1134
+  item_type: task
+  title: 'pmat init prints a next: verification command that returns a JSON-RPC error'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1135
+  github_issue: 1135
+  item_type: task
+  title: Two dead MCP tool inventories still advertise analyzers the exposure registry marks Backlog
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1136
+  github_issue: 1136
+  item_type: task
+  title: 70 of 71 top-level Commands variants have no MCP exposure declaration — decide it or write the decision down
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1138
+  github_issue: 1138
+  item_type: task
+  title: pmat config --show is labelled "Raw Configuration (TOML)" but drops keys pmat honours
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1139
+  github_issue: 1139
+  item_type: task
+  title: 'analyze vacuous-tests misses two classes, both live in pmat''s own suite: assert-over-an-empty-set, and expect()-on-the-harness with no assertion on the subject'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1140
+  github_issue: 1140
+  item_type: task
+  title: 'pmat analyze vacuous-tests --help prints the 802 / ~933 figures the author of #1018 retracted'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1142
+  github_issue: 1142
+  item_type: task
+  title: 'Manifest/target parity is unenforced: no gate checks criterion_main! against [[bench]], and nothing would notice the next benchmark that never runs'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1143
+  github_issue: 1143
+  item_type: task
+  title: 'comply check has no peak-RSS measurement, so #1014''s memory criteria cannot be judged either way'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1144
+  github_issue: 1144
+  item_type: task
+  title: The simulated refactor.* MCP surface EV-0 removed is still compiled in, on an unconstructed builder
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1145
+  github_issue: 1145
+  item_type: task
+  title: mcp_integration::MCP_VERSION is frozen at "2024-11-05" and pmat-agent prints it as the protocol version
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1153
+  github_issue: 1153
+  item_type: task
+  title: 'CRUX audit tracking: 25 verified defects whose acceptance tests are still draft'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1162
+  github_issue: 1162
+  item_type: task
+  title: tdg check-regression compares a cached baseline score (with entropy) against a recompute that omits entropy — every edited file reads as a regression
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1225
+  github_issue: 1225
+  item_type: task
+  title: 'BSE-12 diff-scoped complexity: a refusal reads as a pass under --quiet, and the generated hook discards pmat''s exit code'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1226
+  github_issue: 1226
+  item_type: task
+  title: The lib suite's failure set is a function of $TMPDIR — pmat verify cannot reach green on any tested TMPDIR
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1229
+  github_issue: 1229
+  item_type: task
+  title: 'rust-docs/cli-reference.md documents a binary name that does not exist (blocked by #1228)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1230
+  github_issue: 1230
+  item_type: task
+  title: tool_manifest.rs doc comments say 19 tools; LIVE_MCP_TOOLS holds 20 — and a third inventory names a tool that does not exist
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1231
+  github_issue: 1231
+  item_type: task
+  title: No JSON Schema published for any pmat config file; key validation reflects over PmatConfig::default()
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1232
+  github_issue: 1232
+  item_type: task
+  title: 'pmat_scorer_tests.rs: ignored panic!() placeholders for a shipped feature — hiding that pmat-quality.toml is never read'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1233
+  github_issue: 1233
+  item_type: task
+  title: github_client.rs request logic is untested (wiremock does NOT apply — the client wraps octocrab)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1234
+  github_issue: 1234
+  item_type: task
+  title: DiscoveryService is publicly re-exported and called from no request handler — wire it or delete it
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1235
+  github_issue: 1235
+  item_type: task
+  title: Timeline TUI ships in source, in no binary, and is reachable from no command
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1236
+  github_issue: 1236
+  item_type: task
+  title: 'Progress rendering is a documented no-op: long analyses render as silence'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1238
+  github_issue: 1238
+  item_type: task
+  title: 'Nothing derives the interface: OpenAPI, MCP schemas and docs are three hand-maintained descriptions of the same surface'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1239
+  github_issue: 1239
+  item_type: task
+  title: Five packaging channels are committed and none is published by automation
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-10T18:18:21.932438877+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
   notes: null

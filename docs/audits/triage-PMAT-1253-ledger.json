@@ -1145,5 +1145,238 @@
       "#999, #1031, #1034, #1035, #1090 no-roadmap->item (the rule's own condition)"
     ],
     "gap": "the lanes spot-checked 11 of the 74 open/item rows; the other 63 go to the fixers, whose writes are reversible (an issue can be closed, an item completed)"
+  },
+  "applied": {
+    "roadmap": {
+      "completed": 18,
+      "paired": 6,
+      "PMAT-721": "completed here (its own PR could not: CB-2113)"
+    },
+    "github": {
+      "label_created": [
+        "no-roadmap",
+        "compile-time-codegen",
+        "component-28",
+        "component-29",
+        "component-30",
+        "deferred:3.41.0",
+        "falsification-unification",
+        "kind:code",
+        "kind:measurement",
+        "proc-macro",
+        "provable-contracts",
+        "verification-ladder"
+      ],
+      "labelled_no_roadmap": [
+        1017,
+        1018,
+        1019
+      ],
+      "commented": [
+        1017,
+        1018,
+        1019
+      ],
+      "closed": {
+        "1240": "operator authority (verbatim), cite #1241/d3eef0198 and #1242"
+      }
+    },
+    "yaml_to_github_opened": [
+      {
+        "id": "MACS-006",
+        "issue": 1254
+      },
+      {
+        "id": "MACS-007",
+        "issue": 1255
+      },
+      {
+        "id": "MACS-013",
+        "issue": 1256
+      },
+      {
+        "id": "MACS-017",
+        "issue": 1257
+      },
+      {
+        "id": "MACS-018",
+        "issue": 1258
+      },
+      {
+        "id": "MACS-019",
+        "issue": 1259
+      },
+      {
+        "id": "PMAT-619",
+        "issue": 1260
+      },
+      {
+        "id": "PMAT-621",
+        "issue": 1261
+      },
+      {
+        "id": "PMAT-622",
+        "issue": 1262
+      },
+      {
+        "id": "PMAT-623",
+        "issue": 1263
+      },
+      {
+        "id": "PMAT-632",
+        "issue": 1264
+      },
+      {
+        "id": "PMAT-633",
+        "issue": 1265
+      },
+      {
+        "id": "PMAT-636",
+        "issue": 1266
+      },
+      {
+        "id": "PMAT-638",
+        "issue": 1267
+      },
+      {
+        "id": "PMAT-639",
+        "issue": 1268
+      },
+      {
+        "id": "PMAT-646",
+        "issue": 1269
+      },
+      {
+        "id": "PMAT-647",
+        "issue": 1270
+      },
+      {
+        "id": "PMAT-653",
+        "issue": 1271
+      },
+      {
+        "id": "PMAT-659",
+        "issue": 1272
+      },
+      {
+        "id": "PMAT-677",
+        "issue": 1273
+      },
+      {
+        "id": "PMAT-678",
+        "issue": 1274
+      },
+      {
+        "id": "PMAT-681",
+        "issue": 1275
+      },
+      {
+        "id": "PMAT-683",
+        "issue": 1276
+      },
+      {
+        "id": "PMAT-684",
+        "issue": 1277
+      },
+      {
+        "id": "PMAT-690",
+        "issue": 1278
+      },
+      {
+        "id": "PMAT-692",
+        "issue": 1279
+      },
+      {
+        "id": "PMAT-701",
+        "issue": 1280
+      },
+      {
+        "id": "PMAT-702",
+        "issue": 1281
+      },
+      {
+        "id": "PMAT-704",
+        "issue": 1282
+      },
+      {
+        "id": "PMAT-706",
+        "issue": 1283
+      },
+      {
+        "id": "PMAT-708",
+        "issue": 1284
+      },
+      {
+        "id": "PMAT-709",
+        "issue": 1285
+      },
+      {
+        "id": "PMAT-723",
+        "issue": 1286
+      },
+      {
+        "id": "PMAT-725",
+        "issue": 1287
+      },
+      {
+        "id": "PMAT-726",
+        "issue": 1288
+      },
+      {
+        "id": "PMAT-727",
+        "issue": 1289
+      },
+      {
+        "id": "PMAT-729",
+        "issue": 1290
+      }
+    ],
+    "github_to_yaml_items": [
+      "GH-999",
+      "GH-1014",
+      "GH-1031",
+      "GH-1034",
+      "GH-1035",
+      "GH-1074",
+      "GH-1090",
+      "GH-1118",
+      "GH-1119",
+      "GH-1120",
+      "GH-1121",
+      "GH-1122",
+      "GH-1123",
+      "GH-1125",
+      "GH-1127",
+      "GH-1129",
+      "GH-1130",
+      "GH-1131",
+      "GH-1132",
+      "GH-1133",
+      "GH-1134",
+      "GH-1135",
+      "GH-1136",
+      "GH-1138",
+      "GH-1139",
+      "GH-1140",
+      "GH-1142",
+      "GH-1143",
+      "GH-1144",
+      "GH-1145",
+      "GH-1153",
+      "GH-1162",
+      "GH-1225",
+      "GH-1226",
+      "GH-1229",
+      "GH-1230",
+      "GH-1231",
+      "GH-1232",
+      "GH-1233",
+      "GH-1234",
+      "GH-1235",
+      "GH-1236",
+      "GH-1238",
+      "GH-1239"
+    ],
+    "verdict_after": "✓ coherent: R ↔ G is a bijection and no matched pair disagrees past the grace window"
   }
 }
