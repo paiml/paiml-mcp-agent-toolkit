@@ -317,6 +317,7 @@ pub mod roadmap_id_authority; // PMAT-680: one id authority per repository, not 
 pub mod roadmap_service;
 pub mod roadmap_text; // PMAT-676: the one raw-text id scanner and roadmap validator
 pub mod spec_epic; // PMAT-728: goal-mode §4.3 — the spec ↔ epic edge (CB-2110), judged from front-matter and a snapshot
+pub mod spec_review; // PMAT-1299: goal-mode §6 — the spec review artifact (CB-2111), judged offline from a file
 pub mod telemetry_service;
 pub mod work_sync; // PMAT-720: goal-mode §5 — the roadmap/GitHub bijection, judged from a snapshot // Issue #75 Phase 7: CHANGELOG automation // PMAT-470: RAG-powered agent context with semantic code search
 
