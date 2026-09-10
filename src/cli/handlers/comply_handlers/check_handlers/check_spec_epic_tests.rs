@@ -84,7 +84,85 @@ mod tests_spec_epics {
         assert!(c.message.contains(rendered_prefix), "{} lacks {rendered_prefix:?}", c.message);
     }
 
+    /// Host git configuration is kept out of the fixture.
+    fn git(dir: &Path, args: &[&str]) {
+        let status = std::process::Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(["-c", "user.name=pmat728", "-c", "user.email=pmat728@example.invalid", "-c", "commit.gpgsign=false"])
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .status()
+            .expect("git runs");
+        assert!(status.success(), "git {args:?}");
+    }
+
     // ───────────────────────── inputs ─────────────────────────
+
+    /// Mutant (quorum on PMAT-728, delegate-verified §12 hole): a NotFound or
+    /// empty `docs/specifications` mapped to Skip without asking git whether
+    /// it was committed — `rm -rf docs/specifications` then passed the rule.
+    /// And the converse: a repository whose history never held the directory
+    /// still skips (a structural absence), so "any git repo ⇒ not_measured"
+    /// dies too.
+    #[test]
+    fn a_committed_then_deleted_specifications_directory_is_not_measured() {
+        let dir = bound();
+        git(dir.path(), &["init", "-q", "-b", "master"]);
+        git(dir.path(), &["add", "-A"]);
+        git(dir.path(), &["commit", "-q", "-m", "specs"]);
+        git(dir.path(), &["rm", "-r", "-q", "docs/specifications"]);
+        assert!(!dir.path().join("docs/specifications").exists());
+        assert_not_measured(&rule(dir.path()), "committed and is now gone");
+
+        // Emptied, not removed: git tracks no empty directory, so this is the
+        // same deletion.
+        std::fs::create_dir_all(dir.path().join("docs/specifications")).expect("mkdir");
+        assert_not_measured(&rule(dir.path()), "committed and is now gone");
+
+        let never = project(Some("paiml/fixture"));
+        git(never.path(), &["init", "-q", "-b", "master"]);
+        git(never.path(), &["add", "-A"]);
+        git(never.path(), &["commit", "-q", "-m", "roadmap only"]);
+        std::fs::remove_dir_all(never.path().join("docs/specifications")).expect("rm specs");
+        let c = rule_with(never.path(), None);
+        assert_eq!(c.status, CheckStatus::Skip, "{}", c.message);
+        assert!(c.message.contains("no docs/specifications"), "{}", c.message);
+    }
+
+    /// Mutant (quorum lane 2): `findings.sort_by(..)` deleted — the parse
+    /// leg's findings then precede the epic leg's regardless of path, and
+    /// the header's first-seen class order follows.
+    #[test]
+    fn findings_from_both_legs_are_rendered_in_path_order() {
+        let dir = project(Some("paiml/fixture"));
+        spec(dir.path(), "a.md", &fm("7", "active"));
+        spec(dir.path(), "z.md", "---\nstatus: active\nvendors: []\n---\n# Z\n");
+        snapshot(dir.path(), vec![issue(7, "closed", &["epic"], Some(1))]);
+        let c = rule(dir.path());
+        assert!(
+            c.message.starts_with("2 finding(s) — EPIC-CLOSED 1, NO-EPIC 1: EPIC-CLOSED docs/specifications/a.md:"),
+            "{}",
+            c.message
+        );
+        assert!(c.message.contains("; NO-EPIC docs/specifications/z.md:"), "{}", c.message);
+    }
+
+    /// Mutant (quorum lane 3): `repo_hint` unconditionally `None` — the
+    /// roadmap's `github_repo` then never reaches the live source and the
+    /// verdict reads "no GitHub repository resolves" instead of naming the
+    /// repository it tried. `paiml/fixture` does not exist, so the live read
+    /// fails whether or not `gh` is installed or authenticated, and the row
+    /// is not_measured either way; what this pins is the SOURCE named.
+    #[test]
+    fn the_roadmaps_github_repo_is_the_live_source_when_no_snapshot_is_given() {
+        let dir = project(Some("paiml/fixture"));
+        spec(dir.path(), "a.md", &fm("7", "active"));
+        let c = rule_with(dir.path(), None);
+        assert_not_measured(&c, "snapshot gh paiml/fixture");
+        assert!(!c.message.contains("no GitHub repository resolves"), "{}", c.message);
+    }
 
     /// Mutant: a project with no specs read as a failure (or a pass) instead
     /// of a structural absence.

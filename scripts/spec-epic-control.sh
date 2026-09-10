@@ -41,6 +41,7 @@
 #   arm 16 THIS TREE this repository's own docs/specifications, epics #1017/#1018/#1019 open with 0 sub-issues
 #                                                                              exit 1, Fail "N finding(s) — NO-EPIC N:" with N = the *.md count, exempt none
 #   arm 17 RED   ten active specs s00..s09 with epic null                      exit 1, Fail "10 finding(s) — NO-EPIC 10:" and "(+2 more)" — the ninth is counted, not dropped
+#   arm 18 N/M   docs/specifications was committed and then deleted            exit 1, Fail not_measured: "committed and is now gone" — deleting the input is not passing (§12)
 #
 # Arm 16 is the withheld-step measurement (goal-mode.md §11 step 6, doctrine
 # 6): it runs the rule on THIS tree's specs, copied into the fixture, and
@@ -362,4 +363,26 @@ starts 17 "10 finding(s) — NO-EPIC 10:"
 lacks 17 "NO-EPIC docs/specifications/s08.md:"
 echo "spec-epic-control: arm 17 RED   — ten NO-EPIC specs: eight rendered, +2 more counted (exit 1)"
 
-echo "spec-epic-control: all 17 arms behaved — CB-2110 can fail, can pass, says why, names its exemptions, refuses its own bypass, and this tree measures NO-EPIC on every spec"
+# arm 18: not measured — the directory was committed and then deleted. Arm 11
+# skipped on a directory that never existed in a repository with no history;
+# this one has history, and the history says the input was there. The quorum
+# on PMAT-728 found the first cut skipping here: `rm -rf docs/specifications`
+# passed the rule (§12: a bypass).
+fgit() {
+  GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+  GIT_AUTHOR_NAME=pmat728 GIT_AUTHOR_EMAIL=pmat728@example.invalid \
+  GIT_COMMITTER_NAME=pmat728 GIT_COMMITTER_EMAIL=pmat728@example.invalid \
+    git -C "$repo" -c commit.gpgsign=false "$@"
+}
+rm -rf "${specs:?}"
+write_spec a.md 7 active
+write_snapshot "$(issue 7 open '["epic"]' 1)"
+fgit add -A && fgit commit -q -m "specs"
+fgit rm -r -q docs/specifications
+[ ! -e "$specs" ] || fail_arm 18 "git rm must remove the directory"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 18 "a docs/specifications that was committed and deleted must exit 1 — deleting a gate's input is not a way of passing it"
+expect 18 CB-2110 Fail "committed and is now gone"; not_measured 18
+echo "spec-epic-control: arm 18 N/M   — committed-then-deleted docs/specifications reported not_measured (exit 1)"
+
+echo "spec-epic-control: all 18 arms behaved — CB-2110 can fail, can pass, says why, names its exemptions, refuses its own bypass, and this tree measures NO-EPIC on every spec"

@@ -123,7 +123,9 @@ fn parse_vendors(val: &str) -> Result<Vec<String>, FrontMatterError> {
 
 /// `epic:` — `null`, `~`, empty or absent is `None`; plain digits are the
 /// issue number; anything else is [`FrontMatterError::BadEpic`] with the raw
-/// text (`#123` is a reference, not a number — §4.3 names an issue).
+/// text (`'#123'` is a reference, not a number — §4.3 names an issue; bare
+/// `#123` is a YAML comment and reads as null, which an active spec then
+/// fails as NO-EPIC: a reference passes on neither leg).
 fn parse_epic(val: Option<&str>) -> Result<Option<u64>, FrontMatterError> {
     match val {
         Some("null") | Some("~") | Some("") | None => Ok(None),
@@ -132,6 +134,38 @@ fn parse_epic(val: Option<&str>) -> Result<Option<u64>, FrontMatterError> {
             Err(_) => Err(FrontMatterError::BadEpic(v.to_string())),
         },
     }
+}
+
+/// The value with its trailing YAML comment removed: a `#` that opens the
+/// value or follows whitespace, outside quotes, begins a comment. goal-mode.md
+/// §4.3 documents the header WITH such comments (`epic: 1234         # an
+/// open GitHub issue labelled epic`) and a human filling `epic:` copies it —
+/// the quorum on PMAT-728 found the first cut reading that example as
+/// `BadEpic`, `BadStatus` and `BadVendors` at once.
+fn strip_inline_comment(val: &str) -> &str {
+    let mut quote: Option<char> = None;
+    let mut after_space = true;
+    for (i, c) in val.char_indices() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == '\'' || c == '"' => quote = Some(c),
+            None if c == '#' && after_space => return val[..i].trim_end(),
+            None => {}
+        }
+        after_space = c.is_whitespace();
+    }
+    val
+}
+
+/// A scalar value: the comment stripped, surrounding whitespace and one
+/// layer of quotes removed.
+fn scalar(rest: &str) -> String {
+    strip_inline_comment(rest)
+        .trim()
+        .trim_matches('\'')
+        .trim_matches('"')
+        .to_string()
 }
 
 /// The three keys as the block is read line by line; `in_vendors_block` is
@@ -153,23 +187,25 @@ impl ParseState {
 
         if self.in_vendors_block {
             if let Some(item) = trimmed.strip_prefix("- ") {
-                let v = item.trim().trim_matches('\'').trim_matches('"');
+                let v = strip_inline_comment(item)
+                    .trim()
+                    .trim_matches('\'')
+                    .trim_matches('"');
                 self.vendors_val.push(v.to_string());
                 return Ok(());
             }
-            if !line.starts_with(' ') {
-                self.in_vendors_block = false;
-            }
+            // Any other line ends the block: every arm below resets the flag
+            // except `vendors:` itself, which opens a new one.
         }
 
         if let Some(rest) = line.strip_prefix("epic:") {
             self.in_vendors_block = false;
-            self.epic_val = Some(rest.trim().trim_matches('\'').trim_matches('"').to_string());
+            self.epic_val = Some(scalar(rest));
         } else if let Some(rest) = line.strip_prefix("status:") {
             self.in_vendors_block = false;
-            self.status_val = Some(rest.trim().trim_matches('\'').trim_matches('"').to_string());
+            self.status_val = Some(scalar(rest));
         } else if let Some(rest) = line.strip_prefix("vendors:") {
-            let val = rest.trim();
+            let val = strip_inline_comment(rest).trim();
             if val.is_empty() {
                 self.in_vendors_block = true;
             } else {
@@ -184,8 +220,9 @@ impl ParseState {
 
 /// Parse the YAML front-matter at the top of a spec. The block is the lines
 /// between a first line exactly `---` and the next line exactly `---` (CRLF
-/// tolerated); simple `key: value` lines, with `#` comments and blank lines
-/// skipped and keys other than `epic`, `status` and `vendors` ignored (`pmat
+/// tolerated); simple `key: value` lines, with `#` comments (whole-line and
+/// trailing) and blank lines skipped and keys other than `epic`, `status` and
+/// `vendors` ignored (`pmat
 /// spec` reads its own); `epic:` absent reads as `epic: null`. No YAML crate
 /// on purpose: three keys, no feature coupling.
 pub fn parse_front_matter(text: &str) -> Result<SpecFrontMatter, FrontMatterError> {

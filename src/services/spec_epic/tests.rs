@@ -137,9 +137,14 @@ fn bad_values_are_named_not_defaulted() {
         Err(FrontMatterError::BadEpic("12a".to_string()))
     );
     assert_eq!(
-        parse_front_matter("---\nepic: #12\nstatus: active\n---\n"),
+        parse_front_matter("---\nepic: '#12'\nstatus: active\n---\n"),
         Err(FrontMatterError::BadEpic("#12".to_string())),
         "an issue number, not a reference"
+    );
+    assert_eq!(
+        parsed("---\nepic: #12\nstatus: active\n---\n").epic,
+        None,
+        "bare, `#12` is a YAML comment: the value is null and an active spec is NO-EPIC — a reference is refused on one leg or the other"
     );
     assert_eq!(
         parse_front_matter("---\nepic: null\nstatus: draft\n---\n"),
@@ -344,4 +349,70 @@ fn the_epic_leg_reports_the_first_failing_clause_in_path_order() {
     assert_eq!(found[4].render(), "NO-SUB-ISSUES docs/specifications/e.md: #5 has no sub-issue — a spec's tickets are its epic's sub-issues (goal-mode.md §4.3)");
     assert_eq!(SpecFinding::NoEpic { spec: "s".to_string() }.render(), "NO-EPIC s: epic is null — an active spec names an open issue labelled epic (goal-mode.md §4.3)");
     assert_eq!(SpecFinding::NoFrontMatter { spec: "s".to_string() }.render(), "NO-FRONT-MATTER s: the file does not begin with a --- front-matter block (goal-mode.md §4.3)");
+}
+
+/// Mutant M6: `strip_inline_comment` returning its input unchanged (a
+/// trailing `# …` kept in the value), or a `#` inside quotes taken as a
+/// comment. The header goal-mode.md §4.3 documents carries a comment on every
+/// line; it is read from the spec itself so the two cannot drift.
+#[test]
+fn the_header_goal_mode_documents_parses_with_its_inline_comments() {
+    let doc = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/docs/specifications/goal-mode.md"
+    ))
+    .expect("goal-mode.md is in the tree");
+    let start = doc
+        .find("```yaml\n---\nepic:")
+        .expect("§4.3 documents the header in a yaml fence");
+    let block = &doc[start + "```yaml\n".len()..];
+    let end = block.find("```").expect("the fence closes");
+    let block = &block[..end];
+    assert!(
+        block.contains('#'),
+        "the documented header carries comments: {block:?}"
+    );
+    let fm = parsed(block);
+    assert_eq!(
+        fm,
+        SpecFrontMatter {
+            epic: Some(1234),
+            status: SpecStatus::Active,
+            vendors: vec!["cuda".to_string()],
+        },
+        "{block:?}"
+    );
+
+    let commented = "---\nepic: 7 # seven\nstatus: active   # still active\nvendors:\n  - cuda # gpu\n  - 'rocm' # amd\n---\n";
+    assert_eq!(
+        parsed(commented),
+        SpecFrontMatter {
+            epic: Some(7),
+            status: SpecStatus::Active,
+            vendors: vec!["cuda".to_string(), "rocm".to_string()],
+        }
+    );
+    assert_eq!(
+        parsed("---\nepic: # filled later\nstatus: active\n---\n").epic,
+        None
+    );
+    assert_eq!(
+        parse_front_matter("---\nepic: '7 # not a comment'\nstatus: active\n---\n"),
+        Err(FrontMatterError::BadEpic("7 # not a comment".to_string())),
+        "a # inside quotes is part of the value"
+    );
+    assert_eq!(
+        parse_front_matter("---\nepic: 7#8\nstatus: active\n---\n"),
+        Err(FrontMatterError::BadEpic("7#8".to_string())),
+        "a # that follows no whitespace is part of the value (YAML)"
+    );
+}
+
+/// Mutant: the `~` or the empty arm of `parse_epic` dropped — `epic: ~` and
+/// `epic:` are YAML null exactly as `epic: null` is.
+#[test]
+fn epic_tilde_and_empty_read_as_null() {
+    for epic in ["null", "~", "", "''", "\"\""] {
+        assert_eq!(parsed(&fm(epic, "active")).epic, None, "epic: {epic}");
+    }
 }

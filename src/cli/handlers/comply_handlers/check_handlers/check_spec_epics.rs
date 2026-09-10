@@ -12,7 +12,8 @@
 /// see is a hole). The parse leg is offline; the snapshot is loaded only when
 /// an active spec names an epic. The judgement is `services::spec_epic`; the
 /// files are `list_specs`; the snapshot and its early verdicts are the same
-/// preamble the roadmap rules use.
+/// preamble the roadmap rules use. A `docs/specifications` that was
+/// committed and is now gone is `not_measured`, never Skip (§12).
 pub(crate) fn check_spec_epics(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
@@ -37,10 +38,23 @@ pub(crate) fn check_spec_epics(
         message: format!("not_measured: {message} — an input the rule expected and could not read is a failure, not a pass (goal-mode.md doctrine 2)"),
     };
     
+    // Never committed ⇒ absent by design: Skip. Committed at any point and
+    // now gone (or emptied) ⇒ deleting a gate's input is not a way of passing
+    // it — the line the roadmap preamble and CB-2102 draw for their inputs;
+    // the quorum on PMAT-728 found the first cut skipping on `rm -rf
+    // docs/specifications` (§12: a bypass). An unreadable history is
+    // treated as "never": a repository with no history has nothing to have
+    // deleted.
+    let absent = || {
+        match crate::services::metrics_ratchet::history::was_ever_committed(project_path, crate::services::spec_epic::SPECS_DIR) {
+            Ok(true) => not_measured("docs/specifications was committed and is now gone — deleting a gate's input is not a way of passing it".to_string()),
+            Ok(false) | Err(_) => skip("no docs/specifications — this project keeps no specifications, so there is no spec ↔ epic edge to check".to_string()),
+        }
+    };
     let specs = match list_specs(project_path) {
-        Ok(s) if s.is_empty() => return skip("no docs/specifications — this project keeps no specifications, so there is no spec ↔ epic edge to check".to_string()),
+        Ok(s) if s.is_empty() => return absent(),
         Ok(s) => s,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return skip("no docs/specifications — this project keeps no specifications, so there is no spec ↔ epic edge to check".to_string()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return absent(),
         Err(e) => return not_measured(format!("docs/specifications could not be read: {e}")),
     };
     

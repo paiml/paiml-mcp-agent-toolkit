@@ -299,8 +299,22 @@ mod tests {
             parse_sub_issue_counts(&null, &[5]).is_err(),
             "a null alias (no such issue) is not a zero"
         );
+        // Mutant (3 of 3 quorum lanes on PMAT-728): the `errors` block deleted
+        // — with `data: null` the fall-through errors too, so only the
+        // MESSAGE proves the block ran; and an `errors` array beside a
+        // complete `data` is still an error, never a count.
         let errors = serde_json::json!({"errors": [{"message": "bad"}], "data": null});
-        assert!(parse_sub_issue_counts(&errors, &[5]).is_err());
+        let e = parse_sub_issue_counts(&errors, &[5]).expect_err("a GraphQL error is an error");
+        assert!(
+            e.to_string().contains("bad"),
+            "the GraphQL message is the error: {e}"
+        );
+        let partial = serde_json::json!({
+            "errors": [{"message": "rate limited"}],
+            "data": {"repository": {"i5": {"subIssuesSummary": {"total": 1}}}}
+        });
+        let e = parse_sub_issue_counts(&partial, &[5]).expect_err("errors beside data is an error");
+        assert!(e.to_string().contains("rate limited"), "{e}");
     }
 
     /// Mutant: `fill_sub_issues` writing every issue (a zero onto the
