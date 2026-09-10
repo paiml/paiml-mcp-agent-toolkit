@@ -1,0 +1,1382 @@
+{
+  "ticket": "PMAT-1253",
+  "kind": "triage",
+  "base": "PMAT-721-macs-612-collisions (2211dbf34, stacked on #1252)",
+  "rules": {
+    "completed": "the item's work is on master — a merged PR from its branch or naming it, or its named deliverables verified in the tree — and its acceptance criteria are met",
+    "pair": "the item's own title names the open orphan issue first; the issue becomes its github_issue",
+    "open": "real remaining work: the fixer mints its issue",
+    "no-roadmap": "a tracker or epic whose work is tracked elsewhere: exempt from G with the label, never closed by this ticket",
+    "close": "fixed, with the merge that fixed it cited; only after the quorum agrees",
+    "item": "real open work with no roadmap item: the fixer adds GH-<n>"
+  },
+  "rows_total": 115,
+  "verdict_counts": {
+    "roadmap:open": 37,
+    "roadmap:completed": 18,
+    "roadmap:pair": 6,
+    "github:paired": 6,
+    "github:item": 44,
+    "github:no-roadmap": 3,
+    "github:close": 1
+  },
+  "rows": [
+    {
+      "kind": "roadmap",
+      "key": "MACS-017",
+      "verdict": "open",
+      "evidence": [
+        "`pmat agy sync` parses ('Google Anti-Gravity customizations translator') — the ac's command",
+        "commit ca0692b82 'feat: implement MACS-017, MACS-018, MACS-019 and bump deps' (2026-07-04)",
+        "3.39.0 deferral read 'no matching commits found' — the id-in-subject heuristic; ca0692b82 names it",
+        "delegate-measured and re-read: `pmat agy sync` refuses — 'agy sync is not implemented: … no PMAT -> Google Anti-Gravity transpiler exists, so nothing was written' (src/cli/handlers/agy_handler.rs:55); the command parses and writes nothing",
+        "ca0692b82's subject claims more than it shipped"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue",
+      "quorum": "lanes completed 3/3 on the commit subject alone; overruled by the measured refusal"
+    },
+    {
+      "kind": "roadmap",
+      "key": "MACS-018",
+      "verdict": "open",
+      "evidence": [
+        "AgentHarness::GoogleAntiGravity ('antigravity', src/cli/handlers/work_ledger_types.rs:205) and AgentProvenance.conversation_id exist",
+        "commit ca0692b82",
+        "no parser that extracts Anti-Gravity transcript bounds exists; only AgentHarness::GoogleAntiGravity and AgentProvenance.conversation_id do"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue",
+      "quorum": "open 2/3 (lanes 2, 3; the delegate's grep agrees); lane 1 rested on a commit message"
+    },
+    {
+      "kind": "roadmap",
+      "key": "MACS-019",
+      "verdict": "open",
+      "evidence": [
+        "`pmat work delegate --agy` parses — the ac's adapter",
+        "commit ca0692b82",
+        "`--agy` only selects DelegationTarget::GoogleAntiGravity for the ledger record (src/cli/handlers/work_ledger_delegate.rs:52-60, 296-299); nothing translates contract requirements into define_subagent/invoke_subagent sequences, which is the ac"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue",
+      "quorum": "lanes completed 3/3 on the commit subject; overruled by reading the handler"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-620",
+      "verdict": "completed",
+      "evidence": [
+        "struct ContractBinding (src/cli/handlers/work_contract_core.rs, src/services/contract_index.rs)",
+        "`pmat work edit --implements` exists",
+        "CB-1600..1609 in check_binding_scope.rs",
+        "commit b6d7bebf1 'feat(comply): complete CB-16xx spec — Components 27-31 (#302)'",
+        "verify settled: check_binding_scope::tests_sha_equation::sha_drift_fails_on_edit, ::sha_drift_passes_when_aligned and ::sha_drift_skips_without_bindings are in the lib suite; binding YAML resolution is covered by resolve_binding_files_finds_local_binding"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)",
+      "quorum": "completed 3/3"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-624",
+      "verdict": "completed",
+      "evidence": [
+        "the ac's CoT restructure ({assumption, implication, evidence_method, discharged_by}) and derivation shipped as MACS-007/008/009 in #613; their tests pass on 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json)",
+        "CB-1640..1649 present"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-629",
+      "verdict": "completed",
+      "evidence": [
+        "da9da093b 'test(coverage): cover rust_wasm_analyzer::analyze_impl_method branches (PMAT-629) (#494)' — exactly the ac's target",
+        "the 3.39.0 row said 'no matching test-addition commits found'"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-654",
+      "verdict": "completed",
+      "evidence": [
+        "97d994f78 'fix(test): git_context tests accept a linked worktree, where .git is a file (PMAT-654)' (2026-09-03) is on master",
+        "get_repo_root accepts .git as a file (src/models/git_context.rs, the PMAT-654 comment)",
+        "the 3.39.0 row named a different sha (beee475ce) as not merged"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-689",
+      "verdict": "completed",
+      "evidence": [
+        "#1227 merged 2026-09-08 from PMAT-689-hermetic-changelog-scope"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-712",
+      "verdict": "completed",
+      "evidence": [
+        "#1237 merged 2026-09-09 from PMAT-712-cli-doc-sync-vacuous (closes #1228)"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-713",
+      "verdict": "completed",
+      "evidence": [
+        "#1241 merged 2026-09-09 (d3eef0198)",
+        "#1240's last comment: 'All three asks are on master — #1241, merged as d3eef0198'"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-714",
+      "verdict": "completed",
+      "evidence": [
+        "#1242 merged 2026-09-09 from PMAT-714-mandatory-issue-ids",
+        "`pmat work add --github-issue N` mints PMAT-N (ticket_crud.rs:94)"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-715",
+      "verdict": "completed",
+      "evidence": [
+        "#1243 merged 2026-09-09 from PMAT-715-cli-reference-hard-failure"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-716",
+      "verdict": "completed",
+      "evidence": [
+        "#1244 merged 2026-09-09 — docs/specifications/goal-mode.md is on master"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-717",
+      "verdict": "completed",
+      "evidence": [
+        "#1245 merged 2026-09-09 from PMAT-717-ruleset-aware-required (goal-mode step 0)"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-718",
+      "verdict": "completed",
+      "evidence": [
+        "merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-719",
+      "verdict": "completed",
+      "evidence": [
+        "merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-720",
+      "verdict": "completed",
+      "evidence": [
+        "merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-722",
+      "verdict": "completed",
+      "evidence": [
+        "merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-724",
+      "verdict": "completed",
+      "evidence": [
+        "merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-728",
+      "verdict": "completed",
+      "evidence": [
+        "merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-694",
+      "verdict": "pair",
+      "evidence": [
+        "the item's title names #1202 first and absorbs #1127",
+        "#1202 is open and named by no open item",
+        "correction: the 3.40.0 CHANGELOG lists #1202 under 'Known, not fixed'; the fix branch (71dd01e15) is not on master and quality_proxy_analysis.rs still spawns cargo clippy (delegate)"
+      ],
+      "change": "github_issue: null -> 1202; the absorbed #1127 get their own GH items (one item per issue — goal-mode §5.1)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-695",
+      "verdict": "pair",
+      "evidence": [
+        "the item's title names #1156 first",
+        "#1156 is open and named by no open item",
+        "the 3.40.0 train did not ship it: #1156's last comment defers it, and the 3.40.0 CHANGELOG does not name it"
+      ],
+      "change": "github_issue: null -> 1156"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-696",
+      "verdict": "pair",
+      "evidence": [
+        "the item's title names #1128 first and absorbs #1132, #1074",
+        "#1128 is open and named by no open item",
+        "deferred to 3.41.0 by the 3.40.0 size gate"
+      ],
+      "change": "github_issue: null -> 1128; the absorbed #1132, #1074 get their own GH items (one item per issue — goal-mode §5.1)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-697",
+      "verdict": "pair",
+      "evidence": [
+        "the item's title names #1124 first and absorbs #1162, #1131",
+        "#1124 is open and named by no open item",
+        "deferred to 3.41.0 by the 3.40.0 size gate"
+      ],
+      "change": "github_issue: null -> 1124; the absorbed #1162, #1131 get their own GH items (one item per issue — goal-mode §5.1)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-698",
+      "verdict": "pair",
+      "evidence": [
+        "the item's title names #1137 first and absorbs #1138",
+        "#1137 is open and named by no open item",
+        "deferred to 3.41.0 by the 3.40.0 size gate"
+      ],
+      "change": "github_issue: null -> 1137; the absorbed #1138 get their own GH items (one item per issue — goal-mode §5.1)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-699",
+      "verdict": "pair",
+      "evidence": [
+        "the item's title names #1141 first and absorbs #1144, #1135, #1140, #1134, #1145",
+        "#1141 is open and named by no open item",
+        "deferred to 3.41.0 by the 3.40.0 size gate"
+      ],
+      "change": "github_issue: null -> 1141; the absorbed #1144, #1135, #1140, #1134, #1145 get their own GH items (one item per issue — goal-mode §5.1)"
+    },
+    {
+      "kind": "roadmap",
+      "key": "MACS-006",
+      "verdict": "open",
+      "evidence": [
+        "PMAT-721 remainder: no test that a receipt records both ladder levels"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "MACS-007",
+      "verdict": "open",
+      "evidence": [
+        "PMAT-721 remainder: pmat work status renders no chain-of-thought step"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "MACS-013",
+      "verdict": "open",
+      "evidence": [
+        "PMAT-721 remainder: CB-1655 warns instead of failing; two roadmaps"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-619",
+      "verdict": "open",
+      "evidence": [
+        "3.39.0: 'no fix found on master'; no commit names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-621",
+      "verdict": "open",
+      "evidence": [
+        "CB-1610..1619 exist (check_work_ladder.rs) and the typed enum and completion gates shipped as MACS-004/005",
+        "`pmat work verify` — the ac's command — does not parse"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue; retitle to the remainder is the owner's call"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-622",
+      "verdict": "open",
+      "evidence": [
+        "CB-1620..1629 exist (check_falsification_unification.rs), reading ProvableContract roster entries",
+        "a FalsificationMethod::ProvableContract variant is named only in that file's comments; the unified runner is unverified",
+        "correction: FalsificationMethod::ProvableContract is a real variant (the delegate located it); its dispatch is 'not yet wired' (src/cli/handlers/work_falsification/runner.rs:258-264)"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue",
+      "quorum": "open 2/3 (lanes 2, 3); lane 1 missed the runner's own 'not yet wired'"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-623",
+      "verdict": "open",
+      "evidence": [
+        "CB-1630..1639 exist (check_builders_work.rs)",
+        "no pmat-work-macros crate in the workspace; `pmat work codegen` does not parse"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-632",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-633",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-636",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-638",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-639",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-646",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it; the April commits naming PMAT-646/647 are a different ticket under a reused id (the PMAT-713 defect)"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-647",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it; 3.39.0 confirmed it still open with a file:line; the April commits naming PMAT-646/647 are a different ticket under a reused id (the PMAT-713 defect)"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-653",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it; 3.39.0 confirmed it still open with a file:line"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-659",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it; 3.39.0 confirmed it still open with a file:line"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-677",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-678",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-681",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-683",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-684",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it; the three PRs it revives (#1177, #1184, #1180) are CLOSED unmerged"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-690",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-692",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-701",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-702",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-704",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-706",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-708",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-709",
+      "verdict": "open",
+      "evidence": [
+        "deferred to 3.41.0 by the 3.39.0/3.40.0 trains (docs/audits/dispositions-3.4x.0.json); no merge names it; no `git rev-parse --git-path hooks` in the hooks installer"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-707",
+      "verdict": "completed",
+      "evidence": [
+        "#1223 merged 2026-09-08 ('diff-scoped complexity gate judges only the functions the diff touches (BSE-12, PMAT-707)')",
+        "the item's notes say Phase 3 did NOT land the CLI flag; checked separately",
+        "`pmat analyze complexity --diff-scope` exists (#1223)",
+        "complexity_gate_tests::dropping_the_flag_from_the_generated_hook_goes_red and ::complexity_gate_scopes_rust_to_the_diff_only pass — 26 BSE-12 tests, 0 failed, on this tree",
+        "the item's notes describe Phase 3, before #1223's last phase"
+      ],
+      "change": "status -> completed (github_issue stays null: a completed item is outside the bijection)",
+      "quorum": "completed 3/3; confirmed by the test run"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-723",
+      "verdict": "open",
+      "evidence": [
+        "filed 2026-09-10 by the goal-mode tickets; nothing has landed"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-725",
+      "verdict": "open",
+      "evidence": [
+        "filed 2026-09-10 by the goal-mode tickets; nothing has landed"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-726",
+      "verdict": "open",
+      "evidence": [
+        "filed 2026-09-10 by the goal-mode tickets; nothing has landed"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-727",
+      "verdict": "open",
+      "evidence": [
+        "filed 2026-09-10 by the goal-mode tickets; nothing has landed"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "roadmap",
+      "key": "PMAT-729",
+      "verdict": "open",
+      "evidence": [
+        "filed 2026-09-10 by the goal-mode tickets; nothing has landed"
+      ],
+      "change": "stays open; pmat work sync --direction yaml-to-github mints its issue"
+    },
+    {
+      "kind": "github",
+      "key": "#1124",
+      "verdict": "paired",
+      "evidence": [
+        "PMAT-697's title names it first"
+      ],
+      "change": "PMAT-697.github_issue = 1124"
+    },
+    {
+      "kind": "github",
+      "key": "#1128",
+      "verdict": "paired",
+      "evidence": [
+        "PMAT-696's title names it first"
+      ],
+      "change": "PMAT-696.github_issue = 1128"
+    },
+    {
+      "kind": "github",
+      "key": "#1137",
+      "verdict": "paired",
+      "evidence": [
+        "PMAT-698's title names it first"
+      ],
+      "change": "PMAT-698.github_issue = 1137"
+    },
+    {
+      "kind": "github",
+      "key": "#1141",
+      "verdict": "paired",
+      "evidence": [
+        "PMAT-699's title names it first"
+      ],
+      "change": "PMAT-699.github_issue = 1141"
+    },
+    {
+      "kind": "github",
+      "key": "#1156",
+      "verdict": "paired",
+      "evidence": [
+        "PMAT-695's title names it first"
+      ],
+      "change": "PMAT-695.github_issue = 1156"
+    },
+    {
+      "kind": "github",
+      "key": "#1202",
+      "verdict": "paired",
+      "evidence": [
+        "PMAT-694's title names it first"
+      ],
+      "change": "PMAT-694.github_issue = 1202"
+    },
+    {
+      "kind": "github",
+      "key": "#999",
+      "verdict": "item",
+      "evidence": [
+        "tracking issue for pmat-agent-integration-v2.md (EV-0..EV-6); its body says its claims are still being re-verified",
+        "a tracker or epic is a container, not a ticket's issue (goal-mode §4.3: an epic's sub-issues are the tickets' issues)",
+        "EV-0..EV-6 are checkboxes in its body with no issue of their own; no roadmap item names them",
+        "no-roadmap is kept for issues labelled epic, the one class goal-mode §4.3 defines as a container; a tracker whose work is not filed elsewhere stays visible as work"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)",
+      "quorum": "no-roadmap 3/3 on thin evidence (the delegate); changed by the rule's own condition"
+    },
+    {
+      "kind": "github",
+      "key": "#1017",
+      "verdict": "no-roadmap",
+      "evidence": [
+        "labelled epic; fleet-wide root cause 1 of 4 (unreachable code)",
+        "a tracker or epic is a container, not a ticket's issue (goal-mode §4.3: an epic's sub-issues are the tickets' issues)",
+        "labelled epic"
+      ],
+      "change": "label no-roadmap (goal-mode §5.1: G excludes it) + a comment saying why; stays open",
+      "quorum": "no-roadmap 3/3"
+    },
+    {
+      "kind": "github",
+      "key": "#1018",
+      "verdict": "no-roadmap",
+      "evidence": [
+        "labelled epic; fleet-wide root cause 4 of 4 (vacuous tests)",
+        "a tracker or epic is a container, not a ticket's issue (goal-mode §4.3: an epic's sub-issues are the tickets' issues)",
+        "labelled epic"
+      ],
+      "change": "label no-roadmap (goal-mode §5.1: G excludes it) + a comment saying why; stays open",
+      "quorum": "no-roadmap 3/3"
+    },
+    {
+      "kind": "github",
+      "key": "#1019",
+      "verdict": "no-roadmap",
+      "evidence": [
+        "labelled epic; fleet-wide root cause 3 of 4 (dead config/contracts)",
+        "a tracker or epic is a container, not a ticket's issue (goal-mode §4.3: an epic's sub-issues are the tickets' issues)",
+        "labelled epic"
+      ],
+      "change": "label no-roadmap (goal-mode §5.1: G excludes it) + a comment saying why; stays open",
+      "quorum": "no-roadmap 3/3"
+    },
+    {
+      "kind": "github",
+      "key": "#1031",
+      "verdict": "item",
+      "evidence": [
+        "AGY support epic, rescoped by its own comments to the .agents/plugins.json schema question",
+        "a tracker or epic is a container, not a ticket's issue (goal-mode §4.3: an epic's sub-issues are the tickets' issues)",
+        "not labelled epic; its own 2026-09-02 comment rescopes it to one blocked question — one unit of work",
+        "no-roadmap is kept for issues labelled epic, the one class goal-mode §4.3 defines as a container; a tracker whose work is not filed elsewhere stays visible as work"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)",
+      "quorum": "no-roadmap 3/3 on thin evidence (the delegate); changed by the rule's own condition"
+    },
+    {
+      "kind": "github",
+      "key": "#1034",
+      "verdict": "item",
+      "evidence": [
+        "tracking issue for the evidence-derived comply backlog",
+        "a tracker or epic is a container, not a ticket's issue (goal-mode §4.3: an epic's sub-issues are the tickets' issues)",
+        "its body names no child issue; the backlog it tracks is not filed",
+        "no-roadmap is kept for issues labelled epic, the one class goal-mode §4.3 defines as a container; a tracker whose work is not filed elsewhere stays visible as work"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)",
+      "quorum": "no-roadmap 3/3 on thin evidence (the delegate); changed by the rule's own condition"
+    },
+    {
+      "kind": "github",
+      "key": "#1035",
+      "verdict": "item",
+      "evidence": [
+        "root-cause umbrella (12-repo audit, 5 clusters; names #1017, #831, #998); the 3.39.0 and 3.40.0 trains queued it 'reject — human review'; left open for that review",
+        "a tracker or epic is a container, not a ticket's issue (goal-mode §4.3: an epic's sub-issues are the tickets' issues)",
+        "its clusters are not shown filed: it names #1017, #831 (closed) and #998 (a merged PR); the 3.39.0/3.40.0 rationale 'already filed individually' is not verified, so it is not closed and not exempted",
+        "no-roadmap is kept for issues labelled epic, the one class goal-mode §4.3 defines as a container; a tracker whose work is not filed elsewhere stays visible as work"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)",
+      "quorum": "no-roadmap 3/3 on thin evidence (the delegate); changed by the rule's own condition"
+    },
+    {
+      "kind": "github",
+      "key": "#1090",
+      "verdict": "item",
+      "evidence": [
+        "[EPIC] Deep MCP capability improvements; its tasks are filed separately (e.g. #1125, '#1090 Task 3')",
+        "a tracker or epic is a container, not a ticket's issue (goal-mode §4.3: an epic's sub-issues are the tickets' issues)",
+        "not labelled epic; of its tasks only #1125 (Task 3) is filed",
+        "no-roadmap is kept for issues labelled epic, the one class goal-mode §4.3 defines as a container; a tracker whose work is not filed elsewhere stays visible as work"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)",
+      "quorum": "no-roadmap 3/3 on thin evidence (the delegate); changed by the rule's own condition"
+    },
+    {
+      "kind": "github",
+      "key": "#1240",
+      "verdict": "close",
+      "evidence": [
+        "its last comment: 'All three asks are on master — #1241, merged as d3eef0198'",
+        "#1242 (PMAT-714) made the collision-free path mandatory",
+        "note (delegate): the closing comment lists --allow-retitle, absent from master because PMAT-714 then made titles immutable; the close stands"
+      ],
+      "change": "close as completed, citing #1241 (d3eef0198) and #1242 — mutate.sh close with the quorum artifact"
+    },
+    {
+      "kind": "github",
+      "key": "#1014",
+      "verdict": "item",
+      "evidence": [
+        "its body: 'Fixed in bddb239f3; filing for the record and because the underlying cause is not fully addressed'; deferred to 3.41.0"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1074",
+      "verdict": "item",
+      "evidence": [
+        "GHSA-only advisories; PMAT-696 carries 'the honest half' of it"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1118",
+      "verdict": "item",
+      "evidence": [
+        "S4 (PMAT-711)"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1119",
+      "verdict": "item",
+      "evidence": [
+        "S4"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1120",
+      "verdict": "item",
+      "evidence": [
+        "S3"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1121",
+      "verdict": "item",
+      "evidence": [
+        "S3"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1122",
+      "verdict": "item",
+      "evidence": [
+        "S4"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1123",
+      "verdict": "item",
+      "evidence": [
+        "S3"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1125",
+      "verdict": "item",
+      "evidence": [
+        "#1090 Task 3: a decision to write"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1127",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-694 (train/CF), which pairs with #1202"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1129",
+      "verdict": "item",
+      "evidence": [
+        "S2"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1130",
+      "verdict": "item",
+      "evidence": [
+        "S3"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1131",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-697"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1132",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-696"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1133",
+      "verdict": "item",
+      "evidence": [
+        "measured now: `pmat init --target agy` writes ONE skill (.agents/skills/pmat-quality/SKILL.md) — the PMAT-711 'stale or fixed' verdict does not hold"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1134",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-699 (S2)"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1135",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-699"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1136",
+      "verdict": "item",
+      "evidence": [
+        "S4"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1138",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-698 (S2)"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1139",
+      "verdict": "item",
+      "evidence": [
+        "S2"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1140",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-699"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1142",
+      "verdict": "item",
+      "evidence": [
+        "S3"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1143",
+      "verdict": "item",
+      "evidence": [
+        "S3"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1144",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-699"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1145",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-699"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1153",
+      "verdict": "item",
+      "evidence": [
+        "the only record of 25 CRUX defects: only 7 CRUX items were ever filed individually (#1146-#1152, all closed), so the 3.40.0 rationale 'already filed individually' does not hold — it stays work, not an exempt tracker"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1162",
+      "verdict": "item",
+      "evidence": [
+        "absorbed by PMAT-697; PMAT-711 called it stale or fixed without a reproduction; kept open"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1225",
+      "verdict": "item",
+      "evidence": [
+        "two BSE-12 defects that shipped with #1223 (its last comment)"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1226",
+      "verdict": "item",
+      "evidence": [
+        "the lib suite's failure set depends on $TMPDIR"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1229",
+      "verdict": "item",
+      "evidence": [
+        "blocked by #1228 (closed by #1237) — may now be unblocked"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1230",
+      "verdict": "item",
+      "evidence": [
+        "S?"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1231",
+      "verdict": "item",
+      "evidence": [
+        "enhancement"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1232",
+      "verdict": "item",
+      "evidence": [
+        "severity:major"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1233",
+      "verdict": "item",
+      "evidence": [
+        "bug"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1234",
+      "verdict": "item",
+      "evidence": [
+        "bug"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1235",
+      "verdict": "item",
+      "evidence": [
+        "bug"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1236",
+      "verdict": "item",
+      "evidence": [
+        "bug"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1238",
+      "verdict": "item",
+      "evidence": [
+        "enhancement"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    },
+    {
+      "kind": "github",
+      "key": "#1239",
+      "verdict": "item",
+      "evidence": [
+        "enhancement"
+      ],
+      "change": "pmat work sync --direction github-to-yaml adds item GH-<n> (planned; release: projected from the milestone)"
+    }
+  ],
+  "quorum": {
+    "artifact": "docs/audits/quorum-PMAT-1253.json",
+    "lanes": "3/3 FAIL (each lane disagreed with at least one row)",
+    "rows_judged_per_lane": 43,
+    "agreed_3_3": "the 13 merged-PR completions, PMAT-620, PMAT-624, PMAT-629, PMAT-654, the 6 pairs, the 6 paired issues, #1240 close, and every spot-checked open/item row",
+    "changed": [
+      "MACS-017 completed->open (measured refusal)",
+      "MACS-018 completed->open (2/3)",
+      "MACS-019 completed->open (handler read)",
+      "PMAT-707 open->completed (3/3 + tests)",
+      "#999, #1031, #1034, #1035, #1090 no-roadmap->item (the rule's own condition)"
+    ],
+    "gap": "the lanes spot-checked 11 of the 74 open/item rows; the other 63 go to the fixers, whose writes are reversible (an issue can be closed, an item completed)"
+  },
+  "applied": {
+    "roadmap": {
+      "completed": 18,
+      "paired": 6,
+      "PMAT-721": "completed here (its own PR could not: CB-2113)"
+    },
+    "github": {
+      "label_created": [
+        "no-roadmap",
+        "compile-time-codegen",
+        "component-28",
+        "component-29",
+        "component-30",
+        "deferred:3.41.0",
+        "falsification-unification",
+        "kind:code",
+        "kind:measurement",
+        "proc-macro",
+        "provable-contracts",
+        "verification-ladder"
+      ],
+      "labelled_no_roadmap": [
+        1017,
+        1018,
+        1019
+      ],
+      "commented": [
+        1017,
+        1018,
+        1019
+      ],
+      "closed": {
+        "1240": "operator authority (verbatim), cite #1241/d3eef0198 and #1242"
+      }
+    },
+    "yaml_to_github_opened": [
+      {
+        "id": "MACS-006",
+        "issue": 1254
+      },
+      {
+        "id": "MACS-007",
+        "issue": 1255
+      },
+      {
+        "id": "MACS-013",
+        "issue": 1256
+      },
+      {
+        "id": "MACS-017",
+        "issue": 1257
+      },
+      {
+        "id": "MACS-018",
+        "issue": 1258
+      },
+      {
+        "id": "MACS-019",
+        "issue": 1259
+      },
+      {
+        "id": "PMAT-619",
+        "issue": 1260
+      },
+      {
+        "id": "PMAT-621",
+        "issue": 1261
+      },
+      {
+        "id": "PMAT-622",
+        "issue": 1262
+      },
+      {
+        "id": "PMAT-623",
+        "issue": 1263
+      },
+      {
+        "id": "PMAT-632",
+        "issue": 1264
+      },
+      {
+        "id": "PMAT-633",
+        "issue": 1265
+      },
+      {
+        "id": "PMAT-636",
+        "issue": 1266
+      },
+      {
+        "id": "PMAT-638",
+        "issue": 1267
+      },
+      {
+        "id": "PMAT-639",
+        "issue": 1268
+      },
+      {
+        "id": "PMAT-646",
+        "issue": 1269
+      },
+      {
+        "id": "PMAT-647",
+        "issue": 1270
+      },
+      {
+        "id": "PMAT-653",
+        "issue": 1271
+      },
+      {
+        "id": "PMAT-659",
+        "issue": 1272
+      },
+      {
+        "id": "PMAT-677",
+        "issue": 1273
+      },
+      {
+        "id": "PMAT-678",
+        "issue": 1274
+      },
+      {
+        "id": "PMAT-681",
+        "issue": 1275
+      },
+      {
+        "id": "PMAT-683",
+        "issue": 1276
+      },
+      {
+        "id": "PMAT-684",
+        "issue": 1277
+      },
+      {
+        "id": "PMAT-690",
+        "issue": 1278
+      },
+      {
+        "id": "PMAT-692",
+        "issue": 1279
+      },
+      {
+        "id": "PMAT-701",
+        "issue": 1280
+      },
+      {
+        "id": "PMAT-702",
+        "issue": 1281
+      },
+      {
+        "id": "PMAT-704",
+        "issue": 1282
+      },
+      {
+        "id": "PMAT-706",
+        "issue": 1283
+      },
+      {
+        "id": "PMAT-708",
+        "issue": 1284
+      },
+      {
+        "id": "PMAT-709",
+        "issue": 1285
+      },
+      {
+        "id": "PMAT-723",
+        "issue": 1286
+      },
+      {
+        "id": "PMAT-725",
+        "issue": 1287
+      },
+      {
+        "id": "PMAT-726",
+        "issue": 1288
+      },
+      {
+        "id": "PMAT-727",
+        "issue": 1289
+      },
+      {
+        "id": "PMAT-729",
+        "issue": 1290
+      }
+    ],
+    "github_to_yaml_items": [
+      "GH-999",
+      "GH-1014",
+      "GH-1031",
+      "GH-1034",
+      "GH-1035",
+      "GH-1074",
+      "GH-1090",
+      "GH-1118",
+      "GH-1119",
+      "GH-1120",
+      "GH-1121",
+      "GH-1122",
+      "GH-1123",
+      "GH-1125",
+      "GH-1127",
+      "GH-1129",
+      "GH-1130",
+      "GH-1131",
+      "GH-1132",
+      "GH-1133",
+      "GH-1134",
+      "GH-1135",
+      "GH-1136",
+      "GH-1138",
+      "GH-1139",
+      "GH-1140",
+      "GH-1142",
+      "GH-1143",
+      "GH-1144",
+      "GH-1145",
+      "GH-1153",
+      "GH-1162",
+      "GH-1225",
+      "GH-1226",
+      "GH-1229",
+      "GH-1230",
+      "GH-1231",
+      "GH-1232",
+      "GH-1233",
+      "GH-1234",
+      "GH-1235",
+      "GH-1236",
+      "GH-1238",
+      "GH-1239"
+    ],
+    "verdict_after": "✓ coherent: R ↔ G is a bijection and no matched pair disagrees past the grace window"
+  }
+}
