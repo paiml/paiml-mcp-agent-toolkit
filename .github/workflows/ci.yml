@@ -133,19 +133,19 @@ jobs:
         run: bash scripts/ticket-release-control.sh ./target/debug/pmat
       - name: control — an active spec with no epic must be refused (CB-2110, exit 1)
         run: bash scripts/spec-epic-control.sh ./target/debug/pmat
-      - name: the closed loop holds (CB-2113)
-        run: ./target/debug/pmat comply check --checks CB-2113
-      # CB-2115 is NOT yet run against this tree. goal-mode.md §5.4 sequences it: the
-      # sync reports (step 3, PMAT-720), a human resolves the thirteen items that all
-      # name #612 (PMAT-721), the orphans are fixed by the sync's own fixers, and ONLY
-      # THEN does the rule become a gate — a gate red on arrival is a gate someone
-      # disables. The control above proves the rule discriminates on every arm, so
-      # `pmat comply ledger` lists CB-2115 as NEUTERED, which is the truth until the
-      # step below lands. It lands the moment `pmat work sync --check-only` exits 0 on
-      # master (PMAT-723):
-      #   - name: the roadmap and GitHub agree (CB-2115)
-      #     env: { GH_TOKEN: ${{ github.token }} }
-      #     run: ./target/debug/pmat comply check --checks CB-2113,CB-2115
+      - name: the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./target/debug/pmat comply check --checks CB-2113,CB-2115
+      # CB-2115 joined this step on PMAT-723, in the order goal-mode.md §5.4 sets: the
+      # sync reported (PMAT-720), the thirteen items naming #612 were resolved under
+      # their own ticket (PMAT-721), the orphans were triaged and fixed by the sync's
+      # own fixers (PMAT-1253), and `pmat work sync --check-only` measured 0 findings on
+      # master before this step was added (docs/audits/impl-PMAT-723-receipt.md). It
+      # reads live GitHub through GH_TOKEN. Tolerance is zero (§5.1): an open issue that
+      # no open item names turns it red until `pmat work sync --direction github-to-yaml`
+      # adds the item, and an open item naming a closed issue until the item is closed.
+      # The env is block-style on purpose: a flow mapping cannot hold `${{ }}`.
       # CB-2112 and CB-2114 (PMAT-724, step 5) are withheld for the same reason. At
       # PMAT-724's measurement (2026-09-10) docs/roadmaps/roadmap.yaml on master has
       # 63 open items, 0 carrying release:, 0 whose numeric tail is an open issue
