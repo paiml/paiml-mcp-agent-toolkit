@@ -5111,3 +5111,26 @@ roadmap:
   - kind:triage
   - human
   notes: 'Filed by PMAT-720 (goal-mode step 3) from the first real run of pmat work sync --check-only on this repository (107 findings: 1 COLLISION, 52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT). Which of the thirteen is really #612 is a judgement, and a sync that guesses is how the thirteen arose — a human owns this ticket. CB-2115 (step 4) cannot land green until it is done.'
+- id: PMAT-722
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 4: CB-2115 roadmap coherence — the open roadmap items and the open GitHub issues are in bijection and no matched pair has disagreed past the grace window (goal-mode.md §5, §7); Skip on a project with no roadmap or no GitHub repository, Fail not_measured when the snapshot cannot be read, never a silent pass; the control (scripts/roadmap-coherence-control.sh) runs in the traceability job now, and the direct gate step waits for master to measure coherent (§5.4 step 3)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T05:55:07Z
+  updated: 2026-09-10T05:55:07Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat comply check --checks CB-2115 exits 1 on a fixture whose open item names a closed issue (the §7 falsifier: close one linked issue, leave the item open) and 0 on a fixture whose open items and open issues are in bijection (scripts/roadmap-coherence-control.sh, both arms observed)'
+  - a COLLISION, an ORPHAN-GITHUB and a title disagreement older than the grace window are each a Fail naming the class and the item or issue; a disagreement inside the window is tolerated and counted; grace_minutes is read from .pmat.yaml comply.checks.cb-2115.options
+  - a project with no docs/roadmaps/roadmap.yaml or no resolvable GitHub repository reports Skip with the reason; a snapshot the rule expected and could not read (missing file, gh failure, a page at the cap) is Fail not_measured, never a pass
+  - 'the snapshot comes from gh (issues and milestones, refused at the page cap) unless comply.checks.cb-2115.options.snapshot names a file: the same GithubSnapshot pmat work sync reads, its reader moved into services/work_sync so the command and the rule share one'
+  - ci.yml's traceability job runs scripts/roadmap-coherence-control.sh and scripts/work-sync-control.sh before the CB-2113 step; the direct CB-2115 step is NOT added until pmat work sync --check-only exits 0 on master (goal-mode.md §5.4 step 3), and pmat comply ledger writes CB-2115 as NEUTERED with that reason in the receipt
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2115 + builder + severity default), services/work_sync (github.rs reader moved out of the work handler), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §5, §7 row CB-2115, §11 step 4. Stacked on #1246 -> #1247 and #1248: needs the --checks selector, the traceability job and the sync engine.'
