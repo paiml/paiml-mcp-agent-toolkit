@@ -463,7 +463,11 @@ mod tests_ticket_release {
     }
 
     /// Mutant: a rule wired into the group list without the override — the
-    /// flag reaching CB-2115 and not these two.
+    /// flag reaching CB-2115 and not these two. Second mutant, measured on
+    /// PMAT-724 after the PR opened: the `ticket-release` group registered
+    /// TWICE (the RED commit and the lane's commit each added it), so every
+    /// run reported CB-2112 and CB-2114 twice and `find` saw the first row and
+    /// passed — a row name must occur exactly once in the whole report.
     #[test]
     fn the_github_snapshot_override_reaches_both_rules_through_the_group_list() {
         let dir = bound();
@@ -471,10 +475,16 @@ mod tests_ticket_release {
         let overrides = CheckOverrides { github_snapshot: Some(dir.path().join("snapshot.json")) };
         let checks = build_all_compliance_checks(dir.path(), &config, "0.0.0", &overrides);
         for name in [LINKAGE, RELEASE] {
-            let c = checks.iter().find(|c| c.name == name);
-            assert!(c.is_some(), "{name} is in the report");
-            let c = c.expect("asserted above");
-            assert_eq!(c.status, CheckStatus::Pass, "{}: {}", c.name, c.message);
+            let rows: Vec<&ComplianceCheck> = checks.iter().filter(|c| c.name == name).collect();
+            assert_eq!(rows.len(), 1, "{name} is in the report exactly once (a group registered twice reports twice)");
+            assert_eq!(rows[0].status, CheckStatus::Pass, "{}: {}", rows[0].name, rows[0].message);
         }
+        let mut seen: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+        for c in &checks {
+            *seen.entry(c.name.as_str()).or_insert(0) += 1;
+        }
+        let mut twice: Vec<&str> = seen.iter().filter(|(_, n)| **n > 1).map(|(k, _)| *k).collect();
+        twice.sort_unstable();
+        assert!(twice.is_empty(), "rows reported more than once: {twice:?}");
     }
 }

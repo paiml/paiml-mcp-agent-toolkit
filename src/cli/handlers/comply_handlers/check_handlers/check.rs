@@ -480,16 +480,6 @@ fn build_all_compliance_checks(
                 )
             }),
         ),
-        (
-            "ticket-release",
-            Box::new(move || {
-                build_ticket_release_checks(
-                    project_path,
-                    comply_config,
-                    overrides.github_snapshot.as_deref(),
-                )
-            }),
-        ),
     ];
     run_check_groups(groups)
 }
