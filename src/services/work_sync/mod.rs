@@ -28,7 +28,6 @@
 //! to GitHub as a `planned` one. The specification names the first two; the enum
 //! has four, and a bijection that ignores two of them has a hole.
 
-use crate::cli::colors as c;
 use crate::models::roadmap::{ItemStatus, Roadmap, RoadmapItem};
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
@@ -158,6 +157,16 @@ pub enum DriftField {
     Release,
 }
 
+impl DriftField {
+    /// The field as the spec and the roadmap spell it.
+    pub fn name(&self) -> &'static str {
+        match self {
+            DriftField::Title => "title",
+            DriftField::Release => "release",
+        }
+    }
+}
+
 /// One finding. The JSON `class` tag is the spec's name for it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "class", rename_all = "SCREAMING-KEBAB-CASE")]
@@ -190,12 +199,15 @@ pub enum Finding {
 }
 
 impl Finding {
+    /// One line of plain text, the same wording wherever the finding is shown:
+    /// the class word first, then the item id and/or `#number`, then the reason.
+    /// No colour and no padding here — this engine is pure, and a comply
+    /// message or a JSON report must never carry a terminal escape; the
+    /// `pmat work sync` printer paints the class word itself.
     pub fn render(&self) -> String {
         match self {
             Finding::Collision { number, ids } => format!(
-                "{} #{} ← {} ({} items)",
-                c::fail("COLLISION     "),
-                number,
+                "COLLISION #{number} is named by {} ({} items)",
                 ids.join(", "),
                 ids.len()
             ),
@@ -205,26 +217,18 @@ impl Finding {
                 reason,
                 ..
             } => {
+                let issue = github_issue.map_or_else(|| "?".to_string(), |n| format!("#{n}"));
                 let why = match reason {
                     OrphanReason::NoIssue => "no issue".to_string(),
-                    OrphanReason::IssueClosed => {
-                        format!("#{} is closed", github_issue.unwrap_or(0))
-                    }
-                    OrphanReason::IssueAbsent => {
-                        format!("#{} does not exist", github_issue.unwrap_or(0))
-                    }
-                    OrphanReason::IssueExcluded => {
-                        format!("#{} is labelled no-roadmap", github_issue.unwrap_or(0))
-                    }
+                    OrphanReason::IssueClosed => format!("{issue} is closed"),
+                    OrphanReason::IssueAbsent => format!("{issue} does not exist on GitHub"),
+                    OrphanReason::IssueExcluded => format!("{issue} is labelled no-roadmap"),
                 };
-                format!("{} {:<18} {}", c::warn("ORPHAN-ROADMAP"), c::path(id), why)
+                format!("ORPHAN-ROADMAP {id}: {why}")
             }
-            Finding::OrphanGithub { number, title, .. } => format!(
-                "{} {:<18} {}",
-                c::warn("ORPHAN-GITHUB "),
-                format!("#{number}"),
-                title
-            ),
+            Finding::OrphanGithub { number, title, .. } => {
+                format!("ORPHAN-GITHUB #{number}: {title}")
+            }
             Finding::Drift {
                 id,
                 number,
@@ -233,14 +237,8 @@ impl Finding {
                 github,
                 age_minutes,
             } => format!(
-                "{} {} #{} {:?}: {:?} ≠ {:?} ({} min)",
-                c::warn("DRIFT         "),
-                c::path(id),
-                number,
-                field,
-                roadmap,
-                github,
-                age_minutes
+                "DRIFT {id} <-> #{number} {}: roadmap {roadmap:?} vs GitHub {github:?} ({age_minutes} min, past the grace window)",
+                field.name()
             ),
         }
     }

@@ -12,7 +12,7 @@ use crate::cli::colors as c;
 use crate::cli::commands::SyncDirection;
 use crate::services::roadmap_service::RoadmapService;
 use crate::services::work_sync::{
-    self as engine, Action, Direction, GithubSnapshot, Settings, SyncReport,
+    self as engine, Action, Direction, Finding, GithubSnapshot, Settings, SyncReport,
 };
 use anyhow::{bail, Context, Result};
 use chrono::Utc;
@@ -140,6 +140,19 @@ pub async fn handle_work_sync(opts: SyncOptions) -> Result<()> {
     Ok(())
 }
 
+/// The engine's one-line rendering with the class word painted for a terminal:
+/// a COLLISION red (a human's job), everything else amber (the sync's job).
+fn paint_finding(f: &Finding) -> String {
+    let line = f.render();
+    let (class, rest) = line.split_once(' ').unwrap_or((line.as_str(), ""));
+    let painted = if matches!(f, Finding::Collision { .. }) {
+        c::fail(class)
+    } else {
+        c::warn(class)
+    };
+    format!("{painted} {rest}")
+}
+
 fn direction_name(d: SyncDirection) -> &'static str {
     match d {
         SyncDirection::YamlToGithub => "yaml-to-github",
@@ -203,7 +216,7 @@ fn print_report(report: &SyncReport, snapshot: &GithubSnapshot, grace: i64) {
         c::number(&report.tolerated.to_string()),
     );
     for f in &report.findings {
-        println!("   {}", f.render());
+        println!("   {}", paint_finding(f));
     }
     if report.is_coherent() {
         println!(
