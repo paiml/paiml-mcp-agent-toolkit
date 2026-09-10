@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # `pmat verify` — Autonomous Pre-Flight Verification
 
 **Status**: Implemented (v3.18.0)

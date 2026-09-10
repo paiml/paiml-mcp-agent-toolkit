@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Work Contract Binding
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 27

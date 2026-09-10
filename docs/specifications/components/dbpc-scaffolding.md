@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # DbPC Scaffolding — CB-1900..1949
 
 **Status**: Draft (proposed 2026-04-18)

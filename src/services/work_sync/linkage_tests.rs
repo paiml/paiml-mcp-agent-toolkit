@@ -30,6 +30,7 @@ fn issue(
         labels: labels.iter().map(|s| s.to_string()).collect(),
         milestone: milestone.map(str::to_string),
         updated_at: Utc::now(),
+        sub_issues: None,
     }
 }
 fn snapshot(issues: Vec<IssueSnapshot>, milestones: &[&str]) -> GithubSnapshot {

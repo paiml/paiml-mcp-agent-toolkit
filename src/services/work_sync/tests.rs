@@ -40,6 +40,7 @@ fn issue(number: u64, title: &str, state: IssueState) -> IssueSnapshot {
         labels: Vec::new(),
         milestone: None,
         updated_at: t0(),
+        sub_issues: None,
     }
 }
 

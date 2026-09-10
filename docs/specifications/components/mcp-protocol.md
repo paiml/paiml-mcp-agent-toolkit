@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # MCP & Protocols
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 11

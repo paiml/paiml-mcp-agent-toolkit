@@ -24,7 +24,14 @@ pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-/// CB-148: Spec-work traceability.
+/// CB-148: RETIRED — superseded by CB-2110 (goal-mode.md §11, PMAT-728).
+///
+/// Retired, not patched: three defects in 100 lines — it scanned
+/// `components/` only, its predicate ignored the line under test (any ticket
+/// id anywhere in the file satisfied every "(Planned)" heading), and its
+/// `Warning` severity could not fail — and it rendered as a *pass*, a
+/// confident wrong answer. The id prints for one minor version so it does not
+/// vanish silently; the detector is deleted.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_spec_work_traceability(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
@@ -32,25 +39,11 @@ pub(crate) fn check_spec_work_traceability(project_path: &Path) -> ComplianceChe
         "project_path must exist: {}",
         project_path.display()
     );
-    let violations =
-        crate::cli::handlers::comply_cb_detect::detect_cb148_spec_work_gaps(project_path);
-    if violations.is_empty() {
-        ComplianceCheck {
-            name: "CB-148: Spec-Work Traceability".into(),
-            status: CheckStatus::Pass,
-            message: "All planned spec sections have corresponding work tickets".into(),
-            severity: Severity::Info,
-        }
-    } else {
-        ComplianceCheck {
-            name: "CB-148: Spec-Work Traceability".into(),
-            status: CheckStatus::Warn,
-            message: format!(
-                "{} planned section(s) without work tickets",
-                violations.len()
-            ),
-            severity: Severity::Warning,
-        }
+    ComplianceCheck {
+        name: "CB-148: RETIRED — superseded by CB-2110".into(),
+        status: CheckStatus::Skip,
+        message: "retired in 3.41.0 (goal-mode.md §11): its scope, predicate and severity were each wrong and it rendered as a pass; the spec ↔ work edge is CB-2110's (front-matter epic:, GitHub sub-issues) — this row is printed for one minor version and then removed".into(),
+        severity: Severity::Info,
     }
 }
 

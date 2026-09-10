@@ -3,6 +3,7 @@ use crate::services::work_sync::{
 };
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -87,7 +88,34 @@ pub fn fetch_snapshot(repo: &str) -> Result<GithubSnapshot> {
         MILESTONE_CAP,
         "milestones",
     )?;
-    parse_snapshot(repo, Utc::now(), &issues, &milestones)
+    let mut snapshot = parse_snapshot(repo, Utc::now(), &issues, &milestones)?;
+    let epics = snapshot.epic_numbers();
+    if !epics.is_empty() {
+        let counts = sub_issue_counts(repo, &epics)?;
+        snapshot.fill_sub_issues(&counts);
+    }
+    Ok(snapshot)
+}
+
+/// The sub-issue count of each issue in `numbers`, from GitHub's GraphQL
+/// `subIssuesSummary { total }` — one query, one alias per issue (`i<number>`)
+/// — because `gh issue list --json` exposes no sub-issue field (measured, gh
+/// 2.x, 2026-09-10). Every number asked for is answered or the call fails:
+/// a count that is missing is not a count of zero (goal-mode.md doctrine 2).
+pub fn sub_issue_counts(repo: &str, numbers: &[u64]) -> Result<BTreeMap<u64, u64>> {
+    let _ = (repo, numbers);
+    bail!("sub_issue_counts is not implemented (PMAT-728 phase 2)")
+}
+
+/// The pure half of [`sub_issue_counts`]: read `{"data":{"repository":{"i<n>":
+/// {"subIssuesSummary":{"total":k}}}}}` for every `n` in `numbers`. A missing
+/// or null alias is an error naming the number, never a zero.
+pub fn parse_sub_issue_counts(
+    graphql: &serde_json::Value,
+    numbers: &[u64],
+) -> Result<BTreeMap<u64, u64>> {
+    let _ = (graphql, numbers);
+    bail!("parse_sub_issue_counts is not implemented (PMAT-728 phase 2)")
 }
 
 pub fn parse_snapshot(
@@ -133,6 +161,7 @@ pub fn parse_snapshot(
                 .unwrap_or_default(),
             milestone: v["milestone"]["title"].as_str().map(str::to_string),
             updated_at,
+            sub_issues: None,
         });
     }
     let mut ms = Vec::new();
@@ -197,5 +226,77 @@ mod tests {
         assert!(parse_snapshot("r", Utc::now(), &bad, &serde_json::json!([])).is_err());
         let bad_time = serde_json::json!([{"number": 1, "title": "x", "state": "OPEN", "updatedAt": "yesterday"}]);
         assert!(parse_snapshot("r", Utc::now(), &bad_time, &serde_json::json!([])).is_err());
+    }
+
+    /// Mutant: a missing alias read as zero, or an extra alias ignored while a
+    /// requested one is missing (PMAT-728, goal-mode.md doctrine 2).
+    #[test]
+    fn sub_issue_counts_are_parsed_from_the_graphql_aliases_and_a_missing_one_is_an_error() {
+        let ok = serde_json::json!({"data": {"repository": {
+            "i1017": {"subIssuesSummary": {"total": 3, "completed": 1}},
+            "i1019": {"subIssuesSummary": {"total": 0, "completed": 0}}
+        }}});
+        let counts = parse_sub_issue_counts(&ok, &[1017, 1019]).expect("both aliases answered");
+        assert_eq!(counts.get(&1017), Some(&3));
+        assert_eq!(counts.get(&1019), Some(&0));
+        assert_eq!(counts.len(), 2);
+
+        let missing = parse_sub_issue_counts(&ok, &[1017, 1018]).expect_err("1018 is not answered");
+        assert!(missing.to_string().contains("1018"), "{missing}");
+        let null = serde_json::json!({"data": {"repository": {"i5": null}}});
+        assert!(
+            parse_sub_issue_counts(&null, &[5]).is_err(),
+            "a null alias (no such issue) is not a zero"
+        );
+        let errors = serde_json::json!({"errors": [{"message": "bad"}], "data": null});
+        assert!(parse_sub_issue_counts(&errors, &[5]).is_err());
+    }
+
+    /// Mutant: `fill_sub_issues` writing every issue (a zero onto the
+    /// unmeasured), `epic_numbers` reading open epics only, or the field
+    /// serialised when unmeasured.
+    #[test]
+    fn the_snapshot_carries_sub_issues_only_where_measured() {
+        let issues = serde_json::json!([
+            {"number": 1, "title": "epic one", "state": "OPEN", "labels": [{"name": "epic"}], "updatedAt": "2026-09-09T10:00:00Z"},
+            {"number": 2, "title": "closed epic", "state": "CLOSED", "labels": [{"name": "epic"}], "updatedAt": "2026-09-09T10:00:00Z"},
+            {"number": 3, "title": "plain", "state": "OPEN", "labels": [{"name": "bug"}], "updatedAt": "2026-09-09T10:00:00Z"}
+        ]);
+        let mut s = parse_snapshot("paiml/pmat", Utc::now(), &issues, &serde_json::json!([]))
+            .expect("parses");
+        assert_eq!(
+            s.epic_numbers(),
+            vec![1, 2],
+            "open and closed epics alike — the epic leg judges the state"
+        );
+        assert!(
+            s.issues.iter().all(|i| i.sub_issues.is_none()),
+            "parse measures nothing"
+        );
+        let mut counts = BTreeMap::new();
+        counts.insert(1, 4);
+        s.fill_sub_issues(&counts);
+        assert_eq!(s.issue(1).and_then(|i| i.sub_issues), Some(4));
+        assert_eq!(
+            s.issue(2).and_then(|i| i.sub_issues),
+            None,
+            "unmeasured stays unmeasured"
+        );
+        assert_eq!(s.issue(3).and_then(|i| i.sub_issues), None);
+
+        let json = s.to_json().expect("serialises");
+        assert!(json.contains("\"sub_issues\": 4"), "{json}");
+        assert_eq!(
+            json.matches("sub_issues").count(),
+            1,
+            "absent when unmeasured"
+        );
+        let back = GithubSnapshot::from_json(&json).expect("round-trips");
+        assert_eq!(back, s);
+        let old = r#"{"repo":"r","taken_at":"2026-09-09T10:00:00Z","issues":[{"number":9,"title":"t","state":"open","labels":["epic"],"updated_at":"2026-09-09T10:00:00Z"}]}"#;
+        let old = GithubSnapshot::from_json(old)
+            .expect("a snapshot written before the field still reads");
+        assert_eq!(old.issue(9).and_then(|i| i.sub_issues), None);
+        assert!(old.issue(9).is_some_and(IssueSnapshot::is_epic));
     }
 }

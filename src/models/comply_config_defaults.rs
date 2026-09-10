@@ -333,6 +333,17 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-2110: Spec Epics — every active spec under docs/specifications names an open epic issue with a sub-issue (goal-mode.md §4.3, §7, invariant E); Error so it is a member of the roster CB-2100 verifies.
+    checks.insert(
+        "cb-2110".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     // CB-2112: Ticket Linkage — every open roadmap item names an open GitHub issue whose number is the item's numeric tail (goal-mode.md §7, invariant A); Error so it is a member of the roster CB-2100 verifies.
     checks.insert(
         "cb-2112".to_string(),

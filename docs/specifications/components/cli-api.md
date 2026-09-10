@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # CLI & HTTP API
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 12

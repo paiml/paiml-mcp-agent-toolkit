@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Scoring Convergence & Hardening
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 21

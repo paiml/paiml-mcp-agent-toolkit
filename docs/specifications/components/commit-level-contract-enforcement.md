@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Commit-Level Contract Enforcement & Asset Contracts
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 25

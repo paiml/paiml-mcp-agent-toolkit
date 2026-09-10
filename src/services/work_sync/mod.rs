@@ -73,12 +73,25 @@ pub struct IssueSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub milestone: Option<String>,
     pub updated_at: DateTime<Utc>,
+    /// How many sub-issues the issue has — GitHub's native relation, the only
+    /// epic membership goal-mode.md §4.3 accepts. The live reader measures it
+    /// for issues labelled `epic`; `None` is "not measured", never zero
+    /// (doctrine 2), and a snapshot written before the field reads as `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sub_issues: Option<u64>,
 }
 
 impl IssueSnapshot {
     /// Member of **G** (§5.1): open and not labelled `no-roadmap`.
     pub fn in_universe(&self) -> bool {
         self.state == IssueState::Open && !self.labels.iter().any(|l| l == NO_ROADMAP_LABEL)
+    }
+
+    /// Labelled `epic` (§4.3) — open or closed; the epic leg judges the state.
+    pub fn is_epic(&self) -> bool {
+        self.labels
+            .iter()
+            .any(|l| l == crate::services::spec_epic::EPIC_LABEL)
     }
 }
 
@@ -114,6 +127,29 @@ impl GithubSnapshot {
     /// The issue with this number, open or closed.
     pub fn issue(&self, number: u64) -> Option<&IssueSnapshot> {
         self.issues.iter().find(|i| i.number == number)
+    }
+
+    /// The numbers of every issue labelled `epic`, ascending — the ones whose
+    /// sub-issue counts the live reader measures.
+    pub fn epic_numbers(&self) -> Vec<u64> {
+        let mut out: Vec<u64> = self
+            .issues
+            .iter()
+            .filter(|i| i.is_epic())
+            .map(|i| i.number)
+            .collect();
+        out.sort_unstable();
+        out
+    }
+
+    /// Record measured sub-issue counts on the issues they name; an issue the
+    /// map does not name keeps `None`.
+    pub fn fill_sub_issues(&mut self, counts: &BTreeMap<u64, u64>) {
+        for issue in &mut self.issues {
+            if let Some(n) = counts.get(&issue.number) {
+                issue.sub_issues = Some(*n);
+            }
+        }
     }
 }
 

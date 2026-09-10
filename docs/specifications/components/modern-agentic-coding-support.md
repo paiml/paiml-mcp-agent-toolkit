@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Modern Agentic Coding Support (MACS)
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | **Component 32 (proposed)**

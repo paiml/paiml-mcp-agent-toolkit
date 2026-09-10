@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Explain Command Specification
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Supplementary to Component 12 (CLI & HTTP API)

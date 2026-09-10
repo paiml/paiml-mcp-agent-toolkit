@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Agentic Delivery — pmat, paiml-implement and agy against the whiteboard
 
 **Status:** specification, ticket PMAT-650 · **Audited at:** master `cd6f796d6` (2026-09-03), pmat 3.35.0-unpublished, `~/src/paiml-implement` `c8e2ced` (bundle v1.1.0, spec AUTO-IMPL-SKILL-001 v1.0.1), agy 1.1.25 · **Source:** the 2026-09-03 whiteboard "Agentic Delivery Architecture" (Claude Code + Fable orchestrator · quorum-reviewed sub-agents · Google Antigravity execution pool · pmat quality gates · auto-merge to GitHub and crates.io).

@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # PMAT Architecture Review — EV-Ordered, Falsifiable Engineering Roadmap
 
 > **Provenance.** This document is the output of a gate-integrity audit of

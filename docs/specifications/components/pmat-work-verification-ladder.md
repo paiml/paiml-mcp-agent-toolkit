@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Work Verification Ladder
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 28

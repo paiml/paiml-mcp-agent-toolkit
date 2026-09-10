@@ -480,6 +480,16 @@ fn build_all_compliance_checks(
                 )
             }),
         ),
+        (
+            "spec-epics",
+            Box::new(move || {
+                build_spec_epic_checks(
+                    project_path,
+                    comply_config,
+                    overrides.github_snapshot.as_deref(),
+                )
+            }),
+        ),
     ];
     run_check_groups(groups)
 }
@@ -1585,6 +1595,10 @@ include!("check_readonly_and_exemption_tests.rs");
 include!("check_traceability_tests.rs");
 include!("check_roadmap_coherence_tests.rs");
 include!("check_ticket_release_tests.rs");
+include!("check_spec_inputs.rs");
+include!("check_spec_epics.rs");
+include!("check_builders_spec_epics.rs");
+include!("check_spec_epic_tests.rs");
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

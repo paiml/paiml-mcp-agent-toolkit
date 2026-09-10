@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # PMAT Mono-Spec v1.0
 
 > Single-source specification for the PMAT (PAIML MCP Agent Toolkit) project.
