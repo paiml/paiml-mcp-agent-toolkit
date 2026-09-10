@@ -64,7 +64,9 @@ mod tests_ticket_release {
         checks
     }
     fn pick(mut checks: Vec<ComplianceCheck>, name: &str) -> ComplianceCheck {
-        let i = checks.iter().position(|c| c.name == name).unwrap_or_else(|| panic!("no row named {name}"));
+        let i = checks.iter().position(|c| c.name == name);
+        assert!(i.is_some(), "no row named {name}");
+        let i = i.expect("asserted above");
         checks.remove(i)
     }
     fn linkage_with(dir: &Path, github_snapshot: Option<&Path>) -> ComplianceCheck {
@@ -373,7 +375,9 @@ mod tests_ticket_release {
     fn the_two_rules_are_registered_as_errors_under_their_ids() {
         let defaults = ComplyConfig::default();
         for (key, name) in [("cb-2112", LINKAGE), ("cb-2114", RELEASE)] {
-            let cfg = defaults.checks.get(key).unwrap_or_else(|| panic!("{key} is a default check"));
+            let cfg = defaults.checks.get(key);
+            assert!(cfg.is_some(), "{key} is a default check");
+            let cfg = cfg.expect("asserted above");
             assert!(cfg.enabled, "{key} enabled by default");
             assert_eq!(cfg.severity, CheckSeverity::Error, "{key}: goal-mode.md §7 — anything less reports and never fails");
             let dir = bound();
@@ -391,7 +395,9 @@ mod tests_ticket_release {
         let overrides = CheckOverrides { github_snapshot: Some(dir.path().join("snapshot.json")) };
         let checks = build_all_compliance_checks(dir.path(), &config, "0.0.0", &overrides);
         for name in [LINKAGE, RELEASE] {
-            let c = checks.iter().find(|c| c.name == name).unwrap_or_else(|| panic!("{name} is in the report"));
+            let c = checks.iter().find(|c| c.name == name);
+            assert!(c.is_some(), "{name} is in the report");
+            let c = c.expect("asserted above");
             assert_eq!(c.status, CheckStatus::Pass, "{}: {}", c.name, c.message);
         }
     }

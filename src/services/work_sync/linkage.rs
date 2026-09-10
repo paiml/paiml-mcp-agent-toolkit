@@ -112,14 +112,17 @@ pub fn ticket_linkage(roadmap: &Roadmap, snapshot: &GithubSnapshot) -> LinkRepor
                         id: item.id.clone(),
                         number: n,
                     });
-                } else if numeric_tail(&item.id) != Some(n) {
-                    report.findings.push(LinkFinding::TailMismatch {
-                        id: item.id.clone(),
-                        number: n,
-                        tail: numeric_tail(&item.id),
-                    });
                 } else {
-                    report.linked += 1;
+                    let tail = numeric_tail(&item.id);
+                    if tail == Some(n) {
+                        report.linked += 1;
+                    } else {
+                        report.findings.push(LinkFinding::TailMismatch {
+                            id: item.id.clone(),
+                            number: n,
+                            tail,
+                        });
+                    }
                 }
             } else {
                 report.findings.push(LinkFinding::IssueAbsent {
