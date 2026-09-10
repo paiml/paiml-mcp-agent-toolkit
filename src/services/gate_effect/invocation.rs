@@ -132,6 +132,12 @@ fn collect_from_script(
                  evidence for this repository"
             ));
         }
+        if let Some(file) = fixture_snapshot(line) {
+            suppressions.push(format!(
+                "judges GitHub-facing rules from a snapshot file (--github-snapshot {file}), so its \
+                 verdict is not evidence for this repository"
+            ));
+        }
         let selected = parse_selected(line);
         if selected.is_some() {
             suppressions.push(roster_restriction_reason(&selected));
@@ -256,6 +262,31 @@ fn roster_restriction_reason(selected: &Option<Vec<String>>) -> String {
 /// credited it would have kept CB-2113 "ENFORCED" after the real step was
 /// deleted. `.`, `./`, `$PWD` and `$GITHUB_WORKSPACE` are this tree; anything
 /// else — a variable, a temp dir, a sibling checkout — is another one.
+/// The `--github-snapshot` argument on an invoking line, when present.
+///
+/// PMAT-722: CB-2115 can be judged from a snapshot file for its control; a
+/// CI line that does so on the real tree judges a fixture, not GitHub, and
+/// must not be credited as enforcing the rule.
+fn fixture_snapshot(line: &str) -> Option<String> {
+    let code = line.split('#').next().unwrap_or(line);
+    let toks: Vec<&str> = code.split_whitespace().collect();
+    let mut i = 0;
+    while i < toks.len() {
+        let t = toks[i];
+        if let Some(v) = t.strip_prefix("--github-snapshot=") {
+            return Some(v.to_string());
+        }
+        if t == "--github-snapshot" {
+            return Some(
+                toks.get(i + 1)
+                    .map_or_else(|| "<missing>".to_string(), |v| (*v).to_string()),
+            );
+        }
+        i += 1;
+    }
+    None
+}
+
 fn foreign_tree(line: &str) -> Option<String> {
     let code = line.split('#').next().unwrap_or(line);
     let toks: Vec<&str> = code.split_whitespace().collect();

@@ -51,6 +51,16 @@ pub enum ComplyCommands {
         /// how `CB-21I3` becomes a green gate.
         #[arg(long, value_name = "IDS", value_delimiter = ',')]
         checks: Vec<String>,
+
+        /// Judge GitHub-facing rules (CB-2115) from this snapshot file instead of the live API.
+        ///
+        /// PMAT-722. For controls and offline runs only: a verdict from a file is
+        /// not evidence for the repository, so the enforcement ledger marks an
+        /// invocation carrying this flag as neutered, and the same path committed
+        /// in .pmat.yaml is refused — a fixture in the tree would be a bypass
+        /// token (goal-mode.md §12).
+        #[arg(long, value_name = "FILE")]
+        github_snapshot: Option<PathBuf>,
     },
 
     /// Migrate project to latest PMAT standards

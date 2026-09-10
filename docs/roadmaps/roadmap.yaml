@@ -5126,7 +5126,7 @@ roadmap:
   - a COLLISION, an ORPHAN-GITHUB and a title disagreement older than the grace window are each a Fail naming the class and the item or issue; a disagreement inside the window is tolerated and counted; grace_minutes is read from .pmat.yaml comply.checks.cb-2115.options
   - a project with no docs/roadmaps/roadmap.yaml or no resolvable GitHub repository reports Skip with the reason; a snapshot the rule expected and could not read (missing file, gh failure, a page at the cap) is Fail not_measured, never a pass
   - 'the snapshot comes from gh (issues and milestones, refused at the page cap) unless comply.checks.cb-2115.options.snapshot names a file: the same GithubSnapshot pmat work sync reads, its reader moved into services/work_sync so the command and the rule share one'
-  - ci.yml's traceability job runs scripts/roadmap-coherence-control.sh and scripts/work-sync-control.sh before the CB-2113 step; the direct CB-2115 step is NOT added until pmat work sync --check-only exits 0 on master (goal-mode.md §5.4 step 3), and pmat comply ledger writes CB-2115 as NEUTERED with that reason in the receipt
+  - ci.yml's traceability job runs scripts/roadmap-coherence-control.sh and scripts/work-sync-control.sh before the CB-2113 step; the direct CB-2115 step is NOT added until pmat work sync --check-only exits 0 on master (goal-mode.md §5.4 step 3), and pmat comply ledger writes CB-2115 as NEUTERED (its only full-roster carrier is quality-gate.yml's continue-on-error step); the withholding reason is recorded in ci.yml's comment and in the receipt, not in the ledger
   phases: []
   subtasks: []
   estimated_effort: null

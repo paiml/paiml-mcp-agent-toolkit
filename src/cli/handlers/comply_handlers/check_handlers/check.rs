@@ -51,8 +51,12 @@ pub(crate) async fn handle_check(
     failures_only: bool,
     format: ComplyOutputFormat,
     selected: &[String],
+    github_snapshot: Option<&Path>,
 ) -> Result<()> {
-    let mut report = compute_compliance_report(project_path)?;
+    let overrides = CheckOverrides {
+        github_snapshot: github_snapshot.map(Path::to_path_buf),
+    };
+    let mut report = compute_compliance_report_with(project_path, &overrides)?;
     // PMAT-718: before `failures_only`, so a deselected rule cannot be retained
     // as a failure, and before the summary is re-tallied.
     select_checks(&mut report.checks, selected)?;
@@ -164,7 +168,25 @@ fn guard_analysable_project(project_path: &Path) -> Result<()> {
 /// and report's JSON was byte-identical for an empty project and a 121-file
 /// defect-ridden one bar the timestamp. Both commands now share this function,
 /// so there is exactly one answer to give.
+/// Inputs a rule takes from the command line rather than from the tree.
+///
+/// PMAT-722: CB-2115's snapshot file. It is deliberately NOT a `.pmat.yaml`
+/// option — a committed fixture path would be a bypass token — so it travels
+/// out of band from the config, and the enforcement ledger can see the flag
+/// on the invoking line and refuse to credit that run as evidence.
+#[derive(Debug, Default, Clone)]
+pub(crate) struct CheckOverrides {
+    pub github_snapshot: Option<std::path::PathBuf>,
+}
+
 pub(crate) fn compute_compliance_report(project_path: &Path) -> Result<ComplianceReport> {
+    compute_compliance_report_with(project_path, &CheckOverrides::default())
+}
+
+pub(crate) fn compute_compliance_report_with(
+    project_path: &Path,
+    overrides: &CheckOverrides,
+) -> Result<ComplianceReport> {
     guard_analysable_project(project_path)?;
 
     crate::status_eprintln!("Checking PMAT compliance for {}", project_path.display());
@@ -181,7 +203,8 @@ pub(crate) fn compute_compliance_report(project_path: &Path) -> Result<Complianc
     let (config, version_source) = load_project_config_with_source(project_path)?;
     let project_version = &config.pmat.version;
 
-    let checks = build_all_compliance_checks(project_path, comply_config, project_version);
+    let checks =
+        build_all_compliance_checks(project_path, comply_config, project_version, overrides);
     Ok(build_compliance_report(
         checks,
         project_version,
@@ -359,6 +382,7 @@ fn build_all_compliance_checks(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
     project_version: &str,
+    overrides: &CheckOverrides,
 ) -> Vec<ComplianceCheck> {
     // Data-driven group list: each entry is independent and side-effect-free
     // w.r.t. the others, which lets `run_check_groups` both report live
@@ -438,7 +462,13 @@ fn build_all_compliance_checks(
         ),
         (
             "roadmap-coherence",
-            Box::new(move || build_roadmap_coherence_checks(project_path, comply_config)),
+            Box::new(move || {
+                build_roadmap_coherence_checks(
+                    project_path,
+                    comply_config,
+                    overrides.github_snapshot.as_deref(),
+                )
+            }),
         ),
     ];
     run_check_groups(groups)

@@ -306,6 +306,7 @@ impl CommandDispatcher {
                     format: crate::cli::commands::ComplyOutputFormat::Text,
                     include_project: vec![],
                     checks: vec![],
+                    github_snapshot: None,
                 });
                 handlers::comply_handlers::handle_comply_command(cmd).await
             }

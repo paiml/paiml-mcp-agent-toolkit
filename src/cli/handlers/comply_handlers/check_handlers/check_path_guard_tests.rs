@@ -19,7 +19,7 @@ mod comply_check_path_guard_tests {
     #[tokio::test]
     async fn comply_check_rejects_a_missing_project_path() {
         let path = missing_path();
-        let err = super::handle_check(&path, false, false, ComplyOutputFormat::Text, &[])
+        let err = super::handle_check(&path, false, false, ComplyOutputFormat::Text, &[], None)
             .await
             .expect_err("a missing project path must not produce a compliance report");
         let msg = format!("{err:#}");
@@ -42,7 +42,7 @@ mod comply_check_path_guard_tests {
         // The old code's first filesystem call was a `create_dir_all` under the
         // path it had not checked.
         let path = missing_path();
-        let _ = super::handle_check(&path, false, false, ComplyOutputFormat::Text, &[]).await;
+        let _ = super::handle_check(&path, false, false, ComplyOutputFormat::Text, &[], None).await;
         assert!(
             !path.join(".pmat").exists(),
             "comply check must not materialise a config dir under a nonexistent path"

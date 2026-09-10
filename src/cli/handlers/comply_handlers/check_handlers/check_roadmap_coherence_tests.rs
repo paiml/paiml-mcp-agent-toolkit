@@ -40,23 +40,43 @@ mod tests_roadmap_coherence {
         serde_json::json!({"number": number, "title": title, "state": state, "labels": labels, "updated_at": updated_at})
     }
 
-    /// Write `snapshot.json` and point `.pmat.yaml`'s `cb-2115` options at it.
+    /// Write `snapshot.json` (given to the rule on the command line, never
+    /// through `.pmat.yaml`) and, when asked, a `.pmat.yaml` carrying only the
+    /// grace option.
     fn snapshot(dir: &Path, issues: Vec<serde_json::Value>, grace_minutes: Option<i64>) {
         let snap = serde_json::json!({"repo": "paiml/fixture", "taken_at": "2026-09-10T00:00:00Z", "issues": issues, "milestones": []});
         std::fs::write(dir.join("snapshot.json"), snap.to_string()).expect("write snapshot");
-        let grace = grace_minutes.map_or(String::new(), |g| format!("        grace_minutes: {g}\n"));
-        std::fs::write(
-            dir.join(".pmat.yaml"),
-            format!("comply:\n  checks:\n    cb-2115:\n      options:\n        snapshot: snapshot.json\n{grace}"),
-        )
-        .expect("write .pmat.yaml");
+        if let Some(g) = grace_minutes {
+            std::fs::write(
+                dir.join(".pmat.yaml"),
+                format!("comply:\n  checks:\n    cb-2115:\n      options:\n        grace_minutes: {g}\n"),
+            )
+            .expect("write .pmat.yaml");
+        }
     }
 
-    fn run(dir: &Path) -> ComplianceCheck {
+    fn run_with(dir: &Path, github_snapshot: Option<&Path>) -> ComplianceCheck {
         let config: ComplyConfig = PmatYamlConfig::load(dir).expect(".pmat.yaml parses").comply;
-        let mut checks = build_roadmap_coherence_checks(dir, &config);
+        let mut checks = build_roadmap_coherence_checks(dir, &config, github_snapshot);
         assert_eq!(checks.len(), 1, "exactly one CB-2115 row");
         checks.remove(0)
+    }
+
+    /// The common case: judge from the fixture's `snapshot.json`.
+    fn run(dir: &Path) -> ComplianceCheck {
+        run_with(dir, Some(&dir.join("snapshot.json")))
+    }
+
+    fn git(dir: &Path, args: &[&str]) {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"])
+            .args(args)
+            .env("LC_ALL", "C")
+            .output()
+            .expect("git runs");
+        assert!(out.status.success(), "git failed: {}", String::from_utf8_lossy(&out.stderr));
     }
 
     fn bijection() -> tempfile::TempDir {
@@ -74,12 +94,58 @@ mod tests_roadmap_coherence {
     }
 
     #[test]
-    fn a_roadmap_naming_no_github_repository_is_skipped() {
-        // No `github_repo`, no git remote, no snapshot: nothing to be coherent WITH.
-        let dir = project(None, &item("PMAT-001", "planned work", "planned", Some(1), &days_ago(2)));
-        let c = run(dir.path());
+    fn a_roadmap_naming_no_github_repository_and_no_issues_is_skipped() {
+        // No `github_repo`, no git remote, no snapshot, and no item names an
+        // issue: this roadmap does not track GitHub, so there is nothing to be
+        // coherent WITH.
+        let dir = project(None, &item("PMAT-001", "planned work", "planned", None, &days_ago(2)));
+        let c = run_with(dir.path(), None);
         assert_eq!(c.status, CheckStatus::Skip, "{}", c.message);
         assert!(c.message.contains("GitHub repository"), "{}", c.message);
+    }
+
+    #[test]
+    fn a_roadmap_naming_issues_but_no_repository_is_not_measured() {
+        // Quorum on PMAT-722, all three lanes: with `github_repo` nulled and the
+        // remote gone, a roadmap whose items DO name issues was skipping into a
+        // pass. GitHub is an input this roadmap expects, so it is not_measured.
+        let dir = project(None, &item("PMAT-001", "planned work", "planned", Some(1), &days_ago(2)));
+        let c = run_with(dir.path(), None);
+        assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
+        assert!(c.message.starts_with("not_measured:"), "{}", c.message);
+        assert!(c.message.contains("1 item(s) name a github_issue"), "{}", c.message);
+    }
+
+    #[test]
+    fn a_deleted_roadmap_is_not_measured_and_fails() {
+        // CB-2113's RoadmapDeleted arm, mirrored: committed and now gone is a
+        // deleted input, not a project that never had a roadmap.
+        let dir = project(Some("paiml/fixture"), &item("PMAT-001", "planned work", "planned", Some(1), &days_ago(2)));
+        git(dir.path(), &["init", "-q", "-b", "master"]);
+        git(dir.path(), &["add", "."]);
+        git(dir.path(), &["commit", "-q", "-m", "roadmap"]);
+        git(dir.path(), &["rm", "-q", "docs/roadmaps/roadmap.yaml"]);
+        let c = run_with(dir.path(), None);
+        assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
+        assert!(c.message.starts_with("not_measured:"), "{}", c.message);
+        assert!(c.message.contains("was committed and is now gone"), "{}", c.message);
+    }
+
+    #[test]
+    fn a_snapshot_path_committed_in_pmat_yaml_is_refused() {
+        // The bypass token: a fixture path in the tree would make every CI run
+        // judge that file instead of GitHub. Refused before anything is read —
+        // no network is touched even though `github_repo` resolves.
+        let dir = bijection();
+        std::fs::write(
+            dir.path().join(".pmat.yaml"),
+            "comply:\n  checks:\n    cb-2115:\n      options:\n        snapshot: snapshot.json\n",
+        )
+        .expect("write .pmat.yaml");
+        let c = run_with(dir.path(), None);
+        assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
+        assert!(c.message.starts_with("not_measured:"), "{}", c.message);
+        assert!(c.message.contains(".pmat.yaml") && c.message.contains("--github-snapshot"), "{}", c.message);
     }
 
     #[test]
@@ -88,12 +154,7 @@ mod tests_roadmap_coherence {
         // (goal-mode.md doctrine 2; .pmat-ratchet.toml's rule for a zero it
         // cannot tell from a rotted pathspec).
         let dir = project(Some("paiml/fixture"), &item("PMAT-001", "planned work", "planned", Some(1), &days_ago(2)));
-        std::fs::write(
-            dir.path().join(".pmat.yaml"),
-            "comply:\n  checks:\n    cb-2115:\n      options:\n        snapshot: missing.json\n",
-        )
-        .expect("write .pmat.yaml");
-        let c = run(dir.path());
+        let c = run_with(dir.path(), Some(&dir.path().join("missing.json")));
         assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
         assert_eq!(c.severity, CheckSeverity::Error.into());
         assert!(c.message.starts_with("not_measured:"), "{}", c.message);
@@ -215,6 +276,20 @@ mod tests_roadmap_coherence {
         let c = run(dir.path());
         assert_eq!(c.status, CheckStatus::Fail, "grace_minutes: 10 must make it a finding: {}", c.message);
         assert!(c.message.contains("DRIFT"), "{}", c.message);
+    }
+
+    /// The wiring, not the logic: the flag must reach the command through the
+    /// production parse route, or the control judges nothing.
+    #[test]
+    fn the_github_snapshot_flag_reaches_the_command() {
+        let parsed = crate::cli::commands::on_big_stack(|| {
+            use clap::Parser;
+            crate::cli::Cli::try_parse_from(["pmat", "comply", "check", "--github-snapshot", "fixtures/x.json"])
+                .map(|cli| format!("{:?}", cli.command))
+                .map_err(|e| e.to_string())
+        })
+        .expect("`comply check --github-snapshot FILE` must parse");
+        assert!(parsed.contains("fixtures/x.json"), "the path must survive parsing: {parsed}");
     }
 
     #[test]

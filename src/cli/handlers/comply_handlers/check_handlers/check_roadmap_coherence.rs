@@ -2,7 +2,9 @@
 pub(crate) fn check_roadmap_coherence(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
+    github_snapshot: Option<&Path>,
 ) -> ComplianceCheck {
+    use crate::services::commit_traceability::{self as ct, Inputs};
     let mut check = ComplianceCheck {
         name: "CB-2115: Roadmap Coherence".to_string(),
         status: CheckStatus::Skip,
@@ -12,6 +14,16 @@ pub(crate) fn check_roadmap_coherence(
 
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     if !roadmap_path.exists() {
+        // The same line CB-2113 draws: a roadmap that was never committed is a
+        // structural absence (Skip); one that was committed and is now gone is
+        // a deleted input, and deleting a gate's input is not a way of passing
+        // it (goal-mode.md doctrine 2).
+        if matches!(ct::inputs(project_path), Inputs::RoadmapDeleted) {
+            check.status = CheckStatus::Fail;
+            check.severity = crate::models::comply_config::CheckSeverity::Error.into();
+            check.message = "not_measured: docs/roadmaps/roadmap.yaml was committed and is now gone — deleting a gate's input is not a way of passing it (goal-mode.md doctrine 2)".to_string();
+            return check;
+        }
         check.message = "no docs/roadmaps/roadmap.yaml — this project does not track work in a roadmap".to_string();
         return check;
     }
@@ -26,19 +38,19 @@ pub(crate) fn check_roadmap_coherence(
         }
     };
 
-    let mut snapshot_path: Option<String> = None;
     let mut grace_minutes = crate::services::work_sync::DEFAULT_GRACE_MINUTES;
 
     if let Some(config) = comply_config.checks.get("cb-2115") {
-        if let Some(val) = config.options.get("snapshot") {
-            if let Some(s) = val.as_str() {
-                snapshot_path = Some(s.to_string());
-            } else {
-                check.status = CheckStatus::Fail;
-                check.severity = crate::models::comply_config::CheckSeverity::Error.into();
-                check.message = "not_measured: cb-2115 option snapshot is not a string".to_string();
-                return check;
-            }
+        // A snapshot FILE may only arrive on the command line
+        // (`pmat comply check --github-snapshot <file>`): a path committed in
+        // .pmat.yaml would let the gate judge a fixture instead of GitHub on
+        // every CI run — a bypass token, which goal-mode.md §12 forbids. The
+        // three quorum lanes on PMAT-722 all found it; refused, never read.
+        if config.options.contains_key("snapshot") {
+            check.status = CheckStatus::Fail;
+            check.severity = crate::models::comply_config::CheckSeverity::Error.into();
+            check.message = "not_measured: cb-2115 option `snapshot` in .pmat.yaml is refused — a snapshot file may only be given on the command line (pmat comply check --github-snapshot <file>), never committed in the tree, or the gate would judge a fixture instead of GitHub (goal-mode.md §12)".to_string();
+            return check;
         }
         if let Some(val) = config.options.get("grace_minutes") {
             if let Some(i) = val.as_i64() {
@@ -52,7 +64,8 @@ pub(crate) fn check_roadmap_coherence(
         }
     }
 
-    let source = if let Some(s) = snapshot_path {
+    let names_issues = roadmap.roadmap.iter().filter(|i| i.github_issue.is_some()).count();
+    let source = if let Some(s) = github_snapshot {
         crate::services::work_sync::github::SnapshotSource::File(project_path.join(s))
     } else {
         let repo = match &roadmap.github_repo {
@@ -60,8 +73,16 @@ pub(crate) fn check_roadmap_coherence(
             None => {
                 match crate::cli::handlers::work_handlers::core_handlers::github::detect_github_repo(&project_path.to_path_buf()) {
                     Ok(Some(r)) => r,
+                    Ok(None) if names_issues == 0 => {
+                        check.message = "no GitHub repository and no item names a github_issue — nothing for the roadmap to be coherent with: set github_repo in docs/roadmaps/roadmap.yaml or add an origin remote".to_string();
+                        return check;
+                    }
                     Ok(None) => {
-                        check.message = "no GitHub repository — nothing for the roadmap to be coherent with: set github_repo in docs/roadmaps/roadmap.yaml or add an origin remote".to_string();
+                        // Items name issues, so GitHub is an input this rule expected;
+                        // a repository that no longer resolves is not a pass.
+                        check.status = CheckStatus::Fail;
+                        check.severity = crate::models::comply_config::CheckSeverity::Error.into();
+                        check.message = format!("not_measured: no GitHub repository resolves (github_repo is null and no origin remote) while {names_issues} item(s) name a github_issue — an input the rule expected and could not read is a failure, not a pass (goal-mode.md doctrine 2)");
                         return check;
                     }
                     Err(e) => {
