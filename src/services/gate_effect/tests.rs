@@ -999,3 +999,61 @@ jobs:
         );
     }
 }
+
+/// PMAT-722: `--github-snapshot FILE` judges CB-2115 from a fixture, not
+/// GitHub. A CI line carrying it on the real tree must not be credited as
+/// enforcing the rule, exactly as a `--path` into another tree is not.
+#[test]
+fn a_line_judging_from_a_snapshot_file_is_not_evidence_for_the_repository() {
+    // Quorum lanes 1-3: the control step runs the same `--checks CB-2113` line
+    // against a planted fixture (`--path "$repo"`). If the direct step were
+    // deleted, `rule_status`'s fallback would credit that fixture run with
+    // enforcing the rule on the repository. A `--path` that is not this tree
+    // is a suppression, so the hop is NEUTERED and the fallback cannot see it.
+    let wf = r#"
+name: CI
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: control only
+        run: bash scripts/control.sh
+"#;
+    let script = "#!/usr/bin/env bash\nset -uo pipefail\nrepo=$(mktemp -d)\nrc=0\npmat comply check --checks CB-2100 --github-snapshot fixtures/happy.json --path . || rc=$?\n[ \"$rc\" -eq 1 ] || exit 1\n";
+    let dir = fixture(&[
+        (".github/workflows/ci.yml", wf),
+        ("scripts/control.sh", script),
+    ]);
+    let report = run(&dir, &["quality"]);
+    assert_eq!(report.invocations.len(), 1, "{}", why(&report));
+    let inv = &report.invocations[0];
+    assert!(
+        inv.suppressions.iter().any(|s| s.contains("snapshot file")),
+        "the --path to a fixture must be named as the reason: {:?}",
+        inv.suppressions
+    );
+    assert!(
+        report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+        "a fixture run enforces nothing on this repository: {}",
+        why(&report)
+    );
+    // `--path .` and the workspace itself are this tree, not another one.
+    for here in [
+        "--path .",
+        "-p .",
+        "--path \"$GITHUB_WORKSPACE\"",
+        "--path=.",
+    ] {
+        let wf = format!(
+            "name: CI\njobs:\n  quality:\n    runs-on: ubuntu-latest\n    steps:\n      - run: pmat comply check --checks CB-2100 {here}\n"
+        );
+        let dir = fixture(&[(".github/workflows/ci.yml", &wf)]);
+        let report = run(&dir, &["quality"]);
+        assert!(
+            !report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+            "{here} is this tree: {}",
+            why(&report)
+        );
+    }
+}
