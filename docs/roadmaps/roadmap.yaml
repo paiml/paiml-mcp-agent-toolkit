@@ -5281,3 +5281,20 @@ roadmap:
   labels:
   - kind:code
   notes: 'Filed by PMAT-728 (goal-mode.md §11 step 6, doctrine 6): the rule, its control and the front-matter landed there; the direct gate step is withheld because at 2026-09-10 the epics do not exist - all 44 specs read epic: null, and the three issues labelled epic (#1017, #1018, #1019) carry 0 sub-issues. Human work first: create the epics, add the sub-issues, decide historical/superseded, fill epic:. A gate red on arrival is a gate someone disables (§5.4). Depends on PMAT-728 merging. The 44-line NO-EPIC verdict on master is the measurement: pmat comply check --checks CB-2110 --path . --github-snapshot <snapshot from pmat work sync --write-snapshot>.'
+- id: PMAT-1253
+  github_issue: 1253
+  item_type: task
+  title: 'goal-mode step 4a: pmat work sync --check-only reaches 0 on master — complete what shipped, pair items with the issues their titles name, exempt trackers and epics with no-roadmap, close what is fixed, then run yaml-to-github and github-to-yaml for the rest'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-10T17:37:34Z
+  updated: 2026-09-10T17:37:34Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:triage
+  notes: null

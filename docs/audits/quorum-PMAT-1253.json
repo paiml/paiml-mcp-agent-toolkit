@@ -1,0 +1,2129 @@
+{
+  "ticket": "PMAT-1253",
+  "lane": "quorum",
+  "mode": "plan",
+  "executor": "agy",
+  "width": 3,
+  "agy_version": "1.2.0",
+  "conversations": [
+    "736b169b-7b37-4d63-afc7-1b72e5607dba",
+    "aec32769-2bf1-4282-a518-30e4053b672c",
+    "06d78423-0393-4ee8-ac7e-e0d4cb644480"
+  ],
+  "child_conversations": 3,
+  "fanout": {
+    "children": 3,
+    "method": "lane-files",
+    "label": "consensus"
+  },
+  "not_before": 1789062364,
+  "done_epoch": 1789062810,
+  "results": [
+    {
+      "lane": 1,
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-1253/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-1.json",
+      "verdict": "FAIL",
+      "summary": "I verified all 41 requested rows, the 4 'verify' constraints, and spot-checked 10 additional open/item rows using git logs and gh pr/issue commands. I found two discrepancies where the ledger verdict should be updated: PMAT-622 (ProvableContract & `pmat work falsify` actually exist) and PMAT-707 (`--diff-scope` flag is exposed in `pmat analyze complexity` and present in the hook). Both should be fixed to 'completed'.",
+      "status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 255.3,
+      "findings": 53
+    },
+    {
+      "lane": 2,
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-1253/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-2.json",
+      "verdict": "FAIL",
+      "summary": "MACS-018 should be open (Anti-Gravity transcript parser not found). PMAT-707 should be completed (diff-scoped mode is reachable).",
+      "status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 443.1,
+      "findings": 51
+    },
+    {
+      "lane": 3,
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-1253/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-3.json",
+      "verdict": "FAIL",
+      "summary": "Found 2 discrepancies where the ledger verdict should change: MACS-018 (should be 'open') and PMAT-707 (should be 'completed'). All other verdicts were independently verified and agreed with.",
+      "status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 230.9,
+      "findings": 53
+    }
+  ],
+  "consensus": "All 3 lanes returned FAIL. Each finding's claim starts '<row> agree|disagree'; parsing those prefixes shows every lane judged all 43 rows (the 41 removing verdicts plus the open verify rows PMAT-622 and PMAT-707). Per-row tally: PMAT-707 open->completed 3/3 (the diff-scoped mode is reachable through `pmat analyze complexity --diff-scope` and the generated hook). MACS-018 completed->open 2/3 (lanes 2 and 3 found no parser that extracts Anti-Gravity transcript bounds; lane 1 agreed on the ground that 'its message documents the transcript bounds parser'). PMAT-622: lane 1 alone moves it to completed; lanes 2 and 3 keep it open because runner.rs says ProvableContract dispatch is 'not yet wired'. The other 40 rows are agreed 3/3: 19 completed (the 13 merged-PR rows plus MACS-017, MACS-019, PMAT-620, PMAT-624, PMAT-629, PMAT-654), 6 pair, 6 paired, 8 no-roadmap and #1240 close. Every spot-checked open or item row is agreed as-is (MACS-006, MACS-007, MACS-013, PMAT-619, PMAT-621, PMAT-632, #1014, #1074, #1118, #1119, #1120).",
+  "dissent": [
+    "All 3 lanes are non-PASS, so lane_reduce.dissent carries all three verbatim. Minority positions inside the FAIL:",
+    "lane 1 alone: PMAT-622 -> completed ('Unified pmat work falsify and ProvableContract variant both exist'). Lanes 2 and 3 refute this with runner.rs 'not yet wired'.",
+    "lane 1 alone: MACS-018 stays completed, on the ground that the 'commit message documents the transcript bounds parser'. Lanes 2 and 3: no such parser exists."
+  ],
+  "lane_reduce": {
+    "dedup": [
+      {
+        "file": "#1014",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2
+        ],
+        "claims": [
+          "#1014 agree, issue is open and deferred to 3.41.0",
+          "#1014 agree: Issue remains open and represents real work."
+        ]
+      },
+      {
+        "file": "#1017",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "#1017 agree, labelled epic",
+          "#1017 agree: Issue is explicitly labeled epic.",
+          "#1017 agree: gh issue view confirms it is labelled epic."
+        ]
+      },
+      {
+        "file": "#1018",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "#1018 agree, labelled epic",
+          "#1018 agree: Issue is explicitly labeled epic.",
+          "#1018 agree: gh issue view confirms it is labelled epic."
+        ]
+      },
+      {
+        "file": "#1019",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "#1019 agree, labelled epic",
+          "#1019 agree: Issue is explicitly labeled epic.",
+          "#1019 agree: gh issue view confirms it is labelled epic."
+        ]
+      },
+      {
+        "file": "#1031",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "#1031 agree, tracking issue for AGY Support",
+          "#1031 agree: Serves as an overarching enhancement tracker/epic.",
+          "#1031 agree: gh issue view confirms it is an epic."
+        ]
+      },
+      {
+        "file": "#1034",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "#1034 agree, tracking issue for feature backlog",
+          "#1034 agree: Acts as a backlog tracker umbrella.",
+          "#1034 agree: gh issue view confirms it is a tracking issue."
+        ]
+      },
+      {
+        "file": "#1035",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "#1035 agree, root-cause umbrella issue",
+          "#1035 agree: Umbrella tracker for root causes.",
+          "#1035 agree: gh issue view confirms it is a tracking issue for root cause analysis."
+        ]
+      },
+      {
+        "file": "#1074",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2
+        ],
+        "claims": [
+          "#1074 agree, issue is open",
+          "#1074 agree: Issue remains open and represents real work."
+        ]
+      },
+      {
+        "file": "#1090",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "#1090 agree, epic for deep MCP capability",
+          "#1090 agree: Titled [EPIC].",
+          "#1090 agree: gh issue view confirms it is an epic."
+        ]
+      },
+      {
+        "file": "#1118",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2
+        ],
+        "claims": [
+          "#1118 agree, issue is open",
+          "#1118 agree: Issue remains open and represents real work."
+        ]
+      },
+      {
+        "file": "#1119",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2
+        ],
+        "claims": [
+          "#1119 agree, issue is open",
+          "#1119 agree: Issue remains open and represents real work."
+        ]
+      },
+      {
+        "file": "#1120",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2
+        ],
+        "claims": [
+          "#1120 agree, issue is open",
+          "#1120 agree: Issue remains open and represents real work."
+        ]
+      },
+      {
+        "file": "#1124",
+        "line": null,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "#1124 agree: Issue is open and pairs with PMAT-697.",
+          "PMAT-697 agree: Issue #1124 is open and correctly paired."
+        ]
+      },
+      {
+        "file": "#1128",
+        "line": null,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "#1128 agree: Issue is open and pairs with PMAT-696.",
+          "PMAT-696 agree: Issue #1128 is open and correctly paired."
+        ]
+      },
+      {
+        "file": "#1137",
+        "line": null,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "#1137 agree: Issue is open and pairs with PMAT-698.",
+          "PMAT-698 agree: Issue #1137 is open and correctly paired."
+        ]
+      },
+      {
+        "file": "#1141",
+        "line": null,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "#1141 agree: Issue is open and pairs with PMAT-699.",
+          "PMAT-699 agree: Issue #1141 is open and correctly paired."
+        ]
+      },
+      {
+        "file": "#1156",
+        "line": null,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "#1156 agree: Issue is open and pairs with PMAT-695.",
+          "PMAT-695 agree: Issue #1156 is open and correctly paired."
+        ]
+      },
+      {
+        "file": "#1202",
+        "line": null,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "#1202 agree: Issue is open and pairs with PMAT-694.",
+          "PMAT-694 agree: Issue #1202 is open and correctly paired."
+        ]
+      },
+      {
+        "file": "#1227",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "PMAT-689 agree, PR #1227 is merged",
+          "PMAT-689 agree: PR #1227 is merged.",
+          "PMAT-689 agree: the PR #1227 is merged."
+        ]
+      },
+      {
+        "file": "#1237",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "PMAT-712 agree, PR #1237 is merged",
+          "PMAT-712 agree: PR #1237 is merged.",
+          "PMAT-712 agree: the PR #1237 is merged."
+        ]
+      },
+      {
+        "file": "#1240",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "#1240 agree, issue asks are merged in #1241 and #1242",
+          "#1240 agree: Confirmed fixed by PRs #1241 and #1242.",
+          "#1240 agree: gh issue view confirms it is fixed by PRs #1241 and #1242 which were merged."
+        ]
+      },
+      {
+        "file": "#1241",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "PMAT-713 agree, PR #1241 is merged",
+          "PMAT-713 agree: PR #1241 is merged.",
+          "PMAT-713 agree: the PR #1241 is merged."
+        ]
+      },
+      {
+        "file": "#1242",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "PMAT-714 agree, PR #1242 is merged",
+          "PMAT-714 agree: PR #1242 is merged.",
+          "PMAT-714 agree: the PR #1242 is merged."
+        ]
+      },
+      {
+        "file": "#1243",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "PMAT-715 agree, PR #1243 is merged",
+          "PMAT-715 agree: PR #1243 is merged.",
+          "PMAT-715 agree: the PR #1243 is merged."
+        ]
+      },
+      {
+        "file": "#1244",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "PMAT-716 agree, PR #1244 is merged",
+          "PMAT-716 agree: PR #1244 is merged.",
+          "PMAT-716 agree: the PR #1244 is merged."
+        ]
+      },
+      {
+        "file": "#1245",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "PMAT-717 agree, PR #1245 is merged",
+          "PMAT-717 agree: PR #1245 is merged.",
+          "PMAT-717 agree: the PR #1245 is merged."
+        ]
+      },
+      {
+        "file": "#1251",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "PMAT-718 agree, PR #1251 is merged",
+          "PMAT-718 agree: PR #1251 is merged.",
+          "PMAT-718 agree: the PR #1251 is merged.",
+          "PMAT-719 agree, PR #1251 is merged",
+          "PMAT-719 agree: PR #1251 is merged.",
+          "PMAT-719 agree: the PR #1251 is merged.",
+          "PMAT-720 agree, PR #1251 is merged",
+          "PMAT-720 agree: PR #1251 is merged.",
+          "PMAT-720 agree: the PR #1251 is merged.",
+          "PMAT-722 agree, PR #1251 is merged",
+          "PMAT-722 agree: PR #1251 is merged.",
+          "PMAT-722 agree: the PR #1251 is merged.",
+          "PMAT-724 agree, PR #1251 is merged",
+          "PMAT-724 agree: PR #1251 is merged.",
+          "PMAT-724 agree: the PR #1251 is merged.",
+          "PMAT-728 agree, PR #1251 is merged",
+          "PMAT-728 agree: PR #1251 is merged.",
+          "PMAT-728 agree: the PR #1251 is merged."
+        ]
+      },
+      {
+        "file": "#613",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "PMAT-624 agree, PR #613 is merged"
+        ]
+      },
+      {
+        "file": "#999",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "#999 agree, it is a tracking issue for EV-0..EV-6",
+          "#999 agree: Tracks work across multiple files, acts as an epic.",
+          "#999 agree: gh issue view confirms it is an epic/tracking issue."
+        ]
+      },
+      {
+        "file": "97d994f78",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "PMAT-654 agree, commit 97d994f78 is merged"
+        ]
+      },
+      {
+        "file": "ca0692b82",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "MACS-017 agree, commit ca0692b82 is merged",
+          "MACS-018 disagree, the parser that extracts Anti-Gravity transcript bounds into falsification evidence does not exist",
+          "MACS-019 agree, commit ca0692b82 is merged"
+        ]
+      },
+      {
+        "file": "check_binding_scope_tests_sha_equation.rs",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "PMAT-620 agree, YAML resolution and SHA drift detection are exercised by tests in check_binding_scope_tests_sha_equation.rs"
+        ]
+      },
+      {
+        "file": "check_macs_artifacts.rs",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "MACS-013 agree, CB-1655 warns instead of failing"
+        ]
+      },
+      {
+        "file": "check_work_ladder_tests_levels.rs",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "MACS-006 agree, no test exists for a receipt recording both ladder levels"
+        ]
+      },
+      {
+        "file": "complexity_handlers/mod.rs",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "PMAT-707 disagree, the diff-scoped mode is reachable via pmat analyze complexity and generated hook"
+        ]
+      },
+      {
+        "file": "da9da093b",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "PMAT-629 agree, commit da9da093b is merged"
+        ]
+      },
+      {
+        "file": "docs/audits/triage-PMAT-1253-ledger.json",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          3
+        ],
+        "claims": [
+          "#1014 agree: underlying cause is not fully addressed so it is kept as an item.",
+          "#1074 agree: PMAT-696 handles half of it, so it remains an item.",
+          "#1118 agree: standard GH item.",
+          "#1119 agree: standard GH item.",
+          "#1120 agree: standard GH item.",
+          "MACS-006 agree: Still open, as commit e03fb34cf only replanned it without fixing.",
+          "MACS-006 agree: no test verifies that a receipt records both ladder levels.",
+          "MACS-007 agree: The unshipped remainder is still open.",
+          "MACS-007 agree: pmat work status renders no chain-of-thought step.",
+          "MACS-013 agree: CB-1655 warns instead of failing.",
+          "MACS-013 agree: No merged commit resolves this open item.",
+          "MACS-017 agree: Commit ca0692b82 exists on master.",
+          "MACS-018 agree: Commit ca0692b82 exists and its message documents the transcript bounds parser.",
+          "MACS-019 agree: Commit ca0692b82 exists on master.",
+          "PMAT-619 agree: No merged commit resolves this open item.",
+          "PMAT-619 agree: no commit on master fixes it.",
+          "PMAT-620 agree: Commit b6d7bebf1 includes tests for YAML resolution and SHA drift detection.",
+          "PMAT-622 disagree: Unified 'pmat work falsify' and 'ProvableContract' variant both exist.",
+          "PMAT-624 agree: MACS-007 exists in the tree as commit 09ff1cc1c.",
+          "PMAT-629 agree: Commit da9da093b exists on master.",
+          "PMAT-632 agree: It was documented as pending, not completed.",
+          "PMAT-654 agree: Commit 97d994f78 exists on master.",
+          "PMAT-707 disagree: The '--diff-scope' CLI flag is reachable in 'pmat analyze complexity' and generated hook uses it."
+        ]
+      },
+      {
+        "file": "docs/roadmaps/roadmap.yaml",
+        "line": null,
+        "lanes_agreeing": [
+          2,
+          3
+        ],
+        "claims": [
+          "#1124 agree, PMAT-697 names it first",
+          "#1124 agree: PMAT-697's title names it first.",
+          "#1128 agree, PMAT-696 names it first",
+          "#1128 agree: PMAT-696's title names it first.",
+          "#1137 agree, PMAT-698 names it first",
+          "#1137 agree: PMAT-698's title names it first.",
+          "#1141 agree, PMAT-699 names it first",
+          "#1141 agree: PMAT-699's title names it first.",
+          "#1156 agree, PMAT-695 names it first",
+          "#1156 agree: PMAT-695's title names it first.",
+          "#1202 agree, PMAT-694 names it first",
+          "#1202 agree: PMAT-694's title names it first.",
+          "PMAT-694 agree, the title names #1202 first",
+          "PMAT-694 agree: the item's title in roadmap.yaml names #1202 first.",
+          "PMAT-695 agree, the title names #1156 first",
+          "PMAT-695 agree: the item's title in roadmap.yaml names #1156 first.",
+          "PMAT-696 agree, the title names #1128 first",
+          "PMAT-696 agree: the item's title in roadmap.yaml names #1128 first.",
+          "PMAT-697 agree, the title names #1124 first",
+          "PMAT-697 agree: the item's title in roadmap.yaml names #1124 first.",
+          "PMAT-698 agree, the title names #1137 first",
+          "PMAT-698 agree: the item's title in roadmap.yaml names #1137 first.",
+          "PMAT-699 agree, the title names #1141 first",
+          "PMAT-699 agree: the item's title in roadmap.yaml names #1141 first."
+        ]
+      },
+      {
+        "file": "master",
+        "line": null,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "MACS-017 agree: the commit ca0692b82 is merged and implements MACS-017",
+          "MACS-019 agree: the commit ca0692b82 is merged and implements MACS-019",
+          "PMAT-624 agree: the PR #613 containing MACS-007/008/009 commits is merged on master.",
+          "PMAT-629 agree: the commit da9da093b is merged on master.",
+          "PMAT-654 agree: the commit 97d994f78 is merged on master."
+        ]
+      },
+      {
+        "file": "pmat analyze complexity --help",
+        "line": null,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "PMAT-707 disagree: the diff-scoped mode IS reachable from the command line via 'pmat analyze complexity --diff-scope'. The verify check passes, so it should be marked completed."
+        ]
+      },
+      {
+        "file": "pmat work --help",
+        "line": null,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "PMAT-621 agree: 'pmat work verify' command does not parse/exist in the CLI."
+        ]
+      },
+      {
+        "file": "runner.rs",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "PMAT-622 agree, ProvableContract variant exists but dispatch is deferred"
+        ]
+      },
+      {
+        "file": "src/cli/handlers/comply_handlers/check_handlers/check_binding_scope_tests_sha_equation.rs",
+        "line": null,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "PMAT-620 agree: tests for YAML resolution and SHA drift detection exist in check_binding_scope_tests_sha_equation.rs. The verify check passes, completing the item."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/work_falsification/runner.rs",
+        "line": null,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "PMAT-622 agree: the unified pmat work falsify over ProvableContract is explicitly 'not yet wired' in runner.rs, so the verify check fails and it stays open."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/work_ledger_types.rs",
+        "line": null,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "MACS-018 disagree: no parser that extracts Anti-Gravity transcript bounds into falsification evidence was found. The verify check fails."
+        ]
+      },
+      {
+        "file": "work_status.rs",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "MACS-007 agree, pmat work status renders no chain-of-thought step"
+        ]
+      }
+    ],
+    "uncovered": [],
+    "dissent": [
+      {
+        "lane": 1,
+        "verdict": "FAIL",
+        "summary": "I verified all 41 requested rows, the 4 'verify' constraints, and spot-checked 10 additional open/item rows using git logs and gh pr/issue commands. I found two discrepancies where the ledger verdict should be updated: PMAT-622 (ProvableContract & `pmat work falsify` actually exist) and PMAT-707 (`--diff-scope` flag is exposed in `pmat analyze complexity` and present in the hook). Both should be fixed to 'completed'.",
+        "findings": [
+          {
+            "claim": "MACS-017 agree: Commit ca0692b82 exists on master.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-018 agree: Commit ca0692b82 exists and its message documents the transcript bounds parser.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-019 agree: Commit ca0692b82 exists on master.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-620 agree: Commit b6d7bebf1 includes tests for YAML resolution and SHA drift detection.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-624 agree: MACS-007 exists in the tree as commit 09ff1cc1c.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-629 agree: Commit da9da093b exists on master.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-654 agree: Commit 97d994f78 exists on master.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-689 agree: PR #1227 is merged.",
+            "file": "#1227",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-712 agree: PR #1237 is merged.",
+            "file": "#1237",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-713 agree: PR #1241 is merged.",
+            "file": "#1241",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-714 agree: PR #1242 is merged.",
+            "file": "#1242",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-715 agree: PR #1243 is merged.",
+            "file": "#1243",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-716 agree: PR #1244 is merged.",
+            "file": "#1244",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-717 agree: PR #1245 is merged.",
+            "file": "#1245",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-718 agree: PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-719 agree: PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-720 agree: PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-722 agree: PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-724 agree: PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-728 agree: PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-694 agree: Issue #1202 is open and correctly paired.",
+            "file": "#1202",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-695 agree: Issue #1156 is open and correctly paired.",
+            "file": "#1156",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-696 agree: Issue #1128 is open and correctly paired.",
+            "file": "#1128",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-697 agree: Issue #1124 is open and correctly paired.",
+            "file": "#1124",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-698 agree: Issue #1137 is open and correctly paired.",
+            "file": "#1137",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-699 agree: Issue #1141 is open and correctly paired.",
+            "file": "#1141",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1124 agree: Issue is open and pairs with PMAT-697.",
+            "file": "#1124",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1128 agree: Issue is open and pairs with PMAT-696.",
+            "file": "#1128",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1137 agree: Issue is open and pairs with PMAT-698.",
+            "file": "#1137",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1141 agree: Issue is open and pairs with PMAT-699.",
+            "file": "#1141",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1156 agree: Issue is open and pairs with PMAT-695.",
+            "file": "#1156",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1202 agree: Issue is open and pairs with PMAT-694.",
+            "file": "#1202",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#999 agree: Tracks work across multiple files, acts as an epic.",
+            "file": "#999",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1017 agree: Issue is explicitly labeled epic.",
+            "file": "#1017",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1018 agree: Issue is explicitly labeled epic.",
+            "file": "#1018",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1019 agree: Issue is explicitly labeled epic.",
+            "file": "#1019",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1031 agree: Serves as an overarching enhancement tracker/epic.",
+            "file": "#1031",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1034 agree: Acts as a backlog tracker umbrella.",
+            "file": "#1034",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1035 agree: Umbrella tracker for root causes.",
+            "file": "#1035",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1090 agree: Titled [EPIC].",
+            "file": "#1090",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1240 agree: Confirmed fixed by PRs #1241 and #1242.",
+            "file": "#1240",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-622 disagree: Unified 'pmat work falsify' and 'ProvableContract' variant both exist.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "fix": "completed",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-707 disagree: The '--diff-scope' CLI flag is reachable in 'pmat analyze complexity' and generated hook uses it.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "fix": "completed",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-006 agree: Still open, as commit e03fb34cf only replanned it without fixing.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-007 agree: The unshipped remainder is still open.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-013 agree: No merged commit resolves this open item.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-619 agree: No merged commit resolves this open item.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-632 agree: It was documented as pending, not completed.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1014 agree: Issue remains open and represents real work.",
+            "file": "#1014",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1074 agree: Issue remains open and represents real work.",
+            "file": "#1074",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1118 agree: Issue remains open and represents real work.",
+            "file": "#1118",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1119 agree: Issue remains open and represents real work.",
+            "file": "#1119",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1120 agree: Issue remains open and represents real work.",
+            "file": "#1120",
+            "grounding": "measured"
+          }
+        ]
+      },
+      {
+        "lane": 2,
+        "verdict": "FAIL",
+        "summary": "MACS-018 should be open (Anti-Gravity transcript parser not found). PMAT-707 should be completed (diff-scoped mode is reachable).",
+        "findings": [
+          {
+            "claim": "PMAT-689 agree, PR #1227 is merged",
+            "file": "#1227",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-712 agree, PR #1237 is merged",
+            "file": "#1237",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-713 agree, PR #1241 is merged",
+            "file": "#1241",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-714 agree, PR #1242 is merged",
+            "file": "#1242",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-715 agree, PR #1243 is merged",
+            "file": "#1243",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-716 agree, PR #1244 is merged",
+            "file": "#1244",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-717 agree, PR #1245 is merged",
+            "file": "#1245",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-718 agree, PR #1251 is merged",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-719 agree, PR #1251 is merged",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-720 agree, PR #1251 is merged",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-722 agree, PR #1251 is merged",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-724 agree, PR #1251 is merged",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-728 agree, PR #1251 is merged",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-017 agree, commit ca0692b82 is merged",
+            "file": "ca0692b82",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-018 disagree, the parser that extracts Anti-Gravity transcript bounds into falsification evidence does not exist",
+            "file": "ca0692b82",
+            "fix": "open",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-019 agree, commit ca0692b82 is merged",
+            "file": "ca0692b82",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-620 agree, YAML resolution and SHA drift detection are exercised by tests in check_binding_scope_tests_sha_equation.rs",
+            "file": "check_binding_scope_tests_sha_equation.rs",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-624 agree, PR #613 is merged",
+            "file": "#613",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-629 agree, commit da9da093b is merged",
+            "file": "da9da093b",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-654 agree, commit 97d994f78 is merged",
+            "file": "97d994f78",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-694 agree, the title names #1202 first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-695 agree, the title names #1156 first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-696 agree, the title names #1128 first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-697 agree, the title names #1124 first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-698 agree, the title names #1137 first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-699 agree, the title names #1141 first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1124 agree, PMAT-697 names it first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1128 agree, PMAT-696 names it first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1137 agree, PMAT-698 names it first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1141 agree, PMAT-699 names it first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1156 agree, PMAT-695 names it first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1202 agree, PMAT-694 names it first",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#999 agree, it is a tracking issue for EV-0..EV-6",
+            "file": "#999",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1017 agree, labelled epic",
+            "file": "#1017",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1018 agree, labelled epic",
+            "file": "#1018",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1019 agree, labelled epic",
+            "file": "#1019",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1031 agree, tracking issue for AGY Support",
+            "file": "#1031",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1034 agree, tracking issue for feature backlog",
+            "file": "#1034",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1035 agree, root-cause umbrella issue",
+            "file": "#1035",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1090 agree, epic for deep MCP capability",
+            "file": "#1090",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1240 agree, issue asks are merged in #1241 and #1242",
+            "file": "#1240",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-006 agree, no test exists for a receipt recording both ladder levels",
+            "file": "check_work_ladder_tests_levels.rs",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-007 agree, pmat work status renders no chain-of-thought step",
+            "file": "work_status.rs",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-013 agree, CB-1655 warns instead of failing",
+            "file": "check_macs_artifacts.rs",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-622 agree, ProvableContract variant exists but dispatch is deferred",
+            "file": "runner.rs",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-707 disagree, the diff-scoped mode is reachable via pmat analyze complexity and generated hook",
+            "file": "complexity_handlers/mod.rs",
+            "fix": "completed",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1014 agree, issue is open and deferred to 3.41.0",
+            "file": "#1014",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1074 agree, issue is open",
+            "file": "#1074",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1118 agree, issue is open",
+            "file": "#1118",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1119 agree, issue is open",
+            "file": "#1119",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1120 agree, issue is open",
+            "file": "#1120",
+            "grounding": "measured"
+          }
+        ]
+      },
+      {
+        "lane": 3,
+        "verdict": "FAIL",
+        "summary": "Found 2 discrepancies where the ledger verdict should change: MACS-018 (should be 'open') and PMAT-707 (should be 'completed'). All other verdicts were independently verified and agreed with.",
+        "findings": [
+          {
+            "claim": "MACS-017 agree: the commit ca0692b82 is merged and implements MACS-017",
+            "file": "master",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-018 disagree: no parser that extracts Anti-Gravity transcript bounds into falsification evidence was found. The verify check fails.",
+            "file": "src/cli/handlers/work_ledger_types.rs",
+            "fix": "open",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-019 agree: the commit ca0692b82 is merged and implements MACS-019",
+            "file": "master",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-620 agree: tests for YAML resolution and SHA drift detection exist in check_binding_scope_tests_sha_equation.rs. The verify check passes, completing the item.",
+            "file": "src/cli/handlers/comply_handlers/check_handlers/check_binding_scope_tests_sha_equation.rs",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-624 agree: the PR #613 containing MACS-007/008/009 commits is merged on master.",
+            "file": "master",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-629 agree: the commit da9da093b is merged on master.",
+            "file": "master",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-654 agree: the commit 97d994f78 is merged on master.",
+            "file": "master",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-689 agree: the PR #1227 is merged.",
+            "file": "#1227",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-712 agree: the PR #1237 is merged.",
+            "file": "#1237",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-713 agree: the PR #1241 is merged.",
+            "file": "#1241",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-714 agree: the PR #1242 is merged.",
+            "file": "#1242",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-715 agree: the PR #1243 is merged.",
+            "file": "#1243",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-716 agree: the PR #1244 is merged.",
+            "file": "#1244",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-717 agree: the PR #1245 is merged.",
+            "file": "#1245",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-718 agree: the PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-719 agree: the PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-720 agree: the PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-722 agree: the PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-724 agree: the PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-728 agree: the PR #1251 is merged.",
+            "file": "#1251",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-694 agree: the item's title in roadmap.yaml names #1202 first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "PMAT-695 agree: the item's title in roadmap.yaml names #1156 first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "PMAT-696 agree: the item's title in roadmap.yaml names #1128 first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "PMAT-697 agree: the item's title in roadmap.yaml names #1124 first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "PMAT-698 agree: the item's title in roadmap.yaml names #1137 first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "PMAT-699 agree: the item's title in roadmap.yaml names #1141 first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "PMAT-622 agree: the unified pmat work falsify over ProvableContract is explicitly 'not yet wired' in runner.rs, so the verify check fails and it stays open.",
+            "file": "src/cli/handlers/work_falsification/runner.rs",
+            "grounding": "measured"
+          },
+          {
+            "claim": "PMAT-707 disagree: the diff-scoped mode IS reachable from the command line via 'pmat analyze complexity --diff-scope'. The verify check passes, so it should be marked completed.",
+            "file": "pmat analyze complexity --help",
+            "fix": "completed",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1124 agree: PMAT-697's title names it first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#1128 agree: PMAT-696's title names it first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#1137 agree: PMAT-698's title names it first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#1141 agree: PMAT-699's title names it first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#1156 agree: PMAT-695's title names it first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#1202 agree: PMAT-694's title names it first.",
+            "file": "docs/roadmaps/roadmap.yaml",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#999 agree: gh issue view confirms it is an epic/tracking issue.",
+            "file": "#999",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1017 agree: gh issue view confirms it is labelled epic.",
+            "file": "#1017",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1018 agree: gh issue view confirms it is labelled epic.",
+            "file": "#1018",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1019 agree: gh issue view confirms it is labelled epic.",
+            "file": "#1019",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1031 agree: gh issue view confirms it is an epic.",
+            "file": "#1031",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1034 agree: gh issue view confirms it is a tracking issue.",
+            "file": "#1034",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1035 agree: gh issue view confirms it is a tracking issue for root cause analysis.",
+            "file": "#1035",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1090 agree: gh issue view confirms it is an epic.",
+            "file": "#1090",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1240 agree: gh issue view confirms it is fixed by PRs #1241 and #1242 which were merged.",
+            "file": "#1240",
+            "grounding": "measured"
+          },
+          {
+            "claim": "MACS-006 agree: no test verifies that a receipt records both ladder levels.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "cited"
+          },
+          {
+            "claim": "MACS-007 agree: pmat work status renders no chain-of-thought step.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "cited"
+          },
+          {
+            "claim": "MACS-013 agree: CB-1655 warns instead of failing.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "cited"
+          },
+          {
+            "claim": "PMAT-619 agree: no commit on master fixes it.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "cited"
+          },
+          {
+            "claim": "PMAT-621 agree: 'pmat work verify' command does not parse/exist in the CLI.",
+            "file": "pmat work --help",
+            "grounding": "measured"
+          },
+          {
+            "claim": "#1014 agree: underlying cause is not fully addressed so it is kept as an item.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#1074 agree: PMAT-696 handles half of it, so it remains an item.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#1118 agree: standard GH item.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#1119 agree: standard GH item.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "cited"
+          },
+          {
+            "claim": "#1120 agree: standard GH item.",
+            "file": "docs/audits/triage-PMAT-1253-ledger.json",
+            "grounding": "cited"
+          }
+        ]
+      }
+    ],
+    "partial_reasons": [],
+    "coverage_source": "lanes"
+  },
+  "dedup": [
+    {
+      "file": "#1014",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2
+      ],
+      "claims": [
+        "#1014 agree, issue is open and deferred to 3.41.0",
+        "#1014 agree: Issue remains open and represents real work."
+      ]
+    },
+    {
+      "file": "#1017",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "#1017 agree, labelled epic",
+        "#1017 agree: Issue is explicitly labeled epic.",
+        "#1017 agree: gh issue view confirms it is labelled epic."
+      ]
+    },
+    {
+      "file": "#1018",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "#1018 agree, labelled epic",
+        "#1018 agree: Issue is explicitly labeled epic.",
+        "#1018 agree: gh issue view confirms it is labelled epic."
+      ]
+    },
+    {
+      "file": "#1019",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "#1019 agree, labelled epic",
+        "#1019 agree: Issue is explicitly labeled epic.",
+        "#1019 agree: gh issue view confirms it is labelled epic."
+      ]
+    },
+    {
+      "file": "#1031",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "#1031 agree, tracking issue for AGY Support",
+        "#1031 agree: Serves as an overarching enhancement tracker/epic.",
+        "#1031 agree: gh issue view confirms it is an epic."
+      ]
+    },
+    {
+      "file": "#1034",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "#1034 agree, tracking issue for feature backlog",
+        "#1034 agree: Acts as a backlog tracker umbrella.",
+        "#1034 agree: gh issue view confirms it is a tracking issue."
+      ]
+    },
+    {
+      "file": "#1035",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "#1035 agree, root-cause umbrella issue",
+        "#1035 agree: Umbrella tracker for root causes.",
+        "#1035 agree: gh issue view confirms it is a tracking issue for root cause analysis."
+      ]
+    },
+    {
+      "file": "#1074",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2
+      ],
+      "claims": [
+        "#1074 agree, issue is open",
+        "#1074 agree: Issue remains open and represents real work."
+      ]
+    },
+    {
+      "file": "#1090",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "#1090 agree, epic for deep MCP capability",
+        "#1090 agree: Titled [EPIC].",
+        "#1090 agree: gh issue view confirms it is an epic."
+      ]
+    },
+    {
+      "file": "#1118",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2
+      ],
+      "claims": [
+        "#1118 agree, issue is open",
+        "#1118 agree: Issue remains open and represents real work."
+      ]
+    },
+    {
+      "file": "#1119",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2
+      ],
+      "claims": [
+        "#1119 agree, issue is open",
+        "#1119 agree: Issue remains open and represents real work."
+      ]
+    },
+    {
+      "file": "#1120",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2
+      ],
+      "claims": [
+        "#1120 agree, issue is open",
+        "#1120 agree: Issue remains open and represents real work."
+      ]
+    },
+    {
+      "file": "#1124",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "#1124 agree: Issue is open and pairs with PMAT-697.",
+        "PMAT-697 agree: Issue #1124 is open and correctly paired."
+      ]
+    },
+    {
+      "file": "#1128",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "#1128 agree: Issue is open and pairs with PMAT-696.",
+        "PMAT-696 agree: Issue #1128 is open and correctly paired."
+      ]
+    },
+    {
+      "file": "#1137",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "#1137 agree: Issue is open and pairs with PMAT-698.",
+        "PMAT-698 agree: Issue #1137 is open and correctly paired."
+      ]
+    },
+    {
+      "file": "#1141",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "#1141 agree: Issue is open and pairs with PMAT-699.",
+        "PMAT-699 agree: Issue #1141 is open and correctly paired."
+      ]
+    },
+    {
+      "file": "#1156",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "#1156 agree: Issue is open and pairs with PMAT-695.",
+        "PMAT-695 agree: Issue #1156 is open and correctly paired."
+      ]
+    },
+    {
+      "file": "#1202",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "#1202 agree: Issue is open and pairs with PMAT-694.",
+        "PMAT-694 agree: Issue #1202 is open and correctly paired."
+      ]
+    },
+    {
+      "file": "#1227",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-689 agree, PR #1227 is merged",
+        "PMAT-689 agree: PR #1227 is merged.",
+        "PMAT-689 agree: the PR #1227 is merged."
+      ]
+    },
+    {
+      "file": "#1237",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-712 agree, PR #1237 is merged",
+        "PMAT-712 agree: PR #1237 is merged.",
+        "PMAT-712 agree: the PR #1237 is merged."
+      ]
+    },
+    {
+      "file": "#1240",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "#1240 agree, issue asks are merged in #1241 and #1242",
+        "#1240 agree: Confirmed fixed by PRs #1241 and #1242.",
+        "#1240 agree: gh issue view confirms it is fixed by PRs #1241 and #1242 which were merged."
+      ]
+    },
+    {
+      "file": "#1241",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-713 agree, PR #1241 is merged",
+        "PMAT-713 agree: PR #1241 is merged.",
+        "PMAT-713 agree: the PR #1241 is merged."
+      ]
+    },
+    {
+      "file": "#1242",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-714 agree, PR #1242 is merged",
+        "PMAT-714 agree: PR #1242 is merged.",
+        "PMAT-714 agree: the PR #1242 is merged."
+      ]
+    },
+    {
+      "file": "#1243",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-715 agree, PR #1243 is merged",
+        "PMAT-715 agree: PR #1243 is merged.",
+        "PMAT-715 agree: the PR #1243 is merged."
+      ]
+    },
+    {
+      "file": "#1244",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-716 agree, PR #1244 is merged",
+        "PMAT-716 agree: PR #1244 is merged.",
+        "PMAT-716 agree: the PR #1244 is merged."
+      ]
+    },
+    {
+      "file": "#1245",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-717 agree, PR #1245 is merged",
+        "PMAT-717 agree: PR #1245 is merged.",
+        "PMAT-717 agree: the PR #1245 is merged."
+      ]
+    },
+    {
+      "file": "#1251",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-718 agree, PR #1251 is merged",
+        "PMAT-718 agree: PR #1251 is merged.",
+        "PMAT-718 agree: the PR #1251 is merged.",
+        "PMAT-719 agree, PR #1251 is merged",
+        "PMAT-719 agree: PR #1251 is merged.",
+        "PMAT-719 agree: the PR #1251 is merged.",
+        "PMAT-720 agree, PR #1251 is merged",
+        "PMAT-720 agree: PR #1251 is merged.",
+        "PMAT-720 agree: the PR #1251 is merged.",
+        "PMAT-722 agree, PR #1251 is merged",
+        "PMAT-722 agree: PR #1251 is merged.",
+        "PMAT-722 agree: the PR #1251 is merged.",
+        "PMAT-724 agree, PR #1251 is merged",
+        "PMAT-724 agree: PR #1251 is merged.",
+        "PMAT-724 agree: the PR #1251 is merged.",
+        "PMAT-728 agree, PR #1251 is merged",
+        "PMAT-728 agree: PR #1251 is merged.",
+        "PMAT-728 agree: the PR #1251 is merged."
+      ]
+    },
+    {
+      "file": "#613",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-624 agree, PR #613 is merged"
+      ]
+    },
+    {
+      "file": "#999",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "#999 agree, it is a tracking issue for EV-0..EV-6",
+        "#999 agree: Tracks work across multiple files, acts as an epic.",
+        "#999 agree: gh issue view confirms it is an epic/tracking issue."
+      ]
+    },
+    {
+      "file": "97d994f78",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-654 agree, commit 97d994f78 is merged"
+      ]
+    },
+    {
+      "file": "ca0692b82",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "MACS-017 agree, commit ca0692b82 is merged",
+        "MACS-018 disagree, the parser that extracts Anti-Gravity transcript bounds into falsification evidence does not exist",
+        "MACS-019 agree, commit ca0692b82 is merged"
+      ]
+    },
+    {
+      "file": "check_binding_scope_tests_sha_equation.rs",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-620 agree, YAML resolution and SHA drift detection are exercised by tests in check_binding_scope_tests_sha_equation.rs"
+      ]
+    },
+    {
+      "file": "check_macs_artifacts.rs",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "MACS-013 agree, CB-1655 warns instead of failing"
+      ]
+    },
+    {
+      "file": "check_work_ladder_tests_levels.rs",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "MACS-006 agree, no test exists for a receipt recording both ladder levels"
+      ]
+    },
+    {
+      "file": "complexity_handlers/mod.rs",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-707 disagree, the diff-scoped mode is reachable via pmat analyze complexity and generated hook"
+      ]
+    },
+    {
+      "file": "da9da093b",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-629 agree, commit da9da093b is merged"
+      ]
+    },
+    {
+      "file": "docs/audits/triage-PMAT-1253-ledger.json",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        3
+      ],
+      "claims": [
+        "#1014 agree: underlying cause is not fully addressed so it is kept as an item.",
+        "#1074 agree: PMAT-696 handles half of it, so it remains an item.",
+        "#1118 agree: standard GH item.",
+        "#1119 agree: standard GH item.",
+        "#1120 agree: standard GH item.",
+        "MACS-006 agree: Still open, as commit e03fb34cf only replanned it without fixing.",
+        "MACS-006 agree: no test verifies that a receipt records both ladder levels.",
+        "MACS-007 agree: The unshipped remainder is still open.",
+        "MACS-007 agree: pmat work status renders no chain-of-thought step.",
+        "MACS-013 agree: CB-1655 warns instead of failing.",
+        "MACS-013 agree: No merged commit resolves this open item.",
+        "MACS-017 agree: Commit ca0692b82 exists on master.",
+        "MACS-018 agree: Commit ca0692b82 exists and its message documents the transcript bounds parser.",
+        "MACS-019 agree: Commit ca0692b82 exists on master.",
+        "PMAT-619 agree: No merged commit resolves this open item.",
+        "PMAT-619 agree: no commit on master fixes it.",
+        "PMAT-620 agree: Commit b6d7bebf1 includes tests for YAML resolution and SHA drift detection.",
+        "PMAT-622 disagree: Unified 'pmat work falsify' and 'ProvableContract' variant both exist.",
+        "PMAT-624 agree: MACS-007 exists in the tree as commit 09ff1cc1c.",
+        "PMAT-629 agree: Commit da9da093b exists on master.",
+        "PMAT-632 agree: It was documented as pending, not completed.",
+        "PMAT-654 agree: Commit 97d994f78 exists on master.",
+        "PMAT-707 disagree: The '--diff-scope' CLI flag is reachable in 'pmat analyze complexity' and generated hook uses it."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": null,
+      "lanes_agreeing": [
+        2,
+        3
+      ],
+      "claims": [
+        "#1124 agree, PMAT-697 names it first",
+        "#1124 agree: PMAT-697's title names it first.",
+        "#1128 agree, PMAT-696 names it first",
+        "#1128 agree: PMAT-696's title names it first.",
+        "#1137 agree, PMAT-698 names it first",
+        "#1137 agree: PMAT-698's title names it first.",
+        "#1141 agree, PMAT-699 names it first",
+        "#1141 agree: PMAT-699's title names it first.",
+        "#1156 agree, PMAT-695 names it first",
+        "#1156 agree: PMAT-695's title names it first.",
+        "#1202 agree, PMAT-694 names it first",
+        "#1202 agree: PMAT-694's title names it first.",
+        "PMAT-694 agree, the title names #1202 first",
+        "PMAT-694 agree: the item's title in roadmap.yaml names #1202 first.",
+        "PMAT-695 agree, the title names #1156 first",
+        "PMAT-695 agree: the item's title in roadmap.yaml names #1156 first.",
+        "PMAT-696 agree, the title names #1128 first",
+        "PMAT-696 agree: the item's title in roadmap.yaml names #1128 first.",
+        "PMAT-697 agree, the title names #1124 first",
+        "PMAT-697 agree: the item's title in roadmap.yaml names #1124 first.",
+        "PMAT-698 agree, the title names #1137 first",
+        "PMAT-698 agree: the item's title in roadmap.yaml names #1137 first.",
+        "PMAT-699 agree, the title names #1141 first",
+        "PMAT-699 agree: the item's title in roadmap.yaml names #1141 first."
+      ]
+    },
+    {
+      "file": "master",
+      "line": null,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "MACS-017 agree: the commit ca0692b82 is merged and implements MACS-017",
+        "MACS-019 agree: the commit ca0692b82 is merged and implements MACS-019",
+        "PMAT-624 agree: the PR #613 containing MACS-007/008/009 commits is merged on master.",
+        "PMAT-629 agree: the commit da9da093b is merged on master.",
+        "PMAT-654 agree: the commit 97d994f78 is merged on master."
+      ]
+    },
+    {
+      "file": "pmat analyze complexity --help",
+      "line": null,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "PMAT-707 disagree: the diff-scoped mode IS reachable from the command line via 'pmat analyze complexity --diff-scope'. The verify check passes, so it should be marked completed."
+      ]
+    },
+    {
+      "file": "pmat work --help",
+      "line": null,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "PMAT-621 agree: 'pmat work verify' command does not parse/exist in the CLI."
+      ]
+    },
+    {
+      "file": "runner.rs",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-622 agree, ProvableContract variant exists but dispatch is deferred"
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_binding_scope_tests_sha_equation.rs",
+      "line": null,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "PMAT-620 agree: tests for YAML resolution and SHA drift detection exist in check_binding_scope_tests_sha_equation.rs. The verify check passes, completing the item."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/work_falsification/runner.rs",
+      "line": null,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "PMAT-622 agree: the unified pmat work falsify over ProvableContract is explicitly 'not yet wired' in runner.rs, so the verify check fails and it stays open."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/work_ledger_types.rs",
+      "line": null,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "MACS-018 disagree: no parser that extracts Anti-Gravity transcript bounds into falsification evidence was found. The verify check fails."
+      ]
+    },
+    {
+      "file": "work_status.rs",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "MACS-007 agree, pmat work status renders no chain-of-thought step"
+      ]
+    }
+  ],
+  "uncovered": [],
+  "partial_reasons": [],
+  "coverage_source": "lanes",
+  "reduce_artifact": "/run/user/1000/paiml-implement/agy/PMAT-1253/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/reduce.json",
+  "reduce_exit": 1,
+  "reduce_agreed": false,
+  "open_questions": [
+    "MODE: the brief named no agy-lane mode. Following its mode note, the lanes ran as `agy-lane.sh --mode plan --schema quorum-schema.json --timeout 40m`, which passes the prompt byte-for-byte (out_dir/prompt.txt, sha256 57c92dc07e9fa580159ad6fc8761b9fe16796d24c20e4ec601f9eb48964151b6; `$(cat)` drops only the trailing newline). Calling form: lane-guard -> agy --sandbox --dangerously-skip-permissions --print-timeout 40m --output-format json --json-schema <quorum-schema> --mode plan -p=<prompt>. No --model and no --effort.",
+    "DELEGATE-MEASURED, NOT A LANE CLAIM. MACS-017 and MACS-019 `completed` are agreed 3/3 on one ground only: 'commit ca0692b82 is merged/exists'. No lane tested the acceptance criteria. On master 3893ca5f2, `pmat agy sync` bails with \"agy sync is not implemented: ... no PMAT -> Google Anti-Gravity transpiler exists, so nothing was written\" (src/cli/handlers/agy_handler.rs:55). MACS-017's AC is 'transpiles or maps ... into Google Anti-Gravity's AGENTS.md rules and skills.json formats'. MACS-019's AC is 'translates PMAT contract requirements into Anti-Gravity define_subagent/invoke_subagent tool sequences'; `git grep -E 'define_subagent|invoke_subagent' master -- src` has 0 hits. In ca0692b82, handle_work_delegate was `// TODO(MACS-019)` plus a success println. The later #985 rewrite (src/cli/handlers/work_ledger_delegate.rs) says --agy 'does not invent a Google Anti-Gravity file layout'. ca0692b82 is authored 'Test User <test@test.com>'. The ledger's own `completed` rule requires 'its acceptance criteria are met', and by that rule both rows read as `open`. Fable should re-judge them.",
+    "DELEGATE-MEASURED, adjudicating the split rows. (1) MACS-018 2/3 open matches my grep: master src has AgentHarness::GoogleAntiGravity and AgentProvenance.conversation_id but no parser for transcript bounds. Lane 1's agree rests on a commit message. (2) PMAT-622 2/3 open matches src/cli/handlers/work_falsification/runner.rs:258-264 on master ('ProvableContract dispatch deferred - pv_yaml_loader ... not yet wired'), which refutes lane 1. However, the ledger's evidence 'a FalsificationMethod::ProvableContract variant is named only in that file's comments' is false. It is a real enum variant (src/cli/handlers/work_contract_falsification.rs:112), matched in code at check_falsification_unification.rs:92 and runner.rs:170/258. Keep the verdict open and correct the evidence text. (3) PMAT-707 3/3 completed matches 23e9abe9c on master (2026-09-08): analyze_commands/mod.rs:129 `diff_scope: bool`, analysis_handlers/core_routes.rs:73, and hook_generation.rs:355 `*.rs) SCOPE_FLAG=\"--diff-scope\"`. PMAT-707's roadmap notes ('did NOT land the flag', updated 2026-09-07) predate that commit and are stale.",
+    "DELEGATE-MEASURED, evidence text that is wrong without changing a verdict. (a) PMAT-694's evidence says 'the 3.40.0 CHANGELOG does not name it'. It does: CHANGELOG.md's 3.40.0 'Known, not fixed' section lists #1202 ('two flake classes recorded; each job was rerun once'). `pair` still stands: branch head 71dd01e15 is not on master, src/services/quality_proxy_analysis.rs:634-635 still spawns `cargo clippy`, and tests/fixtures/quality_proxy does not exist on master. No lane caught this. (b) #1240's closing comment lists `--allow-retitle`, which is absent from master src; PMAT-714's roadmap title records 'no --allow-retitle. Operator decision on #1240'. The three asks themselves are on master (work add --github-issue and --id; work validate --check-base), so `close` stands.",
+    "DELEGATE-MEASURED, no-roadmap rows cleared 3/3 on thin evidence, left for the operator. #1031 carries no `epic` label (enhancement, disposition:defer), yet lane 3 wrote 'gh issue view confirms it is an epic'. Its own 2026-09-02 comment says 'KEEP, RESCOPED ... narrowed to the one blocked question', which reads as one unit of work (`item`) more than a tracker. #999's body names EV-0..EV-6 as checkboxes with no issue references, and no roadmap item names EV-0..6 or #999. So the rule's 'work tracked elsewhere' is not shown for #999.",
+    "SPOT-CHECK COVERAGE: all three lanes sampled from the top of the ledger. They took the same first five item rows (#1014, #1074, #1118, #1119, #1120), and their open rows all came from the first eight open rows. Only 11 distinct rows of the 74 open/item rows were examined, and lane 2 checked 3 open rows, not 5. One of the two open rows with a `verify` field (PMAT-707) flipped 3/3, so the 63 unexamined open/item rows are not shown clean.",
+    "PREMISES: '61 ORPHAN-ROADMAP' matches HEAD 2211dbf34 exactly, and the ledger's 61 roadmap keys are the orphan set. '54 ORPHAN-GITHUB' holds only against the worktree's UNCOMMITTED roadmap.yaml (+17 lines, the PMAT-1253 item). Live gh at ~19:45 lists 55 against HEAD, and the 55th is #1253. The brief's '41 rows' leaves out the open verify rows PMAT-622 and PMAT-707; the lanes judged 43. The ledger is untracked on PMAT-1253-sync-fixers (sha256 bc2ce1e1..., unchanged across the run). All 8 cited PR merges are on master (git log --merges).",
+    "GH IN LANES (agy 1.2.0, --sandbox): the lanes did reach GitHub. Lane 1's brain dir holds 32 returned MERGED states with mergedAt dates. Lanes 1 and 3 hold returned 'epic' labels. Lane 2 got OPEN states and titles back but also `HTTP 401: Requires authentication (https://api.github.com/graphql)` next to a sandbox-error notice. A gh-based `measured` from a lane is therefore per call, not per lane.",
+    "LITTER: repo HEAD, porcelain (--untracked-files=all), the --ignored list, .git/config sha256, refs, reflog, and the ledger and roadmap sha256 were all byte-identical before and after. Lane 3 wrote /tmp/rows.jsonl (13,579 B, the 43 judged rows, mtime 19:46:28, named 4 times in its brain dir). I moved it to out_dir/litter/rows.jsonl (sha256 0e6f6e363abe...). The /tmp/claude-h-*.sh files that appeared during the run belong to another Claude session: no lane's brain dir names them, and one appeared after the lanes exited. They are left in place.",
+    "FANOUT (self-inflicted, fixed): the first fanout.sh read children=4 because I had named the reduce artifact lane-reduce.json, which matches lane-*.json. I renamed it reduce-first-run.json and re-reduced to reduce.json (identical under jq -S). Re-measured: children=3 method=lane-files label=consensus.",
+    "DEDUP: no lane gave a `line`, so dedup[] groups by [file,null]. Groups keyed on docs/audits/triage-PMAT-1253-ledger.json or 'master' mix different rows and opposite stances under one lanes_agreeing list. Read the per-row tally in `consensus`, not lanes_agreeing."
+  ],
+  "partial": false
+}
