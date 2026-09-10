@@ -5141,7 +5141,7 @@ roadmap:
   - orch:fable
   notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2115 + builder + severity default), services/work_sync (github.rs reader moved out of the work handler), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §5, §7 row CB-2115, §11 step 4. Stacked on #1246 -> #1247 and #1248: needs the --checks selector, the traceability job and the sync engine. PMAT-1253 (goal-mode §5.1): completed — merged in #1251 (3893ca5f2, 2026-09-10); the withheld gate steps are filed as PMAT-723/725/729 (docs/audits/triage-PMAT-1253-ledger.json).'
 - id: PMAT-723
-  github_issue: 1240
+  github_issue: 1286
   item_type: task
   title: 'goal-mode step 4b: CB-2115 becomes a gate — add pmat comply check --checks CB-2113,CB-2115 (with GH_TOKEN) to the traceability job once pmat work sync --check-only exits 0 on master; blocked on PMAT-721 (the thirteen #612 collisions) and on running the sync fixers (52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB at PMAT-720''s measurement)'
   status: planned
