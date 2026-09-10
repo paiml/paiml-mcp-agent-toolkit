@@ -5291,11 +5291,11 @@ roadmap:
   github_issue: 1253
   item_type: task
   title: 'goal-mode step 4a: pmat work sync --check-only reaches 0 on master — complete what shipped, pair items with the issues their titles name, exempt trackers and epics with no-roadmap, close what is fixed, then run yaml-to-github and github-to-yaml for the rest'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-10T17:37:34Z
-  updated: 2026-09-10T17:37:34Z
+  updated: 2026-09-10T20:14:17Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5303,7 +5303,7 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:triage
-  notes: null
+  notes: 'PMAT-723: completed — #1291 (6df22b7f0) and #1294 (7bd20ee95) merged, and pmat work sync --check-only measured 0 findings on master 7bd20ee95 at 2026-09-10T20:10:47Z; #1253 closed in the same step so the roadmap and GitHub agree (CB-2115).'
 - id: GH-999
   github_issue: 999
   item_type: task
