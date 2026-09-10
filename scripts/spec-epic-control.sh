@@ -42,6 +42,7 @@
 #                                                                              exit 1, Fail "N finding(s) — NO-EPIC N:" with N = the *.md count, exempt none
 #   arm 17 RED   ten active specs s00..s09 with epic null                      exit 1, Fail "10 finding(s) — NO-EPIC 10:" and "(+2 more)" — the ninth is counted, not dropped
 #   arm 18 N/M   docs/specifications was committed and then deleted            exit 1, Fail not_measured: "committed and is now gone" — deleting the input is not passing (§12)
+#   arm 19 RED   a.md names closed #7 beside z.md with no epic: line           exit 1, Fail "2 finding(s) — EPIC-CLOSED 1, NO-EPIC 1: EPIC-CLOSED …a.md:" — both legs render in path order
 #
 # Arm 16 is the withheld-step measurement (goal-mode.md §11 step 6, doctrine
 # 6): it runs the rule on THIS tree's specs, copied into the fixture, and
@@ -385,4 +386,16 @@ run_gate
 expect 18 CB-2110 Fail "committed and is now gone"; not_measured 18
 echo "spec-epic-control: arm 18 N/M   — committed-then-deleted docs/specifications reported not_measured (exit 1)"
 
-echo "spec-epic-control: all 18 arms behaved — CB-2110 can fail, can pass, says why, names its exemptions, refuses its own bypass, and this tree measures NO-EPIC on every spec"
+# arm 19: RED — findings from both legs, rendered in path order (quorum lane 2
+# on PMAT-728: with the sort dropped, the parse leg's z.md would print before
+# the epic leg's a.md and the header's first-seen class order would follow).
+fgit checkout -q HEAD -- docs/specifications
+write_spec z.md - active
+write_snapshot "$(issue 7 closed '["epic"]' 1)"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 19 "a closed epic beside a spec with no epic: must exit 1"
+expect 19 CB-2110 Fail "; NO-EPIC docs/specifications/z.md:"
+starts 19 "2 finding(s) — EPIC-CLOSED 1, NO-EPIC 1: EPIC-CLOSED docs/specifications/a.md:"
+echo "spec-epic-control: arm 19 RED   — EPIC-CLOSED a.md then NO-EPIC z.md: both legs in path order (exit 1)"
+
+echo "spec-epic-control: all 19 arms behaved — CB-2110 can fail, can pass, says why, names its exemptions, refuses its own bypass, and this tree measures NO-EPIC on every spec"
