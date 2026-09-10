@@ -6087,3 +6087,24 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-1299
+  github_issue: 1299
+  item_type: task
+  title: 'goal-mode step 7: CB-2111 spec review (E.1) — every active spec has docs/audits/spec-<slug>-review.json whose spec_sha256 matches the file now, with a plan sha256 and every required role PASS; pmat spec review --record validates and stages it; control first, the gate step withheld until the specs are reviewed'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-10T23:47:23Z
+  updated: 2026-09-10T23:47:23Z
+  spec: null
+  acceptance_criteria:
+  - 'CB-2111: Spec Review fails on the §7 falsifier (append one space to a reviewed active spec: spec_sha256 no longer matches), on an active spec with no artifact, an artifact that does not parse, a missing plan or an empty plan.sha256, a missing required role (the five, plus vendor:<name> for each front-matter vendor), a lane that is not PASS, partial: true, and an unrecognised role; it passes when every active spec''s artifact matches, and it names every historical or superseded spec it exempts'
+  - pmat spec review --record <json> runs the same predicate, stages a valid artifact at docs/audits/spec-<slug>-review.json and refuses an invalid one naming the finding; it never produces a review (goal-mode.md §6.3)
+  - the rule is offline and runs everywhere (§7.2); its id is declared in the comply group registry, so the drift test from PMAT-1296 keeps it true; the control (scripts/spec-review-control.sh) runs in the traceability job before the direct step
+  - the direct --checks CB-2111 step is withheld while master has active specs without artifacts (doctrine 6), written as a comment beside the withheld CB-2110 step, and its flip is filed as its own ticket
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Filed by PMAT-1296 inside #1298, so the item reaches master with the issue (CB-2115 is live). goal-mode.md §11 step 7, after step 6 (CB-2110).'
