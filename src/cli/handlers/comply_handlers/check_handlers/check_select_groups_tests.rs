@@ -108,4 +108,25 @@ mod tests_select_groups {
             "rules emitted without a declared id: {undeclared:?}"
         );
     }
+
+    /// `select_checks` relabels every deselected rule; it must not erase the
+    /// reason a rule has no verdict at all (its group was not run). Without this
+    /// test nothing reads that message after `select_checks` has run.
+    #[test]
+    fn select_checks_keeps_the_reason_a_rule_was_not_run() {
+        let mut checks = not_run_rows("codegen", &["cb-1630"]);
+        checks.push(ComplianceCheck {
+            name: "CB-2113: Commit Traceability".into(),
+            status: CheckStatus::Pass,
+            message: "ok".into(),
+            severity: Severity::Info,
+        });
+        select_checks(&mut checks, &["CB-2113".to_string()]).expect("CB-2113 is known");
+        let row = checks
+            .iter()
+            .find(|c| c.name.starts_with("CB-1630"))
+            .expect("the CB-1630 row");
+        assert_eq!(row.status, CheckStatus::Skip);
+        assert!(row.message.contains("was not run"), "{}", row.message);
+    }
 }
