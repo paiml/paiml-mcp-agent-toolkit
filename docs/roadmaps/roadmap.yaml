@@ -5154,3 +5154,26 @@ roadmap:
   labels:
   - kind:code
   notes: Filed by PMAT-722 (goal-mode step 4). The rule, its control (scripts/roadmap-coherence-control.sh, 8 arms, runs in the traceability job) and its ledger row exist; only the direct invocation is withheld, because a gate red on arrival is a gate someone disables (§5.4). The exact step is written as a comment in .github/workflows/ci.yml beside the CB-2113 step.
+- id: PMAT-724
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 5: CB-2112 (A, every open item names an open issue whose number is its numeric tail) and CB-2114 (B/F1, every open item carries release:, the milestone exists, the issue is on it) — control first in the traceability job, the direct step withheld while master violates both (doctrine 6, §5.4)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-10T08:58:49Z
+  updated: 2026-09-10T08:58:49Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat comply check --checks CB-2112 --github-snapshot F exits 1 on a fixture whose open item has github_issue: null (the §7 falsifier), on one naming a closed or absent issue, and on one whose id tail differs from the issue number; exits 0 when every open item names an open issue numbered as its tail (scripts/ticket-release-control.sh, every arm observed)'
+  - 'pmat comply check --checks CB-2114 --github-snapshot F exits 1 on a fixture whose open item has no release: (the §7 falsifier), names a release with no milestone of that exact title, names a v-prefixed release, or names a release whose milestone its issue is not on; exits 0 when every open item names an existing milestone its issue is on'
+  - both rules Skip with the reason on a project with no roadmap or no resolvable GitHub repository, Fail not_measured (never pass) when the snapshot cannot be read, when the committed roadmap was deleted, or when .pmat.yaml names a snapshot, and scope themselves to non-terminal items and say so (goal-mode.md §4.2)
+  - 'the predicates are pure functions in services/work_sync over the same GithubSnapshot the sync and CB-2115 read; the unit tests name the mutant each dies under: verdict inversion, unreadable snapshot to Skip, the tail clause ignored, the milestone-membership clause ignored'
+  - the control runs in ci.yml traceability job before the CB-2113 step; the direct CB-2112/CB-2114 step is withheld while master violates both (70 open items, 0 with release:, 0 whose tail is an open issue at this measurement) with the reason recorded beside the withheld CB-2115 step and in PMAT-723 scope; pmat comply ledger writes both as NEUTERED
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (two rules + builder + severity defaults), services/work_sync (the linkage and release predicates), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §7 rows CB-2112 and CB-2114, §11 step 5. Stacked on #1249: needs CheckOverrides/--github-snapshot, SnapshotSource and the release: field. The numeric-tail clause is PMAT-714 (#1240) ids: pmat work add --github-issue N mints PMAT-N.'
