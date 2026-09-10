@@ -125,8 +125,23 @@ jobs:
         run: cargo build --bin pmat --locked
       - name: control — a commit with no Pmat-Ticket trailer must be refused (exit 1)
         run: bash scripts/traceability-control.sh ./target/debug/pmat
+      - name: control — an open item naming a closed issue must be refused (CB-2115, exit 1)
+        run: bash scripts/roadmap-coherence-control.sh ./target/debug/pmat
+      - name: control — pmat work sync --check-only can fail, can pass, and plans every write
+        run: bash scripts/work-sync-control.sh ./target/debug/pmat
       - name: the closed loop holds (CB-2113)
         run: ./target/debug/pmat comply check --checks CB-2113
+      # CB-2115 is NOT yet run against this tree. goal-mode.md §5.4 sequences it: the
+      # sync reports (step 3, PMAT-720), a human resolves the thirteen items that all
+      # name #612 (PMAT-721), the orphans are fixed by the sync's own fixers, and ONLY
+      # THEN does the rule become a gate — a gate red on arrival is a gate someone
+      # disables. The control above proves the rule discriminates on every arm, so
+      # `pmat comply ledger` lists CB-2115 as NEUTERED, which is the truth until the
+      # step below lands. It lands the moment `pmat work sync --check-only` exits 0 on
+      # master (PMAT-723):
+      #   - name: the roadmap and GitHub agree (CB-2115)
+      #     env: { GH_TOKEN: ${{ github.token }} }
+      #     run: ./target/debug/pmat comply check --checks CB-2113,CB-2115
 
   # Two consumers of one reusable workflow on two different refs is drift, and
   # what it silently drifts is the GATES.

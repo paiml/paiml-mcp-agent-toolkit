@@ -5055,11 +5055,11 @@ roadmap:
   updated: 2026-09-09T14:40:27Z
   spec: null
   acceptance_criteria:
-  - 'pmat comply check --checks CB-2113 exits 1 on a fixture branch whose commit carries no Pmat-Ticket trailer, and 0 once the trailer names a planned roadmap item (scripts/traceability-control.sh, both arms observed)'
-  - 'a trailer naming an id absent from the roadmap, or a completed/cancelled item, is a Fail naming the commit and the id'
-  - 'on the default branch the rule reports not_applicable with the §8.4 reason and the measured v<latest>..HEAD count, never a silent pass'
+  - pmat comply check --checks CB-2113 exits 1 on a fixture branch whose commit carries no Pmat-Ticket trailer, and 0 once the trailer names a planned roadmap item (scripts/traceability-control.sh, both arms observed)
+  - a trailer naming an id absent from the roadmap, or a completed/cancelled item, is a Fail naming the commit and the id
+  - on the default branch the rule reports not_applicable with the §8.4 reason and the measured v<latest>..HEAD count, never a silent pass
   - 'ci.yml has a traceability job in gate''s needs AND its result loop, with the control step before the check step, and merge_group in on:'
-  - 'pmat comply ledger writes CB-2113 as ENFORCED via the traceability job and names gate among the roots that reach it; a --checks subset invocation no longer neuters the rules it names'
+  - pmat comply ledger writes CB-2113 as ENFORCED via the traceability job and names gate among the roots that reach it; a --checks subset invocation no longer neuters the rules it names
   phases: []
   subtasks: []
   estimated_effort: null
@@ -5134,3 +5134,23 @@ roadmap:
   - kind:code
   - orch:fable
   notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2115 + builder + severity default), services/work_sync (github.rs reader moved out of the work handler), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §5, §7 row CB-2115, §11 step 4. Stacked on #1246 -> #1247 and #1248: needs the --checks selector, the traceability job and the sync engine.'
+- id: PMAT-723
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 4b: CB-2115 becomes a gate — add pmat comply check --checks CB-2113,CB-2115 (with GH_TOKEN) to the traceability job once pmat work sync --check-only exits 0 on master; blocked on PMAT-721 (the thirteen #612 collisions) and on running the sync fixers (52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB at PMAT-720''s measurement)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T06:34:18Z
+  updated: 2026-09-10T06:34:18Z
+  spec: null
+  acceptance_criteria:
+  - pmat work sync --check-only exits 0 on master, measured and quoted in the receipt before the step is added (goal-mode.md §5.4 step 3, §13 items 4-5)
+  - the traceability job in ci.yml runs pmat comply check --checks CB-2113,CB-2115 with GH_TOKEN after the controls, and pmat comply ledger writes CB-2115 as ENFORCED via that step with gate among its roots
+  - the step's first CI run is observed RED against the §7 falsifier (close one linked issue, leave the item open) and linked from the receipt (goal-mode.md §13 item 2)
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Filed by PMAT-722 (goal-mode step 4). The rule, its control (scripts/roadmap-coherence-control.sh, 8 arms, runs in the traceability job) and its ledger row exist; only the direct invocation is withheld, because a gate red on arrival is a gate someone disables (§5.4). The exact step is written as a comment in .github/workflows/ci.yml beside the CB-2113 step.

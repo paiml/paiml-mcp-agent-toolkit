@@ -595,16 +595,18 @@ vanish silently.
 
 ### 11.1 Artifacts this document proposes and that do not exist yet
 
-`scripts/traceability-control.sh` and `docs/status/goal-ledger.md` are DELIVERABLES of
-steps 2 and 9, not existing files. Likewise `pmat goal`, `pmat spec review --record` and
-`pmat work sync --check-only` do not parse today:
+`docs/status/goal-ledger.md` is a DELIVERABLE of step 9, not an existing file. Likewise
+`pmat goal` and `pmat spec review --record` do not parse today:
 
 ```console
 $ pmat goal --help
 error: unrecognized subcommand 'goal'
 ```
 
-They are named here so a reader can grep for them and find nothing. A specification that
+They are named here so a reader can grep for them and find nothing. Three entries have
+left this list since it was written — `scripts/traceability-control.sh` (step 2, #1247),
+`pmat work sync --check-only` (step 3, #1248) and `scripts/roadmap-coherence-control.sh`
+(step 4, PMAT-722) — each removed by the step that delivered it, never before. A specification that
 cites its own outputs as though they already existed is exactly the drift this document
 is about — and every OTHER path and command in this file resolves, checked with the two
 greps `CLAUDE.md` prescribes for this file class.

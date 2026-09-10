@@ -109,7 +109,7 @@ grep -q '^- id: GH-999999$' "$rt/docs/roadmaps/roadmap.yaml" || fail_arm 4 "GH-9
 head -n "$orig_lines" "$rt/docs/roadmaps/roadmap.yaml" > "$work/prefix.yaml"
 if ! diff -q "$work/prefix.yaml" "$work/orig.yaml" >/dev/null; then
   diff "$work/prefix.yaml" "$work/orig.yaml" | head -20 >&2
-  fail_arm 4 "the $orig_lines pre-existing lines must round-trip byte-for-byte (§4.2) — an entry was hand-wrapped in a form the serializer does not produce; canonicalise it once with any pmat work command that saves the roadmap (a no-op \`pmat work edit <id> -s <its current status>\` will do)"
+  fail_arm 4 "the $orig_lines pre-existing lines must round-trip byte-for-byte (§4.2) — an entry was hand-wrapped in a form the serializer does not produce; canonicalise it once by saving it THROUGH THE SERIALIZER: run this arm on a copy (github-to-yaml against a snapshot holding one open issue no item names, as above) and copy its first N lines back. \`pmat work edit\` will not do it — it patches the text in place and re-quotes nothing, and \`-s <same status>\` is refused as an invalid transition (both measured, PMAT-722)"
 fi
 echo "work-sync-control: arm 4 RT    — $orig_lines lines of the real roadmap round-tripped byte-for-byte; GH-999999 appended"
 
