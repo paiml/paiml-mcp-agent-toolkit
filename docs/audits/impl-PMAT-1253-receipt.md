@@ -177,6 +177,26 @@ The roadmap side, in the same commit: 18 items `completed` with their evidence i
 | the quorum spot-checked 11 of the 74 open/item rows; the other 63 took the fixers' path unreviewed | reversible: an issue can be closed, an item completed |
 | `pv` NotRun, `teamwork` grill NotRun | — (a triage) |
 
+## Post-merge: drift on master
+
+#1291 merged as `6df22b7f0`. The live `--check-only` on master's roadmap then read **15 findings**, not 0:
+
+- **2 ORPHAN-GITHUB: #1292 and #1293.** Both are numbered after #1291 but were created on 2026-09-05 and 2026-08-13, so they were transferred into this repository after the triage. They are real work, and the item fixer gave them items.
+- **6 release DRIFT.** The six paired train items had no `release:` while their issues sit on milestones; the item fixer projected them (§4.1: the sync is the only writer).
+- **7 title DRIFT.** PMAT-1253 and the six train items have titles that differ from the issues they are paired with. The sync never rewrites a title, and PMAT-714 made roadmap titles immutable. The roadmap is authoritative for plan (§5.3), so each issue took its item's title; GitHub keeps the old one in the issue's timeline:
+
+| issue | item | title before |
+|---|---|---|
+| #1253 | PMAT-1253 | goal-mode step 4a: pmat work sync --check-only reaches 0 on master — the fixers, run after |
+| #1202 | PMAT-694 | flake: ci / coverage kills quality_proxy tests whose nested cargo clippy exceeds 600s unde |
+| #1156 | PMAT-695 | build.rs downloads four assets from unpkg.com at build time, two pinned to @latest, into a |
+| #1128 | PMAT-696 | Two Dependabot advisory gates ship; only one is wired, the orphan is RED, and 24 lines of  |
+| #1124 | PMAT-697 | quality_proxy: gates_run claims complexity ran for bash, C and TypeScript, where the heuri |
+| #1137 | PMAT-698 | The #1019 fix deleted the one .pmat-gates.toml section its own default reader consumes, an |
+| #1141 | PMAT-699 | Two root pub mods nothing calls: src/protocol/ (2,047 lines) and src/state/ (3,896 lines)  |
+
+The 60-minute grace window (§5.2) is why the check read coherent at 18:18: the pairings were written at 18:16 and surfaced as drift at 19:16. The retitles bumped the six issues' `updated_at`, which put their release disagreement back inside the window, so the item fixer planned no projection. It ran with `--grace-minutes 0`: projecting a milestone into `release:` is RR-RELEASE's own rule, not a tolerance call. The check itself ran with the default 60 minutes. After the fix, the live `--check-only` exits 0.
+
 ## Machine-readable
 
 orch_model: opus [V]   orch_class: opus   orch_decision: admit   orch_basis: -
