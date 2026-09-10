@@ -1,0 +1,372 @@
+{
+  "ticket": "PMAT-721",
+  "kind": "triage",
+  "head": "3893ca5f2a3f1cfa4527793741b4eb5c08a50036",
+  "universe": {
+    "source": "python3 -c \"import yaml,json; d=yaml.safe_load(open('docs/roadmaps/roadmap.yaml')); print(json.dumps([{k: i.get(k) for k in ('id','github_issue','status','title','created')} for i in d['roadmap'] if str(i['id']).split()[0] in ['MACS-0%02d' % n for n in range(4,17)]], default=str))\"",
+    "count": 17,
+    "sha256": "714284c9cff8b6a0069d2dcc452c7b9835bc3c9cd0b627fa910e22cfb3777d21"
+  },
+  "rule": "completed iff every test the item's spec block names (RED tests, ensure and invariant) exists by name or by a named equivalent and passes on master; otherwise planned-remint, retitled to the unshipped remainder, github_issue null so pmat work sync --direction yaml-to-github mints its own issue; a row whose id carries a space is cancelled as a duplicate when its <contract>/<equation> is its canonical row's contract_yaml and nothing depends on it",
+  "tests_log": {
+    "file": "macs-tests.log",
+    "sha256": "ea86ae4dd514cc46f71f9b546305a8d180b7663fe122367db029ae522c163b27",
+    "result": "test result: ok. 68 passed; 0 failed; 1 ignored; 0 measured; 21570 filtered out; finished in 0.39s",
+    "command": "env -u RUST_MIN_STACK cargo test --lib -- <49 filters> --test-threads=4 (scratchpad/macs-tests.sh)"
+  },
+  "explicit_ignored_run": {
+    "file": "concurrency8.log",
+    "sha256": "33bc17102fdd424342f53ea0e1352bfd6c5da61b3f0f9cef67310279322c96c2",
+    "result": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 21638 filtered out; finished in 23.14s"
+  },
+  "quorum_artifact": "docs/audits/quorum-PMAT-721.json",
+  "rows_total": 17,
+  "rows_expected": 17,
+  "verdict_counts": {
+    "completed": 10,
+    "planned-remint": 3,
+    "duplicate-cancel": 4
+  },
+  "rows": [
+    {
+      "item": "MACS-004",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-004 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::work_handlers::level_migration_tests::legacy_strings_interactive_to_typed",
+        "cli::handlers::work_verification_level::tests::display_parse_id",
+        "cli::handlers::work_verification_level::tests::ord_matches_numeric",
+        "cli::handlers::work_verification_level::tests::parse_total_strict_prop",
+        "cli::handlers::work_verification_level::tests::serde_string_repr"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 3/3",
+      "adjudication": "agree",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-005",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-005 —)",
+      "tests_passing_on_master": [
+        "quality::ladder_evidence::tests::achieved_never_stored",
+        "quality::ladder_evidence::tests::claim_l3_with_passing_falsification_closes",
+        "quality::ladder_evidence::tests::claim_l4_without_kani_blocks",
+        "quality::ladder_evidence::tests::claim_l5_with_sorry_blocks"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 3/3",
+      "adjudication": "agree",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-006",
+      "verdict": "planned-remint",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-006 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_ladder::cb1653_blocked_receipt_is_not_drift",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_ladder::cb1653_green_after_fix",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_ladder::cb1653_red_on_drift",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_ladder::cb1653_skips_on_empty_store",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_ladder::cb1653_warns_on_open_overclaim"
+      ],
+      "tests_named_but_absent": [
+        "ledger::receipt_records_both_levels (no equivalent: no lib test exercises with_ladder, work_ledger_receipt.rs:153, called from core_handlers/contract.rs:391; the CB-1653 tests hand-write the levels into receipt JSON, check_macs_tests_ladder.rs:38)"
+      ],
+      "quorum": "planned-remint 2/3 (lane 1: completed)",
+      "adjudication": "majority upheld; lane 1 named no equivalent for the missing test",
+      "change": {
+        "status": "inprogress -> planned",
+        "github_issue": "612 -> null (the sync mints its own issue)",
+        "title": "retitled to the unshipped remainder"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-007",
+      "verdict": "planned-remint",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-007 —)",
+      "tests_passing_on_master": [
+        "models::work_cot::tests::discharge_ref_parses_cot_equation_efact",
+        "models::work_cot::tests::legacy_prose_migrates_annotated_l0",
+        "models::work_cot::tests::v2_roundtrip_prop"
+      ],
+      "tests_named_but_absent": [
+        "cot::status_renders_v2 (the block's invariant: `pmat work status` still renders steps) — no test by that name or equivalent, and handle_work_status contains no chain-of-thought rendering"
+      ],
+      "quorum": "completed 2/3 (lane 2: planned-remint)",
+      "adjudication": "majority overruled: the rule counts the invariant test as for MACS-004 (serde_string_repr) and MACS-014 (two_runs_identical), where it exists; here it does not. Lane 2's other reason (ticket_validate_migrate.rs missing) is refuted: the file exists",
+      "change": {
+        "status": "inprogress -> planned",
+        "github_issue": "612 -> null (the sync mints its own issue)",
+        "title": "retitled to the unshipped remainder"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-008",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-008 —)",
+      "tests_passing_on_master": [
+        "models::work_cot::tests::cycle_detected_violates_1640",
+        "models::work_cot::tests::dag_property_prop",
+        "models::work_cot::tests::spec_section_3_1_passes",
+        "models::work_cot::tests::undischarged_assumption_violates_1640"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 3/3",
+      "adjudication": "agree; invariant measured: check_chain (work_cot.rs:388) has 0 std::fs/tokio/File calls",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-009",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-009 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_derivation::cb1658_green_on_faithful_derivation",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_derivation::cb1658_red_on_hollow_obligation",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_derivation::cb1658_red_on_paraphrase_drift",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_derivation::cb1658_red_when_counts_mismatch",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_derivation::cb1658_skips_without_derivations",
+        "models::work_cot::tests::every_aprender_gh_663_to_672_contract_derives_zero_empty_statements",
+        "models::work_cot::tests::one_claim_per_step_verbatim_fields",
+        "models::work_cot::tests::optional_clause_codegen_gated_by_flag",
+        "models::work_cot::tests::stable_output_two_runs"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 2/3 (lane 2: planned-remint)",
+      "adjudication": "majority upheld: derive::one_obligation_per_step_in_ticket_yaml is matched by every_aprender_gh_663_to_672_contract_derives_zero_empty_statements, which asserts one obligation ('- id:') and one claim ('- hypothesis:') per step over 10 fixtures (work_cot_tests.rs:542-551)",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json as 'superseded in scope by PMAT-685/#1200 ... broader scope (obligations+claims registry) is unimplemented' — scope the spec block does not name",
+      "note": "the 3.39.0 disposition says an obligations+claims registry is unimplemented; the block's ensure/invariant list names no registry"
+    },
+    {
+      "item": "MACS-010",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-010 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_skill_effort::cb1650_green_on_pinned_skills",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_skill_effort::cb1650_green_with_trailing_comment_on_effort",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_skill_effort::cb1650_red_on_missing_effort",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_skill_effort::cb1650_red_on_session_only_values",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_skill_effort::cb1650_red_on_unknown_value",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_skill_effort::cb1650_skips_without_skills_dir"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 3/3",
+      "adjudication": "agree; cb1650_green_on_repo_skills is named cb1650_green_on_pinned_skills; 6 of 6 repo skills pin effort: (measured)",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-011",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-011 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::qa_mcp_sweep::tests::args_derived_from_every_tool_schema",
+        "cli::handlers::qa_mcp_sweep::tests::concurrency8_zero_lock_errors_zero_scratch",
+        "cli::handlers::qa_mcp_sweep::tests::framing_stdout_pure_jsonrpc_golden",
+        "cli::handlers::qa_mcp_sweep::tests::no_llm_symbols_linked",
+        "cli::handlers::qa_mcp_sweep::tests::two_runs_byte_identical_modulo_time"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 2/3 (lane 2: planned-remint)",
+      "adjudication": "majority upheld: all five named tests exist by exact name and pass; concurrency8_zero_lock_errors_zero_scratch is #[ignore]d (spawns the MCP server binary) and passed when run explicitly (--ignored --exact, 23 s). Lane 2's fact is true — fixtures/mcp-sweep/ holds no tracked file; the goldens are inline in the tests",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket",
+      "note": "the concurrency test never runs in `cargo test --lib`; an #[ignore] is an unmeasured test (CLAUDE.md)"
+    },
+    {
+      "item": "MACS-012",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-012 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::qa_mcp_sweep::tests::workflow_file_committed_and_lint_clean",
+        "cli::handlers::qa_mcp_sweep::tests::workflow_reads_only_sweep_artifacts",
+        "cli::handlers::qa_mcp_sweep::tests::workflow_refusal_path_emits_work_event",
+        "cli::handlers::qa_mcp_sweep::tests::workflow_stamps_pmat_agent_env_on_every_subagent"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 3/3",
+      "adjudication": "agree; invariant measured: 0 occurrences of 'resume' in contracts/workflows/release-sweep.ultracode.mjs",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-013",
+      "verdict": "planned-remint",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-013 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_roadmap_fresh::cb1655_pass_when_fresh",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_roadmap_fresh::cb1655_skips_without_ledger",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_roadmap_fresh::cb1655_warn_when_roadmap_missing",
+        "roadmap::sync::tests::gh_snapshot_pinned_by_id",
+        "roadmap::sync::tests::hash_covers_sources_not_wallclock",
+        "roadmap::sync::tests::render_byte_stable_two_runs",
+        "roadmap::sync::tests::stale_when_ledger_newer_than_artifact"
+      ],
+      "tests_named_but_absent": [
+        "comply::cb1655_red_when_ledger_newer_than_artifact — the predicate is tested (roadmap::sync::tests::stale_when_ledger_newer_than_artifact) but CB-1655 returns Warn/Severity::Warning for a stale ROADMAP.yaml where the block says red, and no test covers that arm"
+      ],
+      "quorum": "planned-remint 2/3 (lane 1: completed)",
+      "adjudication": "majority upheld on a different reason than lanes 2/3 gave: an equivalent predicate test exists (the delegate found it); what is unshipped is the red verdict itself",
+      "change": {
+        "status": "inprogress -> planned",
+        "github_issue": "612 -> null (the sync mints its own issue)",
+        "title": "retitled to the unshipped remainder"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket",
+      "note": "found while triaging: ROADMAP.yaml was last rendered 2026-07-05; src/roadmap/sync.rs:6 calls docs/roadmaps/roadmap.yaml HISTORICAL while goal-mode.md made it the roadmap pmat work sync and CB-2115 judge"
+    },
+    {
+      "item": "MACS-014",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-014 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::mcp_manifest::manifest::byte_equal_or_cb1656_red",
+        "cli::handlers::mcp_manifest::manifest::generated_equals_tool_defs",
+        "cli::handlers::mcp_manifest::manifest::readme_tool_count_matches",
+        "mcp_pmcp::tool_manifest::tests::generated_equals_tool_defs",
+        "mcp_pmcp::tool_manifest::tests::two_runs_identical"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 3/3",
+      "adjudication": "agree",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-015",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-015 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::comply_handlers::check_handlers::check::comply_readonly_and_exemption_tests::cb1657_says_docs_were_exempt_rather_than_absent",
+        "cli::handlers::comply_handlers::check_handlers::check::comply_readonly_and_exemption_tests::cb1657_still_fails_a_live_doc_and_names_exemptions_on_pass",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::docs::refactor_auto_references_registry",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_artifacts::cb1657_allowlist_only_in_registry_and_spec",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_artifacts::cb1657_denylist_matching",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_artifacts::cb1657_denylist_scans_all_occurrences",
+        "cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_artifacts::cb1657_red_on_denylist_hit"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 3/3",
+      "adjudication": "agree; cb1657_allowlist_only_in_registry_history is named cb1657_allowlist_only_in_registry_and_spec; invariant measured: claude-3-opus appears in docs/agent-models.md",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-016",
+      "verdict": "completed",
+      "spec_block": "docs/specifications/components/modern-agentic-coding-support.md (**MACS-016 —)",
+      "tests_passing_on_master": [
+        "cli::handlers::work_ledger::tests::report_groups_by_model_effort_harness",
+        "cli::handlers::work_ledger::tests::rule_r1_order_violation_detected",
+        "cli::handlers::work_ledger::tests::verify_readonly",
+        "cli::handlers::work_ledger::tests::verify_recomputes_all_hashes_v1_and_v2",
+        "cli::handlers::work_ledger::tests::verify_red_on_tampered_entry"
+      ],
+      "tests_named_but_absent": [],
+      "quorum": "completed 3/3",
+      "adjudication": "agree",
+      "change": {
+        "status": "inprogress -> completed",
+        "github_issue": "612 kept (historical link; #612 closed COMPLETED by #613)"
+      },
+      "dispositions_3_39_0": "deferred in docs/audits/dispositions-3.39.0.json on 'no matching commits found on master' — a commit-message heuristic; #613 was a squash, so no commit names this ticket"
+    },
+    {
+      "item": "MACS-010 macs-skill-effort-v1/skill_effort_pinned",
+      "verdict": "duplicate-cancel",
+      "canonical_row": "MACS-010",
+      "evidence": [
+        "the id's <contract>/<equation> is contracts/macs-skill-effort-v1.yaml#skill_effort_pinned, MACS-010's contract_yaml",
+        "created 2026-07-02T16:54:11 in the same second as the other three space-id rows (a contract binding that wrote '<ticket> <contract>/<equation>' as the id)",
+        "referenced only by the rendered ROADMAP.yaml and docs/audits/dispositions-3.39.0.json (a historical record) — git grep -lF"
+      ],
+      "quorum": "duplicate-cancel 3/3",
+      "adjudication": "agree; cancel, not delete (the rule's duplicate-cancel), so the id's history stays in the file",
+      "change": {
+        "status": "inprogress -> cancelled",
+        "github_issue": "null (unchanged)"
+      }
+    },
+    {
+      "item": "MACS-011 macs-sweep-v1/sweep_deterministic",
+      "verdict": "duplicate-cancel",
+      "canonical_row": "MACS-011",
+      "evidence": [
+        "the id's <contract>/<equation> is contracts/macs-sweep-v1.yaml#sweep_deterministic, the first of MACS-011's three equations and the whole of MACS-012's contract_yaml",
+        "created 2026-07-02T16:54:11 in the same second as the other three space-id rows (a contract binding that wrote '<ticket> <contract>/<equation>' as the id)",
+        "referenced only by the rendered ROADMAP.yaml and docs/audits/dispositions-3.39.0.json (a historical record) — git grep -lF"
+      ],
+      "quorum": "duplicate-cancel 3/3",
+      "adjudication": "agree; cancel, not delete (the rule's duplicate-cancel), so the id's history stays in the file",
+      "change": {
+        "status": "inprogress -> cancelled",
+        "github_issue": "null (unchanged)"
+      }
+    },
+    {
+      "item": "MACS-013 macs-artifacts-v1/roadmap_canonical",
+      "verdict": "duplicate-cancel",
+      "canonical_row": "MACS-013",
+      "evidence": [
+        "the id's <contract>/<equation> is contracts/macs-artifacts-v1.yaml#roadmap_canonical, MACS-013's contract_yaml",
+        "created 2026-07-02T16:54:11 in the same second as the other three space-id rows (a contract binding that wrote '<ticket> <contract>/<equation>' as the id)",
+        "referenced only by the rendered ROADMAP.yaml and docs/audits/dispositions-3.39.0.json (a historical record) — git grep -lF"
+      ],
+      "quorum": "duplicate-cancel 3/3",
+      "adjudication": "agree; cancel, not delete (the rule's duplicate-cancel), so the id's history stays in the file",
+      "change": {
+        "status": "inprogress -> cancelled",
+        "github_issue": "null (unchanged)"
+      }
+    },
+    {
+      "item": "MACS-014 macs-artifacts-v1/manifest_faithful",
+      "verdict": "duplicate-cancel",
+      "canonical_row": "MACS-014",
+      "evidence": [
+        "the id's <contract>/<equation> is contracts/macs-artifacts-v1.yaml#manifest_faithful, MACS-014's contract_yaml",
+        "created 2026-07-02T16:54:11 in the same second as the other three space-id rows (a contract binding that wrote '<ticket> <contract>/<equation>' as the id)",
+        "referenced only by the rendered ROADMAP.yaml and docs/audits/dispositions-3.39.0.json (a historical record) — git grep -lF"
+      ],
+      "quorum": "duplicate-cancel 3/3",
+      "adjudication": "agree; cancel, not delete (the rule's duplicate-cancel), so the id's history stays in the file",
+      "change": {
+        "status": "inprogress -> cancelled",
+        "github_issue": "null (unchanged)"
+      }
+    }
+  ]
+}

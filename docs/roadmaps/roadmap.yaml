@@ -3305,274 +3305,274 @@ roadmap:
   github_issue: 612
   item_type: task
   title: MACS-004 VerificationLevel typed enum + strict parse + ticket migration
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T14:01:26.610146215+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-005
   github_issue: 612
   item_type: task
   title: 'MACS-005 Ladder completion gate: achieved_level >= claimed'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T14:16:56.683967019+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-006
-  github_issue: 612
+  github_issue: null
   item_type: task
-  title: MACS-006 CB-1653 ladder drift check + receipts record claimed/achieved
-  status: inprogress
+  title: 'MACS-006 remainder: a test that a completed ticket''s receipt records claimed_level and achieved_level (spec test ledger::receipt_records_both_levels) — CB-1653 and the receipt fields shipped in #613'
+  status: planned
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T14:28:53.471013437+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'Partly shipped in PR #613 (squash d629a105f): CB-1653 in check_macs_ladder.rs with cb1653_red_on_drift and cb1653_green_after_fix, and the receipt fields claimed_level/achieved_level set by with_ladder (work_ledger_receipt.rs:153, called from core_handlers/contract.rs:391). Not shipped: the block''s test ledger::receipt_records_both_levels — no lib test exercises with_ladder or a receipt carrying both levels (the CB-1653 tests hand-write that JSON, check_macs_tests_ladder.rs:38). Re-planned by PMAT-721 with github_issue null so pmat work sync --direction yaml-to-github mints its own issue; #612 is closed and was the umbrella for all thirteen (docs/audits/triage-PMAT-721-ledger.json).'
 - id: MACS-007
-  github_issue: 612
+  github_issue: null
   item_type: task
-  title: MACS-007 ChainOfThoughtStep v2 schema + parser + legacy migration
-  status: inprogress
+  title: 'MACS-007 remainder: pmat work status must still render chain-of-thought steps after the v2 schema (spec invariant cot::status_renders_v2) — the v2 schema, parser and migration shipped in #613'
+  status: planned
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T14:48:32.301769300+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'Partly shipped in PR #613 (squash d629a105f): ChainOfThoughtStep v2 in src/models/work_cot.rs with v2_roundtrip_prop, legacy_prose_migrates_annotated_l0 and discharge_ref_parses_cot_equation_efact, all passing on master 3893ca5f2. Not shipped: the block''s invariant — no test named cot::status_renders_v2 or equivalent exists, and handle_work_status renders no chain-of-thought step. Re-planned by PMAT-721 with github_issue null so pmat work sync --direction yaml-to-github mints its own issue; #612 is closed and was the umbrella for all thirteen (docs/audits/triage-PMAT-721-ledger.json).'
 - id: MACS-008
   github_issue: 612
   item_type: task
   title: MACS-008 Chain-integrity checker implementing CB-1640
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T14:49:17.883667475+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-009
   github_issue: 612
   item_type: task
   title: 'MACS-009 CoT auto-derivation: obligations + falsifiable claims + CB-1658'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T14:50:00.884982191+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. The block''s one_obligation_per_step_in_ticket_yaml is matched by every_aprender_gh_663_to_672_contract_derives_zero_empty_statements (one obligation and one claim per step over 10 fixtures). The 3.39.0 disposition says an obligations+claims registry is unimplemented; this block''s ensure and invariant list names no registry.'
 - id: MACS-010
   github_issue: 612
   item_type: task
   title: MACS-010 Effort frontmatter pinning across skills + CB-1650 lint
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T16:57:02.797476584+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. cb1650_green_on_repo_skills is named cb1650_green_on_pinned_skills; all 6 repo skills pin effort:. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-011
   github_issue: 612
   item_type: task
   title: 'MACS-011 pmat qa mcp-sweep: LLM-free deterministic MCP harness'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T16:58:01.705228608+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. concurrency8_zero_lock_errors_zero_scratch is #[ignore]d (it spawns the MCP server binary) and passed when run explicitly; the goldens are inline in the tests rather than under fixtures/mcp-sweep/. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-012
   github_issue: 612
   item_type: task
   title: MACS-012 Committed ultracode judgment workflow with provenance stamping
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T16:54:11.588556369+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-013
-  github_issue: 612
+  github_issue: null
   item_type: task
-  title: 'MACS-013 pmat roadmap sync: canonical ROADMAP.yaml + CB-1655 freshness'
-  status: inprogress
+  title: 'MACS-013 remainder: CB-1655 warns instead of failing on a stale ROADMAP.yaml and its stale arm is untested (spec test comply::cb1655_red_when_ledger_newer_than_artifact); decide whether the rendered ROADMAP.yaml survives now that docs/roadmaps/roadmap.yaml is the live roadmap — pmat roadmap sync shipped in #613'
+  status: planned
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T16:58:43.476190440+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'Partly shipped in PR #613 (squash d629a105f): pmat roadmap sync (src/roadmap/sync.rs) with render_byte_stable_two_runs, hash_covers_sources_not_wallclock, gh_snapshot_pinned and stale_when_ledger_newer_than_artifact passing on master 3893ca5f2, and CB-1655 in check_macs_artifacts.rs. Not shipped: the block says CB-1655 is red when the ledger is newer than ROADMAP.yaml; the check returns Warn (Severity::Warning) for that case and no test covers the arm. Found while triaging: ROADMAP.yaml was last rendered 2026-07-05 and still lists the four duplicate MACS rows PMAT-721 cancelled, and src/roadmap/sync.rs:6 calls docs/roadmaps/roadmap.yaml HISTORICAL while goal-mode.md made it the roadmap pmat work sync and CB-2115 judge — two roadmaps answering one question (goal-mode.md doctrine 5). Re-planned by PMAT-721 with github_issue null so pmat work sync --direction yaml-to-github mints its own issue; #612 is closed and was the umbrella for all thirteen (docs/audits/triage-PMAT-721-ledger.json).'
 - id: MACS-014
   github_issue: 612
   item_type: task
   title: MACS-014 pmat mcp manifest --write + CB-1656 drift check
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T16:59:25.963591133+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-015
   github_issue: 612
   item_type: task
   title: MACS-015 Doc drift purge + docs/agent-models.md registry + CB-1657
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T16:55:06.787149810+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. cb1657_allowlist_only_in_registry_history is named cb1657_allowlist_only_in_registry_and_spec. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-016
   github_issue: 612
   item_type: task
   title: 'MACS-016 pmat work ledger verify: hashes, provenance report, R1 order'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T16:55:52.113504047+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721 (goal-mode.md §5.4, the #612 collision): shipped in PR #613 (squash d629a105f, 2026-07-02), which closed #612 as COMPLETED; every test this item''s block in docs/specifications/components/modern-agentic-coding-support.md names, or its named equivalent, passes on master 3893ca5f2 (docs/audits/triage-PMAT-721-ledger.json). #612 stays as the historical link: a completed item is outside the sync''s bijection. The 3.39.0 deferral (docs/audits/dispositions-3.39.0.json, ''no matching commits found on master'') read commit messages, and a squash leaves none per ticket.'
 - id: MACS-010 macs-skill-effort-v1/skill_effort_pinned
   github_issue: null
   item_type: task
   title: 'New task: MACS-010 macs-skill-effort-v1/skill_effort_pinned'
-  status: inprogress
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-07-02T16:54:11.358172536+00:00
-  updated: 2026-07-02T16:54:11.358172536+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: null
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721: cancelled as a duplicate of MACS-010. Created 2026-07-02T16:54:11, in the same second as the other three rows whose id carries a space, by a contract binding that wrote ''<ticket> <contract>/<equation>'' as the id; the equation is contracts/macs-skill-effort-v1.yaml#skill_effort_pinned, MACS-010''s own contract_yaml. Nothing depends on this id: it appears only in the rendered ROADMAP.yaml and in docs/audits/dispositions-3.39.0.json, a historical record (docs/audits/triage-PMAT-721-ledger.json).'
 - id: MACS-011 macs-sweep-v1/sweep_deterministic
   github_issue: null
   item_type: task
   title: 'New task: MACS-011 macs-sweep-v1/sweep_deterministic'
-  status: inprogress
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-07-02T16:54:11.419723850+00:00
-  updated: 2026-07-02T16:54:11.419723850+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: null
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721: cancelled as a duplicate of MACS-011. Created 2026-07-02T16:54:11, in the same second as the other three rows whose id carries a space, by a contract binding that wrote ''<ticket> <contract>/<equation>'' as the id; the equation is contracts/macs-sweep-v1.yaml#sweep_deterministic, the first of MACS-011''s three equations and the whole of MACS-012''s contract_yaml. Nothing depends on this id: it appears only in the rendered ROADMAP.yaml and in docs/audits/dispositions-3.39.0.json, a historical record (docs/audits/triage-PMAT-721-ledger.json).'
 - id: MACS-013 macs-artifacts-v1/roadmap_canonical
   github_issue: null
   item_type: task
   title: 'New task: MACS-013 macs-artifacts-v1/roadmap_canonical'
-  status: inprogress
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-07-02T16:54:11.475766150+00:00
-  updated: 2026-07-02T16:54:11.475766150+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: null
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721: cancelled as a duplicate of MACS-013. Created 2026-07-02T16:54:11, in the same second as the other three rows whose id carries a space, by a contract binding that wrote ''<ticket> <contract>/<equation>'' as the id; the equation is contracts/macs-artifacts-v1.yaml#roadmap_canonical, MACS-013''s own contract_yaml. Nothing depends on this id: it appears only in the rendered ROADMAP.yaml and in docs/audits/dispositions-3.39.0.json, a historical record (docs/audits/triage-PMAT-721-ledger.json).'
 - id: MACS-014 macs-artifacts-v1/manifest_faithful
   github_issue: null
   item_type: task
   title: 'New task: MACS-014 macs-artifacts-v1/manifest_faithful'
-  status: inprogress
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-07-02T16:54:11.532179532+00:00
-  updated: 2026-07-02T16:54:11.532179532+00:00
+  updated: 2026-09-10T17:16:59Z
   spec: null
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: 'PMAT-721: cancelled as a duplicate of MACS-014. Created 2026-07-02T16:54:11, in the same second as the other three rows whose id carries a space, by a contract binding that wrote ''<ticket> <contract>/<equation>'' as the id; the equation is contracts/macs-artifacts-v1.yaml#manifest_faithful, MACS-014''s own contract_yaml. Nothing depends on this id: it appears only in the rendered ROADMAP.yaml and in docs/audits/dispositions-3.39.0.json, a historical record (docs/audits/triage-PMAT-721-ledger.json).'
 - id: MACS-017
   github_issue: null
   item_type: task
@@ -5094,15 +5094,15 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'goal-mode step 3, the human half: resolve the 13 MACS items that all name #612 — which of MACS-004..MACS-016 is really #612 is a judgement, so this is a supervised one-off migration, never a sync auto-fix (goal-mode.md §5.4); the rest get their own issues or are cancelled'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-09T21:22:08Z
-  updated: 2026-09-09T21:22:08Z
+  updated: 2026-09-10T17:16:59Z
   spec: null
   acceptance_criteria:
   - 'pmat work sync --check-only reports 0 COLLISION on master (today: 1 — #612 named by MACS-004, MACS-005, MACS-006, MACS-007, MACS-008, MACS-009, MACS-010, MACS-011, MACS-012, MACS-013, MACS-014, MACS-015, MACS-016)'
-  - 'each of the 13 items either names a distinct open issue that is its own, or is cancelled with a note saying which item kept #612'
+  - 'each of the 13 items is resolved with evidence, never by the sync: completed (its deliverable and every test its spec block names are on master; #612, closed COMPLETED by #613, stays as its historical link), re-planned with github_issue null for the unshipped remainder so the sync mints it its own issue (goal-mode.md §5.1), or cancelled with a note. Amended by PMAT-721: the first wording assumed all 13 were open work, and 10 had shipped in #613'
   - 'no auto-fix: the resolution is committed by a person under this ticket, and the sync is never given a rule for it (goal-mode.md §5.4, §12)'
   phases: []
   subtasks: []
@@ -5110,7 +5110,7 @@ roadmap:
   labels:
   - kind:triage
   - human
-  notes: 'Filed by PMAT-720 (goal-mode step 3) from the first real run of pmat work sync --check-only on this repository (107 findings: 1 COLLISION, 52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT). Which of the thirteen is really #612 is a judgement, and a sync that guesses is how the thirteen arose — a human owns this ticket. CB-2115 (step 4) cannot land green until it is done.'
+  notes: 'Filed by PMAT-720 (goal-mode step 3) from the first real run of pmat work sync --check-only on this repository (107 findings: 1 COLLISION, 52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT). Which of the thirteen is really #612 is a judgement, and a sync that guesses is how the thirteen arose — a human owns this ticket. CB-2115 (step 4) cannot land green until it is done. Resolved on 2026-09-10 by the orchestrator under the operator''s delegation, quoted verbatim: "pmat-implement docs/specifications/goal-mode.md autonomously (you merge, triage tickets, pull requests, and label, tag, close/open)". 10 of the 13 shipped in #613 and are completed; MACS-006, MACS-007 and MACS-013 are re-planned for their unshipped remainder; the four rows whose id carries a space are cancelled as duplicates. Evidence: docs/audits/triage-PMAT-721-ledger.json, docs/audits/quorum-PMAT-721.json, docs/audits/impl-PMAT-721-receipt.md.'
 - id: PMAT-722
   github_issue: null
   item_type: task
