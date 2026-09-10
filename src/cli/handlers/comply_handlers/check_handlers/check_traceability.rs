@@ -19,8 +19,8 @@
 /// each one either trailed with an id the roadmap holds in a non-terminal
 /// status, or named in the failure with the reason.
 pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck {
-    use crate::services::commit_traceability::{self as ct, Inputs, Range};
     use crate::models::comply_config::CheckSeverity;
+    use crate::services::commit_traceability::{self as ct, Inputs, Range};
 
     let literal = "CB-2113: Commit Traceability";
 
@@ -102,11 +102,43 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                             name: literal.to_string(),
                             status: CheckStatus::Fail,
                             severity: CheckSeverity::Error.into(),
-                            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — add `Pmat-Ticket: <id>` as a git trailer (git commit -m '<subject>' -m 'Pmat-Ticket: PMAT-NNN')", m.findings.len(), m.commits, mb7, base, joined),
+                            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}", m.findings.len(), m.commits, mb7, base, joined, traceability_remedy(&m.findings)),
                         }
                     }
                 }
             }
         }
     }
+}
+
+/// What to do about the violations present — one clause per kind, so a trailer
+/// that is present is never told to add one (PMAT-727: #1252 read "add
+/// `Pmat-Ticket: <id>` as a git trailer" about a trailer naming a completed item).
+fn traceability_remedy(findings: &[crate::services::commit_traceability::Finding]) -> String {
+    let mut clauses: Vec<&str> = Vec::new();
+    if findings.iter().any(|f| {
+        matches!(
+            f.violation,
+            crate::services::commit_traceability::Violation::NoTrailer
+        )
+    }) {
+        clauses.push("add `Pmat-Ticket: <id>` to the message's LAST paragraph, beside Co-Authored-By: git reads trailers from the last paragraph only (git commit -m '<subject>' -m $'Pmat-Ticket: PMAT-NNN\\nCo-Authored-By: Name <email>')");
+    }
+    if findings.iter().any(|f| {
+        matches!(
+            f.violation,
+            crate::services::commit_traceability::Violation::UnknownTicket(_)
+        )
+    }) {
+        clauses.push("name an id that is in docs/roadmaps/roadmap.yaml");
+    }
+    if findings.iter().any(|f| {
+        matches!(
+            f.violation,
+            crate::services::commit_traceability::Violation::TerminalTicket { .. }
+        )
+    }) {
+        clauses.push("work belongs to an open item: leave a ticket open in its own PR, and let the next ticket's PR mark it completed");
+    }
+    clauses.join("; ")
 }

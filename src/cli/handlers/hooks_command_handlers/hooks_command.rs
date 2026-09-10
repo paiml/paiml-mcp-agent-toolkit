@@ -406,44 +406,21 @@ impl HooksCommand {
         Ok(())
     }
 
-    /// The `commit-msg` hook text. `$1` is the message file. The trailer is
-    /// read with `git interpret-trailers --parse`, so `Pmat-Ticket: PMAT-655`
-    /// counts wherever git counts it; a bare id or `#NNN` in the body is the
-    /// fallback for repositories without pmat work.
+    /// The `commit-msg` hook text. `$1` is the message file.
+    ///
+    /// With `docs/roadmaps/roadmap.yaml` present the hook applies CB-2113's
+    /// predicate, the one CI runs (PMAT-727): the message's LAST paragraph must
+    /// carry a `Pmat-Ticket:` trailer — `git interpret-trailers --parse` is the
+    /// same parser as the rule's `%(trailers:key=Pmat-Ticket)`, and git reads
+    /// trailers from the last paragraph only — and every id it names must exist
+    /// in the staged roadmap and must not be completed or cancelled. Without a
+    /// roadmap CB-2113 does not judge, so a ticket id or issue reference matching
+    /// `pattern` is accepted: the one intended difference, pinned by
+    /// `without_a_roadmap_the_hook_keeps_the_ticket_pattern_and_cb2113_skips`.
     pub(crate) fn generate_commit_msg_hook(strict: bool, pattern: &str) -> String {
-        format!(
-            r#"#!/usr/bin/env bash
-# PMAT commit-msg hook — ticket linking (AD-03)
-# auto-managed by PMAT — DO NOT EDIT
-# A commit must name the work it belongs to: a `Pmat-Ticket: PMAT-NNN` trailer
-# (git-native: `git log --format='%(trailers:key=Pmat-Ticket,valueonly)'`),
-# or a ticket id / issue reference matching the configured pattern.
-# strict={strict}: 1 = refuse (exit 1), 0 = warn and continue.
-# Bypass (emergency, audited by the comply check over the branch): git commit --no-verify
-set -u
-MSG_FILE="$1"
-PATTERN='{pattern}'
-STRICT={strict}
-trailer=$(git interpret-trailers --parse < "$MSG_FILE" 2>/dev/null | grep -iE '^Pmat-Ticket:' | head -1 | sed 's/^[^:]*:[[:space:]]*//')
-if [ -n "$trailer" ]; then
-    exit 0
-fi
-# Comment lines are not part of the message.
-if grep -vE '^[[:space:]]*#' "$MSG_FILE" | grep -qE "$PATTERN"; then
-    exit 0
-fi
-echo "PMAT commit-msg: no Pmat-Ticket trailer and no ticket reference matching '$PATTERN' in the message." >&2
-echo "  add a trailer:  git commit -m '<subject>' -m 'Pmat-Ticket: PMAT-NNN'" >&2
-if [ "$STRICT" = "1" ]; then
-    echo "  [hooks] strict is on: commit refused." >&2
-    exit 1
-fi
-echo "  (warning only: set [hooks] strict = true, or pmat hooks install --strict, to refuse)" >&2
-exit 0
-"#,
-            strict = u8::from(strict),
-            pattern = pattern
-        )
+        COMMIT_MSG_HOOK_TEMPLATE
+            .replace("__STRICT__", if strict { "1" } else { "0" })
+            .replace("__PATTERN__", pattern)
     }
 
     /// Remove the `commit-msg` hook if it is ours.
@@ -517,6 +494,71 @@ echo "✅ Pre-push gate passed"
         Ok(())
     }
 }
+
+/// The `commit-msg` hook, with `__STRICT__` and `__PATTERN__` filled in by
+/// [`HooksCommand::generate_commit_msg_hook`]. Not a `format!` string: the awk
+/// program's braces would each need doubling there.
+const COMMIT_MSG_HOOK_TEMPLATE: &str = r##"#!/usr/bin/env bash
+# PMAT commit-msg hook — ticket linking (AD-03, PMAT-727)
+# auto-managed by PMAT — DO NOT EDIT
+# A commit must name the work it belongs to: a `Pmat-Ticket: PMAT-NNN` trailer.
+# git reads trailers from the LAST paragraph of a message only, so the trailer
+# shares that paragraph with Co-Authored-By and any other trailer.
+# With docs/roadmaps/roadmap.yaml present this hook applies CB-2113's predicate,
+# the one CI runs: every id the trailer names must exist in the staged roadmap
+# and must not be completed or cancelled. Without a roadmap CB-2113 does not
+# judge, and a ticket id or issue reference matching the pattern is accepted.
+# strict=__STRICT__: 1 = refuse (exit 1), 0 = warn and continue.
+# Bypass (emergency, audited by the comply check over the branch): git commit --no-verify
+set -u
+MSG_FILE="$1"
+PATTERN='__PATTERN__'
+STRICT=__STRICT__
+ROADMAP=docs/roadmaps/roadmap.yaml
+refuse() {
+    echo "PMAT commit-msg: $1" >&2
+    shift
+    for line in "$@"; do echo "  $line" >&2; done
+    if [ "$STRICT" = "1" ]; then
+        echo "  [hooks] strict is on: commit refused." >&2
+        exit 1
+    fi
+    echo "  (warning only: set [hooks] strict = true, or pmat hooks install --strict, to refuse)" >&2
+    exit 0
+}
+tickets=$(git interpret-trailers --parse < "$MSG_FILE" 2>/dev/null | grep -iE '^Pmat-Ticket:' | sed 's/^[^:]*:[[:space:]]*//' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$')
+roadmap=$(git show ":$ROADMAP" 2>/dev/null)
+if [ -z "$roadmap" ] && [ -f "$ROADMAP" ]; then roadmap=$(cat "$ROADMAP"); fi
+if [ -z "$roadmap" ]; then
+    # No roadmap: CB-2113 does not judge here, and the pattern is this repository's convention.
+    [ -n "$tickets" ] && exit 0
+    grep -vE '^[[:space:]]*#' "$MSG_FILE" | grep -qE "$PATTERN" && exit 0
+    refuse "no Pmat-Ticket trailer and no ticket reference matching '$PATTERN' in the message." \
+        "add a trailer:  git commit -m '<subject>' -m 'Pmat-Ticket: PMAT-NNN'"
+fi
+if [ -z "$tickets" ]; then
+    refuse "no Pmat-Ticket trailer in the message's LAST paragraph — git reads trailers from the last paragraph only, and CB-2113 refuses this commit in CI." \
+        "put it beside Co-Authored-By, in one paragraph:  git commit -m '<subject>' -m \$'Pmat-Ticket: PMAT-NNN\nCo-Authored-By: Name <email>'"
+fi
+while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    status=$(printf '%s\n' "$roadmap" | awk -v id="$id" -v q="'" '
+        { line = $0; sub(/^[ \t]+/, "", line) }
+        line == "- id: " id || line == "- id: " q id q || line == "- id: \"" id "\"" { f = 1; next }
+        f && line ~ /^- id: / { exit }
+        f && line ~ /^status:/ { sub(/^status:[ \t]*/, "", line); print line; exit }')
+    if [ -z "$status" ]; then
+        refuse "Pmat-Ticket $id is not in $ROADMAP — CB-2113 refuses this commit in CI." \
+            "name an item the roadmap has (pmat work add files one)"
+    fi
+    case "$status" in
+        completed|cancelled)
+            refuse "Pmat-Ticket $id is $status — work belongs to an open item, and CB-2113 refuses this commit in CI." \
+                "leave a ticket open in its own PR; the next ticket's PR marks it completed" ;;
+    esac
+done <<< "$tickets"
+exit 0
+"##;
 
 #[cfg(test)]
 mod uninstall_tests {

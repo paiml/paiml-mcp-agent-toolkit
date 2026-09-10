@@ -54,9 +54,13 @@ pub enum HooksCommands {
         #[arg(long)]
         tdg_enforcement: bool,
 
-        /// Refuse, do not warn: SATD over the threshold and a commit message
-        /// without a `Pmat-Ticket:` trailer (or ticket/issue reference) exit 1.
-        /// Same as `[hooks] strict = true` in pmat.toml (AD-03, #1126).
+        /// Refuse, do not warn: SATD over the threshold, and a commit message
+        /// whose LAST paragraph has no `Pmat-Ticket:` trailer naming an open
+        /// roadmap item, exit 1 — git reads trailers from the last paragraph
+        /// only, so the trailer shares it with Co-Authored-By. Without a
+        /// roadmap, a ticket or issue reference matching `[hooks] ticket_pattern`
+        /// is accepted. Same as `[hooks] strict = true` in pmat.toml (AD-03,
+        /// #1126, PMAT-727).
         #[arg(long)]
         strict: bool,
     },
@@ -79,9 +83,13 @@ pub enum HooksCommands {
         #[arg(long)]
         tdg_enforcement: bool,
 
-        /// Refuse, do not warn: SATD over the threshold and a commit message
-        /// without a `Pmat-Ticket:` trailer (or ticket/issue reference) exit 1.
-        /// Same as `[hooks] strict = true` in pmat.toml (AD-03, #1126).
+        /// Refuse, do not warn: SATD over the threshold, and a commit message
+        /// whose LAST paragraph has no `Pmat-Ticket:` trailer naming an open
+        /// roadmap item, exit 1 — git reads trailers from the last paragraph
+        /// only, so the trailer shares it with Co-Authored-By. Without a
+        /// roadmap, a ticket or issue reference matching `[hooks] ticket_pattern`
+        /// is accepted. Same as `[hooks] strict = true` in pmat.toml (AD-03,
+        /// #1126, PMAT-727).
         #[arg(long)]
         strict: bool,
 
