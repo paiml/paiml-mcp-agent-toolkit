@@ -43,6 +43,7 @@
 #   arm 17 RED   ten active specs s00..s09 with epic null                      exit 1, Fail "10 finding(s) — NO-EPIC 10:" and "(+2 more)" — the ninth is counted, not dropped
 #   arm 18 N/M   docs/specifications was committed and then deleted            exit 1, Fail not_measured: "committed and is now gone" — deleting the input is not passing (§12)
 #   arm 19 RED   a.md names closed #7 beside z.md with no epic: line           exit 1, Fail "2 finding(s) — EPIC-CLOSED 1, NO-EPIC 1: EPIC-CLOSED …a.md:" — both legs render in path order
+#   arm 20 GREEN the header goal-mode.md §4.3 documents, inline comments and all, bound to #1234   exit 0, Pass linked 1 — a human copying the doc must not be refused
 #
 # Arm 16 is the withheld-step measurement (goal-mode.md §11 step 6, doctrine
 # 6): it runs the rule on THIS tree's specs, copied into the fixture, and
@@ -398,4 +399,23 @@ expect 19 CB-2110 Fail "; NO-EPIC docs/specifications/z.md:"
 starts 19 "2 finding(s) — EPIC-CLOSED 1, NO-EPIC 1: EPIC-CLOSED docs/specifications/a.md:"
 echo "spec-epic-control: arm 19 RED   — EPIC-CLOSED a.md then NO-EPIC z.md: both legs in path order (exit 1)"
 
-echo "spec-epic-control: all 19 arms behaved — CB-2110 can fail, can pass, says why, names its exemptions, refuses its own bypass, and this tree measures NO-EPIC on every spec"
+# arm 20: GREEN — the header goal-mode.md §4.3 documents, with the inline
+# comments it carries on every line. The quorum on PMAT-728 found the first
+# cut reading this exact block as BAD-FRONT-MATTER three ways over (a `#`
+# after whitespace is a YAML comment; the parser skipped whole-line comments
+# only), and PMAT-729 is a human copying this block into 44 specs.
+rm -rf "${specs:?}"
+write_raw_spec a.md '---
+epic: 1234         # an open GitHub issue labelled epic
+status: active     # active | superseded | historical
+vendors: [cuda]    # optional; adds a vendor: role to the required set
+---
+
+# A spec'
+write_snapshot "$(issue 1234 open '["epic"]' 1)"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 20 "the header goal-mode.md §4.3 documents must parse, comments and all, and bind (exit 0)"
+expect 20 CB-2110 Pass "linked 1" "1 spec(s)"
+echo "spec-epic-control: arm 20 GREEN — the documented header with its inline comments parses and binds #1234 (exit 0)"
+
+echo "spec-epic-control: all 20 arms behaved — CB-2110 can fail, can pass, says why, names its exemptions, refuses its own bypass, and this tree measures NO-EPIC on every spec"
