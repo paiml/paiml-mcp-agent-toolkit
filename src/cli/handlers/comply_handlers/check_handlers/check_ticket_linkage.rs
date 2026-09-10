@@ -2,8 +2,9 @@
 /// work without a ticket linked to the roadmap).
 ///
 /// Every open item (status not completed or cancelled, §4.2) names a
-/// `github_issue` that exists, is open, is not labelled `no-roadmap`, and
-/// whose number is the item's numeric tail: the id `pmat work add
+/// `github_issue` that exists, is open, and whose number is the item's
+/// numeric tail (an open issue labelled `no-roadmap` still links here — the
+/// label is §5.1's and CB-2115's business, one place per judgement): the id `pmat work add
 /// --github-issue N` mints is `<PREFIX>-N` (PMAT-714, #1240), so the tail is
 /// the one link two branches cannot mint twice. One finding per item, the
 /// first clause that fails. The judgement is `work_sync::linkage::
@@ -30,11 +31,10 @@ pub(crate) fn check_ticket_linkage(
         report.open_items, report.linked, inputs.source, inputs.taken_at
     );
     let fail = format!(
-        "{n} finding(s) — NO-ISSUE {}, ISSUE-CLOSED {}, ISSUE-ABSENT {}, ISSUE-EXCLUDED {}, TAIL-MISMATCH {}: {}; an item is minted from its issue by `pmat work add --github-issue N` (#1240), which is why the number must be the tail — an item minted before that whose issue is not its tail needs re-minting under its issue (no sync renames an id); `pmat work sync --direction yaml-to-github` opens an issue for an unlinked item but cannot make the number match; snapshot: {} taken {}",
+        "{n} finding(s) — NO-ISSUE {}, ISSUE-CLOSED {}, ISSUE-ABSENT {}, TAIL-MISMATCH {}: {}; an item is minted from its issue by `pmat work add --github-issue N` (#1240), which is why the number must be the tail — an item minted before that whose issue is not its tail needs re-minting under its issue (no sync renames an id); `pmat work sync --direction yaml-to-github` opens an issue for an unlinked item but cannot make the number match; snapshot: {} taken {}",
         count("NO-ISSUE"),
         count("ISSUE-CLOSED"),
         count("ISSUE-ABSENT"),
-        count("ISSUE-EXCLUDED"),
         count("TAIL-MISMATCH"),
         first_eight(report.findings.iter().map(LinkFinding::render), n),
         inputs.source,

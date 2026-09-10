@@ -5,7 +5,9 @@
 /// `release:` that is the bare semver string (§4.1: the `v` is added in
 /// exactly one place, the tag), names a milestone with that EXACT title
 /// (RR-RELEASE — a rename IS a release rename, and this rule going red
-/// naming it is the intended behaviour), and its issue is on that milestone.
+/// naming it is the intended behaviour), that milestone is open (a shipped
+/// release cannot hold open work: a tag is cut only when its milestone has
+/// zero open issues), and its issue is on that milestone.
 /// The roadmap's `release` is a projection `pmat work sync` writes; the
 /// milestone is the authority for scope. One finding per item, the first
 /// clause that fails. The judgement is `work_sync::linkage::release_binding`.
@@ -27,14 +29,15 @@ pub(crate) fn check_release_binding(
     let n = report.findings.len();
     let count = |class: &str| report.findings.iter().filter(|f| f.class() == class).count();
     let pass = format!(
-        "{} open item(s) (status not completed or cancelled, goal-mode.md §4.2) each carry release: naming an existing milestone their issue is on: bound {}; snapshot: {} taken {}",
+        "{} open item(s) (status not completed or cancelled, goal-mode.md §4.2) each carry release: naming an open milestone their issue is on: bound {}; snapshot: {} taken {}",
         report.open_items, report.bound, inputs.source, inputs.taken_at
     );
     let fail = format!(
-        "{n} finding(s) — NO-RELEASE {}, PREFIXED {}, NO-MILESTONE {}, NOT-ON-MILESTONE {}, NO-ISSUE {}: {}; `pmat work sync --direction github-to-yaml` projects release: from the issue's milestone and is its only writer (goal-mode.md §4.1); a milestone is created, and an issue put on it, on GitHub — the authority for scope; snapshot: {} taken {}",
+        "{n} finding(s) — NO-RELEASE {}, PREFIXED {}, NO-MILESTONE {}, MILESTONE-CLOSED {}, NOT-ON-MILESTONE {}, NO-ISSUE {}: {}; `pmat work sync --direction github-to-yaml` projects release: from the issue's milestone and is its only writer (goal-mode.md §4.1); a milestone is created, and an issue put on it, on GitHub — the authority for scope; snapshot: {} taken {}",
         count("NO-RELEASE"),
         count("PREFIXED"),
         count("NO-MILESTONE"),
+        count("MILESTONE-CLOSED"),
         count("NOT-ON-MILESTONE"),
         count("NO-ISSUE"),
         first_eight(report.findings.iter().map(ReleaseFinding::render), n),

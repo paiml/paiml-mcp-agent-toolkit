@@ -144,13 +144,14 @@ jobs:
       #   - name: the roadmap and GitHub agree (CB-2115)
       #     env: { GH_TOKEN: ${{ github.token }} }
       #     run: ./target/debug/pmat comply check --checks CB-2113,CB-2115
-      # CB-2112 and CB-2114 (PMAT-724, step 5) are withheld for the same reason: at
-      # PMAT-724's measurement master has 70 open items, 0 carrying release:, and 0
-      # whose numeric tail is an open issue (57 name no issue, 13 name #612). The
-      # control above proves both rules discriminate on every arm, so the ledger
-      # lists them NEUTERED, which is the truth. They join the step once the fixers
-      # have run and every open item has been re-minted from its issue and bound to
-      # a milestone (PMAT-725, after PMAT-723):
+      # CB-2112 and CB-2114 (PMAT-724, step 5) are withheld for the same reason. At
+      # PMAT-724's measurement (2026-09-10) docs/roadmaps/roadmap.yaml on master has
+      # 63 open items, 0 carrying release:, 0 whose numeric tail is an open issue
+      # (50 name no issue, 13 name #612); the branch carrying steps 1-5's tickets
+      # has 72, 0, 0 (59, 13). The control above proves both rules discriminate on
+      # every arm, so the ledger lists them NEUTERED, which is the truth. They join
+      # the step once the fixers have run and every open item has been re-minted
+      # from its issue and bound to an open milestone (PMAT-725, after PMAT-723):
       #     run: ./target/debug/pmat comply check --checks CB-2112,CB-2113,CB-2114,CB-2115
 
   # Two consumers of one reusable workflow on two different refs is drift, and

@@ -1,0 +1,544 @@
+{
+ "ticket": "PMAT-724",
+ "phase": 4,
+ "lane": "quorum",
+ "mode": "grillme",
+ "width": 3,
+ "judged_head": "92eafba2d",
+ "agy_version": "1.2.0",
+ "conversations": [
+  "06267447-8e92-431f-8fc9-bd854f207e7c",
+  "e1d193bb-2396-451b-b725-a0270f2c5926",
+  "a748e17d-d114-482e-b722-19bd3da595ab"
+ ],
+ "fanout": {
+  "children": 3,
+  "method": "lane-files",
+  "label": "consensus"
+ },
+ "results": [
+  {
+   "lane": 1,
+   "exit": 0,
+   "file": "/run/user/1000/paiml-implement/agy/PMAT-724/39a15c63-fab3-4148-8cb7-0cb012369b35/ph4/lane-1.json",
+   "verdict": "FAIL",
+   "summary": "Found a surviving mutant (untested capital 'V' branch), a silent bypass where the shared preamble skips instead of failing when items lack issues, spec fidelity issues (an invented ISSUE-EXCLUDED clause and allowing binding to closed milestones), and an outdated measurement in ci.yml."
+  },
+  {
+   "lane": 2,
+   "exit": 0,
+   "file": "/run/user/1000/paiml-implement/agy/PMAT-724/39a15c63-fab3-4148-8cb7-0cb012369b35/ph4/lane-2.json",
+   "verdict": "FAIL",
+   "summary": "Found surviving mutants, silent bypasses, spec infidelities, and factually incorrect CI claims."
+  },
+  {
+   "lane": 3,
+   "exit": 0,
+   "file": "/run/user/1000/paiml-implement/agy/PMAT-724/39a15c63-fab3-4148-8cb7-0cb012369b35/ph4/lane-3.json",
+   "verdict": "FAIL",
+   "summary": "Found multiple confirmed defects: an untested mutation for uppercase 'V', a silent pass bypass token when items lack github_issue, unverified milestone states under CB-2114, an undocumented ISSUE-EXCLUDED clause in CB-2112, and an incorrect measurement in the CI comment."
+  }
+ ],
+ "lane_reduce": {
+  "dedup": [
+   {
+    "file": ".github/workflows/ci.yml",
+    "line": 45,
+    "lanes_agreeing": [
+     1
+    ],
+    "claims": [
+     "The comment claims '70 open items... 57 name no issue', which is not reproducible on this branch. Measuring via `python3 -c \\\"import yaml; r=yaml.safe_load(open('docs/roadmaps/roadmap.yaml')); items=[i for i in r.get('roadmap',[]) if i.get('status') in ('planned','inprogress')]; print(len(items), len([i for i in items if i.get('github_issue') is None]))\\\"` yields 72 open items and 59 with no issue."
+    ]
+   },
+   {
+    "file": ".github/workflows/ci.yml",
+    "line": 48,
+    "lanes_agreeing": [
+     2
+    ],
+    "claims": [
+     "The withheld-step comment claims 70 open items and 57 with no issue, but docs/roadmaps/roadmap.yaml actually has 72 open items and 59 with no issue."
+    ]
+   },
+   {
+    "file": ".github/workflows/ci.yml",
+    "line": 148,
+    "lanes_agreeing": [
+     3
+    ],
+    "claims": [
+     "Inaccurate CI measurement: the withheld-step comment claims 70 open items and 57 with no issue, but docs/roadmaps/roadmap.yaml actually has 72 open items and 59 with no issue."
+    ]
+   },
+   {
+    "file": "scripts/ticket-release-control.sh",
+    "line": 158,
+    "lanes_agreeing": [
+     2
+    ],
+    "claims": [
+     "Arm 1 omits `expect 1 CB-2114 Pass` to hide that CB-2114 actually fires `NO-ISSUE` for null github_issue, falsifying the preamble's claim that a defect proves the other rule is quiet."
+    ]
+   },
+   {
+    "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+    "line": 56,
+    "lanes_agreeing": [
+     1
+    ],
+    "claims": [
+     "Silent Bypass / CB-2115 Change: If all open items lack a `github_issue` (names_issues == 0) and no repo resolves, the preamble returns `Skip`. This bypasses CB-2112/CB-2114 (which should Fail with NO-ISSUE) and alters CB-2115's behavior to skip silently. Control scripts miss this because they pass `--github-snapshot`, bypassing `detect_github_repo` entirely."
+    ]
+   },
+   {
+    "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+    "line": 78,
+    "lanes_agreeing": [
+     2,
+     3
+    ],
+    "claims": [
+     "Bypass token: if an attacker ensures no open items have a `github_issue` (`names_issues == 0`) and the origin remote is missing, the rules return Skip instead of failing for missing issues.",
+     "CB-2112 and CB-2114 silently return Skip instead of Fail when `names_issues == 0` and no repository resolves, completely bypassing invariant A and B/F1."
+    ]
+   },
+   {
+    "file": "src/services/work_sync/linkage.rs",
+    "line": 62,
+    "lanes_agreeing": [
+     1
+    ],
+    "claims": [
+     "Spec Fidelity: CB-2112 invents the `!issue.in_universe()` clause (ISSUE-EXCLUDED finding) for issues labelled `no-roadmap`. The spec definition in goal-mode.md §7 is strictly 'every open item has a github_issue, open, whose number is the item's numeric tail', with no mention of this exclusion."
+    ]
+   },
+   {
+    "file": "src/services/work_sync/linkage.rs",
+    "line": 69,
+    "lanes_agreeing": [
+     1
+    ],
+    "claims": [
+     "Mutant: Mutating `if tail == Some(n)` to `if tail == Some(n) || tail.is_none()` survives all tests and control arms because no test pairs an item ID that lacks a numeric tail (like 'EPIC') with an actual `github_issue`."
+    ]
+   },
+   {
+    "file": "src/services/work_sync/linkage.rs",
+    "line": 97,
+    "lanes_agreeing": [
+     2
+    ],
+    "claims": [
+     "Dropping the `IssueAbsent` branch survives all tests in linkage_tests.rs and all 15 arms of ticket-release-control.sh, as neither tests an absent issue."
+    ]
+   },
+   {
+    "file": "src/services/work_sync/linkage.rs",
+    "line": 110,
+    "lanes_agreeing": [
+     3
+    ],
+    "claims": [
+     "Spec violation (CB-2112): the rule invents an `ISSUE-EXCLUDED` clause (`!issue.in_universe()`) not mentioned in the specification for CB-2112."
+    ]
+   },
+   {
+    "file": "src/services/work_sync/linkage.rs",
+    "line": 128,
+    "lanes_agreeing": [
+     1
+    ],
+    "claims": [
+     "Mutant: Dropping the `|| release.starts_with('V')` clause survives all tests in check_ticket_release_tests.rs and all 15 arms of ticket-release-control.sh, as no test or control arm pairs an item with a capital 'V'-prefixed release."
+    ]
+   },
+   {
+    "file": "src/services/work_sync/linkage.rs",
+    "line": 136,
+    "lanes_agreeing": [
+     1
+    ],
+    "claims": [
+     "Spec Fidelity: CB-2114 checks `!snapshot.milestones.iter().any(|m| m.title == *release)` but ignores milestone state. It allows an open item to bind to a CLOSED milestone (a shipped release). While following 'its milestone exists' literally, it violates the concept of open items on shipped releases."
+    ]
+   },
+   {
+    "file": "src/services/work_sync/linkage.rs",
+    "line": 220,
+    "lanes_agreeing": [
+     3
+    ],
+    "claims": [
+     "Mutant survival: dropping `|| release.starts_with('V')` survives all test cases and the 15-arm control script, as neither tests uppercase 'V'."
+    ]
+   },
+   {
+    "file": "src/services/work_sync/linkage.rs",
+    "line": 225,
+    "lanes_agreeing": [
+     2,
+     3
+    ],
+    "claims": [
+     "CB-2114 passes open items bound to a CLOSED milestone because it only checks `m.title == *release` and ignores `m.state`.",
+     "Spec violation (CB-2114): the check ignores `m.state` and accepts an open item mapped to a CLOSED (shipped) milestone."
+    ]
+   }
+  ],
+  "uncovered": [],
+  "dissent": [
+   {
+    "lane": 1,
+    "verdict": "FAIL",
+    "summary": "Found a surviving mutant (untested capital 'V' branch), a silent bypass where the shared preamble skips instead of failing when items lack issues, spec fidelity issues (an invented ISSUE-EXCLUDED clause and allowing binding to closed milestones), and an outdated measurement in ci.yml.",
+    "findings": [
+     {
+      "claim": "Mutant: Dropping the `|| release.starts_with('V')` clause survives all tests in check_ticket_release_tests.rs and all 15 arms of ticket-release-control.sh, as no test or control arm pairs an item with a capital 'V'-prefixed release.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 128
+     },
+     {
+      "claim": "Mutant: Mutating `if tail == Some(n)` to `if tail == Some(n) || tail.is_none()` survives all tests and control arms because no test pairs an item ID that lacks a numeric tail (like 'EPIC') with an actual `github_issue`.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 69
+     },
+     {
+      "claim": "Silent Bypass / CB-2115 Change: If all open items lack a `github_issue` (names_issues == 0) and no repo resolves, the preamble returns `Skip`. This bypasses CB-2112/CB-2114 (which should Fail with NO-ISSUE) and alters CB-2115's behavior to skip silently. Control scripts miss this because they pass `--github-snapshot`, bypassing `detect_github_repo` entirely.",
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+      "grounding": "asserted",
+      "line": 56
+     },
+     {
+      "claim": "Spec Fidelity: CB-2112 invents the `!issue.in_universe()` clause (ISSUE-EXCLUDED finding) for issues labelled `no-roadmap`. The spec definition in goal-mode.md §7 is strictly 'every open item has a github_issue, open, whose number is the item's numeric tail', with no mention of this exclusion.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "cited",
+      "line": 62
+     },
+     {
+      "claim": "Spec Fidelity: CB-2114 checks `!snapshot.milestones.iter().any(|m| m.title == *release)` but ignores milestone state. It allows an open item to bind to a CLOSED milestone (a shipped release). While following 'its milestone exists' literally, it violates the concept of open items on shipped releases.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 136
+     },
+     {
+      "claim": "The comment claims '70 open items... 57 name no issue', which is not reproducible on this branch. Measuring via `python3 -c \\\"import yaml; r=yaml.safe_load(open('docs/roadmaps/roadmap.yaml')); items=[i for i in r.get('roadmap',[]) if i.get('status') in ('planned','inprogress')]; print(len(items), len([i for i in items if i.get('github_issue') is None]))\\\"` yields 72 open items and 59 with no issue.",
+      "file": ".github/workflows/ci.yml",
+      "grounding": "measured",
+      "line": 45
+     }
+    ]
+   },
+   {
+    "lane": 2,
+    "verdict": "FAIL",
+    "summary": "Found surviving mutants, silent bypasses, spec infidelities, and factually incorrect CI claims.",
+    "findings": [
+     {
+      "claim": "Dropping the `IssueAbsent` branch survives all tests in linkage_tests.rs and all 15 arms of ticket-release-control.sh, as neither tests an absent issue.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 97
+     },
+     {
+      "claim": "CB-2114 passes open items bound to a CLOSED milestone because it only checks `m.title == *release` and ignores `m.state`.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 225
+     },
+     {
+      "claim": "CB-2112 and CB-2114 silently return Skip instead of Fail when `names_issues == 0` and no repository resolves, completely bypassing invariant A and B/F1.",
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+      "grounding": "measured",
+      "line": 78
+     },
+     {
+      "claim": "Arm 1 omits `expect 1 CB-2114 Pass` to hide that CB-2114 actually fires `NO-ISSUE` for null github_issue, falsifying the preamble's claim that a defect proves the other rule is quiet.",
+      "file": "scripts/ticket-release-control.sh",
+      "grounding": "measured",
+      "line": 158
+     },
+     {
+      "claim": "The withheld-step comment claims 70 open items and 57 with no issue, but docs/roadmaps/roadmap.yaml actually has 72 open items and 59 with no issue.",
+      "file": ".github/workflows/ci.yml",
+      "grounding": "measured",
+      "line": 48
+     }
+    ]
+   },
+   {
+    "lane": 3,
+    "verdict": "FAIL",
+    "summary": "Found multiple confirmed defects: an untested mutation for uppercase 'V', a silent pass bypass token when items lack github_issue, unverified milestone states under CB-2114, an undocumented ISSUE-EXCLUDED clause in CB-2112, and an incorrect measurement in the CI comment.",
+    "findings": [
+     {
+      "claim": "Mutant survival: dropping `|| release.starts_with('V')` survives all test cases and the 15-arm control script, as neither tests uppercase 'V'.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "measured",
+      "line": 220
+     },
+     {
+      "claim": "Spec violation (CB-2114): the check ignores `m.state` and accepts an open item mapped to a CLOSED (shipped) milestone.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 225
+     },
+     {
+      "claim": "Spec violation (CB-2112): the rule invents an `ISSUE-EXCLUDED` clause (`!issue.in_universe()`) not mentioned in the specification for CB-2112.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "cited",
+      "line": 110
+     },
+     {
+      "claim": "Bypass token: if an attacker ensures no open items have a `github_issue` (`names_issues == 0`) and the origin remote is missing, the rules return Skip instead of failing for missing issues.",
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+      "grounding": "measured",
+      "line": 78
+     },
+     {
+      "claim": "Inaccurate CI measurement: the withheld-step comment claims 70 open items and 57 with no issue, but docs/roadmaps/roadmap.yaml actually has 72 open items and 59 with no issue.",
+      "file": ".github/workflows/ci.yml",
+      "grounding": "measured",
+      "line": 148
+     }
+    ]
+   }
+  ],
+  "partial_reasons": [],
+  "coverage_source": "lanes",
+  "agreed": false,
+  "partial": false
+ },
+ "consensus": "3/3 lanes returned FAIL (lane-reduce agreed=false: every non-PASS lane is dissent, so all three are in dissent[]). Reading dedup[] claim text across its 14 groups (dedup groups by [file,line], which splits one shared claim into several groups): TWO claims are made by two lanes at the SAME line - (1) linkage.rs:225, CB-2114 tests only `m.title == *release` and ignores milestone state, so an open item may bind to a CLOSED (shipped) milestone (lanes 2,3); (2) check_roadmap_inputs.rs:78, the shared preamble returns Skip rather than not_measured/Fail when `names_issues == 0` and no repository resolves, which lanes 2 and 3 call a bypass of invariants A and B/F1. THREE further claims are shared by two or three lanes at DIFFERENT cited lines, so dedup lists them as separate single-lane groups: the `|| release.starts_with('V')` clause is a mutant no test or control arm would catch (lane 1 at :128, lane 3 at :220); CB-2112 invents the ISSUE-EXCLUDED / `!issue.in_universe()` clause the spec does not name (lane 1 at :62, lane 3 at :110); and the withheld-step comment in .github/workflows/ci.yml claiming 70 open items / 57 naming no issue is not reproducible, all three lanes measuring 72 open and 59 with no issue (lane 1 at :45, lane 2 at :48, lane 3 at :148). Genuinely single-lane claims: a `tail == Some(n) || tail.is_none()` mutant at linkage.rs:69 (lane 1); dropping the IssueAbsent branch at linkage.rs:97 (lane 2); and ticket-release-control.sh:158, arm 1 asserting only CB-2112 and never proving CB-2114 quiet (lane 2). No lane returned PASS or do-not-implement-as-written; uncovered[] and partial_reasons[] are both empty.",
+ "open_questions": [
+  "CITATION AUDIT (delegate, read-only, branch PMAT-724-cb2112-cb2114-ticket-release-rules @ 92eafba2d): linkage.rs is 258 lines, check_roadmap_inputs.rs 120, ticket-release-control.sh 285, ci.yml 359 - no citation runs past EOF, but several point at the wrong line. starts_with('V') is at linkage.rs:220 (lane 3 correct; lane 1's :128 is the IssueAbsent push). !issue.in_universe() is at linkage.rs:110 (lane 3 correct; lane 1's :62 is the TAIL-MISMATCH discriminant string). The milestone-title test is at linkage.rs:225 (lanes 2,3 correct; lane 1's :136 is not it). The names_issues==0 Skip is at check_roadmap_inputs.rs:77-79 (lanes 2,3 correct; lane 1's :56 is not it). The ci.yml withheld comment is at :147-149 (lane 3's :148 correct; lanes 1 and 2 cite :45 and :48, which are not it).",
+  "REFUTED BY GREP: lane 2's finding at linkage.rs:97 ('dropping the IssueAbsent branch survives all tests ... neither tests an absent issue') is FALSE - check_ticket_release_tests.rs:204 asserts c.message.contains(\"ISSUE-ABSENT\") && c.message.contains(\"#1\"). The IssueAbsent push is at linkage.rs:128, not :97. Fable should discard this finding.",
+  "WRONG TREE on the unanimous ci.yml finding: the comment at .github/workflows/ci.yml:147-149 scopes its measurement to MASTER ('at PMAT-724's measurement master has 70 open items, 0 carrying release:, and 0 whose numeric tail is an open issue (57 name no issue, 13 name #612)'). All three lanes measured the BRANCH's docs/roadmaps/roadmap.yaml. My measurement (python3+yaml, status not in completed/cancelled, matching is_open at src/services/work_sync/mod.rs:285-287): branch HEAD = 72 open / 59 no-issue / 13 #612 / 0 with release (equals the lanes' figure); git show master:docs/roadmaps/roadmap.yaml = 63 open / 50 no-issue / 13 #612 / 0 with release. The comment matches NEITHER tree today, but the lanes' counter-figure is not master's either - the finding is directionally right with grounding against the wrong tree. Fable must decide whether 70/57 was true of an earlier master.",
+  "CONFIRMED IMPLEMENTABLE: MilestoneSnapshot has a state: IssueState field (src/services/work_sync/mod.rs:87-90), so the lanes-2-and-3 claim that linkage.rs:225 ignores milestone state names an available field, not an imaginary one. Whether the spec requires an OPEN milestone is Fable's call (goal-mode.md 4.1/7).",
+  "PARTLY CONFIRMED, lane 2's control claim: scripts/ticket-release-control.sh arm 1 (lines 155-159) writes an item with github_issue null AND release 3.41.0, then asserts only `expect 1 CB-2112 Fail \"NO-ISSUE\" \"PMAT-001\"` - there is no assertion about CB-2114 in arm 1, and linkage.rs:191 shows CB-2114 has its own NO-ISSUE finding for exactly that input. The structural gap is real; lane 2's word 'hide' and its claim about a preamble promise are interpretation I did not verify. For contrast, arms 2/4/6 do assert both rules.",
+  "SANDBOX ESCAPE (writes=false): the shared checkout's git status --porcelain gained three untracked entries during the run, all timestamped 12:39 while the lanes ran - /home/noah/src/paiml-mcp-agent-toolkit/scratch (a 4,501,456-byte ELF executable), /home/noah/src/paiml-mcp-agent-toolkit/scratch.rs ('fn main() {}'), and /home/noah/src/paiml-mcp-agent-toolkit/scratch_test/ (contains docs/). HEAD was unchanged (92eafba2d before and after) and no tracked file was modified. A --sandbox lane is NOT jailed at repo_root. I left the debris in place rather than edit under repo_root - Fable should remove these three paths before any commit or ledger regeneration.",
+  "NOT RE-RUN by me (rule 6): the branch's three acceptance commands (cargo test --lib tests_ticket_release linkage_tests tests_roadmap_coherence; ticket-release-control.sh; roadmap-coherence-control.sh). No lane reported running them either - every mutant-survival finding carries grounding 'asserted' except lane 3's :220, labelled 'measured' with no command shown.",
+  "UNANSWERED BRIEF ITEMS: question D's 'would a rule that ALWAYS passes or ALWAYS fails survive the control?' got no evidenced answer from any lane; question C's 'does the shared preamble change CB-2115's behaviour?' was answered only by lane 1, folded into its Skip claim; question E (message truth, including whether `pmat work sync --direction yaml-to-github` can make an issue number equal an id's tail) was answered by no lane at all. lane-reduce's uncovered[] is empty only because no --brief token file was passed."
+ ],
+ "adjudication": [
+  {
+   "claim": "`|| release.starts_with('V')` is a mutant no test or control arm catches",
+   "lanes": [
+    1,
+    3
+   ],
+   "disposition": "CONFIRMED",
+   "fix": "a_v_prefixed_release_fails_binding_in_either_case loops over v and V; control arm 11 runs both cases"
+  },
+  {
+   "claim": "CB-2114 accepts an open item whose milestone exists but is CLOSED",
+   "lanes": [
+    1,
+    2,
+    3
+   ],
+   "disposition": "CONFIRMED",
+   "fix": "ReleaseFinding::MilestoneClosed (class MILESTONE-CLOSED, §4.1 RR-RELEASE: a tag is cut only when its milestone has zero open issues); a_release_whose_milestone_is_closed_fails_binding; engine test a_closed_milestone_is_a_finding_of_its_own_class; control arm 9"
+  },
+  {
+   "claim": "the shared preamble returns Skip when names_issues == 0 and no repository resolves — reachable by nulling github_repo, a bypass of invariants A and B/F1",
+   "lanes": [
+    1,
+    2,
+    3
+   ],
+   "disposition": "CONFIRMED (tightened)",
+   "fix": "Skip only when the roadmap DECLARES github_enabled: false; with the default true and no resolvable repository both rules (and CB-2115) are Fail not_measured; two new tests, CB-2115's skip test re-fixtured, control arm 17 runs both cases"
+  },
+  {
+   "claim": "CB-2112 invents an ISSUE-EXCLUDED clause (no-roadmap label) the spec does not name",
+   "lanes": [
+    1,
+    3
+   ],
+   "disposition": "CONFIRMED",
+   "fix": "clause and variant removed; an open issue labelled no-roadmap still links (the label is §5.1's and CB-2115's business, doctrine 5); test an_open_issue_labelled_no_roadmap_still_links; control arm 5 is GREEN"
+  },
+  {
+   "claim": "the withheld-step comment's 70 open items / 57 with no issue is not reproducible",
+   "lanes": [
+    1,
+    2,
+    3
+   ],
+   "disposition": "CONFIRMED",
+   "fix": "measured again: master 63 open / 50 no issue / 13 #612 / 0 release / 0 tail matches; the branch (steps 1-5's tickets) 72 / 59 / 13 / 0 / 0. The 70/57 was the branch before PMAT-724 and PMAT-725 were filed, labelled as master; ci.yml comment and PMAT-724's fifth criterion corrected to name both trees"
+  },
+  {
+   "claim": "control arm 1 asserts only CB-2112 and never states what CB-2114 did on the same input, while the header claims the other rule is proven quiet",
+   "lanes": [
+    2
+   ],
+   "disposition": "CONFIRMED (wording + assertion)",
+   "fix": "arm 1 now asserts CB-2114 Fail NO-ISSUE ('cannot be checked') as well; the header says each arm states what the other rule did — quiet, or firing its own class"
+  },
+  {
+   "claim": "mutating `tail == Some(n)` to `tail == Some(n) || tail.is_none()` survives: no test pairs an id without a numeric tail with a real github_issue",
+   "lanes": [
+    1
+   ],
+   "disposition": "REFUTED",
+   "evidence": "an_id_without_a_numeric_tail_is_named_as_such pairs id EPIC with open #1 and asserts TAIL-MISMATCH 'no numeric tail'; under the mutant the item links and the test fails"
+  },
+  {
+   "claim": "dropping the IssueAbsent branch survives all tests and all control arms",
+   "lanes": [
+    2
+   ],
+   "disposition": "REFUTED",
+   "evidence": "an_open_item_naming_an_absent_issue_fails_linkage asserts ISSUE-ABSENT #1 (the delegate's own citation audit found it at check_ticket_release_tests.rs); the control now also runs the absent case in arm 3"
+  },
+  {
+   "claim": "sandbox escape: the writes=false lanes wrote scratch (ELF), scratch.rs and scratch_test/ into the shared checkout, and a test_export crate at /tmp/Cargo.toml",
+   "lanes": [
+    "delegate"
+   ],
+   "disposition": "CONFIRMED (harness)",
+   "fix": "debris removed after inspection; the /tmp crate had made 10 no-manifest lib tests fail in the concurrent pmat verify (left: Some(\"/tmp\")); verify re-run on the fixed tree"
+  }
+ ],
+ "lanes_raw": [
+  {
+   "lane": 1,
+   "conversation_id": "06267447-8e92-431f-8fc9-bd854f207e7c",
+   "status": "SUCCESS",
+   "num_turns": 2,
+   "duration_seconds": 277.411221584,
+   "structured_output": {
+    "findings": [
+     {
+      "claim": "Mutant: Dropping the `|| release.starts_with('V')` clause survives all tests in check_ticket_release_tests.rs and all 15 arms of ticket-release-control.sh, as no test or control arm pairs an item with a capital 'V'-prefixed release.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 128
+     },
+     {
+      "claim": "Mutant: Mutating `if tail == Some(n)` to `if tail == Some(n) || tail.is_none()` survives all tests and control arms because no test pairs an item ID that lacks a numeric tail (like 'EPIC') with an actual `github_issue`.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 69
+     },
+     {
+      "claim": "Silent Bypass / CB-2115 Change: If all open items lack a `github_issue` (names_issues == 0) and no repo resolves, the preamble returns `Skip`. This bypasses CB-2112/CB-2114 (which should Fail with NO-ISSUE) and alters CB-2115's behavior to skip silently. Control scripts miss this because they pass `--github-snapshot`, bypassing `detect_github_repo` entirely.",
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+      "grounding": "asserted",
+      "line": 56
+     },
+     {
+      "claim": "Spec Fidelity: CB-2112 invents the `!issue.in_universe()` clause (ISSUE-EXCLUDED finding) for issues labelled `no-roadmap`. The spec definition in goal-mode.md §7 is strictly 'every open item has a github_issue, open, whose number is the item's numeric tail', with no mention of this exclusion.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "cited",
+      "line": 62
+     },
+     {
+      "claim": "Spec Fidelity: CB-2114 checks `!snapshot.milestones.iter().any(|m| m.title == *release)` but ignores milestone state. It allows an open item to bind to a CLOSED milestone (a shipped release). While following 'its milestone exists' literally, it violates the concept of open items on shipped releases.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 136
+     },
+     {
+      "claim": "The comment claims '70 open items... 57 name no issue', which is not reproducible on this branch. Measuring via `python3 -c \\\"import yaml; r=yaml.safe_load(open('docs/roadmaps/roadmap.yaml')); items=[i for i in r.get('roadmap',[]) if i.get('status') in ('planned','inprogress')]; print(len(items), len([i for i in items if i.get('github_issue') is None]))\\\"` yields 72 open items and 59 with no issue.",
+      "file": ".github/workflows/ci.yml",
+      "grounding": "measured",
+      "line": 45
+     }
+    ],
+    "summary": "Found a surviving mutant (untested capital 'V' branch), a silent bypass where the shared preamble skips instead of failing when items lack issues, spec fidelity issues (an invented ISSUE-EXCLUDED clause and allowing binding to closed milestones), and an outdated measurement in ci.yml.",
+    "verdict": "FAIL"
+   }
+  },
+  {
+   "lane": 2,
+   "conversation_id": "e1d193bb-2396-451b-b725-a0270f2c5926",
+   "status": "SUCCESS",
+   "num_turns": 1,
+   "duration_seconds": 385.502225103,
+   "structured_output": {
+    "findings": [
+     {
+      "claim": "Dropping the `IssueAbsent` branch survives all tests in linkage_tests.rs and all 15 arms of ticket-release-control.sh, as neither tests an absent issue.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 97
+     },
+     {
+      "claim": "CB-2114 passes open items bound to a CLOSED milestone because it only checks `m.title == *release` and ignores `m.state`.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 225
+     },
+     {
+      "claim": "CB-2112 and CB-2114 silently return Skip instead of Fail when `names_issues == 0` and no repository resolves, completely bypassing invariant A and B/F1.",
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+      "grounding": "measured",
+      "line": 78
+     },
+     {
+      "claim": "Arm 1 omits `expect 1 CB-2114 Pass` to hide that CB-2114 actually fires `NO-ISSUE` for null github_issue, falsifying the preamble's claim that a defect proves the other rule is quiet.",
+      "file": "scripts/ticket-release-control.sh",
+      "grounding": "measured",
+      "line": 158
+     },
+     {
+      "claim": "The withheld-step comment claims 70 open items and 57 with no issue, but docs/roadmaps/roadmap.yaml actually has 72 open items and 59 with no issue.",
+      "file": ".github/workflows/ci.yml",
+      "grounding": "measured",
+      "line": 48
+     }
+    ],
+    "summary": "Found surviving mutants, silent bypasses, spec infidelities, and factually incorrect CI claims.",
+    "verdict": "FAIL"
+   }
+  },
+  {
+   "lane": 3,
+   "conversation_id": "a748e17d-d114-482e-b722-19bd3da595ab",
+   "status": "SUCCESS",
+   "num_turns": 1,
+   "duration_seconds": 478.779707025,
+   "structured_output": {
+    "findings": [
+     {
+      "claim": "Mutant survival: dropping `|| release.starts_with('V')` survives all test cases and the 15-arm control script, as neither tests uppercase 'V'.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "measured",
+      "line": 220
+     },
+     {
+      "claim": "Spec violation (CB-2114): the check ignores `m.state` and accepts an open item mapped to a CLOSED (shipped) milestone.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "asserted",
+      "line": 225
+     },
+     {
+      "claim": "Spec violation (CB-2112): the rule invents an `ISSUE-EXCLUDED` clause (`!issue.in_universe()`) not mentioned in the specification for CB-2112.",
+      "file": "src/services/work_sync/linkage.rs",
+      "grounding": "cited",
+      "line": 110
+     },
+     {
+      "claim": "Bypass token: if an attacker ensures no open items have a `github_issue` (`names_issues == 0`) and the origin remote is missing, the rules return Skip instead of failing for missing issues.",
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+      "grounding": "measured",
+      "line": 78
+     },
+     {
+      "claim": "Inaccurate CI measurement: the withheld-step comment claims 70 open items and 57 with no issue, but docs/roadmaps/roadmap.yaml actually has 72 open items and 59 with no issue.",
+      "file": ".github/workflows/ci.yml",
+      "grounding": "measured",
+      "line": 148
+     }
+    ],
+    "summary": "Found multiple confirmed defects: an untested mutation for uppercase 'V', a silent pass bypass token when items lack github_issue, unverified milestone states under CB-2114, an undocumented ISSUE-EXCLUDED clause in CB-2112, and an incorrect measurement in the CI comment.",
+    "verdict": "FAIL"
+   }
+  }
+ ]
+}

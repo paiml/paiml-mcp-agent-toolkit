@@ -99,6 +99,12 @@ mod tests_roadmap_coherence {
         // issue: this roadmap does not track GitHub, so there is nothing to be
         // coherent WITH.
         let dir = project(None, &item("PMAT-001", "planned work", "planned", None, &days_ago(2)));
+        // PMAT-724: the roadmap must DECLARE that GitHub is off; with the
+        // default `github_enabled: true` the unresolvable repository is a
+        // missing input and the rule is not_measured (quorum, lanes 2 and 3).
+        let rm = dir.path().join("docs/roadmaps/roadmap.yaml");
+        let text = std::fs::read_to_string(&rm).expect("roadmap").replace("github_enabled: true", "github_enabled: false");
+        std::fs::write(&rm, text).expect("write roadmap");
         let c = run_with(dir.path(), None);
         assert_eq!(c.status, CheckStatus::Skip, "{}", c.message);
         assert!(c.message.contains("GitHub repository"), "{}", c.message);

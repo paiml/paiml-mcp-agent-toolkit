@@ -15,12 +15,14 @@ pub(crate) struct RoadmapInputs {
 ///
 /// The early verdicts, each with its reason in the message (goal-mode.md
 /// doctrine 2, §3.3):
-/// - Skip — no roadmap was ever committed; or no repository resolves and no
-///   item names an issue, so there is nothing for the roadmap to be coherent
-///   with. The same line CB-2113 draws: a structural absence.
+/// - Skip — no roadmap was ever committed; or the roadmap declares
+///   `github_enabled: false`, no repository resolves and no item names an
+///   issue, so there is nothing for it to be coherent with. The same line
+///   CB-2113 draws: a structural absence.
 /// - Fail `not_measured:` — the roadmap was committed and is now gone
 ///   (deleting a gate's input is not a way of passing it); the roadmap does
-///   not parse; items name issues but no repository resolves; the snapshot
+///   not parse; the roadmap declares GitHub (or names issues) but no
+///   repository resolves; the snapshot
 ///   cannot be read; or `.pmat.yaml` commits a `snapshot` path under the
 ///   rule's key. A snapshot FILE may only arrive on the command line
 ///   (`pmat comply check --github-snapshot <file>`): a path committed in the
@@ -75,13 +77,19 @@ pub(crate) fn roadmap_inputs(
                 Some(r) => r.clone(),
                 None => match crate::cli::handlers::work_handlers::core_handlers::github::detect_github_repo(&project_path.to_path_buf()) {
                     Ok(Some(r)) => r,
-                    Ok(None) if names_issues == 0 => {
-                        return Err(skip("no GitHub repository and no item names a github_issue — nothing for the roadmap to be coherent with: set github_repo in docs/roadmaps/roadmap.yaml or add an origin remote".to_string()));
+                    // The roadmap itself says whether GitHub is in play
+                    // (`github_enabled`, default true). Only a roadmap that
+                    // declares it OFF, resolves no repository and names no
+                    // issue has nothing to be coherent with — a structural
+                    // absence (§3.3). One that declares GitHub and cannot
+                    // reach it has a missing INPUT, and that is not a pass:
+                    // the quorum on PMAT-724 (lanes 2 and 3) found the
+                    // earlier Skip reachable by nulling github_repo alone.
+                    Ok(None) if names_issues == 0 && !roadmap.github_enabled => {
+                        return Err(skip("github_enabled is false, no GitHub repository resolves and no item names a github_issue — this roadmap does not track GitHub, so there is nothing for it to be coherent with: set github_enabled: true and github_repo in docs/roadmaps/roadmap.yaml, or add an origin remote".to_string()));
                     }
-                    // Items name issues, so GitHub is an input this rule
-                    // expected; a repository that no longer resolves is not a pass.
                     Ok(None) => {
-                        return Err(not_measured(format!("no GitHub repository resolves (github_repo is null and no origin remote) while {names_issues} item(s) name a github_issue")));
+                        return Err(not_measured(format!("no GitHub repository resolves (github_repo is null and no origin remote) while the roadmap declares github_enabled: {} and {names_issues} item(s) name a github_issue", roadmap.github_enabled)));
                     }
                     Err(e) => return Err(not_measured(format!("detect github repo failed: {e}"))),
                 },

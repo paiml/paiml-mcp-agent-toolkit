@@ -42,6 +42,16 @@ mod tests_ticket_release {
         format!("  - id: {id}\n    title: {title}\n    status: {status}\n    github_issue: {issue}\n    updated: {updated}\n{release}")
     }
 
+    /// A project whose roadmap declares `github_enabled: false`: it does not
+    /// track GitHub, so a rule that needs GitHub has nothing to judge.
+    fn offline_project(items: &str) -> tempfile::TempDir {
+        let dir = project(None, items);
+        let rm = dir.path().join("docs/roadmaps/roadmap.yaml");
+        let text = std::fs::read_to_string(&rm).expect("roadmap").replace("github_enabled: true", "github_enabled: false");
+        std::fs::write(&rm, text).expect("write roadmap");
+        dir
+    }
+
     /// One issue as the snapshot saw it; `milestone` is the milestone TITLE
     /// (the release key, §4.1) or none.
     fn issue(number: u64, title: &str, state: &str, labels: &[&str], milestone: Option<&str>) -> serde_json::Value {
@@ -52,7 +62,13 @@ mod tests_ticket_release {
     /// `milestones`; given to the rules on the command line, never through
     /// `.pmat.yaml`.
     fn snapshot(dir: &Path, issues: Vec<serde_json::Value>, milestones: &[&str]) {
-        let ms: Vec<serde_json::Value> = milestones.iter().map(|t| serde_json::json!({"title": t, "state": "open"})).collect();
+        let open: Vec<(&str, &str)> = milestones.iter().map(|t| (*t, "open")).collect();
+        snapshot_ms(dir, issues, &open);
+    }
+
+    /// As `snapshot`, with each milestone's state given: `(title, "open" | "closed")`.
+    fn snapshot_ms(dir: &Path, issues: Vec<serde_json::Value>, milestones: &[(&str, &str)]) {
+        let ms: Vec<serde_json::Value> = milestones.iter().map(|(t, s)| serde_json::json!({"title": t, "state": s})).collect();
         let snap = serde_json::json!({"repo": "paiml/fixture", "taken_at": "2026-09-10T00:00:00Z", "issues": issues, "milestones": ms});
         std::fs::write(dir.join("snapshot.json"), snap.to_string()).expect("write snapshot");
     }
@@ -120,13 +136,31 @@ mod tests_ticket_release {
         }
     }
 
-    /// Mutant: a rule that reaches for `gh` when nothing names GitHub.
+    /// A roadmap that declares `github_enabled: false`, resolves no
+    /// repository and names no issue has nothing to be coherent with (§3.3:
+    /// the CONTEXT makes the rule inapplicable). Mutant: a rule that reaches
+    /// for `gh` when nothing names GitHub.
     #[test]
-    fn a_roadmap_naming_no_repository_and_no_issues_is_skipped_by_both_rules() {
-        let dir = project(None, &item("PMAT-001", "planned work", "planned", None, None));
+    fn an_offline_roadmap_with_no_repository_and_no_issues_is_skipped_by_both_rules() {
+        let dir = offline_project(&item("PMAT-001", "planned work", "planned", None, None));
         for c in both(dir.path(), None) {
             assert_eq!(c.status, CheckStatus::Skip, "{}: {}", c.name, c.message);
-            assert!(c.message.contains("GitHub repository"), "{}", c.message);
+            assert!(c.message.contains("github_enabled is false"), "{}", c.message);
+        }
+    }
+
+    /// Quorum on PMAT-724 (lanes 2 and 3): with `github_repo` nulled, no
+    /// remote and no item naming an issue, the first cut skipped — but a
+    /// roadmap that DECLARES `github_enabled: true` (the default) names
+    /// GitHub as an input, and an input that cannot be reached is not a pass
+    /// (§3.3: a missing INPUT is `not_measured`). Mutant: `github_enabled`
+    /// not consulted.
+    #[test]
+    fn a_roadmap_declaring_github_but_resolving_no_repository_is_not_measured_by_both_rules() {
+        let dir = project(None, &item("PMAT-001", "planned work", "planned", None, None));
+        for c in both(dir.path(), None) {
+            assert_not_measured(&c, "no GitHub repository resolves");
+            assert!(c.message.contains("github_enabled: true"), "{}", c.message);
         }
     }
 
@@ -227,15 +261,18 @@ mod tests_ticket_release {
         assert!(c.message.contains("TAIL-MISMATCH") && c.message.contains("no numeric tail"), "{}", c.message);
     }
 
-    /// Mutant: a `no-roadmap`-labelled issue counted as a link — the label
-    /// says no item should name it.
+    /// An open issue labelled `no-roadmap` is still an open issue: the label
+    /// is §5.1's business (it removes the issue from G, and CB-2115 reports
+    /// the item naming it as ORPHAN-ROADMAP), not invariant A's — one place
+    /// per judgement (doctrine 5). Quorum on PMAT-724 (lanes 1 and 3): the
+    /// first cut invented an ISSUE-EXCLUDED clause here. Mutant: that clause.
     #[test]
-    fn an_open_item_naming_an_excluded_issue_fails_linkage() {
+    fn an_open_issue_labelled_no_roadmap_still_links() {
         let dir = project(Some("paiml/fixture"), &item("PMAT-001", "planned work", "planned", Some(1), None));
         snapshot(dir.path(), vec![issue(1, "planned work", "open", &["no-roadmap"], None)], &[]);
         let c = linkage(dir.path());
-        assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
-        assert!(c.message.contains("ISSUE-EXCLUDED") && c.message.contains("no-roadmap"), "{}", c.message);
+        assert_eq!(c.status, CheckStatus::Pass, "{}", c.message);
+        assert!(c.message.contains("linked 1"), "{}", c.message);
     }
 
     /// Mutant: verdict inversion (a rule that always fails survives every RED
@@ -299,14 +336,32 @@ mod tests_ticket_release {
     }
 
     /// §4.1: the key is the bare string, the `v` is added in exactly one
-    /// place. Mutant: `trim_start_matches('v')` normalising instead of refusing.
+    /// place. Mutants: `trim_start_matches('v')` normalising instead of
+    /// refusing; the capital `V` arm dropped (quorum on PMAT-724, lanes 1
+    /// and 3: no test paired an item with `V3.41.0`).
     #[test]
-    fn a_v_prefixed_release_fails_binding() {
-        let dir = project(Some("paiml/fixture"), &item("PMAT-001", "planned work", "planned", Some(1), Some("v3.41.0")));
-        snapshot(dir.path(), vec![issue(1, "planned work", "open", &[], Some("3.41.0"))], &["3.41.0"]);
+    fn a_v_prefixed_release_fails_binding_in_either_case() {
+        for prefixed in ["v3.41.0", "V3.41.0"] {
+            let dir = project(Some("paiml/fixture"), &item("PMAT-001", "planned work", "planned", Some(1), Some(prefixed)));
+            snapshot(dir.path(), vec![issue(1, "planned work", "open", &[], Some("3.41.0"))], &["3.41.0"]);
+            let c = release(dir.path());
+            assert_eq!(c.status, CheckStatus::Fail, "{prefixed}: {}", c.message);
+            assert!(c.message.contains("PREFIXED") && c.message.contains(prefixed), "{}", c.message);
+        }
+    }
+
+    /// RR-RELEASE (§4.1): a milestone may close only when its tag exists, and
+    /// a tag is cut only when the milestone has zero open issues — so an OPEN
+    /// item on a CLOSED milestone contradicts the model. Quorum on PMAT-724
+    /// (all three lanes): "its milestone exists" was read literally. Mutant:
+    /// `milestone.state` ignored.
+    #[test]
+    fn a_release_whose_milestone_is_closed_fails_binding() {
+        let dir = project(Some("paiml/fixture"), &item("PMAT-001", "planned work", "planned", Some(1), Some("3.40.0")));
+        snapshot_ms(dir.path(), vec![issue(1, "planned work", "open", &[], Some("3.40.0"))], &[("3.40.0", "closed")]);
         let c = release(dir.path());
         assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
-        assert!(c.message.contains("PREFIXED") && c.message.contains("v3.41.0"), "{}", c.message);
+        assert!(c.message.contains("MILESTONE-CLOSED") && c.message.contains("3.40.0"), "{}", c.message);
     }
 
     /// RR-RELEASE: valid iff a milestone with that EXACT title exists.

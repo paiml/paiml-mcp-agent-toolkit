@@ -113,3 +113,25 @@ fn release_findings_distinguish_a_missing_milestone_from_a_missing_membership() 
         matches!(&report.findings[0], ReleaseFinding::NotOnMilestone { actual: Some(m), .. } if m == "3.42.0")
     );
 }
+
+/// Mutant: `milestone.state` ignored — an open item bound to a shipped
+/// release (quorum on PMAT-724, all three lanes).
+#[test]
+fn a_closed_milestone_is_a_finding_of_its_own_class() {
+    let r = roadmap(vec![item(
+        "PMAT-001",
+        ItemStatus::Planned,
+        Some(1),
+        Some("3.40.0"),
+    )]);
+    let mut s = snapshot(
+        vec![issue(1, IssueState::Open, &[], Some("3.40.0"))],
+        &["3.40.0"],
+    );
+    s.milestones[0].state = IssueState::Closed;
+    let report = release_binding(&r, &s);
+    assert_eq!(report.bound, 0);
+    assert_eq!(report.findings.len(), 1);
+    assert_eq!(report.findings[0].class(), "MILESTONE-CLOSED");
+    assert!(report.findings[0].render().contains("3.40.0"));
+}
