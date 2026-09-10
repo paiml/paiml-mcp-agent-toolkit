@@ -8,7 +8,7 @@
 | spec | `docs/specifications/goal-mode.md` §5 (5.1–5.4), §7 row CB-2115, §11 step 4, §11.1, §12, §13 |
 | branch | `PMAT-722-cb2115-roadmap-coherence`: from `PMAT-720-work-sync-release-field` @ `6637485e7` (#1248) with `PMAT-719-cb2113-traceability-gate` @ `75ebdf009` (#1247, which carries #1246) merged in as `06031cf2d` — **stacked on #1246 → #1247 and on #1248**; CB-2115 needs the `--checks` selector, the traceability job and the work-sync engine |
 | HEAD in | `06031cf2d` (the stacking merge; three conflicts resolved: both estimates rows kept, the four roadmap entries ordered 718, 719, 720, 721 on step 3's canonical prefix, the unrun-tests ledger regenerated) |
-| HEAD out | `d9ffd7c8d` (last code commit); the commit carrying this receipt follows |
+| HEAD out | `9dae11d4d` (last tree change: `d9ffd7c8d` was the last code change, `9dae11d4d` drops a scratch file from the index); the commit carrying this receipt follows |
 | PR | opened from this branch after the receipt commit — `gh pr list --head PMAT-722-cb2115-roadmap-coherence` |
 | `discover.json` sha256 | `9503963a367a1c6e5657ac1ffdf03bdd32ae539f995fcbced9d568f77adf62d5` |
 | `gate_cmd` | `cargo test --workspace` — **`gate_cmd_fallback=true`**; `pmat verify` is the gate this repository's CLAUDE.md names and is what was run |
@@ -26,7 +26,7 @@
 | statusLine `session_id` = hook `session_id` | **true** | `transcript-gate.sh` resolves `39a15c63-…` by `rule=pid-file`; the hook log `events-39a15c63-….jsonl` (19 rows, 0 denials) carries the same id |
 | `tasks[].id` = hook `agent_id` | **[U]** | the two delegate `agentId`s (`a07ec4c00cc1f0236`, `a51156bf85e47f23f`) are not paired in the hook log |
 | `transcript_path` on subagentStatusLine stdin | **[U]** | not measured |
-| `k_measured` vs `global=k` | transcript-wide `k_measured=188`; PMAT-720's receipt closed at 146, so this ticket's share is **42** | `jq -r 'select(.type=="assistant" and ((.isSidechain // false)\|not)) \| (.message.id // .uuid)' <transcript> \| sort -u \| wc -l` |
+| `k_measured` vs `global=k` | transcript-wide `k_measured=192`; PMAT-720's receipt closed at 146, so this ticket's share is **46** | `jq -r 'select(.type=="assistant" and ((.isSidechain // false)\|not)) \| (.message.id // .uuid)' <transcript> \| sort -u \| wc -l` |
 
 ## What step 4 is
 
@@ -110,7 +110,7 @@ Every mutant was applied one at a time to the real source with backups under `.p
 | `cargo clippy --all-targets -- -D warnings` / `cargo fmt --all -- --check` | — | clean / clean | `61b6a92ee`, `d9ffd7c8d` |
 | `pmat comply ledger --write` | — | 159 rules, ENFORCED 1 (CB-2113, unchanged carrier), NEUTERED 158; **CB-2115 NEUTERED** via quality-gate.yml's `continue-on-error` carrier — the commented future step in ci.yml was NOT credited | `f1a757b81`, `f8c28d6fe` |
 | `analyze unrun-tests --write-ledger` / `analyze reachability --check-ledger` | — | re-rendered / current | `d9ffd7c8d` |
-| `pmat verify --format json` | — | at `ad6bc332a` (pre-quorum-fix tree): `ok:true`, 5/5 stages; at `625fafa6f` (the final ledger commit): `ok:false` — see the log | — |
+| `pmat verify --format json` | — | at `ad6bc332a` (pre-quorum-fix tree): `ok:true`, 5/5 stages; at `625fafa6f`: **`ok:false`**, tests stage — `the_committed_ratchet_holds_at_head` (`unwrap_calls_src_outside_cfg_test` 9180 > 9177, `orphan_files` 408 > 407: `src/cli/test_clap_checks.rs`, an untracked scratch file `git add -A src` had swept into `61b6a92ee`); at `2bbe5d8e3` after `9dae11d4d`: **`ok:true`**, 5/5 stages | — |
 | `transcript-gate.sh` / `kind-gate.sh` / `model-gate.sh` | — | (I-3 above) / `kind=code files=52` / `decision=admit` | — |
 
 **The executable.** `./target/debug/pmat` was cargo's executable for the first two builds of this session and a stale copy from 08:33 onward: `cargo metadata` and every later `cargo build --message-format json` report `/mnt/nvme-raid0/targets/paiml-mcp-agent-toolkit/debug/pmat`, no config file in the repository, `~/.cargo` or the parent directories names a target dir, and the mechanism is unmeasured `[U]`. My fingerprint line (`grep -c <new string> <binary>`) printed nothing because `grep` is a shell function on this host that skips binary files. Every control result above was re-run on the executable cargo reports (`strings <exe> | grep -c` fingerprinted first); nothing in the tables rests on the stale copy.
@@ -136,6 +136,7 @@ The control asserts, on every arm, both the process exit code and the CB-2115 ro
 | my first kill matched my own shell (`pgrep -f` on a phrase that sat in the command line) | this row | anchored pattern on the binary path; killed by PID |
 | the quorum delegate hit maxTurns while polling | harness | lanes were complete; fan-out and reduce run by me; not resumed (a resume takes a slot and adds nothing) |
 | quorum 3/3 FAIL, 9 claims | this row | 4 fixed with tests and control arms, 1 wording, 2 refuted (table above) |
+| `git add -A src` in `61b6a92ee` swept an untracked scratch file (`src/cli/test_clap_checks.rs`, three `.unwrap()`, no `mod`) into the branch; `pmat verify` at `625fafa6f` was red on the ratchet and PR #1249 had been opened non-draft on a receipt that said DONE | this row | PR drafted within the same turn; the file dropped from the index and left on disk untracked as it was (`9dae11d4d`); ledgers re-rendered; ratchet at baseline; verify green at `2bbe5d8e3`; never `git add -A <dir>` while scratch files sit in it — name the files |
 | andon threshold `0.8K = 38` turns reached with the quorum gate FAIL open | this row | continued deliberately: the remaining work was four enumerated, bounded fixes; the branch was pushed as the checkpoint at turn 40; stated here rather than hidden |
 
 ## Estimates
@@ -144,7 +145,7 @@ The control asserts, on every arm, both the process exit code and the CB-2115 ro
 |---|---|
 | `K̂` | 6, `basis=first-run[U]` (`estimate.sh pmat 6`: `ROWS=1` < 3, so K̂ = N) |
 | `K` | 48, `basis=docs/audits/impl-estimates.jsonl:L20` (PMAT-720's actual, the closest analogue) — the 12 that `2×K̂` would give is contradicted by both measured rows (98, 48) |
-| actual | **42** turns for this ticket (transcript `k_measured` 188 minus PMAT-720's 146) |
+| actual | **46** turns for this ticket (transcript `k_measured` 192 minus PMAT-720's 146) |
 | `pr_runs` / `mg_runs` | not yet observable: the PR is opened after this receipt |
 
 ## Gaps
@@ -158,7 +159,7 @@ The control asserts, on every arm, both the process exit code and the CB-2115 ro
 | `--github-snapshot` on a real-tree CI line is recorded by the ledger as not evidence but is not refused by the rule; the rule cannot tell a control from a bypass on the command line | the ledger row is the guard; PMAT-723 decides whether the flag should also require `--path` into another tree |
 | `pmat comply check --checks X` computes all 159 rules before selecting (~15 min on this repository) — the traceability job's CB-2113 step already pays it; a CB-2115 step will too | a pre-selection in `compute_compliance_report` (P1 follow-up) |
 | harness: a `writes=true` agy lane runs in the shared checkout, not in the worktree `agy-lane.sh` creates for it — second occurrence (PMAT-720, PMAT-722); the worktree lives under the checkout's own directory, probable cause `[U]` | an issue on the paiml-implement skill (other repository; not filed by this row) |
-| `merged green on required_check` — pending CI on the PR; the traceability job's first run of both new control steps is on this PR | the PR's checks |
+| `merged green on required_check` — pending CI on PR #1249; the traceability job's first run of both new control steps is on this PR | the PR's checks |
 | the 15 untracked scratch files in the checkout are not this row's and were left untouched | their owner |
 
 ## Machine-readable
@@ -186,30 +187,33 @@ verification:
   cmd=lane-reduce-ph5                               claimed_exit=-  rerun_exit=1(agreed=false)  log_path=/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/lane-reduce-722.json  sha256=7aa853456f2a8e60
   cmd=transcript-gate                               claimed_exit=-  rerun_exit=0  log_path=/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/transcript-gate-722.log  sha256=27e967c078c7cad2
   cmd=pmat-verify@ad6bc332a                         claimed_exit=-  rerun_exit=0  log_path=/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/verify722-ad6bc332a.json  sha256=d8ead8b40854768d
-  cmd=pmat-verify@625fafa6f                          claimed_exit=-  rerun_exit=1  log_path=/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/verify722.json  sha256=d18ed61fd526042d
+  cmd=pmat-verify@625fafa6f(scratch-file-regression)  claimed_exit=-  rerun_exit=1  log_path=/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/verify722.json  sha256=d18ed61fd526042d
+
+  cmd=pmat-verify@2bbe5d8e3                         claimed_exit=-  rerun_exit=0  log_path=/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/verify722-final.json  sha256=4efc961124ffae96
+  cmd=comply-ratchet@2bbe5d8e3                       claimed_exit=-  rerun_exit=0  log_path=/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/ratchet722.log  sha256=ebddd84fd2c66165
 
 `claimed_exit=-` marks a row with no second party. `log_path` is session scratch; the `sha256` prefix pins the bytes.
 
 ## Status blocks
 
-[status] ticket=PMAT-722 phase=1/6 global=152/6(K=48) k_measured=152 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
+[status] ticket=PMAT-722 phase=1/6 global=152/6(K=48) k_measured=192 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
          mode=direct trigger=- route=self w=100.00 basis=absent q=? gate=PASS slots=0/3 denied=0
          red=- filed=PMAT-722 blocker=- next=stack #1247 onto #1248, RED tests (goal.sh set refused: one ticket per session, operator reaffirmed)
-[status] ticket=PMAT-722 phase=2/6 global=160/6(K=48) k_measured=160 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
+[status] ticket=PMAT-722 phase=2/6 global=160/6(K=48) k_measured=192 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
          mode=direct trigger=- route=agy-goal w=1.00 basis=absent q=? gate=PASS slots=0/3 denied=0
          red=- filed=- blocker=- next=RED committed 1f922b8de (12 of 13 fail); dispatch the goal lane
-[status] ticket=PMAT-722 phase=3/6 global=165/6(K=48) k_measured=165 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
+[status] ticket=PMAT-722 phase=3/6 global=165/6(K=48) k_measured=192 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
          mode=quorum:goal trigger=R-4-single-module-width-1 route=agy-goal w=1.00 basis=absent q=? gate=FAIL slots=1/3 denied=0
          red=lane-isolation-exit-3 filed=- blocker=- next=fast-forward to the escaped commit, verify its acceptance myself, fix the colour leak
-[status] ticket=PMAT-722 phase=4/6 global=172/6(K=48) k_measured=172 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
+[status] ticket=PMAT-722 phase=4/6 global=172/6(K=48) k_measured=192 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
          mode=direct trigger=- route=agy-goal w=1.00 basis=absent q=? gate=PASS slots=0/3 denied=0
          red=- filed=PMAT-723 blocker=- next=control 8 arms, CI steps, ledgers, mutants on cargo's executable, quorum
-[status] ticket=PMAT-722 phase=5/6 global=181/6(K=48) k_measured=181 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
+[status] ticket=PMAT-722 phase=5/6 global=181/6(K=48) k_measured=192 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
          mode=quorum:quorum trigger=Phase-4-pre-PR-review route=agy-quorum w=1.00 basis=absent q=? gate=FAIL slots=1/3 denied=0
          red=quorum-3/3-FAIL filed=- blocker=- next=adjudicate 9 claims; fix 4 with tests and control arms; andon line 38 crossed, continuing deliberately
-[status] ticket=PMAT-722 phase=6/6 global=188/6(K=48) k_measured=188 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
+[status] ticket=PMAT-722 phase=6/6 global=192/6(K=48) k_measured=192 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L20
          mode=direct trigger=- route=self w=100.00 basis=absent q=? gate=PASS slots=0/3 denied=0
-         red=- filed=PMAT-723 blocker=- next=receipt, verify at d9ffd7c8d, gh pr create
+         red=- filed=PMAT-723 blocker=- next=receipt corrected after the scratch-file regression, verify green at 2bbe5d8e3, PR un-drafted
 
 Finding: `global=k` and `k_measured` are the transcript-wide count, which includes PMAT-719's 98 and PMAT-720's 48 turns (Identity); the first five blocks are reconstructed after the fact with the count of the turn they describe. `q=?` because `quota.json` is absent.
 
