@@ -44,7 +44,8 @@ fn snapshot(issues: Vec<IssueSnapshot>) -> GithubSnapshot {
 }
 
 fn parsed(text: &str) -> SpecFrontMatter {
-    parse_front_matter(text).unwrap_or_else(|e| panic!("{text:?} must parse: {e:?}"))
+    parse_front_matter(text)
+        .expect("the fixture front-matter must parse — the failing test names it")
 }
 
 /// Mutant: `epic: null` read as a number, a missing `epic:` key read as an
