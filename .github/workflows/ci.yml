@@ -131,6 +131,8 @@ jobs:
         run: bash scripts/work-sync-control.sh ./target/debug/pmat
       - name: control — an open item with no issue, and one with no release:, must be refused (CB-2112, CB-2114, exit 1)
         run: bash scripts/ticket-release-control.sh ./target/debug/pmat
+      - name: control — an active spec with no epic must be refused (CB-2110, exit 1)
+        run: bash scripts/spec-epic-control.sh ./target/debug/pmat
       - name: the closed loop holds (CB-2113)
         run: ./target/debug/pmat comply check --checks CB-2113
       # CB-2115 is NOT yet run against this tree. goal-mode.md §5.4 sequences it: the
@@ -153,6 +155,17 @@ jobs:
       # the step once the fixers have run and every open item has been re-minted
       # from its issue and bound to an open milestone (PMAT-725, after PMAT-723):
       #     run: ./target/debug/pmat comply check --checks CB-2112,CB-2113,CB-2114,CB-2115
+      # CB-2110 (PMAT-728, step 6) is withheld too. At PMAT-728's measurement
+      # (2026-09-10) every one of the 44 specs under docs/specifications carries
+      # front-matter that parses and reads `epic: null`, and the three issues
+      # labelled epic (#1017, #1018, #1019) have 0 sub-issues: the epics the specs
+      # would name do not exist. The control above proves the rule discriminates on
+      # every arm (its arm 16 runs the rule on THIS tree's specs and asserts NO-EPIC
+      # on all of them — the flip cannot happen unnoticed), so the ledger lists
+      # CB-2110 NEUTERED. It joins the step once a human has created one epic per
+      # active spec, added the tickets' issues as its sub-issues, filled `epic:`,
+      # and marked the historical and superseded specs (PMAT-729):
+      #     run: ./target/debug/pmat comply check --checks CB-2110,CB-2112,CB-2113,CB-2114,CB-2115
 
   # Two consumers of one reusable workflow on two different refs is drift, and
   # what it silently drifts is the GATES.
