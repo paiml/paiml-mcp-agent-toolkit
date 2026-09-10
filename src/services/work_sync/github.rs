@@ -103,8 +103,34 @@ pub fn fetch_snapshot(repo: &str) -> Result<GithubSnapshot> {
 /// 2.x, 2026-09-10). Every number asked for is answered or the call fails:
 /// a count that is missing is not a count of zero (goal-mode.md doctrine 2).
 pub fn sub_issue_counts(repo: &str, numbers: &[u64]) -> Result<BTreeMap<u64, u64>> {
-    let _ = (repo, numbers);
-    bail!("sub_issue_counts is not implemented (PMAT-728 phase 2)")
+    if numbers.is_empty() {
+        return Ok(BTreeMap::new());
+    }
+
+    let (owner, name) = repo
+        .split_once('/')
+        .with_context(|| format!("repo is not owner/name: {repo:?}"))?;
+    let mut all_counts = BTreeMap::new();
+
+    for chunk in numbers.chunks(100) {
+        let mut query = format!("query {{ repository(owner: \"{owner}\", name: \"{name}\") {{ ");
+        for &n in chunk {
+            use std::fmt::Write;
+            write!(
+                &mut query,
+                "i{n}: issue(number: {n}) {{ subIssuesSummary {{ total }} }} "
+            )
+            .unwrap();
+        }
+        query.push_str("} }");
+
+        let args = ["api", "graphql", "-f", &format!("query={query}")];
+        let out = gh_json(&args)?;
+        let chunk_counts = parse_sub_issue_counts(&out, chunk)?;
+        all_counts.extend(chunk_counts);
+    }
+
+    Ok(all_counts)
 }
 
 /// The pure half of [`sub_issue_counts`]: read `{"data":{"repository":{"i<n>":
@@ -114,8 +140,36 @@ pub fn parse_sub_issue_counts(
     graphql: &serde_json::Value,
     numbers: &[u64],
 ) -> Result<BTreeMap<u64, u64>> {
-    let _ = (graphql, numbers);
-    bail!("parse_sub_issue_counts is not implemented (PMAT-728 phase 2)")
+    if let Some(errors) = graphql.get("errors").and_then(|e| e.as_array()) {
+        if let Some(first) = errors.first() {
+            if let Some(msg) = first.get("message").and_then(|m| m.as_str()) {
+                bail!("{msg}");
+            }
+        }
+    }
+
+    let repo_data = graphql
+        .get("data")
+        .and_then(|d| d.get("repository"))
+        .context("no data.repository in GraphQL response")?;
+
+    let mut out = BTreeMap::new();
+    for &n in numbers {
+        let alias = format!("i{n}");
+        let total = repo_data
+            .get(&alias)
+            .filter(|i| !i.is_null())
+            .and_then(|i| i.get("subIssuesSummary"))
+            .and_then(|s| s.get("total"))
+            .and_then(|t| t.as_u64());
+
+        if let Some(t) = total {
+            out.insert(n, t);
+        } else {
+            bail!("issue #{n} has no sub-issue count in the GraphQL response");
+        }
+    }
+    Ok(out)
 }
 
 pub fn parse_snapshot(

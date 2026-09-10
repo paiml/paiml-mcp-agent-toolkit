@@ -103,11 +103,117 @@ impl FrontMatterError {
 /// between a first line `---` and the next line `---`; keys other than
 /// `epic`, `status` and `vendors` are ignored (`pmat spec` reads its own);
 /// `epic:` absent reads as `epic: null`.
+fn parse_vendors(val: &str) -> Result<Vec<String>, FrontMatterError> {
+    let val = val.trim();
+    if val.is_empty() || val == "[]" {
+        return Ok(Vec::new());
+    }
+    if val.starts_with('[') && val.ends_with(']') {
+        let inner = val[1..val.len() - 1].trim();
+        if inner.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut out = Vec::new();
+        for v in inner.split(',') {
+            out.push(v.trim().trim_matches('\'').trim_matches('"').to_string());
+        }
+        return Ok(out);
+    }
+    Err(FrontMatterError::BadVendors(val.to_string()))
+}
+
+fn parse_epic(val: Option<&str>) -> Result<Option<u64>, FrontMatterError> {
+    match val {
+        Some("null") | Some("~") | Some("") | None => Ok(None),
+        Some(v) => match v.parse::<u64>() {
+            Ok(n) => Ok(Some(n)),
+            Err(_) => Err(FrontMatterError::BadEpic(v.to_string())),
+        },
+    }
+}
+
+struct ParseState {
+    epic_val: Option<String>,
+    status_val: Option<String>,
+    vendors_val: Vec<String>,
+    in_vendors_block: bool,
+}
+
+impl ParseState {
+    fn process_line(&mut self, line: &str) -> Result<(), FrontMatterError> {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            return Ok(());
+        }
+
+        if self.in_vendors_block {
+            if let Some(item) = trimmed.strip_prefix("- ") {
+                let v = item.trim().trim_matches('\'').trim_matches('"');
+                self.vendors_val.push(v.to_string());
+                return Ok(());
+            }
+            if !line.starts_with(' ') {
+                self.in_vendors_block = false;
+            }
+        }
+
+        if let Some(rest) = line.strip_prefix("epic:") {
+            self.in_vendors_block = false;
+            self.epic_val = Some(rest.trim().trim_matches('\'').trim_matches('"').to_string());
+        } else if let Some(rest) = line.strip_prefix("status:") {
+            self.in_vendors_block = false;
+            self.status_val = Some(rest.trim().trim_matches('\'').trim_matches('"').to_string());
+        } else if let Some(rest) = line.strip_prefix("vendors:") {
+            let val = rest.trim();
+            if val.is_empty() {
+                self.in_vendors_block = true;
+            } else {
+                self.vendors_val = parse_vendors(val)?;
+            }
+        } else {
+            self.in_vendors_block = false;
+        }
+        Ok(())
+    }
+}
+
 pub fn parse_front_matter(text: &str) -> Result<SpecFrontMatter, FrontMatterError> {
-    let _ = text;
-    Err(FrontMatterError::BadStatus(
-        "not implemented (PMAT-728 phase 2)".to_string(),
-    ))
+    if !text.starts_with("---\n") && !text.starts_with("---\r\n") {
+        return Err(FrontMatterError::Absent);
+    }
+
+    let mut lines = text.lines();
+    lines.next(); // Skip the first `---`
+
+    let mut state = ParseState {
+        epic_val: None,
+        status_val: None,
+        vendors_val: Vec::new(),
+        in_vendors_block: false,
+    };
+    let mut found_end = false;
+
+    for line in lines {
+        if line == "---" {
+            found_end = true;
+            break;
+        }
+        state.process_line(line)?;
+    }
+
+    if !found_end {
+        return Err(FrontMatterError::Unterminated);
+    }
+
+    let status_str = state.status_val.ok_or(FrontMatterError::MissingStatus)?;
+    let status = SpecStatus::parse(&status_str).ok_or(FrontMatterError::BadStatus(status_str))?;
+    let epic = parse_epic(state.epic_val.as_deref())?;
+
+    Ok(SpecFrontMatter {
+        epic,
+        status,
+        vendors: state.vendors_val,
+    })
 }
 
 /// One spec as the caller read it: the path relative to the project root
@@ -118,7 +224,7 @@ pub struct SpecInput {
     pub text: String,
 }
 
-/// One finding, one spec, the first clause that failed.
+/// A violation of invariant E (goal-mode.md §4.3) found in a spec.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpecFinding {
     NoFrontMatter { spec: String },
@@ -159,35 +265,20 @@ impl SpecFinding {
     }
 
     /// A finding the rule could not measure (doctrine 2): the row that carries
-    /// it is `not_measured`, never merely red.
     pub fn is_unmeasured(&self) -> bool {
         matches!(self, Self::SubIssuesUnmeasured { .. })
     }
 
     pub fn render(&self) -> String {
         match self {
-            Self::NoFrontMatter { spec } => format!(
-                "NO-FRONT-MATTER {spec}: the file does not begin with a --- front-matter block (goal-mode.md §4.3)"
-            ),
+            Self::NoFrontMatter { spec } => format!("NO-FRONT-MATTER {spec}: the file does not begin with a --- front-matter block (goal-mode.md §4.3)"),
             Self::BadFrontMatter { spec, what } => format!("BAD-FRONT-MATTER {spec}: {what}"),
-            Self::NoEpic { spec } => format!(
-                "NO-EPIC {spec}: epic is null — an active spec names an open issue labelled epic (goal-mode.md §4.3)"
-            ),
-            Self::EpicAbsent { spec, number } => {
-                format!("EPIC-ABSENT {spec}: names #{number}, which is not in the snapshot")
-            }
-            Self::EpicClosed { spec, number } => {
-                format!("EPIC-CLOSED {spec}: names #{number}, which is closed")
-            }
-            Self::NotAnEpic { spec, number } => {
-                format!("NOT-AN-EPIC {spec}: names #{number}, which is not labelled epic")
-            }
-            Self::SubIssuesUnmeasured { spec, number } => format!(
-                "SUB-ISSUES-UNMEASURED {spec}: the snapshot does not carry #{number}'s sub-issue count — not measured is not zero (goal-mode.md doctrine 2)"
-            ),
-            Self::NoSubIssues { spec, number } => format!(
-                "NO-SUB-ISSUES {spec}: #{number} has no sub-issue — a spec's tickets are its epic's sub-issues (goal-mode.md §4.3)"
-            ),
+            Self::NoEpic { spec } => format!("NO-EPIC {spec}: epic is null — an active spec names an open issue labelled epic (goal-mode.md §4.3)"),
+            Self::EpicAbsent { spec, number } => format!("EPIC-ABSENT {spec}: names #{number}, which is not in the snapshot"),
+            Self::EpicClosed { spec, number } => format!("EPIC-CLOSED {spec}: names #{number}, which is closed"),
+            Self::NotAnEpic { spec, number } => format!("NOT-AN-EPIC {spec}: names #{number}, which is not labelled epic"),
+            Self::SubIssuesUnmeasured { spec, number } => format!("SUB-ISSUES-UNMEASURED {spec}: the snapshot does not carry #{number}'s sub-issue count — not measured is not zero (goal-mode.md doctrine 2)"),
+            Self::NoSubIssues { spec, number } => format!("NO-SUB-ISSUES {spec}: #{number} has no sub-issue — a spec's tickets are its epic's sub-issues (goal-mode.md §4.3)"),
         }
     }
 }
@@ -241,16 +332,80 @@ impl Parsed {
 
 /// The parse leg over every spec, in path order.
 pub fn parse_specs(specs: &[SpecInput]) -> Parsed {
-    let _ = specs;
-    Parsed::default()
+    let mut parsed = Parsed::default();
+
+    let mut sorted_specs = specs.to_vec();
+    sorted_specs.sort_by(|a, b| a.path.cmp(&b.path));
+
+    for spec in &sorted_specs {
+        match parse_front_matter(&spec.text) {
+            Ok(fm) => {
+                if fm.status.on_epic_leg() && fm.epic.is_none() {
+                    parsed.findings.push(SpecFinding::NoEpic {
+                        spec: spec.path.clone(),
+                    });
+                }
+                parsed.specs.push((spec.path.clone(), fm));
+            }
+            Err(FrontMatterError::Absent) => {
+                parsed.findings.push(SpecFinding::NoFrontMatter {
+                    spec: spec.path.clone(),
+                });
+            }
+            Err(e) => {
+                parsed.findings.push(SpecFinding::BadFrontMatter {
+                    spec: spec.path.clone(),
+                    what: e.render(),
+                });
+            }
+        }
+    }
+
+    parsed
 }
 
 /// The epic leg: for every active spec that names an epic, the first clause
 /// that fails — absent, closed, not labelled `epic`, sub-issue count not in
 /// the snapshot, no sub-issue — in path order.
 pub fn bind_epics(parsed: &Parsed, snapshot: &GithubSnapshot) -> Vec<SpecFinding> {
-    let _ = (parsed, snapshot, EPIC_LABEL, IssueState::Open);
-    Vec::new()
+    let mut findings = Vec::new();
+
+    for (path, fm) in parsed.active() {
+        if let Some(number) = fm.epic {
+            let issue = snapshot.issues.iter().find(|i| i.number == number);
+            match issue {
+                None => findings.push(SpecFinding::EpicAbsent {
+                    spec: path.clone(),
+                    number,
+                }),
+                Some(issue) => {
+                    if issue.state == IssueState::Closed {
+                        findings.push(SpecFinding::EpicClosed {
+                            spec: path.clone(),
+                            number,
+                        });
+                    } else if !issue.labels.contains(&EPIC_LABEL.to_string()) {
+                        findings.push(SpecFinding::NotAnEpic {
+                            spec: path.clone(),
+                            number,
+                        });
+                    } else if issue.sub_issues.is_none() {
+                        findings.push(SpecFinding::SubIssuesUnmeasured {
+                            spec: path.clone(),
+                            number,
+                        });
+                    } else if issue.sub_issues == Some(0) {
+                        findings.push(SpecFinding::NoSubIssues {
+                            spec: path.clone(),
+                            number,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    findings
 }
 
 #[cfg(test)]
