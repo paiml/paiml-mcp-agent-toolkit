@@ -129,6 +129,8 @@ jobs:
         run: bash scripts/roadmap-coherence-control.sh ./target/debug/pmat
       - name: control — pmat work sync --check-only can fail, can pass, and plans every write
         run: bash scripts/work-sync-control.sh ./target/debug/pmat
+      - name: control — an open item with no issue, and one with no release:, must be refused (CB-2112, CB-2114, exit 1)
+        run: bash scripts/ticket-release-control.sh ./target/debug/pmat
       - name: the closed loop holds (CB-2113)
         run: ./target/debug/pmat comply check --checks CB-2113
       # CB-2115 is NOT yet run against this tree. goal-mode.md §5.4 sequences it: the
@@ -142,6 +144,14 @@ jobs:
       #   - name: the roadmap and GitHub agree (CB-2115)
       #     env: { GH_TOKEN: ${{ github.token }} }
       #     run: ./target/debug/pmat comply check --checks CB-2113,CB-2115
+      # CB-2112 and CB-2114 (PMAT-724, step 5) are withheld for the same reason: at
+      # PMAT-724's measurement master has 70 open items, 0 carrying release:, and 0
+      # whose numeric tail is an open issue (57 name no issue, 13 name #612). The
+      # control above proves both rules discriminate on every arm, so the ledger
+      # lists them NEUTERED, which is the truth. They join the step once the fixers
+      # have run and every open item has been re-minted from its issue and bound to
+      # a milestone (PMAT-725, after PMAT-723):
+      #     run: ./target/debug/pmat comply check --checks CB-2112,CB-2113,CB-2114,CB-2115
 
   # Two consumers of one reusable workflow on two different refs is drift, and
   # what it silently drifts is the GATES.

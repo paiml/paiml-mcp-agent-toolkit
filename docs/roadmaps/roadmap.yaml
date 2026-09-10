@@ -5177,3 +5177,23 @@ roadmap:
   - kind:code
   - orch:fable
   notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (two rules + builder + severity defaults), services/work_sync (the linkage and release predicates), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §7 rows CB-2112 and CB-2114, §11 step 5. Stacked on #1249: needs CheckOverrides/--github-snapshot, SnapshotSource and the release: field. The numeric-tail clause is PMAT-714 (#1240) ids: pmat work add --github-issue N mints PMAT-N.'
+- id: PMAT-725
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 5b: CB-2112 and CB-2114 become gates — every open item re-minted from its issue (id tail = issue number, the PMAT-714 path) and bound to its milestone by the sync, then the traceability job runs pmat comply check --checks CB-2112,CB-2113,CB-2114,CB-2115 with GH_TOKEN; blocked on PMAT-723 (the fixers) and on a human deciding the re-mint of the open ids'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T10:31:06Z
+  updated: 2026-09-10T10:31:06Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat comply check --checks CB-2112,CB-2114 exits 0 on master against a fresh snapshot of paiml/paiml-mcp-agent-toolkit, measured and quoted in the receipt before the step is added (goal-mode.md doctrine 6: a rule red on the day it lands gets disabled)'
+  - 'every open item id ends in the number of its open issue and every open item carries release: naming the milestone its issue is on; the re-mint of ids minted before #1240 is decided by a human (a rename touches every trailer and receipt that names the old id), never by the sync'
+  - the traceability job runs pmat comply check --checks CB-2112,CB-2113,CB-2114,CB-2115 with GH_TOKEN after the controls; pmat comply ledger writes CB-2112 and CB-2114 as ENFORCED with gate among the roots; the first CI run is observed RED against each §7 falsifier (null one github_issue; remove one release:) and linked from the receipt (goal-mode.md §13 item 2)
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Filed by PMAT-724 (goal-mode step 5). The rules, their control (scripts/ticket-release-control.sh, 15 arms, runs in the traceability job) and their ledger rows exist; only the direct invocation is withheld (§5.4, doctrine 6). The exact step is a comment in .github/workflows/ci.yml beside the withheld CB-2115 step.
