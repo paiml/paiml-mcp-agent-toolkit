@@ -237,3 +237,138 @@ fn strict_with_stack_is_refused_rather_than_silently_dropped() {
         "the refusal names the ticket that closes the gap: {msg}"
     );
 }
+
+// ── PMAT-727: one predicate, two callers ─────────────────────────────────────
+//
+// The commit-msg hook and CB-2113 must give the same verdict on the same
+// message. #1250 went red in CI on eleven commits the hook had accepted: their
+// `Pmat-Ticket:` sat in the paragraph ABOVE the Co-Authored-By block, git reads
+// trailers from the last paragraph only, so CB-2113 saw none — while the hook's
+// fallback matched `PMAT-NNN` in the subject. And #1252 went red on a trailer
+// naming the ticket its own commits marked completed, which the hook never
+// looked at.
+
+/// A repository whose `master` carries a roadmap with `items` (id, status) and
+/// pmat's strict commit-msg hook; the working branch is `feature`.
+fn roadmap_repo(items: &[(&str, &str)]) -> tempfile::TempDir {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let d = tmp.path();
+    assert!(git(d, &["init", "-q", "-b", "master"]).status.success());
+    assert!(git(d, &["config", "user.email", "t@t"]).status.success());
+    assert!(git(d, &["config", "user.name", "t"]).status.success());
+    let mut yaml = String::from("roadmap_version: '1.0'\ngithub_enabled: false\nroadmap:\n");
+    for (id, status) in items {
+        yaml.push_str(&format!(
+            "- id: {id}\n  github_issue: null\n  item_type: task\n  title: {id} work\n  status: {status}\n"
+        ));
+    }
+    std::fs::create_dir_all(d.join("docs/roadmaps")).expect("mkdir docs/roadmaps");
+    std::fs::write(d.join("docs/roadmaps/roadmap.yaml"), yaml).expect("write roadmap");
+    std::fs::write(d.join("README.md"), "one\n").expect("write");
+    assert!(git(d, &["add", "."]).status.success());
+    assert!(git(d, &["commit", "-q", "-m", "init"]).status.success());
+    assert!(git(d, &["switch", "-q", "-c", "feature"]).status.success());
+    HooksCommand::new(d.join(".git").join("hooks"), d.join("pmat.toml"))
+        .install_commit_msg_hook(true)
+        .expect("install commit-msg hook");
+    tmp
+}
+
+/// The hook's verdict on `msg`: run `.git/hooks/commit-msg` on a message file
+/// from the repository root, exactly as git does.
+fn hook_refuses(d: &Path, msg: &str) -> bool {
+    let f = d.join(".git").join("PMAT727_HOOK_MSG");
+    std::fs::write(&f, msg).expect("write message");
+    let out = Command::new("bash")
+        .current_dir(d)
+        .arg(d.join(".git").join("hooks").join("commit-msg"))
+        .arg(&f)
+        .output()
+        .expect("run the commit-msg hook");
+    !out.status.success()
+}
+
+/// CB-2113's verdict on `msg`: commit it on `feature` with the hook bypassed,
+/// then measure `master..HEAD` the way the rule does on a pull request.
+fn rule_refuses(d: &Path, msg: &str) -> bool {
+    std::fs::write(d.join("README.md"), "one\ntwo\n").expect("write");
+    let f = d.join(".git").join("PMAT727_RULE_MSG");
+    std::fs::write(&f, msg).expect("write message");
+    let path = f.to_str().expect("utf-8 temp path");
+    assert!(git(d, &["commit", "-q", "--no-verify", "-a", "-F", path])
+        .status
+        .success());
+    let m = crate::services::commit_traceability::measure_against(d, Some("master"))
+        .expect("CB-2113 measures the fixture");
+    !m.findings.is_empty()
+}
+
+/// One agreement case: its name, the commit message, and the roadmap items
+/// (id, status) the fixture repository carries.
+type AgreementCase<'a> = (&'a str, String, &'a [(&'a str, &'a str)]);
+
+#[test]
+fn the_hook_and_cb2113_give_the_same_verdict_on_the_same_message() {
+    let co = "Co-Authored-By: A <a@example.com>";
+    let open: &[(&str, &str)] = &[("PMAT-001", "planned")];
+    let done: &[(&str, &str)] = &[("PMAT-001", "completed")];
+    let cases: Vec<AgreementCase> = vec![
+        (
+            "the trailer in the last paragraph names an open item",
+            format!("feat: a\n\nPmat-Ticket: PMAT-001\n{co}\n"),
+            open,
+        ),
+        (
+            "the trailer sits in the paragraph above Co-Authored-By (#1250)",
+            format!("feat(PMAT-001): a\n\nPmat-Ticket: PMAT-001\n\n{co}\n"),
+            open,
+        ),
+        (
+            "no trailer; the id appears only in the subject",
+            format!("feat(PMAT-001): a\n\n{co}\n"),
+            open,
+        ),
+        (
+            "the trailer names a completed item (#1252)",
+            format!("feat: a\n\nPmat-Ticket: PMAT-001\n{co}\n"),
+            done,
+        ),
+        (
+            "the trailer names an id the roadmap does not have",
+            format!("feat: a\n\nPmat-Ticket: PMAT-999\n{co}\n"),
+            open,
+        ),
+    ];
+    for (name, msg, items) in &cases {
+        let hook = hook_refuses(roadmap_repo(items).path(), msg);
+        let rule = rule_refuses(roadmap_repo(items).path(), msg);
+        assert_eq!(
+            hook,
+            rule,
+            "{name}: the hook {} while CB-2113 {} — one predicate, two callers (PMAT-727)",
+            if hook { "refuses" } else { "accepts" },
+            if rule { "refuses" } else { "accepts" }
+        );
+    }
+}
+
+/// Without a roadmap CB-2113 does not judge (Skip), so the hook keeps the
+/// configured ticket pattern as the repository's own convention. This is the
+/// one place the two callers differ, and it is written down here.
+#[test]
+fn without_a_roadmap_the_hook_keeps_the_ticket_pattern_and_cb2113_skips() {
+    let tmp = strict_repo();
+    let d = tmp.path();
+    assert!(matches!(
+        crate::services::commit_traceability::inputs(d),
+        crate::services::commit_traceability::Inputs::NoRoadmap
+    ));
+    assert!(
+        !hook_refuses(d, "fix: PMAT-5 names the ticket\n"),
+        "without a roadmap a ticket reference matching the pattern is accepted"
+    );
+    assert!(
+        hook_refuses(d, "fix: names nothing\n"),
+        "strict still refuses a message that names no ticket"
+    );
+}

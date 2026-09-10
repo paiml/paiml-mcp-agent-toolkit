@@ -63,6 +63,17 @@
 | `--checks` does not prune execution | PMAT-1296 |
 | no pre-PR quorum on the diff | the RED and green CI runs of the step itself are the discrimination |
 
+## Post-merge
+
+#1295 merged. The green run after the revert is **run 34528585496, job 103043882550** (https://github.com/paiml/paiml-mcp-agent-toolkit/actions/runs/34528585496/job/103043882550):
+
+```
+✓ CB-2113: Commit Traceability: all 7 non-merge commit(s) in 7bd20ee..HEAD (base origin/master) carry a Pmat-Ticket trailer naming an open roadmap item
+✓ CB-2115: Roadmap Coherence: 90 open item(s) and 90 open issue(s) are in bijection: matched 90, tolerated 0 inside the 60-minute grace window (goal-mode.md §5)
+```
+
+With the RED run (34526901843), the step is shown to fail on its falsifier and to pass once the falsifier is gone. PMAT-727's PR marks PMAT-723 completed and closes #1286 in the same step (recorded here by PMAT-727).
+
 ## Machine-readable
 
 orch_model: opus [V]   orch_class: opus   orch_decision: admit   orch_basis: -

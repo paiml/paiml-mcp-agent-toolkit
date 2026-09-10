@@ -5144,11 +5144,11 @@ roadmap:
   github_issue: 1286
   item_type: task
   title: 'goal-mode step 4b: CB-2115 becomes a gate — add pmat comply check --checks CB-2113,CB-2115 (with GH_TOKEN) to the traceability job once pmat work sync --check-only exits 0 on master; blocked on PMAT-721 (the thirteen #612 collisions) and on running the sync fixers (52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB at PMAT-720''s measurement)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T06:34:18Z
-  updated: 2026-09-10T18:18:08.278327787+00:00
+  updated: 2026-09-10T22:07:42Z
   spec: null
   acceptance_criteria:
   - pmat work sync --check-only exits 0 on master, measured and quoted in the receipt before the step is added (goal-mode.md §5.4 step 3, §13 items 4-5)
@@ -5159,7 +5159,7 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: Filed by PMAT-722 (goal-mode step 4). The rule, its control (scripts/roadmap-coherence-control.sh, 8 arms, runs in the traceability job) and its ledger row exist; only the direct invocation is withheld, because a gate red on arrival is a gate someone disables (§5.4). The exact step is written as a comment in .github/workflows/ci.yml beside the CB-2113 step.
+  notes: 'Filed by PMAT-722 (goal-mode step 4). The rule, its control (scripts/roadmap-coherence-control.sh, 8 arms, runs in the traceability job) and its ledger row exist; only the direct invocation is withheld, because a gate red on arrival is a gate someone disables (§5.4). The exact step is written as a comment in .github/workflows/ci.yml beside the CB-2113 step. PMAT-727: completed — #1295 merged: CB-2115 runs in the traceability job with GH_TOKEN, RED on the §7 falsifier (run 34526901843) and green after the revert (run 34528585496: 90 open items and 90 open issues in bijection); #1286 closed in the same step.'
 - id: PMAT-724
   github_issue: null
   item_type: task
