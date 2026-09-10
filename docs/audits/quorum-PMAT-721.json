@@ -1,0 +1,690 @@
+{
+  "ticket": "PMAT-721",
+  "lane": "quorum",
+  "mode": "plan",
+  "executor": "agy",
+  "width": 3,
+  "agy_version": "1.2.0",
+  "repo_head": "3893ca5f2a3f1cfa4527793741b4eb5c08a50036",
+  "not_before": 1789058827,
+  "conversations": [
+    "f257a998-461e-4a0f-9706-636d4d699e43",
+    "62c2a721-25ce-4c60-82c6-5708d5bbef38",
+    "3b9a3ed5-8782-4b86-a5d3-a42894481530"
+  ],
+  "child_conversations": 3,
+  "fanout": {
+    "children": 3,
+    "method": "lane-files",
+    "label": "consensus"
+  },
+  "results": [
+    {
+      "lane": 1,
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-721/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-1.json",
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "n_findings": 18,
+      "summary": "All 13 MACS items (004-016) are completed on master. They were shipped in PR #613 as squash commit d629a105f, which bypassed the commit-matching heuristic in dispositions-3.39.0.json (causing the false deferrals). The deliverables and equivalent RED tests all exist. The 4 malformed IDs are duplicate artefacts from the roadmap parser capturing the contract_yaml fragment from the spec; nothing depends on them, so they can be safely removed. Marking the 13 items as completed removes them from the active sync bijection, resolving the collision while keeping github_issue: 612 as the historical link."
+    },
+    {
+      "lane": 2,
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-721/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-2.json",
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "n_findings": 30,
+      "summary": "Triaged 13 MACS items and 4 duplicates. MACS-004, 005, 008, 010, 012, 014, 015, and 016 are completed. MACS-006, 007, 009, 011, and 013 are planned-remint due to missing specific tests or deliverables (e.g. fixtures/mcp-sweep/). The 4 duplicates are duplicate-cancel. Added 13 contradiction findings since all 13 items contradict docs/audits/dispositions-3.39.0.json, which deferred them on a false commit heuristic."
+    },
+    {
+      "lane": 3,
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-721/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-3.json",
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "n_findings": 18,
+      "summary": "PASS. All 17 rows could be deterministically classified under the provided rules using measured evidence (checking file presence and exact test names in the lib test suite list). 11 items are fully completed with named or equivalent tests, 2 items (MACS-006 and MACS-013) are partially missing required tests and thus planned-remint, and the 4 spaced IDs are safely cancelled as duplicate artifacts. No reason was found to consider the rule unsafe. The dispositions file's contradiction was verified as a false negative caused by squash-merging."
+    }
+  ],
+  "consensus": "All 3 lanes returned PASS (lane-reduce exit 0, agreed=true, partial=false). Under the brief verdict rule, that means only that every lane classified every row. Row verdicts, read from the claims in dedup[]: completed 3/3 for MACS-004, 005, 008, 010, 012, 014, 015, 016. Completed 2/3 for MACS-007, 009, 011 (lanes 1 and 3; lane 2 says planned-remint). Planned-remint 2/3 for MACS-006, 013 (lanes 2 and 3; lane 1 says completed). Duplicate-cancel 3/3 for the 4 space-id rows, though the fixes differ: lane 1 removes the row, lane 2 deletes or cancels it, lane 3 cancels it. All 3 lanes say the tree contradicts the dispositions-3.39.0.json deferral; lane 3 excepts MACS-006 and 013. dedup lanes_agreeing counts lanes that cited the same FILE, because no finding has a line number, so it does not mean they agree on the claim. src/models/work_cot.rs shows [1,2,3] over opposite MACS-007 and MACS-009 verdicts, and work_ledger_receipt.rs shows [1,2,3] over opposite MACS-006 verdicts.",
+  "dissent": [
+    {
+      "row": "MACS-006",
+      "lane": 1,
+      "position": "row-level minority; all 3 lanes PASS",
+      "file": "src/cli/handlers/work_ledger_receipt.rs",
+      "grounding": "measured",
+      "claim": "MACS-006: completed — deliverable exists, tests like cb1653_red_on_drift and cb1653_green_after_fix exist in comply handlers.",
+      "fix": "Set status: completed, keep github_issue: 612"
+    },
+    {
+      "row": "MACS-007",
+      "lane": 2,
+      "position": "row-level minority; all 3 lanes PASS",
+      "file": "src/models/work_cot.rs",
+      "grounding": "measured",
+      "claim": "MACS-007: planned-remint — status_renders_v2 test and ticket_validate_migrate.rs deliverable are missing.",
+      "fix": "Change github_issue to null and status to planned"
+    },
+    {
+      "row": "MACS-009",
+      "lane": 2,
+      "position": "row-level minority; all 3 lanes PASS",
+      "file": "src/models/work_cot.rs",
+      "grounding": "measured",
+      "claim": "MACS-009: planned-remint — one_obligation_per_step_in_ticket_yaml test is missing.",
+      "fix": "Change github_issue to null and status to planned"
+    },
+    {
+      "row": "MACS-011",
+      "lane": 2,
+      "position": "row-level minority; all 3 lanes PASS",
+      "file": "src/cli/handlers/qa_mcp_sweep.rs",
+      "grounding": "measured",
+      "claim": "MACS-011: planned-remint — fixtures/mcp-sweep/ golden directory is missing, making the deliverable materially partial.",
+      "fix": "Change github_issue to null and status to planned"
+    },
+    {
+      "row": "MACS-013",
+      "lane": 1,
+      "position": "row-level minority; all 3 lanes PASS",
+      "file": "ROADMAP.yaml",
+      "grounding": "measured",
+      "claim": "MACS-013: completed — deliverable exists, tests like roadmap::sync::tests::render_byte_stable_two_runs and cb1655_warn_when_roadmap_missing exist.",
+      "fix": "Set status: completed, keep github_issue: 612"
+    }
+  ],
+  "lane_reduce": {
+    "artifact": "/run/user/1000/paiml-implement/agy/PMAT-721/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/reduce.json",
+    "exit": 0,
+    "agreed": true,
+    "partial": false,
+    "dedup": [
+      {
+        "file": ".claude/skills/",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "MACS-010: completed — effort is pinned across 6 skills and equivalent cb1650_green_on_pinned_skills test exists."
+        ]
+      },
+      {
+        "file": ".claude/skills/dogfood/SKILL.md",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          3
+        ],
+        "claims": [
+          "MACS-010: completed — deliverables exist, tests like cb1650_red_on_missing_effort and cb1650_green_on_pinned_skills exist.",
+          "MACS-010: completed — tests cb1650_red_on_missing_effort, cb1650_red_on_session_only_values exist. The test cb1650_green_on_repo_skills is named cb1650_green_on_pinned_skills. Skills have effort frontmatter pinned."
+        ]
+      },
+      {
+        "file": "ROADMAP.yaml",
+        "line": null,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "MACS-013: completed — deliverable exists, tests like roadmap::sync::tests::render_byte_stable_two_runs and cb1655_warn_when_roadmap_missing exist."
+        ]
+      },
+      {
+        "file": "contracts/workflows/release-sweep.ultracode.mjs",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "MACS-012: completed — deliverable exists, tests like cli::handlers::qa_mcp_sweep::tests::workflow_file_committed_and_lint_clean and workflow_refusal_path_emits_work_event exist.",
+          "MACS-012: completed — tests workflow_file_committed_and_lint_clean, workflow_reads_only_sweep_artifacts, workflow_stamps_pmat_agent_env_on_every_subagent, workflow_refusal_path_emits_work_event exist.",
+          "MACS-012: completed — workflow file and all workflow tests (as equivalent names) exist on master."
+        ]
+      },
+      {
+        "file": "docs/agent-models.md",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "MACS-015: completed — deliverable exists, tests like cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_artifacts::cb1657_red_on_denylist_hit exist.",
+          "MACS-015: completed — docs and equivalent cb1657_allowlist_only_in_registry_and_spec test exist on master.",
+          "MACS-015: completed — tests cb1657_red_on_denylist_hit, refactor_auto_references_registry exist. cb1657_allowlist_only_in_registry_and_spec is the equivalent for cb1657_allowlist_only_in_registry_history. docs/agent-models.md exists."
+        ]
+      },
+      {
+        "file": "docs/audits/dispositions-3.39.0.json",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "MACS-004: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-005: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-006: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-007: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-008: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-009: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-010: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-011: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-012: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-013: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-014: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-015: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "MACS-016: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+          "Tree contradicts docs/audits/dispositions-3.39.0.json: MACS-004 through MACS-016 were deferred on 'no matching commits found' but are actually present on master because they were squash-merged in PR #613 (commit d629a105f).",
+          "dispositions-3.39.0.json contradiction: The dispositions file deferred MACS-004 to MACS-016 due to 'no matching commits found on master', but the codebase on master contains the full deliverables and passing tests for almost all items (except partial MACS-006 and MACS-013). This contradiction occurred because PR #613 was a squash merge, breaking the commit-message heuristic."
+        ]
+      },
+      {
+        "file": "docs/roadmaps/roadmap.yaml",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "MACS-010 macs-skill-effort-v1/skill_effort_pinned: duplicate-cancel — duplicate of MACS-010, nothing depends on this ID.",
+          "MACS-010 macs-skill-effort-v1/skill_effort_pinned: duplicate-cancel — it is a duplicate artefact (matches contract_yaml of canonical MACS-010) and nothing depends on it.",
+          "MACS-010 macs-skill-effort-v1/skill_effort_pinned: duplicate-cancel — it is a duplicate artefact mirroring the canonical MACS-010 contract yaml string, and no items depend on this id.",
+          "MACS-011 macs-sweep-v1/sweep_deterministic: duplicate-cancel — duplicate artifact (matches MACS-011 and MACS-012), nothing depends on this ID.",
+          "MACS-011 macs-sweep-v1/sweep_deterministic: duplicate-cancel — it is a duplicate artefact (matches contract_yaml of canonical MACS-011) and nothing depends on it.",
+          "MACS-011 macs-sweep-v1/sweep_deterministic: duplicate-cancel — it is a duplicate artefact mirroring the canonical MACS-011 contract yaml string, and no items depend on this id.",
+          "MACS-013 macs-artifacts-v1/roadmap_canonical: duplicate-cancel — duplicate of MACS-013, nothing depends on this ID.",
+          "MACS-013 macs-artifacts-v1/roadmap_canonical: duplicate-cancel — it is a duplicate artefact (matches contract_yaml of canonical MACS-013) and nothing depends on it.",
+          "MACS-013 macs-artifacts-v1/roadmap_canonical: duplicate-cancel — it is a duplicate artefact mirroring the canonical MACS-013 contract yaml string, and no items depend on this id.",
+          "MACS-014 macs-artifacts-v1/manifest_faithful: duplicate-cancel — duplicate of MACS-014, nothing depends on this ID.",
+          "MACS-014 macs-artifacts-v1/manifest_faithful: duplicate-cancel — it is a duplicate artefact (matches contract_yaml of canonical MACS-014) and nothing depends on it.",
+          "MACS-014 macs-artifacts-v1/manifest_faithful: duplicate-cancel — it is a duplicate artefact mirroring the canonical MACS-014 contract yaml string, and no items depend on this id."
+        ]
+      },
+      {
+        "file": "mcp.json",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "MACS-014: completed — mcp.json and all specified tests exist on master."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/comply_handlers/check_handlers/check_macs_ladder.rs",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "MACS-005: completed — gate logic and all equivalent claim_l tests exist on master."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/comply_handlers/check_handlers/check_macs_tests_artifacts.rs",
+        "line": null,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "MACS-013: planned-remint — test comply::cb1655_red_when_ledger_newer_than_artifact is completely missing, there is no equivalent test for the red condition (ROADMAP.yaml is older than the ledger), so the deliverable is materially partial."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/mcp_manifest.rs",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          3
+        ],
+        "claims": [
+          "MACS-014: completed — deliverable exists, tests like cli::handlers::mcp_manifest::manifest::generated_equals_tool_defs and byte_equal_or_cb1656_red exist.",
+          "MACS-014: completed — tests manifest::generated_equals_tool_defs, manifest::byte_equal_or_cb1656_red, manifest::readme_tool_count_matches exist. mcp.json exists."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/qa_mcp_sweep.rs",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "MACS-011: completed — deliverable exists, tests like cli::handlers::qa_mcp_sweep::tests::args_derived_from_every_tool_schema and two_runs_byte_identical_modulo_time exist.",
+          "MACS-011: completed — tests sweep::args_derived_from_every_tool_schema, framing_stdout_pure_jsonrpc_golden, concurrency8_zero_lock_errors_zero_scratch, two_runs_byte_identical_modulo_time, no_llm_symbols_linked exist.",
+          "MACS-011: planned-remint — fixtures/mcp-sweep/ golden directory is missing, making the deliverable materially partial."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/work_contract_core.rs",
+        "line": null,
+        "lanes_agreeing": [
+          2,
+          3
+        ],
+        "claims": [
+          "MACS-004: completed — VerificationLevel enum and parse_total_strict_prop test exist on master.",
+          "MACS-004: completed — tests ladder::parse_total_strict_prop, ladder::ord_matches_numeric, ladder::display_parse_id, migrate::legacy_strings_interactive_to_typed exist. Deliverables src/cli/handlers/work_contract_core.rs and ticket_validate_migrate.rs are present."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/work_ledger.rs",
+        "line": null,
+        "lanes_agreeing": [
+          2,
+          3
+        ],
+        "claims": [
+          "MACS-016: completed — tests verify_recomputes_all_hashes_v1_and_v2, verify_red_on_tampered_entry, report_groups_by_model_effort_harness, rule_r1_order_violation_detected exist.",
+          "MACS-016: completed — work_ledger verify and all specified tests exist on master."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/work_ledger_receipt.rs",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "MACS-006: completed — deliverable exists, tests like cb1653_red_on_drift and cb1653_green_after_fix exist in comply handlers.",
+          "MACS-006: planned-remint — receipt_records_both_levels test is missing and no equivalent exists.",
+          "MACS-006: planned-remint — test comply::cb1653_red_on_drift and cb1653_green_after_fix exist, but ledger::receipt_records_both_levels is missing and no test covers claimed_level/achieved_level in the ledger logic, so the deliverable is materially partial."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/work_ledger_service.rs",
+        "line": null,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "MACS-016: completed — deliverable exists, tests like cli::handlers::work_ledger::tests::verify_recomputes_all_hashes_v1_and_v2 and verify_red_on_tampered_entry exist."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/work_verification_level.rs",
+        "line": null,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "MACS-004: completed — deliverable exists, test cli::handlers::work_verification_level::tests::parse_total_strict_prop and others exist on master covering the functionality."
+        ]
+      },
+      {
+        "file": "src/models/work_cot.rs",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          2,
+          3
+        ],
+        "claims": [
+          "MACS-007: completed — deliverable exists, tests like models::work_cot::tests::v2_roundtrip_prop and legacy_prose_migrates_annotated_l0 exist.",
+          "MACS-007: completed — tests models::work_cot::tests::v2_roundtrip_prop, legacy_prose_migrates_annotated_l0, discharge_ref_parses_cot_equation_efact exist. Deliverables are present.",
+          "MACS-007: planned-remint — status_renders_v2 test and ticket_validate_migrate.rs deliverable are missing.",
+          "MACS-008: completed — check_chain logic and all specified tests exist on master.",
+          "MACS-008: completed — deliverable exists, tests like models::work_cot::tests::undischarged_assumption_violates_1640 and cycle_detected_violates_1640 exist.",
+          "MACS-008: completed — tests cycle_detected_violates_1640, dag_property_prop, spec_section_3_1_passes, undischarged_assumption_violates_1640 exist. Deliverables are present.",
+          "MACS-009: completed — deliverable exists, tests like models::work_cot::tests::one_claim_per_step_verbatim_fields and cb1658_red_when_counts_mismatch exist.",
+          "MACS-009: completed — tests one_claim_per_step_verbatim_fields, optional_clause_codegen_gated_by_flag, cb1658_red_when_counts_mismatch exist. The named test one_obligation_per_step_in_ticket_yaml is missing by name, but every_aprender_gh_663_to_672_contract_derives_zero_empty_statements is the equivalent test.",
+          "MACS-009: planned-remint — one_obligation_per_step_in_ticket_yaml test is missing."
+        ]
+      },
+      {
+        "file": "src/quality/ladder_evidence.rs",
+        "line": null,
+        "lanes_agreeing": [
+          1,
+          3
+        ],
+        "claims": [
+          "MACS-005: completed — deliverable exists, tests like quality::ladder_evidence::tests::claim_l4_without_kani_blocks and claim_l5_with_sorry_blocks exist.",
+          "MACS-005: completed — tests quality::ladder_evidence::tests::claim_l4_without_kani_blocks, claim_l5_with_sorry_blocks, claim_l3_with_passing_falsification_closes, achieved_never_stored exist. Deliverables are present."
+        ]
+      },
+      {
+        "file": "src/roadmap/sync/",
+        "line": null,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "MACS-013: planned-remint — cb1655_red_when_ledger_newer_than_artifact test is missing."
+        ]
+      }
+    ],
+    "uncovered": [
+      {
+        "item": "optional: a single-test confirmation run (--exact)",
+        "token": "--exact",
+        "lanes_hit": 0
+      }
+    ],
+    "dissent": [],
+    "partial_reasons": [],
+    "coverage_source": "lanes"
+  },
+  "dedup": [
+    {
+      "file": ".claude/skills/",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "MACS-010: completed — effort is pinned across 6 skills and equivalent cb1650_green_on_pinned_skills test exists."
+      ]
+    },
+    {
+      "file": ".claude/skills/dogfood/SKILL.md",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        3
+      ],
+      "claims": [
+        "MACS-010: completed — deliverables exist, tests like cb1650_red_on_missing_effort and cb1650_green_on_pinned_skills exist.",
+        "MACS-010: completed — tests cb1650_red_on_missing_effort, cb1650_red_on_session_only_values exist. The test cb1650_green_on_repo_skills is named cb1650_green_on_pinned_skills. Skills have effort frontmatter pinned."
+      ]
+    },
+    {
+      "file": "ROADMAP.yaml",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "MACS-013: completed — deliverable exists, tests like roadmap::sync::tests::render_byte_stable_two_runs and cb1655_warn_when_roadmap_missing exist."
+      ]
+    },
+    {
+      "file": "contracts/workflows/release-sweep.ultracode.mjs",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "MACS-012: completed — deliverable exists, tests like cli::handlers::qa_mcp_sweep::tests::workflow_file_committed_and_lint_clean and workflow_refusal_path_emits_work_event exist.",
+        "MACS-012: completed — tests workflow_file_committed_and_lint_clean, workflow_reads_only_sweep_artifacts, workflow_stamps_pmat_agent_env_on_every_subagent, workflow_refusal_path_emits_work_event exist.",
+        "MACS-012: completed — workflow file and all workflow tests (as equivalent names) exist on master."
+      ]
+    },
+    {
+      "file": "docs/agent-models.md",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "MACS-015: completed — deliverable exists, tests like cli::handlers::comply_handlers::check_handlers::check_macs::tests_macs_artifacts::cb1657_red_on_denylist_hit exist.",
+        "MACS-015: completed — docs and equivalent cb1657_allowlist_only_in_registry_and_spec test exist on master.",
+        "MACS-015: completed — tests cb1657_red_on_denylist_hit, refactor_auto_references_registry exist. cb1657_allowlist_only_in_registry_and_spec is the equivalent for cb1657_allowlist_only_in_registry_history. docs/agent-models.md exists."
+      ]
+    },
+    {
+      "file": "docs/audits/dispositions-3.39.0.json",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "MACS-004: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-005: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-006: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-007: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-008: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-009: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-010: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-011: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-012: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-013: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-014: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-015: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "MACS-016: contradiction — The tree contradicts docs/audits/dispositions-3.39.0.json, which deferred it on 'no matching commits', because the code exists via squash merge #613.",
+        "Tree contradicts docs/audits/dispositions-3.39.0.json: MACS-004 through MACS-016 were deferred on 'no matching commits found' but are actually present on master because they were squash-merged in PR #613 (commit d629a105f).",
+        "dispositions-3.39.0.json contradiction: The dispositions file deferred MACS-004 to MACS-016 due to 'no matching commits found on master', but the codebase on master contains the full deliverables and passing tests for almost all items (except partial MACS-006 and MACS-013). This contradiction occurred because PR #613 was a squash merge, breaking the commit-message heuristic."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "MACS-010 macs-skill-effort-v1/skill_effort_pinned: duplicate-cancel — duplicate of MACS-010, nothing depends on this ID.",
+        "MACS-010 macs-skill-effort-v1/skill_effort_pinned: duplicate-cancel — it is a duplicate artefact (matches contract_yaml of canonical MACS-010) and nothing depends on it.",
+        "MACS-010 macs-skill-effort-v1/skill_effort_pinned: duplicate-cancel — it is a duplicate artefact mirroring the canonical MACS-010 contract yaml string, and no items depend on this id.",
+        "MACS-011 macs-sweep-v1/sweep_deterministic: duplicate-cancel — duplicate artifact (matches MACS-011 and MACS-012), nothing depends on this ID.",
+        "MACS-011 macs-sweep-v1/sweep_deterministic: duplicate-cancel — it is a duplicate artefact (matches contract_yaml of canonical MACS-011) and nothing depends on it.",
+        "MACS-011 macs-sweep-v1/sweep_deterministic: duplicate-cancel — it is a duplicate artefact mirroring the canonical MACS-011 contract yaml string, and no items depend on this id.",
+        "MACS-013 macs-artifacts-v1/roadmap_canonical: duplicate-cancel — duplicate of MACS-013, nothing depends on this ID.",
+        "MACS-013 macs-artifacts-v1/roadmap_canonical: duplicate-cancel — it is a duplicate artefact (matches contract_yaml of canonical MACS-013) and nothing depends on it.",
+        "MACS-013 macs-artifacts-v1/roadmap_canonical: duplicate-cancel — it is a duplicate artefact mirroring the canonical MACS-013 contract yaml string, and no items depend on this id.",
+        "MACS-014 macs-artifacts-v1/manifest_faithful: duplicate-cancel — duplicate of MACS-014, nothing depends on this ID.",
+        "MACS-014 macs-artifacts-v1/manifest_faithful: duplicate-cancel — it is a duplicate artefact (matches contract_yaml of canonical MACS-014) and nothing depends on it.",
+        "MACS-014 macs-artifacts-v1/manifest_faithful: duplicate-cancel — it is a duplicate artefact mirroring the canonical MACS-014 contract yaml string, and no items depend on this id."
+      ]
+    },
+    {
+      "file": "mcp.json",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "MACS-014: completed — mcp.json and all specified tests exist on master."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_macs_ladder.rs",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "MACS-005: completed — gate logic and all equivalent claim_l tests exist on master."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_macs_tests_artifacts.rs",
+      "line": null,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "MACS-013: planned-remint — test comply::cb1655_red_when_ledger_newer_than_artifact is completely missing, there is no equivalent test for the red condition (ROADMAP.yaml is older than the ledger), so the deliverable is materially partial."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/mcp_manifest.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        3
+      ],
+      "claims": [
+        "MACS-014: completed — deliverable exists, tests like cli::handlers::mcp_manifest::manifest::generated_equals_tool_defs and byte_equal_or_cb1656_red exist.",
+        "MACS-014: completed — tests manifest::generated_equals_tool_defs, manifest::byte_equal_or_cb1656_red, manifest::readme_tool_count_matches exist. mcp.json exists."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/qa_mcp_sweep.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "MACS-011: completed — deliverable exists, tests like cli::handlers::qa_mcp_sweep::tests::args_derived_from_every_tool_schema and two_runs_byte_identical_modulo_time exist.",
+        "MACS-011: completed — tests sweep::args_derived_from_every_tool_schema, framing_stdout_pure_jsonrpc_golden, concurrency8_zero_lock_errors_zero_scratch, two_runs_byte_identical_modulo_time, no_llm_symbols_linked exist.",
+        "MACS-011: planned-remint — fixtures/mcp-sweep/ golden directory is missing, making the deliverable materially partial."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/work_contract_core.rs",
+      "line": null,
+      "lanes_agreeing": [
+        2,
+        3
+      ],
+      "claims": [
+        "MACS-004: completed — VerificationLevel enum and parse_total_strict_prop test exist on master.",
+        "MACS-004: completed — tests ladder::parse_total_strict_prop, ladder::ord_matches_numeric, ladder::display_parse_id, migrate::legacy_strings_interactive_to_typed exist. Deliverables src/cli/handlers/work_contract_core.rs and ticket_validate_migrate.rs are present."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/work_ledger.rs",
+      "line": null,
+      "lanes_agreeing": [
+        2,
+        3
+      ],
+      "claims": [
+        "MACS-016: completed — tests verify_recomputes_all_hashes_v1_and_v2, verify_red_on_tampered_entry, report_groups_by_model_effort_harness, rule_r1_order_violation_detected exist.",
+        "MACS-016: completed — work_ledger verify and all specified tests exist on master."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/work_ledger_receipt.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "MACS-006: completed — deliverable exists, tests like cb1653_red_on_drift and cb1653_green_after_fix exist in comply handlers.",
+        "MACS-006: planned-remint — receipt_records_both_levels test is missing and no equivalent exists.",
+        "MACS-006: planned-remint — test comply::cb1653_red_on_drift and cb1653_green_after_fix exist, but ledger::receipt_records_both_levels is missing and no test covers claimed_level/achieved_level in the ledger logic, so the deliverable is materially partial."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/work_ledger_service.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "MACS-016: completed — deliverable exists, tests like cli::handlers::work_ledger::tests::verify_recomputes_all_hashes_v1_and_v2 and verify_red_on_tampered_entry exist."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/work_verification_level.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "MACS-004: completed — deliverable exists, test cli::handlers::work_verification_level::tests::parse_total_strict_prop and others exist on master covering the functionality."
+      ]
+    },
+    {
+      "file": "src/models/work_cot.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "MACS-007: completed — deliverable exists, tests like models::work_cot::tests::v2_roundtrip_prop and legacy_prose_migrates_annotated_l0 exist.",
+        "MACS-007: completed — tests models::work_cot::tests::v2_roundtrip_prop, legacy_prose_migrates_annotated_l0, discharge_ref_parses_cot_equation_efact exist. Deliverables are present.",
+        "MACS-007: planned-remint — status_renders_v2 test and ticket_validate_migrate.rs deliverable are missing.",
+        "MACS-008: completed — check_chain logic and all specified tests exist on master.",
+        "MACS-008: completed — deliverable exists, tests like models::work_cot::tests::undischarged_assumption_violates_1640 and cycle_detected_violates_1640 exist.",
+        "MACS-008: completed — tests cycle_detected_violates_1640, dag_property_prop, spec_section_3_1_passes, undischarged_assumption_violates_1640 exist. Deliverables are present.",
+        "MACS-009: completed — deliverable exists, tests like models::work_cot::tests::one_claim_per_step_verbatim_fields and cb1658_red_when_counts_mismatch exist.",
+        "MACS-009: completed — tests one_claim_per_step_verbatim_fields, optional_clause_codegen_gated_by_flag, cb1658_red_when_counts_mismatch exist. The named test one_obligation_per_step_in_ticket_yaml is missing by name, but every_aprender_gh_663_to_672_contract_derives_zero_empty_statements is the equivalent test.",
+        "MACS-009: planned-remint — one_obligation_per_step_in_ticket_yaml test is missing."
+      ]
+    },
+    {
+      "file": "src/quality/ladder_evidence.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1,
+        3
+      ],
+      "claims": [
+        "MACS-005: completed — deliverable exists, tests like quality::ladder_evidence::tests::claim_l4_without_kani_blocks and claim_l5_with_sorry_blocks exist.",
+        "MACS-005: completed — tests quality::ladder_evidence::tests::claim_l4_without_kani_blocks, claim_l5_with_sorry_blocks, claim_l3_with_passing_falsification_closes, achieved_never_stored exist. Deliverables are present."
+      ]
+    },
+    {
+      "file": "src/roadmap/sync/",
+      "line": null,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "MACS-013: planned-remint — cb1655_red_when_ledger_newer_than_artifact test is missing."
+      ]
+    }
+  ],
+  "uncovered": [
+    {
+      "item": "optional: a single-test confirmation run (--exact)",
+      "token": "--exact",
+      "lanes_hit": 0
+    }
+  ],
+  "partial_reasons": [],
+  "coverage_source": "lanes",
+  "litter": [
+    {
+      "from": "/tmp/check.sh",
+      "now": "/run/user/1000/paiml-implement/agy/PMAT-721/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/litter/check.sh"
+    },
+    {
+      "from": "/tmp/check_tests.sh",
+      "now": "/run/user/1000/paiml-implement/agy/PMAT-721/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/litter/check_tests.sh"
+    },
+    {
+      "from": "/tmp/check_tests2.sh",
+      "now": "/run/user/1000/paiml-implement/agy/PMAT-721/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/litter/check_tests2.sh"
+    },
+    {
+      "from": "/tmp/actual-tests.txt",
+      "now": "/run/user/1000/paiml-implement/agy/PMAT-721/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/litter/actual-tests.txt"
+    }
+  ],
+  "open_questions": [
+    "MODE SUBSTITUTED: the brief says `agy-lane.sh --mode quorum`, but that is not a mode the script accepts (dry-run: unknown mode 'quorum' (goal|teamwork|grillme|plan), exit 2). All 3 lanes ran as `--mode plan --schema quorum-schema.json`. plan is the only mode that passes the prompt byte-verbatim; grillme, goal and teamwork each wrap or prefix it. The prompt was 4,099 bytes (sha256 9186100609d33e19...), identical for all 3 lanes, with no lane-index suffix.",
+    "PASS IS NOT AGREEMENT: the verdict rule makes PASS mean only that every row was classified. 5 of 13 canonical rows split 2-1 (see consensus). The entries below are my citation checks on those 5 rows, not acceptance re-runs.",
+    "MACS-013 (2-1 planned-remint): the majority's reason does not hold. Lanes 2 and 3 say cb1655_red_when_ledger_newer_than_artifact has 'no equivalent test'. But roadmap::sync::tests::stale_when_ledger_newer_than_artifact (src/roadmap/sync.rs:340) is in the supplied lib-test list and asserts roadmap_is_stale == Some(true) once the ledger is newer. CB-1655's check_roadmap_fresh (check_macs_artifacts.rs:266) calls roadmap_is_stale directly. Still untested: the check's stale arm, which returns Warn/Severity::Warning where the spec says red. Lane 1's 'completed' cited cb1655_warn_when_roadmap_missing, which tests a different condition. A human should decide whether predicate coverage plus Warn counts as 'clearly equivalent'.",
+    "MACS-006 (2-1 planned-remint): my check supports the majority. No lib test exercises the receipt writer's level setter (work_ledger_receipt.rs:156); the list has no work_ledger_receipt tests at all. The CB-1653 tests hand-write claimed_level/achieved_level JSON via write_leveled_receipt (check_macs_tests_ladder.rs:38). Lane 1's 'completed' names no equivalent for the missing ledger::receipt_records_both_levels, which breaks the brief's adversarial rule.",
+    "MACS-009 (2-1 completed): lane 3's named equivalent is real. every_aprender_gh_663_to_672_contract_derives_zero_empty_statements (src/models/work_cot_tests.rs:520) asserts 'one obligation per step' ('- id:' count == steps) over render_derivation for 10 fixtures. However, dispositions-3.39.0.json records for MACS-009 that 'this ticket's own broader scope (obligations+claims registry) is unimplemented'. No lane read that reason or examined the block's 'C25/C29/C30 touchpoints'.",
+    "MACS-011 (2-1 completed): lane 2's fact is true. fixtures/mcp-sweep/ has 0 tracked files, and framing_stdout_pure_jsonrpc_golden (qa_mcp_sweep.rs:850) checks framing_stray_lines against inline strings, not a stored byte golden of sweep stdout. Lanes 1 and 3 never mention the goldens. A human should decide whether the inline test counts as 'clearly equivalent' to the spec's byte golden.",
+    "MACS-007 (2-1 completed): lane 2's remint rests on two claims. First, status_renders_v2 is absent; true, but it is the block's invariant test, not one of its 3 RED tests, and all 3 RED tests exist. Second, 'ticket_validate_migrate.rs deliverable missing'; false as a file claim, because the file exists at HEAD. It has 0 CoT lines: the CoT migration and legacy_prose_migrates_annotated_l0 live in src/models/work_cot.rs.",
+    "BRIEF PREMISE (dispositions): 12 of 13 rows were deferred on 'no matching commits found'. MACS-009 was not; its reason reads 'superseded in scope by PMAT-685/#1200's landed fix but this ticket's own broader scope (obligations+claims registry) is unimplemented'. All 3 lanes repeated the premise. Lane 2 filed 13 per-row 'contradiction' findings, including the 5 rows it classified planned-remint itself (006/007/009/011/013). That contradicts itself: a deferral agrees with a remint.",
+    "DUPLICATES: all 3 lanes say nothing depends on the 4 space-id rows. But root ROADMAP.yaml ('generated by `pmat roadmap sync`... Do not edit by hand', with a content_hash over sources) lists all 4 ids at lines 149/155/164/170, so changing those roadmap.yaml rows means regenerating ROADMAP.yaml. The gitignored .pmat-work store holds only MACS-000..016. The lanes' fixes differ: lane 1 deletes the row, lane 2 deletes or marks it cancelled, lane 3 cancels it; the rule's duplicate-cancel means cancel. Lane 2 also notes macs-sweep-v1/sweep_deterministic is exactly MACS-012's contract_yaml, and MACS-011's contract_yaml is a superset of it.",
+    "CITATIONS: 19 of 20 distinct cited paths exist at 3893ca5f2. Lane 2's src/roadmap/sync/ does not; the file is src/roadmap/sync.rs. No finding carries a line number. Every cited test name is in the list except the 6 the lanes themselves report missing, all confirmed absent by name. Lane 3's finding-1 'fix' field contains unedited reasoning ('Wait, rule says: ...').",
+    "NO TEST WAS RUN: the '--exact' coverage item is uncovered, and 'cargo' appears 0 times in any lane response. The 'measured' labels rest on test-list and file greps, which the lanes' /tmp helper scripts confirm. num_turns=1 is reported for every lane, but that field is not a tool-call count.",
+    "LANE LITTER: the lanes wrote 4 files into /tmp at 18:48, all now moved to out_dir/litter/: check.sh, check_tests.sh, check_tests2.sh, actual-tests.txt. The shared checkout is untouched: HEAD, porcelain, ignored list, .git/config sha256, refs and reflog were identical before and after. The untracked files already present (empty_test_project/, src/cli/test_clap_checks.rs, test_clap.rs, test_parsed, test_parsed.rs) predate the run."
+  ],
+  "partial": false
+}
