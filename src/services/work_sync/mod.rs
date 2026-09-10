@@ -33,6 +33,7 @@ use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 pub mod github;
+pub mod linkage;
 
 /// Issues carrying this label are outside the roadmap's universe (§5.1, §9).
 pub const NO_ROADMAP_LABEL: &str = "no-roadmap";
@@ -727,3 +728,6 @@ pub fn apply_to_roadmap(roadmap: &mut Roadmap, actions: &[Action], now: DateTime
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod linkage_tests;

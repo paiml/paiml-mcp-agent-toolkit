@@ -470,6 +470,16 @@ fn build_all_compliance_checks(
                 )
             }),
         ),
+        (
+            "ticket-release",
+            Box::new(move || {
+                build_ticket_release_checks(
+                    project_path,
+                    comply_config,
+                    overrides.github_snapshot.as_deref(),
+                )
+            }),
+        ),
     ];
     run_check_groups(groups)
 }
@@ -1558,6 +1568,9 @@ include!("check_traceability.rs");
 include!("check_builders_traceability.rs");
 include!("check_roadmap_coherence.rs");
 include!("check_builders_roadmap_coherence.rs");
+include!("check_ticket_linkage.rs");
+include!("check_release_binding.rs");
+include!("check_builders_ticket_release.rs");
 include!("check_individual_basic.rs");
 include!("check_individual_cb.rs");
 include!("check_individual_ci.rs");
@@ -1570,6 +1583,7 @@ include!("check_empty_project_guard_tests.rs");
 include!("check_readonly_and_exemption_tests.rs");
 include!("check_traceability_tests.rs");
 include!("check_roadmap_coherence_tests.rs");
+include!("check_ticket_release_tests.rs");
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
