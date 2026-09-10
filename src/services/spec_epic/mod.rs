@@ -99,10 +99,9 @@ impl FrontMatterError {
     }
 }
 
-/// Parse the YAML front-matter at the top of a spec. The block is the lines
-/// between a first line `---` and the next line `---`; keys other than
-/// `epic`, `status` and `vendors` are ignored (`pmat spec` reads its own);
-/// `epic:` absent reads as `epic: null`.
+/// `vendors:` as a flow list — `[]` or `[a, b]`, quotes stripped; a bare
+/// scalar is [`FrontMatterError::BadVendors`]. The block form (`- name`
+/// lines) is collected by [`ParseState::process_line`].
 fn parse_vendors(val: &str) -> Result<Vec<String>, FrontMatterError> {
     let val = val.trim();
     if val.is_empty() || val == "[]" {
@@ -122,6 +121,9 @@ fn parse_vendors(val: &str) -> Result<Vec<String>, FrontMatterError> {
     Err(FrontMatterError::BadVendors(val.to_string()))
 }
 
+/// `epic:` — `null`, `~`, empty or absent is `None`; plain digits are the
+/// issue number; anything else is [`FrontMatterError::BadEpic`] with the raw
+/// text (`#123` is a reference, not a number — §4.3 names an issue).
 fn parse_epic(val: Option<&str>) -> Result<Option<u64>, FrontMatterError> {
     match val {
         Some("null") | Some("~") | Some("") | None => Ok(None),
@@ -132,6 +134,9 @@ fn parse_epic(val: Option<&str>) -> Result<Option<u64>, FrontMatterError> {
     }
 }
 
+/// The three keys as the block is read line by line; `in_vendors_block` is
+/// true while a `vendors:` with no value on its line is collecting `- name`
+/// lines.
 struct ParseState {
     epic_val: Option<String>,
     status_val: Option<String>,
@@ -177,6 +182,12 @@ impl ParseState {
     }
 }
 
+/// Parse the YAML front-matter at the top of a spec. The block is the lines
+/// between a first line exactly `---` and the next line exactly `---` (CRLF
+/// tolerated); simple `key: value` lines, with `#` comments and blank lines
+/// skipped and keys other than `epic`, `status` and `vendors` ignored (`pmat
+/// spec` reads its own); `epic:` absent reads as `epic: null`. No YAML crate
+/// on purpose: three keys, no feature coupling.
 pub fn parse_front_matter(text: &str) -> Result<SpecFrontMatter, FrontMatterError> {
     if !text.starts_with("---\n") && !text.starts_with("---\r\n") {
         return Err(FrontMatterError::Absent);
@@ -265,6 +276,7 @@ impl SpecFinding {
     }
 
     /// A finding the rule could not measure (doctrine 2): the row that carries
+    /// it is `not_measured`, never merely red.
     pub fn is_unmeasured(&self) -> bool {
         matches!(self, Self::SubIssuesUnmeasured { .. })
     }

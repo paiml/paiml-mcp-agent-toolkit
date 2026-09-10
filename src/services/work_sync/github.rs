@@ -115,12 +115,9 @@ pub fn sub_issue_counts(repo: &str, numbers: &[u64]) -> Result<BTreeMap<u64, u64
     for chunk in numbers.chunks(100) {
         let mut query = format!("query {{ repository(owner: \"{owner}\", name: \"{name}\") {{ ");
         for &n in chunk {
-            use std::fmt::Write;
-            write!(
-                &mut query,
+            query.push_str(&format!(
                 "i{n}: issue(number: {n}) {{ subIssuesSummary {{ total }} }} "
-            )
-            .unwrap();
+            ));
         }
         query.push_str("} }");
 

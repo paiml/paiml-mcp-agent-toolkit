@@ -9,32 +9,29 @@ pub(crate) struct RoadmapInputs {
     pub taken_at: String,
 }
 
-/// Resolve the roadmap and the snapshot for the rule keyed `rule_key`
-/// (`cb-2112`, `cb-2114`, `cb-2115`), or the early verdict when they cannot
-/// be: `Err` carries the row, whose `name` the caller sets.
-///
-/// The early verdicts, each with its reason in the message (goal-mode.md
-/// doctrine 2, §3.3):
-/// - Skip — no roadmap was ever committed; or the roadmap declares
-///   `github_enabled: false`, no repository resolves and no item names an
-///   issue, so there is nothing for it to be coherent with. The same line
-///   CB-2113 draws: a structural absence.
-/// - Fail `not_measured:` — the roadmap was committed and is now gone
-///   (deleting a gate's input is not a way of passing it); the roadmap does
-///   not parse; the roadmap declares GitHub (or names issues) but no
-///   repository resolves; the snapshot
-///   cannot be read; or `.pmat.yaml` commits a `snapshot` path under the
-///   rule's key. A snapshot FILE may only arrive on the command line
-///   (`pmat comply check --github-snapshot <file>`): a path committed in the
-///   tree would let every CI run judge a fixture instead of GitHub — a bypass
-///   token, which §12 forbids. The three quorum lanes on PMAT-722 all found
-///   it; it is refused, never read.
+/// A GitHub snapshot resolved for one rule: the snapshot, where it came from
+/// and when it was taken (`taken_at` RFC 3339 to the second, for the messages).
 pub(crate) struct GithubInputs {
     pub snapshot: crate::services::work_sync::GithubSnapshot,
     pub source: crate::services::work_sync::github::SnapshotSource,
     pub taken_at: String,
 }
 
+/// Resolve the snapshot for the rule keyed `rule_key` — from the file named
+/// on the command line, else live from `repo_hint` (the roadmap's
+/// `github_repo`), else from the origin remote — or the early verdict when it
+/// cannot be: `Err` carries the row, whose `name` the caller sets. Shared by
+/// the roadmap-facing rules (through `roadmap_inputs`) and CB-2110, so every
+/// GitHub-side rule draws the same line (goal-mode.md doctrine 2, §3.3):
+/// - Skip — the caller declares GitHub OFF (`declares_github = false`), no
+///   repository resolves and nothing names an issue: a structural absence.
+/// - Fail `not_measured:` — `.pmat.yaml` commits a `snapshot` path under the
+///   rule's key (a snapshot FILE may only arrive on the command line, `pmat
+///   comply check --github-snapshot <file>`: a path committed in the tree
+///   would let every CI run judge a fixture instead of GitHub — a bypass
+///   token, which §12 forbids; the three quorum lanes on PMAT-722 all found
+///   it; it is refused, never read); GitHub is declared or something names an
+///   issue but no repository resolves; or the snapshot cannot be read.
 pub(crate) fn github_inputs(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
@@ -88,6 +85,18 @@ pub(crate) fn github_inputs(
     Ok(GithubInputs { snapshot, source, taken_at })
 }
 
+/// Resolve the roadmap and the snapshot for the rule keyed `rule_key`
+/// (`cb-2112`, `cb-2114`, `cb-2115`), or the early verdict when they cannot
+/// be: `Err` carries the row, whose `name` the caller sets.
+///
+/// The roadmap's own early verdicts, each with its reason in the message:
+/// - Skip — no roadmap was ever committed (the same line CB-2113 draws).
+/// - Fail `not_measured:` — the roadmap was committed and is now gone
+///   (deleting a gate's input is not a way of passing it), or it does not
+///   parse.
+///
+/// Then `github_inputs` resolves the snapshot with the roadmap's
+/// `github_repo`, `github_enabled` and the count of items naming an issue.
 pub(crate) fn roadmap_inputs(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
