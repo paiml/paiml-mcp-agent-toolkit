@@ -5260,3 +5260,24 @@ roadmap:
   - kind:code
   - orch:fable
   notes: 'orch-basis:M>=3 — measured footprint: services/work_sync (snapshot field + live sub-issue count), services/spec_epic (new - front-matter parser + predicate), comply check_handlers (the CB-2110 rule, the GitHub preamble split from the roadmap preamble, CB-148 retired, comply report lists the exempt specs), comply_cb_detect (detector deleted), scripts/spec-epic-control.sh, .github/workflows/ci.yml, docs/specifications (44 files), README, ledgers. Stacked on PMAT-724 (#1250). Step 6 is the largest human step in goal-mode.md §11 - the epics do not exist (three issues carry the epic label today, none a spec''s, all with zero sub-issues), so the rule lands with its control and every spec reads NO-EPIC until the operator creates the epics and fills epic:, and that flip is the follow-on ticket.'
+- id: PMAT-729
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 6 flip: create one epic per active spec, add the tickets'' issues as its sub-issues, fill epic: in the front-matter, classify the historical and superseded specs, then run --checks CB-2110 in the traceability job'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-10T13:31:43Z
+  updated: 2026-09-10T13:31:43Z
+  spec: null
+  acceptance_criteria:
+  - 'one open GitHub issue labelled epic exists per active spec under docs/specifications, its sub-issues are the issues of the tickets that implement that spec (GitHub''s native sub-issue relation, goal-mode.md §4.3 - never a label or a title convention), and the spec''s front-matter epic: names it'
+  - 'every spec that is no longer the current description of the system is marked status: historical (a record) or status: superseded (replaced - the replacement named in the body); the classification is the operator''s and is recorded in the PR, and pmat comply report lists every exempt spec by name'
+  - pmat comply check --checks CB-2110 --path . exits 0 on master with a live snapshot (no --github-snapshot), and scripts/spec-epic-control.sh arm 16 (THIS TREE) is retired or rewritten to the new measurement in the same PR - the arm exists so this flip cannot happen unnoticed
+  - 'the withheld step in .github/workflows/ci.yml becomes: run: ./target/debug/pmat comply check --checks CB-2110,CB-2112,CB-2113,CB-2114,CB-2115 (or whichever of CB-2112/CB-2114/CB-2115 have landed by then), and pmat comply ledger lists CB-2110 as CI-gated, not NEUTERED'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Filed by PMAT-728 (goal-mode.md §11 step 6, doctrine 6): the rule, its control and the front-matter landed there; the direct gate step is withheld because at 2026-09-10 the epics do not exist - all 44 specs read epic: null, and the three issues labelled epic (#1017, #1018, #1019) carry 0 sub-issues. Human work first: create the epics, add the sub-issues, decide historical/superseded, fill epic:. A gate red on arrival is a gate someone disables (§5.4). Depends on PMAT-728 merging. The 44-line NO-EPIC verdict on master is the measurement: pmat comply check --checks CB-2110 --path . --github-snapshot <snapshot from pmat work sync --write-snapshot>.'
