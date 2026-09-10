@@ -150,6 +150,7 @@ pub mod defect_detector; // Known Defects detection (Sprint: Known Defects v2.1)
 pub mod defect_report_service;
 // pub mod deep_context_orchestrator; // TRACKED: Fix AST node compatibility
 pub mod brick_score; // ComputeBrick Profiling Score (PMAT-446) - trueno/realizar ecosystem
+pub mod commit_traceability; // CB-2113: every PR commit carries a Pmat-Ticket trailer naming a live roadmap item
 pub mod debug_formatters;
 pub mod defect_probability;
 pub mod deterministic_mermaid_engine;

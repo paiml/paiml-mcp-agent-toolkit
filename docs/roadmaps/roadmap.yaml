@@ -5027,6 +5027,46 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-718
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 1 (P1): pmat comply check --checks <CSV> selects rules by id — a deselected rule reports Skip(not selected), never absent, and an unknown id is a hard error because that is how a typo''d gate becomes a green gate'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T12:38:41Z
+  updated: 2026-09-09T12:38:41Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-719
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 2: CB-2113 commit traceability — every non-merge commit in the PR range carries Pmat-Ticket naming a real, non-terminal roadmap item; scripts/traceability-control.sh proves the gate can fail; a traceability job wired into gate''s needs and result loop; merge_group trigger; the enforcement ledger attributes a --checks subset run to the rules it names instead of neutering the roster'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T14:40:27Z
+  updated: 2026-09-09T14:40:27Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat comply check --checks CB-2113 exits 1 on a fixture branch whose commit carries no Pmat-Ticket trailer, and 0 once the trailer names a planned roadmap item (scripts/traceability-control.sh, both arms observed)'
+  - 'a trailer naming an id absent from the roadmap, or a completed/cancelled item, is a Fail naming the commit and the id'
+  - 'on the default branch the rule reports not_applicable with the §8.4 reason and the measured v<latest>..HEAD count, never a silent pass'
+  - 'ci.yml has a traceability job in gate''s needs AND its result loop, with the control step before the check step, and merge_group in on:'
+  - 'pmat comply ledger writes CB-2113 as ENFORCED via the traceability job and names gate among the roots that reach it; a --checks subset invocation no longer neuters the rules it names'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2113 + builder + severity default), services/gate_effect (invocation/ledger per-rule attribution), .github/workflows/ci.yml + scripts/ (job, control, merge_group), docs/status ledgers. Spec: docs/specifications/goal-mode.md §7, §7.1, §8.4, §11 step 2. Depends on PMAT-718 (#1246): the job selects its rule with --checks.'
 - id: PMAT-720
   github_issue: null
   item_type: task

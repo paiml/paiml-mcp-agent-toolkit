@@ -9,6 +9,7 @@
 //! left blank. "We could not tell" and "nothing gates it" are both findings,
 //! and the ledger says which.
 
+use super::invocation::Invocation;
 use super::roster::{self, Rule};
 use super::GateEffectReport;
 use crate::models::comply_config::{CheckSeverity, ComplyConfig};
@@ -81,7 +82,6 @@ pub fn rows(
             roster::HANDLER_DIR
         ));
     }
-    let (status, carrier) = repo_status(report);
     Ok(rules
         .into_iter()
         .map(|rule| {
@@ -89,7 +89,7 @@ pub fn rows(
             // have its enforcement established at all. That is a finding in its
             // own right, so it is written UNREACHABLE rather than left blank.
             let (status, carrier) = if rule.has_citation() {
-                (status, carrier.clone())
+                rule_status(report, &rule.id)
             } else {
                 (
                     Status::Unreachable,
@@ -106,24 +106,45 @@ pub fn rows(
         .collect())
 }
 
-/// Every CB rule in this repository is run by the same command, so they share a
-/// status: whichever verdict `pmat comply check` itself gets. The moment an
-/// invocation restricts the roster (`--checks`, `--only`, …) it stops standing
-/// in for the whole set, which the engine already records as a suppression.
-fn repo_status(report: &GateEffectReport) -> (Status, String) {
-    if let Some(inv) = report.enforcing().next() {
+/// The status and carrier for one rule id. A rule is `ENFORCED` when some
+/// reachable invocation names it (or runs the whole roster) and nothing but a
+/// roster restriction suppresses that invocation; `NEUTERED` when an
+/// invocation exists that at least *names* the rule but cannot make its exit
+/// code reach the required check; `UNREACHABLE` when nothing in the closure
+/// names it at all. Per rule, never all-or-nothing for the whole roster — the
+/// point of PMAT-719 is that a `--checks CB-2100` run must attribute CB-2100
+/// as enforced while leaving every other rule exactly as unreached as before.
+fn rule_status(report: &GateEffectReport, id: &str) -> (Status, String) {
+    let reachable = report.graph.reachable_invocations();
+    let enforcing: Vec<&Invocation> = reachable
+        .iter()
+        .filter_map(|&i| report.invocations.get(i))
+        .filter(|inv| inv.enforces_rule(id))
+        .collect();
+    // A step that runs the rule directly is the carrier; a hop into a script
+    // is named only when nothing runs it directly. The traceability job's
+    // CONTROL step reaches the same `--checks CB-2113` line through
+    // scripts/traceability-control.sh — against a planted fixture, not this
+    // tree — and discovery order put that hop first, so the ledger credited
+    // the fixture run with enforcing the rule on the repository.
+    if let Some(inv) = enforcing
+        .iter()
+        .find(|inv| inv.via == "run")
+        .or_else(|| enforcing.first())
+    {
         return (
             Status::Enforced,
             format!(
-                "{}:{} step `{}` ({})",
+                "{}:{} step `{}` ({}{})",
                 inv.workflow.display(),
                 inv.job_id,
                 inv.step,
-                inv.via
+                inv.via,
+                checks_suffix(&inv.selected)
             ),
         );
     }
-    if let Some(inv) = report.neutered().next() {
+    if let Some(inv) = report.invocations.iter().find(|inv| inv.covers_rule(id)) {
         return (
             Status::Neutered,
             format!(
@@ -139,6 +160,18 @@ fn repo_status(report: &GateEffectReport) -> (Status, String) {
         Status::Unreachable,
         "no required status check reaches any invocation of the rule roster".to_string(),
     )
+}
+
+/// `"; selected by --checks CB-2100"` when the invocation's line named ids
+/// explicitly; `"; selected by --checks"` when it restricted the roster
+/// through some other spelling with attribution unknown; nothing for a
+/// full-roster invocation.
+fn checks_suffix(selected: &Option<Vec<String>>) -> String {
+    match selected {
+        Some(ids) if !ids.is_empty() => format!("; selected by --checks {}", ids.join(",")),
+        Some(_) => "; selected by --checks".to_string(),
+        None => String::new(),
+    }
 }
 
 /// Render the ledger.

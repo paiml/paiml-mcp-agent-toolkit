@@ -709,3 +709,293 @@ fn counter_an_unsuppressed_make_to_make_hop_is_still_enforcement() {
     let report = run(&dir, &["quality"]);
     assert!(report.passed(), "{}", why(&report));
 }
+
+// ── PMAT-719: a `--checks` subset run enforces the rules it names ───────────
+//
+// goal-mode.md §7.1 wires one rule into `gate` through
+// `pmat comply check --checks CB-2113`. Before this, an invocation naming a
+// subset was a suppression on the whole roster and nothing more, so the ledger
+// wrote the rule it DID carry as NEUTERED — a gate reported as theater while it
+// was failing builds. The roster-level verdict must not change: a subset run
+// still cannot stand in for every error-severity rule
+// (`a_rule_subsetting_invocation_cannot_stand_for_the_whole_roster`, above).
+
+const SUBSET_WORKFLOW: &str = r#"
+name: CI
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: one rule
+        run: pmat comply check --checks CB-2100
+"#;
+
+#[test]
+fn a_rule_subsetting_invocation_enforces_exactly_the_rules_it_names() {
+    let dir = fixture(&[(".github/workflows/ci.yml", SUBSET_WORKFLOW)]);
+    let report = run(&dir, &["quality"]);
+    assert!(
+        !report.passed(),
+        "a subset run never enforces the whole roster: {}",
+        why(&report)
+    );
+    assert!(
+        !report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+        "CB-2100 is named by the invocation and reachable from the root: {}",
+        why(&report)
+    );
+    assert!(
+        report.unreachable_rules.iter().any(|r| r == "CB-2102"),
+        "CB-2102 is not named, so nothing reaches it: {}",
+        why(&report)
+    );
+}
+
+#[test]
+fn a_subset_invocation_behind_continue_on_error_enforces_nothing() {
+    let wf = SUBSET_WORKFLOW.replace(
+        "      - name: one rule\n",
+        "      - name: one rule\n        continue-on-error: true\n",
+    );
+    let dir = fixture(&[(".github/workflows/ci.yml", &wf)]);
+    let report = run(&dir, &["quality"]);
+    assert!(
+        report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+        "naming a rule on a step whose failure cannot fail the job enforces it no more \
+         than not naming it: {}",
+        why(&report)
+    );
+}
+
+#[test]
+fn the_ledger_attributes_a_subset_invocation_to_the_rules_it_names() {
+    use super::ledger::{self, Status};
+    let dir = fixture(&[(".github/workflows/ci.yml", SUBSET_WORKFLOW)]);
+    let report = run(&dir, &["quality"]);
+    let rows = ledger::rows(
+        Path::new(env!("CARGO_MANIFEST_DIR")),
+        &report,
+        &ComplyConfig::default(),
+    )
+    .expect("roster is not empty");
+    let row = |id: &str| rows.iter().find(|r| r.rule.id == id).expect(id);
+    assert_eq!(
+        row("CB-2100").status,
+        Status::Enforced,
+        "{:?}",
+        row("CB-2100")
+    );
+    assert!(
+        row("CB-2100").carrier.contains("quality") && row("CB-2100").carrier.contains("CB-2100"),
+        "the carrier names the job and the selection: {}",
+        row("CB-2100").carrier
+    );
+    assert_ne!(
+        row("CB-2102").status,
+        Status::Enforced,
+        "{:?}",
+        row("CB-2102")
+    );
+}
+
+#[test]
+fn a_root_that_reaches_only_a_subset_invocation_carries_it() {
+    let dir = fixture(&[(".github/workflows/ci.yml", SUBSET_WORKFLOW)]);
+    let report = run(&dir, &["quality"]);
+    let effects = report.context_effects();
+    assert_eq!(effects.len(), 1);
+    assert!(
+        effects[0].1.carries(),
+        "a required check that reaches a rule invocation, however narrow, carries it: {:?}",
+        effects[0]
+    );
+}
+
+#[test]
+fn checks_ids_are_parsed_in_every_spelling_the_job_might_use() {
+    let cases: &[(&str, &[&str])] = &[
+        (
+            "pmat comply check --checks=CB-2100,CB-2102",
+            &["CB-2100", "CB-2102"],
+        ),
+        (
+            "pmat comply check --checks cb-2100 --checks CB-2102",
+            &["CB-2100", "CB-2102"],
+        ),
+        (
+            "pmat comply check --checks CB-2100 CB-2102 --strict",
+            &["CB-2100", "CB-2102"],
+        ),
+    ];
+    for (line, want) in cases {
+        let wf = format!(
+            "name: CI\njobs:\n  quality:\n    runs-on: ubuntu-latest\n    steps:\n      - run: {line}\n"
+        );
+        let dir = fixture(&[(".github/workflows/ci.yml", &wf)]);
+        let report = run(&dir, &["quality"]);
+        let inv = report.invocations.first().expect("one invocation");
+        let want: Vec<String> = want.iter().map(|s| (*s).to_string()).collect();
+        assert_eq!(inv.selected.as_deref(), Some(want.as_slice()), "{line}");
+        assert!(inv.enforces_rule("cb-2100"), "case-insensitive: {line}");
+        assert!(
+            !inv.is_enforcing(),
+            "a subset run never stands for the roster: {line}"
+        );
+    }
+}
+
+#[test]
+fn a_bare_checks_flag_restricts_the_roster_and_names_nothing() {
+    let wf = "name: CI\njobs:\n  quality:\n    runs-on: ubuntu-latest\n    steps:\n      - run: pmat comply check --checks\n";
+    let dir = fixture(&[(".github/workflows/ci.yml", wf)]);
+    let report = run(&dir, &["quality"]);
+    let inv = report.invocations.first().expect("one invocation");
+    assert_eq!(
+        inv.selected.as_deref(),
+        Some(&[][..]),
+        "restricted, attribution unknown"
+    );
+    assert!(!inv.enforces_rule("CB-2100"));
+    assert!(
+        report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+        "{}",
+        why(&report)
+    );
+}
+
+#[test]
+fn the_ledger_names_the_direct_step_over_a_control_hop_that_runs_the_same_rule() {
+    use super::ledger::{self, Status};
+    // The traceability job's shape: a control step that reaches the rule
+    // through a script (against a fixture), then the step that runs it on the
+    // tree. Both enforce CB-2100 here; the carrier must be the direct one.
+    let wf = r#"
+name: CI
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: control
+        run: bash scripts/control.sh
+      - name: the rule
+        run: pmat comply check --checks CB-2100
+"#;
+    let script = "#!/usr/bin/env bash\nset -uo pipefail\nrc=0\npmat comply check --checks CB-2100 --path \"$1\" || rc=$?\n[ \"$rc\" -eq 1 ] || exit 1\n";
+    let dir = fixture(&[
+        (".github/workflows/ci.yml", wf),
+        ("scripts/control.sh", script),
+    ]);
+    let report = run(&dir, &["quality"]);
+    assert!(
+        report.invocations.len() >= 2,
+        "both the hop and the direct step must be discovered: {}",
+        why(&report)
+    );
+    assert!(
+        report
+            .invocations
+            .iter()
+            .any(|i| i.via == "indirect" && !i.enforces_rule("CB-2100")),
+        "the control's fixture run is discovered and NOT credited: {}",
+        why(&report)
+    );
+    let rows = ledger::rows(
+        Path::new(env!("CARGO_MANIFEST_DIR")),
+        &report,
+        &ComplyConfig::default(),
+    )
+    .expect("roster is not empty");
+    let row = rows
+        .iter()
+        .find(|r| r.rule.id == "CB-2100")
+        .expect("CB-2100");
+    assert_eq!(row.status, Status::Enforced, "{row:?}");
+    assert!(
+        row.carrier.contains("step `the rule` (run") && !row.carrier.contains("control.sh"),
+        "the direct step is the carrier, not the fixture run inside the control: {}",
+        row.carrier
+    );
+}
+
+// ── PMAT-719 quorum findings (3/3 FAIL, adjudicated in the receipt) ─────────
+
+#[test]
+fn enforces_rule_needs_more_than_coverage() {
+    // Quorum lane 2: the mutant `enforces_rule == covers_rule` survived every
+    // fixture because the graph drops a suppressed leaf before the ledger ever
+    // asks. Pin the method itself.
+    use super::invocation::Invocation;
+    let inv = Invocation {
+        workflow: std::path::PathBuf::from(".github/workflows/ci.yml"),
+        job_id: "quality".into(),
+        step: "one rule".into(),
+        via: "run".into(),
+        suppressions: vec![
+            "step `one rule` carries continue-on-error, so its failure never fails the job".into(),
+        ],
+        selected: Some(vec!["CB-2100".into()]),
+    };
+    assert!(inv.covers_rule("CB-2100"));
+    assert!(
+        !inv.enforces_rule("CB-2100"),
+        "a covered rule behind a real suppression is not enforced"
+    );
+    assert!(!inv.is_enforcing());
+}
+
+#[test]
+fn an_invocation_that_points_comply_at_another_tree_is_not_evidence_for_this_one() {
+    // Quorum lanes 1-3: the control step runs the same `--checks CB-2113` line
+    // against a planted fixture (`--path "$repo"`). If the direct step were
+    // deleted, `rule_status`'s fallback would credit that fixture run with
+    // enforcing the rule on the repository. A `--path` that is not this tree
+    // is a suppression, so the hop is NEUTERED and the fallback cannot see it.
+    let wf = r#"
+name: CI
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: control only
+        run: bash scripts/control.sh
+"#;
+    let script = "#!/usr/bin/env bash\nset -uo pipefail\nrepo=$(mktemp -d)\nrc=0\npmat comply check --checks CB-2100 --path \"$repo\" || rc=$?\n[ \"$rc\" -eq 1 ] || exit 1\n";
+    let dir = fixture(&[
+        (".github/workflows/ci.yml", wf),
+        ("scripts/control.sh", script),
+    ]);
+    let report = run(&dir, &["quality"]);
+    assert_eq!(report.invocations.len(), 1, "{}", why(&report));
+    let inv = &report.invocations[0];
+    assert!(
+        inv.suppressions.iter().any(|s| s.contains("another tree")),
+        "the --path to a fixture must be named as the reason: {:?}",
+        inv.suppressions
+    );
+    assert!(
+        report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+        "a fixture run enforces nothing on this repository: {}",
+        why(&report)
+    );
+    // `--path .` and the workspace itself are this tree, not another one.
+    for here in [
+        "--path .",
+        "-p .",
+        "--path \"$GITHUB_WORKSPACE\"",
+        "--path=.",
+    ] {
+        let wf = format!(
+            "name: CI\njobs:\n  quality:\n    runs-on: ubuntu-latest\n    steps:\n      - run: pmat comply check --checks CB-2100 {here}\n"
+        );
+        let dir = fixture(&[(".github/workflows/ci.yml", &wf)]);
+        let report = run(&dir, &["quality"]);
+        assert!(
+            !report.unreachable_rules.iter().any(|r| r == "CB-2100"),
+            "{here} is this tree: {}",
+            why(&report)
+        );
+    }
+}

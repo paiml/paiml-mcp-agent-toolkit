@@ -22,12 +22,12 @@ Source: .github/required-status-checks.txt
 | `docs build (docs.rs environment)` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `pmat score` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `provable ladder` | **no** — this required check was read in full and gates nothing in the CB roster |
-| `gate` | **no** — this required check was read in full and gates nothing in the CB roster |
+| `gate` | yes |
 
 ## Summary
 
-- rules: 157
-- ENFORCED: 0
+- rules: 158
+- ENFORCED: 1
 - NEUTERED: 157
 - UNREACHABLE: 0
 
@@ -198,3 +198,4 @@ Things that could not be measured. Each one is a failure, not a blank.
 | CB-2100 | Comply Gate Effect | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs:38` |
 | CB-2101 | Threshold Coherence | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_threshold_coherence.rs:44` |
 | CB-2102 | Ratchet Baselines | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_metrics_ratchet.rs:40` |
+| CB-2113 | Commit Traceability | error | ENFORCED | .github/workflows/ci.yml:traceability step `the closed loop holds (CB-2113)` (run; selected by --checks CB-2113) | `src/cli/handlers/comply_handlers/check_handlers/check_traceability.rs:25` |
