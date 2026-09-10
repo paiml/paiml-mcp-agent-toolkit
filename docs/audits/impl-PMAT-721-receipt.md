@@ -105,7 +105,7 @@ The delegate's remaining open questions, answered. `ROADMAP.yaml` lists the four
 - **10 rows** `inprogress → completed`, `github_issue: 612` kept as the historical link.
 - **3 rows** `inprogress → planned`, `github_issue: 612 → null`, retitled to the remainder, with notes naming what shipped and what did not.
 - **4 rows** `inprogress → cancelled`, each with a note naming its canonical row.
-- **PMAT-721** → `completed`. Its second acceptance criterion is amended in place, with the reason. The first wording ("each of the 13 items either names a distinct open issue that is its own, or is cancelled with a note saying which item kept #612") assumed all 13 were open work, and 10 had shipped. The amended text keeps the part §5.4 cares about: resolved with evidence, never by the sync.
+- **PMAT-721** stays `inprogress` in this PR (see Post-PR); PMAT-1253's PR marks it completed. Its second acceptance criterion is amended in place, with the reason. The first wording ("each of the 13 items either names a distinct open issue that is its own, or is cancelled with a note saying which item kept #612") assumed all 13 were open work, and 10 had shipped. The amended text keeps the part §5.4 cares about: resolved with evidence, never by the sync.
 
 ## Verification table (claimed vs my rerun)
 
@@ -134,6 +134,7 @@ The sync judges the resolution: 1 COLLISION before, 0 after, same binary, live s
 | 3 | `snapshot.sh check` exit 4 | me (false alarm) | the source reads the file the triage writes; against master's blob it is stable |
 | 4 | master's first CI run after #1251 went red: `ci / test` cancelled 4 minutes into "Run tests" on self-hosted `intel-clean-room-5`, then `ci / gate` and `gate` failed | the self-hosted runner, not the merged tree | it was the only CI run in its concurrency group, the reusable workflow sets no concurrency, and the job timeout is 60 minutes, so the cancel came from the runner side. `gh run rerun 34503117385 --failed` requested; its result is recorded on the PR |
 | 5 | the 3.39.0 disposition audit deferred 12 shipped tickets | the audit's method (`docs/audits/dispositions-3.39.0.json`, `7ccb614dd`, a document rather than a pmat command) | it matched ticket ids against commit messages, and #613 was a squash |
+| 6 | CB-2113 refused both commits on the PR's first CI run | me | the commits named PMAT-721 and the same commits marked it completed; the rule reads the roadmap at the PR's head, so a ticket can only be completed by a later ticket's PR |
 
 ## Estimates
 
@@ -154,6 +155,12 @@ The sync judges the resolution: 1 COLLISION before, 0 after, same binary, live s
 | `pv` contract **NotRun** (`contracts_dir=contracts`); a triage binds no contract | — |
 | `merged green on required_check` pending | the PR's checks |
 | the untracked scratch files in the checkout (`empty_test_project/`, `test_clap.rs`, `test_parsed*`, `src/cli/test_clap_checks.rs`) predate this session's tickets and were not touched | their owner |
+
+## Post-PR
+
+The PR's first CI run (traceability job, run 34508467866) went red at the direct CB-2113 step: `2 of 2 non-merge commit(s) in 3893ca5..HEAD … break traceability: … Pmat-Ticket PMAT-721 is completed — work belongs to an open item`. The rule is right. The trailer names the ticket the commits work on, and the same commits marked that ticket completed. PMAT-721 now stays `inprogress` in this PR, and PMAT-1253's PR, whose commits name PMAT-1253, marks it completed.
+
+The refusal's remedy line still reads "add `Pmat-Ticket: <id>` as a git trailer" when the trailer is present and names a terminal item. That wording is wrong for this case; it belongs with PMAT-727 (the commit-msg hook and CB-2113 agreeing on one predicate).
 
 ## Machine-readable
 

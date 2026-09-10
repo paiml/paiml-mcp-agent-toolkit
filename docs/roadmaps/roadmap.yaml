@@ -5094,11 +5094,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'goal-mode step 3, the human half: resolve the 13 MACS items that all name #612 — which of MACS-004..MACS-016 is really #612 is a judgement, so this is a supervised one-off migration, never a sync auto-fix (goal-mode.md §5.4); the rest get their own issues or are cancelled'
-  status: completed
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-09T21:22:08Z
-  updated: 2026-09-10T17:16:59Z
+  updated: 2026-09-10T18:14:33Z
   spec: null
   acceptance_criteria:
   - 'pmat work sync --check-only reports 0 COLLISION on master (today: 1 — #612 named by MACS-004, MACS-005, MACS-006, MACS-007, MACS-008, MACS-009, MACS-010, MACS-011, MACS-012, MACS-013, MACS-014, MACS-015, MACS-016)'
@@ -5110,7 +5110,7 @@ roadmap:
   labels:
   - kind:triage
   - human
-  notes: 'Filed by PMAT-720 (goal-mode step 3) from the first real run of pmat work sync --check-only on this repository (107 findings: 1 COLLISION, 52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT). Which of the thirteen is really #612 is a judgement, and a sync that guesses is how the thirteen arose — a human owns this ticket. CB-2115 (step 4) cannot land green until it is done. Resolved on 2026-09-10 by the orchestrator under the operator''s delegation, quoted verbatim: "pmat-implement docs/specifications/goal-mode.md autonomously (you merge, triage tickets, pull requests, and label, tag, close/open)". 10 of the 13 shipped in #613 and are completed; MACS-006, MACS-007 and MACS-013 are re-planned for their unshipped remainder; the four rows whose id carries a space are cancelled as duplicates. Evidence: docs/audits/triage-PMAT-721-ledger.json, docs/audits/quorum-PMAT-721.json, docs/audits/impl-PMAT-721-receipt.md.'
+  notes: 'Filed by PMAT-720 (goal-mode step 3) from the first real run of pmat work sync --check-only on this repository (107 findings: 1 COLLISION, 52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT). Which of the thirteen is really #612 is a judgement, and a sync that guesses is how the thirteen arose — a human owns this ticket. CB-2115 (step 4) cannot land green until it is done. Resolved on 2026-09-10 by the orchestrator under the operator''s delegation, quoted verbatim: "pmat-implement docs/specifications/goal-mode.md autonomously (you merge, triage tickets, pull requests, and label, tag, close/open)". 10 of the 13 shipped in #613 and are completed; MACS-006, MACS-007 and MACS-013 are re-planned for their unshipped remainder; the four rows whose id carries a space are cancelled as duplicates. Evidence: docs/audits/triage-PMAT-721-ledger.json, docs/audits/quorum-PMAT-721.json, docs/audits/impl-PMAT-721-receipt.md. It stays inprogress in its own PR: CB-2113 refuses a Pmat-Ticket trailer naming a terminal item, and #1252''s first CI run caught this ticket marking itself completed. PMAT-1253''s PR marks it completed.'
 - id: PMAT-722
   github_issue: null
   item_type: task
