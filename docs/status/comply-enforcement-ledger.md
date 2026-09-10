@@ -26,9 +26,9 @@ Source: .github/required-status-checks.txt
 
 ## Summary
 
-- rules: 159
+- rules: 161
 - ENFORCED: 1
-- NEUTERED: 158
+- NEUTERED: 160
 - UNREACHABLE: 0
 
 ## Holes
@@ -198,5 +198,7 @@ Things that could not be measured. Each one is a failure, not a blank.
 | CB-2100 | Comply Gate Effect | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs:38` |
 | CB-2101 | Threshold Coherence | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_threshold_coherence.rs:44` |
 | CB-2102 | Ratchet Baselines | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_metrics_ratchet.rs:40` |
+| CB-2112 | Ticket Linkage | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_ticket_linkage.rs:17` |
 | CB-2113 | Commit Traceability | error | ENFORCED | .github/workflows/ci.yml:traceability step `the closed loop holds (CB-2113)` (run; selected by --checks CB-2113) | `src/cli/handlers/comply_handlers/check_handlers/check_traceability.rs:25` |
-| CB-2115 | Roadmap Coherence | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs:9` |
+| CB-2114 | Release Binding | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_release_binding.rs:18` |
+| CB-2115 | Roadmap Coherence | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs:14` |
