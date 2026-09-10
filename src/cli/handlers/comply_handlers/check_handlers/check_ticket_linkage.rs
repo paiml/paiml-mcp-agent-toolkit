@@ -25,17 +25,13 @@ pub(crate) fn check_ticket_linkage(
     };
     let report = ticket_linkage(&inputs.roadmap, &inputs.snapshot);
     let n = report.findings.len();
-    let count = |class: &str| report.findings.iter().filter(|f| f.class() == class).count();
     let pass = format!(
         "{} open item(s) (status not completed or cancelled, goal-mode.md §4.2) each name an open issue numbered as the item's numeric tail: linked {}; snapshot: {} taken {}",
         report.open_items, report.linked, inputs.source, inputs.taken_at
     );
     let fail = format!(
-        "{n} finding(s) — NO-ISSUE {}, ISSUE-CLOSED {}, ISSUE-ABSENT {}, TAIL-MISMATCH {}: {}; an item is minted from its issue by `pmat work add --github-issue N` (#1240), which is why the number must be the tail — an item minted before that whose issue is not its tail needs re-minting under its issue (no sync renames an id); `pmat work sync --direction yaml-to-github` opens an issue for an unlinked item but cannot make the number match; snapshot: {} taken {}",
-        count("NO-ISSUE"),
-        count("ISSUE-CLOSED"),
-        count("ISSUE-ABSENT"),
-        count("TAIL-MISMATCH"),
+        "{n} finding(s) — {}: {}; an item is minted from its issue by `pmat work add --github-issue N` (#1240), which is why the number must be the tail — an item minted before that whose issue is not its tail needs re-minting under its issue (no sync renames an id); `pmat work sync --direction yaml-to-github` opens an issue for an unlinked item but cannot make the number match; snapshot: {} taken {}",
+        class_counts(report.findings.iter().map(LinkFinding::class)),
         first_eight(report.findings.iter().map(LinkFinding::render), n),
         inputs.source,
         inputs.taken_at

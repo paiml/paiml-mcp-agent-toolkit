@@ -5197,3 +5197,23 @@ roadmap:
   labels:
   - kind:code
   notes: Filed by PMAT-724 (goal-mode step 5). The rules, their control (scripts/ticket-release-control.sh, 17 arms, runs in the traceability job) and their ledger rows exist; only the direct invocation is withheld (§5.4, doctrine 6). The exact step is a comment in .github/workflows/ci.yml beside the withheld CB-2115 step.
+- id: PMAT-726
+  github_issue: null
+  item_type: task
+  title: 'lib tests that call std::env::set_current_dir race the rest of the cargo test --lib process: 16 files under src/ (52 sites; hooks_command_handlers_tests 12, defect_report_service_tests 10, deep_context_config_tests 10, scaffold/tests 7) chdir the whole test binary into tempdirs, and a tempdir dropped while another test spawns cargo or resolves a relative path fails that test with ENOENT — observed on PMAT-724 as quality_proxy_property_tests::test_advisory_mode_reports_the_verdict_and_returns_the_content (''Failed to determine current directory'', ''cargo is not on PATH''), green 3 of 3 in isolation'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T11:15:16Z
+  updated: 2026-09-10T11:15:16Z
+  spec: null
+  acceptance_criteria:
+  - 'git grep -c set_current_dir -- src/*.rs reports 0 sites in test code: every test that needs a working directory passes it to the command (Command::current_dir) or the API under test instead of moving the process, or the ones that cannot are serialised behind one lock and restore the previous directory on every exit path (RAII guard), and say why'
+  - pmat verify --format json is ok:true three runs in a row on the same TMPDIR with no test filtered, quoted in the receipt
+  - 'the failing signature is pinned by a test: a tempdir dropped while another test resolves a relative path does not fail the other test'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Filed by PMAT-724 (goal-mode step 5) from its second pmat verify run (21448 passed, 1 failed, 154 ignored); the third run and the isolation reruns are quoted in docs/audits/impl-PMAT-724-receipt.md. Related traps on record - the lib suite fails a different set per TMPDIR, and vacuous tests hide env races.

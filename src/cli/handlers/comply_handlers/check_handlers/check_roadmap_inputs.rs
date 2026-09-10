@@ -126,3 +126,20 @@ fn first_eight(renderings: impl Iterator<Item = String>, total: usize) -> String
     let more = if total > 8 { format!(" (+{} more)", total - 8) } else { String::new() };
     format!("{}{more}", shown.join("; "))
 }
+
+/// `CLASS n` for every finding class with a non-zero count, in first-seen
+/// order — never a class with 0. A header that enumerated every class made
+/// `message.contains("PREFIXED")` true on ANY failure, and mutant M5 on
+/// PMAT-724 (the capital-V arm dropped) survived a test and a control arm
+/// that were both reading that header.
+fn class_counts<'a>(classes: impl Iterator<Item = &'a str>) -> String {
+    let mut order: Vec<&str> = Vec::new();
+    let mut counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for c in classes {
+        if !counts.contains_key(c) {
+            order.push(c);
+        }
+        *counts.entry(c).or_insert(0) += 1;
+    }
+    order.iter().map(|c| format!("{c} {}", counts.get(c).copied().unwrap_or(0))).collect::<Vec<_>>().join(", ")
+}

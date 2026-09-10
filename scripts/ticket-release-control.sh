@@ -23,7 +23,7 @@
 #   arm 8  RED   no milestone titled 3.41.0                                  exit 1, Fail NO-MILESTONE 3.41.0
 #   arm 9  RED   milestone 3.41.0 is closed — a shipped release              exit 1, Fail MILESTONE-CLOSED 3.41.0
 #   arm 10 RED   #1 is on milestone 3.42.0                                   exit 1, Fail NOT-ON-MILESTONE 3.42.0
-#   arm 11 RED   release "v3.41.0", then "V3.41.0" (§4.1: the bare string)  exit 1, Fail PREFIXED, both cases
+#   arm 11 RED   release "v3.41.0", then "V3.41.0" (§4.1: the bare string)  exit 1, Fail "PREFIXED PMAT-001:" both cases, NO-MILESTONE not named
 #   shared preamble (both rules, one run)
 #   arm 12 N/M   the snapshot named on the command line does not exist       exit 1, both Fail, messages start not_measured:
 #   arm 13 SKIP  no roadmap, never committed                                 exit 0, both Skip, name docs/roadmaps/roadmap.yaml
@@ -245,7 +245,8 @@ for pre in v V; do
   MILESTONES=3.41.0 write_snapshot "$(issue 1 'planned work' open '[]' 3.41.0)"
   run_gate
   [ "$RC" -eq 1 ] || fail_arm 11 "a ${pre}-prefixed release must exit 1 (§4.1: the key is the bare string)"
-  expect 11 CB-2114 Fail "PREFIXED" "${pre}3.41.0"
+  expect 11 CB-2114 Fail "PREFIXED PMAT-001:" "${pre}3.41.0"
+  case "$MESSAGE" in *"NO-MILESTONE"*) fail_arm 11 "the prefix clause must fire first, and a class that did not fire must not be named (a header naming every class let mutant M5 survive)";; esac
 done
 echo "ticket-release-control: arm 11 RED  — release v3.41.0 and V3.41.0 refused (exit 1, exit 1)"
 

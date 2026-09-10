@@ -346,7 +346,8 @@ mod tests_ticket_release {
             snapshot(dir.path(), vec![issue(1, "planned work", "open", &[], Some("3.41.0"))], &["3.41.0"]);
             let c = release(dir.path());
             assert_eq!(c.status, CheckStatus::Fail, "{prefixed}: {}", c.message);
-            assert!(c.message.contains("PREFIXED") && c.message.contains(prefixed), "{}", c.message);
+            assert!(c.message.contains("PREFIXED PMAT-001:") && c.message.contains(prefixed), "{}", c.message);
+            assert!(!c.message.contains("NO-MILESTONE"), "the prefix clause fires first, and a class with count 0 is not named: {}", c.message);
         }
     }
 
@@ -361,7 +362,7 @@ mod tests_ticket_release {
         snapshot_ms(dir.path(), vec![issue(1, "planned work", "open", &[], Some("3.40.0"))], &[("3.40.0", "closed")]);
         let c = release(dir.path());
         assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
-        assert!(c.message.contains("MILESTONE-CLOSED") && c.message.contains("3.40.0"), "{}", c.message);
+        assert!(c.message.contains("MILESTONE-CLOSED PMAT-001:") && c.message.contains("3.40.0"), "{}", c.message);
     }
 
     /// RR-RELEASE: valid iff a milestone with that EXACT title exists.
@@ -422,6 +423,26 @@ mod tests_ticket_release {
         let c = release(dir.path());
         assert_eq!(c.status, CheckStatus::Pass, "{}", c.message);
         assert!(c.message.contains("0 open item"), "{}", c.message);
+    }
+
+    /// Mutant M5 on PMAT-724 survived because the Fail header named every
+    /// class with its count, so `contains("PREFIXED")` was true on any
+    /// failure. Mutant: a header that enumerates classes with count 0.
+    #[test]
+    fn the_fail_header_names_only_the_classes_that_fired() {
+        let items = format!(
+            "{}{}",
+            item("PMAT-001", "no release", "planned", Some(1), None),
+            item("PMAT-002", "prefixed", "planned", Some(2), Some("v3.41.0"))
+        );
+        let dir = project(Some("paiml/fixture"), &items);
+        snapshot(dir.path(), vec![issue(1, "no release", "open", &[], None), issue(2, "prefixed", "open", &[], None)], &["3.41.0"]);
+        let c = release(dir.path());
+        assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
+        assert!(c.message.starts_with("2 finding(s) — NO-RELEASE 1, PREFIXED 1:"), "{}", c.message);
+        for absent in ["NO-MILESTONE", "MILESTONE-CLOSED", "NOT-ON-MILESTONE", "NO-ISSUE"] {
+            assert!(!c.message.contains(absent), "{absent} did not fire and must not be named: {}", c.message);
+        }
     }
 
     // ───────────────────────── registration ─────────────────────────

@@ -43,11 +43,8 @@ pub(crate) fn check_roadmap_coherence(
         report.open_items, report.open_issues, report.matched, report.tolerated, grace_minutes, inputs.source, inputs.taken_at
     );
     let fail = format!(
-        "{n} finding(s) — COLLISION {}, ORPHAN-ROADMAP {}, ORPHAN-GITHUB {}, DRIFT {}: {}; `pmat work sync --check-only` prints the full report — the orphans are fixed by `pmat work sync --direction yaml-to-github|github-to-yaml`, a COLLISION by a human, never by the sync (goal-mode.md §5.4); snapshot: {} taken {}",
-        report.count("COLLISION"),
-        report.count("ORPHAN-ROADMAP"),
-        report.count("ORPHAN-GITHUB"),
-        report.count("DRIFT"),
+        "{n} finding(s) — {}: {}; `pmat work sync --check-only` prints the full report — the orphans are fixed by `pmat work sync --direction yaml-to-github|github-to-yaml`, a COLLISION by a human, never by the sync (goal-mode.md §5.4); snapshot: {} taken {}",
+        class_counts(report.findings.iter().map(crate::services::work_sync::Finding::class)),
         first_eight(report.findings.iter().map(crate::services::work_sync::Finding::render), n),
         inputs.source,
         inputs.taken_at
