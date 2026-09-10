@@ -122,7 +122,9 @@ pub(crate) fn select_checks(checks: &mut [ComplianceCheck], selected: &[String])
     for c in checks.iter_mut() {
         if !selected.iter().any(|id| id == check_id(&c.name)) {
             c.status = CheckStatus::Skip;
-            c.message = "not selected (--checks)".to_string();
+            if !c.message.starts_with("not selected") {
+                c.message = "not selected (--checks)".to_string();
+            }
         }
     }
     Ok(())
@@ -727,11 +729,35 @@ fn available_memory_bytes() -> Option<u64> {
 /// compliance run is now observable (you can see which group is slow) and
 /// wall-time drops from Σ(group) to max(group). Groups are independent and
 /// each reads its own inputs, so concurrency is safe.
-fn run_check_groups(groups: Vec<CheckGroup>, _selected: &[String]) -> Vec<ComplianceCheck> {
+fn run_check_groups(groups: Vec<CheckGroup>, selected: &[String]) -> Vec<ComplianceCheck> {
     use rayon::prelude::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    let total = groups.len();
+    // PMAT-1296: a group that holds no selected rule is not run. Its rules are
+    // still reported, as Skip, so a deselected rule is never absent (PMAT-718).
+    let holds_a_selected_rule = |ids: &[&str]| {
+        selected.is_empty()
+            || ids
+                .iter()
+                .any(|id| selected.iter().any(|s| s.eq_ignore_ascii_case(id)))
+    };
+    let mut skipped: Vec<(usize, Vec<ComplianceCheck>)> = Vec::new();
+    let mut to_run: Vec<(usize, CheckGroup)> = Vec::new();
+    for (idx, group) in groups.into_iter().enumerate() {
+        if holds_a_selected_rule(group.1) {
+            to_run.push((idx, group));
+        } else {
+            skipped.push((idx, not_run_rows(group.0, group.1)));
+        }
+    }
+    if !skipped.is_empty() {
+        crate::status_eprintln!(
+            "  comply: {} group(s) hold no selected rule and are not run (--checks)",
+            skipped.len()
+        );
+    }
+
+    let total = to_run.len();
     let jobs = comply_concurrency(total);
     crate::status_eprintln!(
         "  comply: {total} group(s), {jobs} at a time (~{} GB peak; \
@@ -751,9 +777,8 @@ fn run_check_groups(groups: Vec<CheckGroup>, _selected: &[String]) -> Vec<Compli
     // failing the run: an unbounded compliance check is bad, refusing to check
     // at all is worse.
     let work = || {
-        let mut grouped: Vec<(usize, Vec<ComplianceCheck>)> = groups
+        let mut grouped: Vec<(usize, Vec<ComplianceCheck>)> = to_run
             .into_par_iter()
-            .enumerate()
             .map(|(idx, (name, _ids, run))| {
                 let start = std::time::Instant::now();
                 let checks = run();
@@ -788,7 +813,11 @@ fn run_check_groups(groups: Vec<CheckGroup>, _selected: &[String]) -> Vec<Compli
     };
 
     // Declaration order is restored inside `work` so report output is
-    // deterministic regardless of completion order.
+    // deterministic regardless of completion order; the groups that were not run
+    // take their declared place too.
+    let mut grouped = grouped;
+    grouped.extend(skipped);
+    grouped.sort_by_key(|(idx, _)| *idx);
     let all: Vec<ComplianceCheck> = grouped.into_iter().flat_map(|(_, c)| c).collect();
 
     let fails = all.iter().filter(|c| c.status == CheckStatus::Fail).count();
@@ -798,6 +827,26 @@ fn run_check_groups(groups: Vec<CheckGroup>, _selected: &[String]) -> Vec<Compli
         overall.elapsed().as_secs_f64()
     );
     all
+}
+
+/// One Skip row per rule of a group that was not run under `--checks` (PMAT-1296):
+/// the rule is reported, never absent, and the row says why it has no verdict.
+fn not_run_rows(group: &str, ids: &[&str]) -> Vec<ComplianceCheck> {
+    ids.iter()
+        .map(|id| ComplianceCheck {
+            name: format!(
+                "{}: not run",
+                if id.starts_with("cb-") {
+                    id.to_ascii_uppercase()
+                } else {
+                    (*id).to_string()
+                }
+            ),
+            status: CheckStatus::Skip,
+            message: format!("not selected (--checks); its group `{group}` was not run"),
+            severity: Severity::Info,
+        })
+        .collect()
 }
 
 fn build_compliance_report(
