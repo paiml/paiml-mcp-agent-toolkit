@@ -5217,3 +5217,23 @@ roadmap:
   labels:
   - kind:code
   notes: Filed by PMAT-724 (goal-mode step 5) from its second pmat verify run (21448 passed, 1 failed, 154 ignored); the third run and the isolation reruns are quoted in docs/audits/impl-PMAT-724-receipt.md. Related traps on record - the lib suite fails a different set per TMPDIR, and vacuous tests hide env races.
+- id: PMAT-727
+  github_issue: null
+  item_type: task
+  title: 'the commit-msg hook accepts a PMAT-NNN mention anywhere in the message while CB-2113 accepts only a Pmat-Ticket trailer in the last paragraph: 11 commits passed the hook and were refused in CI on #1250 (goal-mode doctrine 5, §9)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T12:13:39Z
+  updated: 2026-09-10T12:13:39Z
+  spec: null
+  acceptance_criteria:
+  - 'one predicate, two callers: the commit-msg hook that pmat hooks install writes refuses (strict) or warns (non-strict) exactly when CB-2113 would refuse the same message - the fallback that accepts a ticket or issue reference outside the trailer block is removed, or CB-2113 is widened to accept it, and the receipt names which and why'
+  - a lib test feeds generate_commit_msg_hook a message whose Pmat-Ticket line sits in the paragraph above a Co-Authored-By block and asserts the hook's verdict equals the rule's verdict on that message (both refuse, or both accept)
+  - the hook text and pmat hooks install --help say that git reads trailers from the last paragraph only, and the commit-msg advice line shows the trailer and the co-author line in one paragraph
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Filed by PMAT-724 from PR #1250''s first CI run - the traceability job went red at the direct CB-2113 step (11 of 59 non-merge commits, no Pmat-Ticket trailer) although every commit had passed the commit-msg hook. Root cause, measured - the messages carried Pmat-Ticket in a paragraph above the Co-Authored-By block, git parses only the last paragraph as trailers, and the hook''s PATTERN fallback (PMAT-[0-9]+|#[0-9]+) matched the subject. The checkout''s hook was STRICT=0 as well - pmat hooks install --strict does write STRICT=1 (measured in a throwaway repo), but strict changes nothing when the fallback matches first. Branch fix was a message-only rewrite (12 commits, trees byte-identical), recorded in docs/audits/impl-PMAT-724-receipt.md under Post-PR. Hook template - src/cli/handlers/hooks_command_handlers/hooks_command.rs generate_commit_msg_hook; rule - src/services/commit_traceability/mod.rs.'

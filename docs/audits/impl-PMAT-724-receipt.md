@@ -9,6 +9,7 @@
 | branch | `PMAT-724-cb2112-cb2114-ticket-release-rules`: from `PMAT-722-cb2115-roadmap-coherence` @ `638f9023c` (#1249) — **stacked on #1246 → #1247, #1248 and #1249**; the two rules need `CheckOverrides`/`--github-snapshot`, `SnapshotSource` and the `release:` field |
 | HEAD in | `638f9023c` (#1249's head) |
 | HEAD out | `3039b77ba` (the last code change: the header fix after mutant M5 survived; PMAT-726 filed in the same commit); the ledger and receipt commits follow |
+| HEAD out (after the trailer rewrite) | `3d47ccaae` — the same tree as `3039b77ba`; the branch head is `8e20b43ba` (was `cd844e152`); see *Post-PR* below |
 | PR | opened from this branch after the receipt commit — `gh pr list --head PMAT-724-cb2112-cb2114-ticket-release-rules` |
 | `discover.json` sha256 | `c88f18c8b2aa5b5005fe5ccb372a4f50da3640ecc3877034be00bc230a6ebb96` |
 | `gate_cmd` | `cargo test --workspace` — **`gate_cmd_fallback=true`**; `pmat verify` is the gate this repository's CLAUDE.md names and is what was run |
@@ -220,5 +221,37 @@ Finding: `global=k` and `k_measured` are the transcript-wide count, which includ
 ## Verdict
 
 **DONE** for the scope doctrine 6 allows today — every acceptance criterion re-run green by the orchestrator: CB-2112 fails on the §7 falsifier (null one `github_issue`), on a closed or absent issue and on a number that is not the tail, and passes a bijection numbered by tail (arms 1–5, mutants M1/M3); CB-2114 fails on the §7 falsifier (remove one `release:`), on a `v`/`V` prefix, on a missing or closed milestone and on an issue elsewhere, and passes a bound item (arms 6–11, mutants M4/M5); both Skip on a structural absence and fail `not_measured` on a missing input, a deleted input or a committed snapshot path (arms 12–17, mutant M2), and say the scope is §4.2's; the predicates are pure functions over the shared snapshot with the mutant each test dies under named on it; the control runs in the traceability job before the CB-2113 step; the ledger says NEUTERED and the reason is here and beside the withheld CB-2115 step. The gate step itself is **PMAT-725**, blocked on PMAT-723's fixers and on a human — not this row's to force.
+
+## Post-PR: CB-2113 refused the branch — a message-only rewrite (2026-09-10)
+
+PR #1250's first CI run was red on two checks. **PR Title Check**: the title carried no conventional-commit type; fixed with `gh pr edit` (`feat(goal-mode step 5): …`). **traceability**, at the direct CB-2113 step (run `34473702676`, job `102859321374`): every control arm passed, then
+
+> `✗ CB-2113: Commit Traceability: 11 of 59 non-merge commit(s) in 20fda3c..HEAD (base origin/master) break traceability: cd844e1 … no Pmat-Ticket trailer; 2530ce8 … (+3 more)`
+
+The rule this branch's own step 2 delivered refused this branch. Five whys, each measured:
+
+1. **Why red?** `git log --format='%(trailers:key=Pmat-Ticket,valueonly)'` printed nothing for 11 of the 12 branch commits (the agy lane's `4bb0edfa2` was the one that passed).
+2. **Why nothing?** git reads trailers from the **last paragraph only**. The 11 messages put `Pmat-Ticket: PMAT-724` in a paragraph of its own, followed by a blank line and the `Co-Authored-By:` (+ `Claude-Session:`) block — so the trailer block was that last block, and the ticket line was body text.
+3. **Why did the commit-msg hook pass them?** Its fallback accepts any `PMAT-[0-9]+|#[0-9]+` outside comment lines, and every subject reads `<type>(PMAT-724): …`. The checkout's hook also carried `STRICT=0`: `pmat hooks install --strict` does write `STRICT=1` (measured in a throwaway repo this turn), so the strict install was not run on this branch — but strict would not have helped, because the fallback matched first.
+4. **Why does the hook accept what CB-2113 refuses?** Two predicates for one fact (goal-mode doctrine 5; §9 says CI is the backstop for the *uninstalled* hook, not a stricter one). Filed as **PMAT-727**.
+5. **Why did #1249 pass the same step?** Its commits carried the trailer as the last paragraph; the `Co-Authored-By` block after it is new to this session's harness instructions.
+
+**Fix:** `git filter-branch --msg-filter` over `638f9023c..HEAD` — drop the stray line, squeeze blanks, `git interpret-trailers --trailer 'Pmat-Ticket: PMAT-724'` — so the trailer joins the final paragraph. Twelve commits rewritten; **every tree hash is unchanged** (12 of 12 equal, checked pairwise against the saved chain), so every claim above about a commit's content holds for its replacement:
+
+| before | after | | before | after |
+|---|---|---|---|---|
+| `2bd358aca` | `8f1bff62e` | | `3cdb8a41c` | `7198091ea` |
+| `fe1f24106` | `0a563116e` | | `92eafba2d` (quorum `judged_head`) | `3c5ca4dd4` |
+| `4bb0edfa2` | `1952a3c34` | | `099a22313` | `773cd0688` |
+| `75425f62f` | `a6e3fad76` | | `ed3549c1e` | `f2f73579b` |
+| `176487401` | `cf35191d7` | | `3039b77ba` (HEAD out) | `3d47ccaae` |
+| | | | `2530ce8a8` (verify green) | `d2abc7b9e` |
+| | | | `cd844e152` (receipt) | `8e20b43ba` |
+
+`docs/audits/quorum-PMAT-724.json` keeps `judged_head: 92eafba2d` — it records what the lanes read, and that tree is `3c5ca4dd4`'s.
+
+**Re-run of the predicate, locally:** the rule's exact `git log` format (`commit_traceability/mod.rs:275`) over `20fda3ca6..HEAD` (merge-base with `origin/master`): 59 non-merge commits, **59 trailered** — PMAT-722 ×18, PMAT-720 ×15, PMAT-724 ×12, PMAT-719 ×11, PMAT-718 ×3 — every one `planned` in the roadmap. The CI re-run on the pushed head is the gate's own verdict and is reported in the closing message, not claimed here.
+
+**The shape that works** (recorded so it is not repeated): `Pmat-Ticket:` and `Co-Authored-By:` in the **same** final paragraph, no blank line between them.
 
 IMPL-PMAT-724-RECEIPT-END
