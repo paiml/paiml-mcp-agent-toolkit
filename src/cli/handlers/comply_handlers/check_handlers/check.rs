@@ -55,6 +55,7 @@ pub(crate) async fn handle_check(
 ) -> Result<()> {
     let overrides = CheckOverrides {
         github_snapshot: github_snapshot.map(Path::to_path_buf),
+        selected: selected.to_vec(),
     };
     let mut report = compute_compliance_report_with(project_path, &overrides)?;
     // PMAT-718: before `failures_only`, so a deselected rule cannot be retained
@@ -177,6 +178,9 @@ fn guard_analysable_project(project_path: &Path) -> Result<()> {
 #[derive(Debug, Default, Clone)]
 pub(crate) struct CheckOverrides {
     pub github_snapshot: Option<std::path::PathBuf>,
+    /// PMAT-1296: the `--checks` selection, so a group that holds no selected
+    /// rule is never run. Empty means no `--checks`: every group runs.
+    pub selected: Vec<String>,
 }
 
 pub(crate) fn compute_compliance_report(project_path: &Path) -> Result<ComplianceReport> {
@@ -372,9 +376,104 @@ fn apply_exit_policy(report: &ComplianceReport, strict: bool) -> Result<()> {
     Ok(())
 }
 
-/// A named compliance-check group and the thunk that produces its checks.
+// Generated from the builders' `"cb-NNNN"` literals (PMAT-1296); the drift test
+// `every_group_declares_every_rule_it_emits` keeps these equal to what each group emits.
+const GROUP_IDS_FOUNDATION: &[&str] = &[
+    "cb-030",
+    "cb-031",
+    "cb-060",
+    "cb-120",
+    "cb-125",
+    "cb-040",
+    "cb-300",
+    "cb-301",
+    "cb-302",
+    "cb-303",
+    "cb-304",
+    "cb-081",
+    "cb-081-f",
+    "cb-400",
+    "cb-533",
+    "cb-148",
+    "cb-130",
+    "cb-140",
+    "cb-141",
+    "cb-142",
+    "cb-200",
+    // Foundation rules with no CB id: `--checks` selects them by their whole name
+    // (`check_id`), so the group must run when one of these names is selected.
+    "Version Currency",
+    "Config Files",
+    "Git Hooks",
+    "Quality Thresholds",
+    "Deprecated Features",
+    "Cargo.lock Present",
+    "MSRV Defined",
+    "CI Configured",
+    "PAIML Deps Workspace",
+    "Sovereign Stack Patterns",
+];
+const GROUP_IDS_LANGUAGE: &[&str] = &[
+    "cb-500", "cb-600", "cb-700", "cb-800", "cb-900", "cb-950", "cb-1000", "cb-1050",
+];
+const GROUP_IDS_CUSTOM_SCORE: &[&str] = &["cb-1100"];
+const GROUP_IDS_PROVABLE_CONTRACTS: &[&str] = &[
+    "cb-1200", "cb-1201", "cb-1202", "cb-1203", "cb-1204", "cb-1205", "cb-1206", "cb-1207",
+    "cb-1208", "cb-1209", "cb-1210", "cb-1211", "cb-1214",
+];
+const GROUP_IDS_CONTRACT_SURFACES: &[&str] = &[
+    "cb-1300", "cb-1302", "cb-1303", "cb-1304", "cb-1305", "cb-1306", "cb-1307", "cb-1308",
+];
+const GROUP_IDS_AGENT_CONTRACTS: &[&str] = &[
+    "cb-1400", "cb-1401", "cb-1402", "cb-1403", "cb-1404", "cb-1405", "cb-1406", "cb-1407",
+    "cb-1408", "cb-1409", "cb-1410",
+];
+const GROUP_IDS_COMMIT_ENFORCEMENT: &[&str] = &[
+    "cb-1320", "cb-1321", "cb-1322", "cb-1323", "cb-1324", "cb-1325", "cb-1326", "cb-1331",
+    "cb-1332", "cb-1333", "cb-1334", "cb-1335", "cb-1336", "cb-1337", "cb-1330", "cb-1338",
+    "cb-1339", "cb-1340", "cb-1341", "cb-1343", "cb-1350", "cb-1351", "cb-1352", "cb-1353",
+    "cb-1354", "cb-1342",
+];
+const GROUP_IDS_BINDING_SCOPE: &[&str] = &[
+    "cb-1600", "cb-1601", "cb-1602", "cb-1603", "cb-1604", "cb-1605", "cb-1606", "cb-1607",
+    "cb-1608", "cb-1609",
+];
+const GROUP_IDS_WORK_LADDER: &[&str] = &[
+    "cb-1610", "cb-1611", "cb-1612", "cb-1613", "cb-1614", "cb-1615", "cb-1616", "cb-1617",
+    "cb-1618", "cb-1619",
+];
+const GROUP_IDS_FALSIFICATION: &[&str] = &[
+    "cb-1620", "cb-1621", "cb-1622", "cb-1623", "cb-1624", "cb-1625", "cb-1626", "cb-1627",
+    "cb-1628", "cb-1629",
+];
+const GROUP_IDS_CODEGEN: &[&str] = &[
+    "cb-1630", "cb-1631", "cb-1632", "cb-1633", "cb-1634", "cb-1635", "cb-1636", "cb-1637",
+    "cb-1638", "cb-1639",
+];
+const GROUP_IDS_COT_PROOF: &[&str] = &[
+    "cb-1640", "cb-1641", "cb-1642", "cb-1643", "cb-1644", "cb-1645", "cb-1646", "cb-1647",
+    "cb-1648", "cb-1649",
+];
+const GROUP_IDS_MACS: &[&str] = &[
+    "cb-1650", "cb-1656", "cb-1657", "cb-1655", "cb-1651", "cb-1653", "cb-1654", "cb-1658",
+    "cb-1663", "cb-1664", "cb-1665", "cb-1666",
+];
+const GROUP_IDS_EVIDENCE: &[&str] = &["cb-1700", "cb-1701", "cb-1702", "cb-1703"];
+const GROUP_IDS_GATE_EFFECT: &[&str] = &["cb-2100"];
+const GROUP_IDS_RATCHET: &[&str] = &["cb-2102"];
+const GROUP_IDS_COHERENCE: &[&str] = &["cb-2101"];
+const GROUP_IDS_TRACEABILITY: &[&str] = &["cb-2113"];
+const GROUP_IDS_ROADMAP_COHERENCE: &[&str] = &["cb-2115"];
+const GROUP_IDS_TICKET_RELEASE: &[&str] = &["cb-2112", "cb-2114"];
+const GROUP_IDS_SPEC_EPICS: &[&str] = &["cb-2110"];
+// 162 distinct ids across 21 groups; declared in more than one group: none
+
+/// A named compliance-check group, the rule ids it can emit, and the thunk that
+/// produces its checks. The ids are known before the group runs (PMAT-1296), so
+/// `--checks` can leave a group that holds no selected rule unrun.
 type CheckGroup<'a> = (
     &'static str,
+    &'static [&'static str],
     Box<dyn Fn() -> Vec<ComplianceCheck> + Send + Sync + 'a>,
 );
 
@@ -384,84 +483,116 @@ fn build_all_compliance_checks(
     project_version: &str,
     overrides: &CheckOverrides,
 ) -> Vec<ComplianceCheck> {
+    run_check_groups(
+        compliance_check_groups(project_path, comply_config, project_version, overrides),
+        &overrides.selected,
+    )
+}
+
+/// Every compliance group with the rule ids it can emit (PMAT-1296).
+fn compliance_check_groups<'a>(
+    project_path: &'a Path,
+    comply_config: &'a crate::models::comply_config::ComplyConfig,
+    project_version: &'a str,
+    overrides: &'a CheckOverrides,
+) -> Vec<CheckGroup<'a>> {
     // Data-driven group list: each entry is independent and side-effect-free
     // w.r.t. the others, which lets `run_check_groups` both report live
     // per-group progress AND run the groups concurrently.
     let groups: Vec<CheckGroup> = vec![
         (
             "foundation",
+            GROUP_IDS_FOUNDATION,
             Box::new(move || build_foundation_checks(project_path, comply_config, project_version)),
         ),
         (
             "language",
+            GROUP_IDS_LANGUAGE,
             Box::new(move || build_language_best_practices(project_path, comply_config)),
         ),
         (
             "custom-score",
+            GROUP_IDS_CUSTOM_SCORE,
             Box::new(move || build_custom_score_checks(project_path, comply_config)),
         ),
         (
             "provable-contracts",
+            GROUP_IDS_PROVABLE_CONTRACTS,
             Box::new(move || build_provable_contract_checks(project_path, comply_config)),
         ),
         (
             "contract-surfaces",
+            GROUP_IDS_CONTRACT_SURFACES,
             Box::new(move || build_contract_surface_checks(project_path, comply_config)),
         ),
         (
             "agent-contracts",
+            GROUP_IDS_AGENT_CONTRACTS,
             Box::new(move || build_agent_contract_checks(project_path, comply_config)),
         ),
         (
             "commit-enforcement",
+            GROUP_IDS_COMMIT_ENFORCEMENT,
             Box::new(move || build_commit_enforcement_checks(project_path, comply_config)),
         ),
         (
             "binding-scope",
+            GROUP_IDS_BINDING_SCOPE,
             Box::new(move || build_binding_scope_checks(project_path, comply_config)),
         ),
         (
             "work-ladder",
+            GROUP_IDS_WORK_LADDER,
             Box::new(move || build_work_ladder_checks(project_path, comply_config)),
         ),
         (
             "falsification",
+            GROUP_IDS_FALSIFICATION,
             Box::new(move || build_falsification_unification_checks(project_path, comply_config)),
         ),
         (
             "codegen",
+            GROUP_IDS_CODEGEN,
             Box::new(move || build_codegen_checks(project_path, comply_config)),
         ),
         (
             "cot-proof",
+            GROUP_IDS_COT_PROOF,
             Box::new(move || build_cot_proof_checks(project_path, comply_config)),
         ),
         (
             "macs",
+            GROUP_IDS_MACS,
             Box::new(move || build_macs_checks(project_path, comply_config)),
         ),
         (
             "evidence",
+            GROUP_IDS_EVIDENCE,
             Box::new(move || build_evidence_gate_checks(project_path, comply_config)),
         ),
         (
             "gate-effect",
+            GROUP_IDS_GATE_EFFECT,
             Box::new(move || build_gate_effect_checks(project_path, comply_config)),
         ),
         (
             "ratchet",
+            GROUP_IDS_RATCHET,
             Box::new(move || build_ratchet_checks(project_path, comply_config)),
         ),
         (
             "coherence",
+            GROUP_IDS_COHERENCE,
             Box::new(move || build_coherence_checks(project_path, comply_config)),
         ),
         (
             "traceability",
+            GROUP_IDS_TRACEABILITY,
             Box::new(move || build_traceability_checks(project_path, comply_config)),
         ),
         (
             "roadmap-coherence",
+            GROUP_IDS_ROADMAP_COHERENCE,
             Box::new(move || {
                 build_roadmap_coherence_checks(
                     project_path,
@@ -472,6 +603,7 @@ fn build_all_compliance_checks(
         ),
         (
             "ticket-release",
+            GROUP_IDS_TICKET_RELEASE,
             Box::new(move || {
                 build_ticket_release_checks(
                     project_path,
@@ -482,6 +614,7 @@ fn build_all_compliance_checks(
         ),
         (
             "spec-epics",
+            GROUP_IDS_SPEC_EPICS,
             Box::new(move || {
                 build_spec_epic_checks(
                     project_path,
@@ -491,7 +624,7 @@ fn build_all_compliance_checks(
             }),
         ),
     ];
-    run_check_groups(groups)
+    groups
 }
 
 /// Peak RSS one concurrent comply worker costs, in bytes.
@@ -594,7 +727,7 @@ fn available_memory_bytes() -> Option<u64> {
 /// compliance run is now observable (you can see which group is slow) and
 /// wall-time drops from Σ(group) to max(group). Groups are independent and
 /// each reads its own inputs, so concurrency is safe.
-fn run_check_groups(groups: Vec<CheckGroup>) -> Vec<ComplianceCheck> {
+fn run_check_groups(groups: Vec<CheckGroup>, _selected: &[String]) -> Vec<ComplianceCheck> {
     use rayon::prelude::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -621,7 +754,7 @@ fn run_check_groups(groups: Vec<CheckGroup>) -> Vec<ComplianceCheck> {
         let mut grouped: Vec<(usize, Vec<ComplianceCheck>)> = groups
             .into_par_iter()
             .enumerate()
-            .map(|(idx, (name, run))| {
+            .map(|(idx, (name, _ids, run))| {
                 let start = std::time::Instant::now();
                 let checks = run();
                 let fails = checks
@@ -1599,6 +1732,7 @@ include!("check_spec_inputs.rs");
 include!("check_spec_epics.rs");
 include!("check_builders_spec_epics.rs");
 include!("check_spec_epic_tests.rs");
+include!("check_select_groups_tests.rs");
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

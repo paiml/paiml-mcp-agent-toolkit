@@ -472,7 +472,7 @@ mod tests_ticket_release {
     fn the_github_snapshot_override_reaches_both_rules_through_the_group_list() {
         let dir = bound();
         let config: ComplyConfig = PmatYamlConfig::load(dir.path()).expect(".pmat.yaml parses").comply;
-        let overrides = CheckOverrides { github_snapshot: Some(dir.path().join("snapshot.json")) };
+        let overrides = CheckOverrides { github_snapshot: Some(dir.path().join("snapshot.json")), ..Default::default() };
         let checks = build_all_compliance_checks(dir.path(), &config, "0.0.0", &overrides);
         for name in [LINKAGE, RELEASE] {
             let rows: Vec<&ComplianceCheck> = checks.iter().filter(|c| c.name == name).collect();
