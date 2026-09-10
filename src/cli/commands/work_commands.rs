@@ -26,6 +26,16 @@ pub enum SyncDirection {
     Full,
 }
 
+/// Output format for `pmat work sync`
+#[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq, Default)]
+pub enum SyncOutputFormat {
+    /// Human-readable report
+    #[default]
+    Text,
+    /// Machine-readable report (the findings carry the spec's class names)
+    Json,
+}
+
 /// Work priority for CLI (maps to roadmap::Priority)
 #[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq, Default)]
 pub enum WorkPriority {

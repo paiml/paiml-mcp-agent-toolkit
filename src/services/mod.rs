@@ -150,6 +150,7 @@ pub mod defect_detector; // Known Defects detection (Sprint: Known Defects v2.1)
 pub mod defect_report_service;
 // pub mod deep_context_orchestrator; // TRACKED: Fix AST node compatibility
 pub mod brick_score; // ComputeBrick Profiling Score (PMAT-446) - trueno/realizar ecosystem
+pub mod commit_traceability; // CB-2113: every PR commit carries a Pmat-Ticket trailer naming a live roadmap item
 pub mod debug_formatters;
 pub mod defect_probability;
 pub mod deterministic_mermaid_engine;
@@ -315,7 +316,9 @@ pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow
 pub mod roadmap_id_authority; // PMAT-680: one id authority per repository, not per checkout
 pub mod roadmap_service;
 pub mod roadmap_text; // PMAT-676: the one raw-text id scanner and roadmap validator
-pub mod telemetry_service; // Issue #75 Phase 7: CHANGELOG automation // PMAT-470: RAG-powered agent context with semantic code search
+pub mod spec_epic; // PMAT-728: goal-mode §4.3 — the spec ↔ epic edge (CB-2110), judged from front-matter and a snapshot
+pub mod telemetry_service;
+pub mod work_sync; // PMAT-720: goal-mode §5 — the roadmap/GitHub bijection, judged from a snapshot // Issue #75 Phase 7: CHANGELOG automation // PMAT-470: RAG-powered agent context with semantic code search
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

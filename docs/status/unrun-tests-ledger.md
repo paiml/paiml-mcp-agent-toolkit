@@ -14,9 +14,9 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-23855 of 27084 lib tests are executed; 3229 are compiled by no leg.
+24029 of 27253 lib tests are executed; 3224 are compiled by no leg.
 
-## `<unsatisfiable>` — 2200 test(s)
+## `<unsatisfiable>` — 2195 test(s)
 
 NOT a clean bill of health — the strongest finding in this ledger, and it grew from 18 to 2199 without a single test changing. #1023 moved the `broken-tests` quarantine from a Cargo FEATURE to the cfg flag `pmat_broken_tests`, and that reclassified 2181 tests out of five `broken-tests,*` buckets into this one. The old buckets read as 'enable this feature and they run', which was never true — the bodies do not compile. `<unsatisfiable>` says what is actually the case. Of the original 18: 14 are `#[cfg(all(feature = "F", not(feature = "F")))]` — a `test_..._without_feature` body written to cover the feature-OFF branch, placed inside a module already gated ON that feature — and 4 are `#[cfg(any())]`, which is `false` by definition. No `--features` invocation can compile any of these; only moving the bodies out of the gated module can. The 2181 quarantined ones need their tests repaired or deleted, which is #1023's remaining work.
 
@@ -1098,9 +1098,6 @@ crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_
 crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_status_all_items
 crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_status_nonexistent_item
 crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_status_specific_item
-crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_sync_full
-crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_sync_github_to_yaml
-crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_sync_yaml_to_github
 crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_validate_missing_roadmap
 crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_validate_valid_roadmap
 crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_validate_verbose
@@ -1146,8 +1143,6 @@ crate::cli::handlers::work_handlers::tests::coverage_tests::spec_template_tests:
 crate::cli::handlers::work_handlers::tests::coverage_tests::spec_template_tests::test_create_specification_template_creates_directories
 crate::cli::handlers::work_handlers::tests::coverage_tests::spec_template_tests::test_spec_template_contains_all_sections
 crate::cli::handlers::work_handlers::tests::coverage_tests::spec_template_tests::test_spec_template_with_yaml_only_ticket
-crate::cli::handlers::work_handlers::tests::coverage_tests::sync_direction_tests::test_sync_all_directions
-crate::cli::handlers::work_handlers::tests::coverage_tests::sync_direction_tests::test_sync_yaml_to_github_shows_yaml_only_items
 crate::cli::handlers::work_handlers::tests::coverage_tests::validate_edge_cases::test_validate_github_disabled
 crate::cli::handlers::work_handlers::tests::coverage_tests::validate_edge_cases::test_validate_with_fix_flag_shows_tip
 crate::cli::handlers::work_handlers::tests::coverage_tests::validate_edge_cases::test_validate_yaml_with_location_in_error

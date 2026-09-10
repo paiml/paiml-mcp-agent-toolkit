@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # pv-compatibility: pmat ↔ provable-contracts Integration Spec
 
 **Status:** Gap analysis complete, implementation roadmap defined.

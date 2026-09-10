@@ -1,0 +1,616 @@
+{
+  "ticket": "PMAT-728",
+  "lane": "quorum",
+  "mode": "plan",
+  "width": 3,
+  "agy_version": "1.2.0",
+  "fanout": {
+    "children": 3,
+    "method": "lane-files",
+    "label": "consensus"
+  },
+  "conversations": [
+    "761243bb-d22a-4b6b-85ba-b991e61389f1",
+    "d77f9c1a-6c6d-436e-b1de-18fc7306657e",
+    "b4c40606-b0ef-4ee9-905c-11ce206b1bea"
+  ],
+  "child_conversations": 3,
+  "results": [
+    {
+      "lane": 1,
+      "exit": null,
+      "agy_status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 583,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-728/39a15c63-fab3-4148-8cb7-0cb012369b35/ph4/lane-1.json",
+      "verdict": "FAIL",
+      "summary": "Review of CB-2110 (Spec Epics). The rule correctly enforces goal-mode.md doctrines, the preamble was extracted safely, and the control script rigorously asserts the conditions. However, the GraphQL integration has critical flaws: it queries sub-issues for closed epics (burning rate limits), and it bails on the first GraphQL error or null alias, crashing the entire compliance check if a single epic is missing or rate-limited. Additionally, the custom YAML parser fails on inline comments, breaking the provided example in goal-mode.md.",
+      "findings": [
+        {
+          "claim": "parse_sub_issue_counts crashes the entire batch on a single missing issue or rate limit",
+          "file": "src/services/work_sync/github.rs",
+          "fix": "Do not bail on the first error in the errors array or on a null alias. Instead, ignore or log it, so that the successfully fetched epics are still returned and the missing ones are correctly handled by bind_epics as EpicAbsent or SubIssuesUnmeasured. Implement retry/backoff for RATE_LIMITED errors.",
+          "grounding": "measured",
+          "line": 143
+        },
+        {
+          "claim": "epic_numbers() includes closed epics, unnecessarily burning GraphQL rate limits",
+          "file": "src/services/work_sync/github.rs",
+          "fix": "Filter `epic_numbers()` to only return open issues (`i.state == IssueState::Open`), since `bind_epics` emits EpicClosed before checking sub_issues.",
+          "grounding": "measured",
+          "line": 346
+        },
+        {
+          "claim": "The inline comment in the goal-mode.md example header breaks parse_epic",
+          "file": "src/services/spec_epic/mod.rs",
+          "fix": "Update `parse_front_matter` to strip inline `#` comments before processing the value, or remove the inline comments from the example in goal-mode.md.",
+          "grounding": "asserted",
+          "line": 165
+        },
+        {
+          "claim": "Surviving mutant in parse_front_matter: redundant in_vendors_block reset",
+          "file": "src/services/spec_epic/mod.rs",
+          "fix": "Remove the `if !line.starts_with(' ') { self.in_vendors_block = false; }` block since it is unconditionally superseded by the `else` branch at the end of the loop.",
+          "grounding": "asserted",
+          "line": 161
+        },
+        {
+          "claim": "Surviving mutant in parse_sub_issue_counts: errors array parsing is untested",
+          "file": "src/services/work_sync/github.rs",
+          "fix": "Mutating `errors.first()` to `errors.get(1)` survives because the only test for the errors array falls through to a null pointer exception on `data.repository`. Add a test with a valid `data` block but an `errors` array.",
+          "grounding": "measured",
+          "line": 141
+        }
+      ]
+    },
+    {
+      "lane": 2,
+      "exit": null,
+      "agy_status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 1437,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-728/39a15c63-fab3-4148-8cb7-0cb012369b35/ph4/lane-2.json",
+      "verdict": "PASS",
+      "summary": "The CB-2110 'Spec Epics' implementation perfectly matches `goal-mode.md` invariants. The parse vs. epic leg separation, handling of exempt status, `not_measured` bubbling, and CI neutering are implemented with excellent fidelity. I have verified via exact file inspection and read-only tests that there are no bypass escapes and that the roadmap/preamble splits are functionally identical. I identified two highly specific single-line mutants in sorting and GraphQL error assertion that survive the test suite and control arms, but they are minor and do not undermine the rule's integrity. No blocker …[truncated; full text in the lane file]",
+      "findings": [
+        {
+          "claim": "Fidelity to goal-mode.md is strictly maintained across all stated sections.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs",
+          "fix": "None required. The implementation correctly separates parse leg and epic leg, handles historical/superseded exemptions transparently, refuses the bypass token (snapshot in .pmat.yaml), properly prefixes not_measured, and retires CB-148 correctly.",
+          "grounding": "measured",
+          "line": 24
+        },
+        {
+          "claim": "Mutant in `check_spec_epics.rs`: Deleting `findings.sort_by(|a, b| a.spec().cmp(b.spec()));` survives testing.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs",
+          "fix": "Add a test in `check_spec_epic_tests.rs` with one active spec missing its `epic:` (parse leg finding) and another spec pointing to a closed epic (epic leg finding) to assert their sorted combination.",
+          "grounding": "measured",
+          "line": 71
+        },
+        {
+          "claim": "Mutant in `github.rs` (`parse_sub_issue_counts`): Deleting the `errors` array check block (lines 140-146) survives testing.",
+          "file": "src/services/work_sync/github.rs",
+          "fix": "Change the test `assert!(parse_sub_issue_counts(&errors, &[5]).is_err())` to assert that the error message specifically contains the GraphQL error message (e.g., \"bad\"), not just any error.",
+          "grounding": "measured",
+          "line": 140
+        },
+        {
+          "claim": "The preamble split correctly preserves behaviour for roadmap rules.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+          "fix": "None required. The split into `github_inputs` maintains exact functional parity for CB-2112/2114/2115.",
+          "grounding": "measured",
+          "line": 136
+        },
+        {
+          "claim": "The live reader handles GraphQL chunking, null aliases, and missing fields cleanly.",
+          "file": "src/services/work_sync/github.rs",
+          "fix": "None required. It properly batches into chunks of 100, detects null aliases, and safely evaluates closed states.",
+          "grounding": "measured",
+          "line": 109
+        },
+        {
+          "claim": "The control script is robust and avoids vacuous passes.",
+          "file": "scripts/spec-epic-control.sh",
+          "fix": "None required. Arm 16 asserts the `NO-EPIC` count exactly matches the `find ... | wc -l` count, ensuring no file silently escapes measurement. Variables are cleanly managed.",
+          "grounding": "measured",
+          "line": 180
+        },
+        {
+          "claim": "CB-2110 is correctly neutered in CI semantics until the epics exist.",
+          "file": ".github/workflows/ci.yml",
+          "fix": "None required. The ledger explicitly states `NEUTERED` and the job is executed via the `spec-epic-control.sh` control wrapper which expects the `FAIL` today.",
+          "grounding": "measured",
+          "line": 43
+        },
+        {
+          "claim": "The 43 front-matter insertions broke no existing rules or specs.",
+          "file": "docs/specifications/goal-mode.md",
+          "fix": "None required. `parse_front_matter` strictly mandates `---\\n` on the first byte, avoiding collision with the internal markdown example. CB-140's 500-line limit was not tipped by the +6 line additions for any existing specs.",
+          "grounding": "measured",
+          "line": 190
+        }
+      ]
+    },
+    {
+      "lane": 3,
+      "exit": null,
+      "agy_status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 475,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-728/39a15c63-fab3-4148-8cb7-0cb012369b35/ph4/lane-3.json",
+      "verdict": "PASS",
+      "summary": "VERDICT: PASS\n\n### minor\n- **Surviving Mutant in `parse_epic`**\n  - **file:line**: `src/services/spec_epic/mod.rs:88`\n  - **falsifier**: Mutate `Some(\"null\") | Some(\"~\") | Some(\"\") | None => Ok(None)` to `Some(\"null\") | None => Ok(None)`.\n  - **details**: Both the Rust tests and the bash control script only use `epic: null` or omit the key entirely. `epic: ~` and `epic:` (empty string) are untested, so removing them survives the entire suite.\n- **Surviving Mutant in `parse_sub_issue_counts`**\n  - **file:line**: `src/services/work_sync/github.rs:143`\n  - **falsifier**: Delete the entire `if let …[truncated; full text in the lane file]",
+      "findings": [
+        {
+          "claim": "Surviving mutant in parse_epic: untested empty/tilde values",
+          "file": "src/services/spec_epic/mod.rs",
+          "fix": "Mutate `Some(\"null\") | Some(\"~\") | Some(\"\") | None => Ok(None)` to `Some(\"null\") | None => Ok(None)`. Both the Rust tests and the bash control script only use `epic: null` or omit the key entirely. `epic: ~` and `epic:` (empty string) are untested, so removing them survives the entire suite.",
+          "grounding": "measured",
+          "line": 88
+        },
+        {
+          "claim": "Surviving mutant in parse_sub_issue_counts: untested explicit errors bail",
+          "file": "src/services/work_sync/github.rs",
+          "fix": "Delete the entire `if let Some(errors) = graphql.get(\"errors\").and_then(|e| e.as_array()) { ... }` block. The test `sub_issue_counts_are_parsed_from_the_graphql_aliases_and_a_missing_one_is_an_error` only asserts `is_err()` on a fixture that has `{\"errors\": [...], \"data\": null}`. Without the explicit `errors` parsing block, the function falls through, fails to find `data.repository`, and returns a `context` error. The test passes anyway because it ignores the error message.",
+          "grounding": "measured",
+          "line": 143
+        },
+        {
+          "claim": "Surviving mutant in check_spec_epics: untested repo_hint",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs",
+          "fix": "Mutate the `repo_hint` assignment to unconditionally be `let repo_hint = None;`. The 17-arm control script either runs with `--github-snapshot` (which ignores `repo_hint`) or provides a `roadmap.yml` where `github_repo` is null. There is no test or control arm that relies on `repo_hint` successfully reading a real repository name from the roadmap.",
+          "grounding": "measured",
+          "line": 52
+        }
+      ]
+    }
+  ],
+  "dedup": [
+    {
+      "file": ".github/workflows/ci.yml",
+      "line": 43,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "CB-2110 is correctly neutered in CI semantics until the epics exist."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 190,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The 43 front-matter insertions broke no existing rules or specs."
+      ]
+    },
+    {
+      "file": "scripts/spec-epic-control.sh",
+      "line": 180,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The control script is robust and avoids vacuous passes."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+      "line": 136,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The preamble split correctly preserves behaviour for roadmap rules."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs",
+      "line": 24,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Fidelity to goal-mode.md is strictly maintained across all stated sections."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs",
+      "line": 52,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "Surviving mutant in check_spec_epics: untested repo_hint"
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs",
+      "line": 71,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Mutant in `check_spec_epics.rs`: Deleting `findings.sort_by(|a, b| a.spec().cmp(b.spec()));` survives testing."
+      ]
+    },
+    {
+      "file": "src/services/spec_epic/mod.rs",
+      "line": 88,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "Surviving mutant in parse_epic: untested empty/tilde values"
+      ]
+    },
+    {
+      "file": "src/services/spec_epic/mod.rs",
+      "line": 161,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Surviving mutant in parse_front_matter: redundant in_vendors_block reset"
+      ]
+    },
+    {
+      "file": "src/services/spec_epic/mod.rs",
+      "line": 165,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The inline comment in the goal-mode.md example header breaks parse_epic"
+      ]
+    },
+    {
+      "file": "src/services/work_sync/github.rs",
+      "line": 109,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The live reader handles GraphQL chunking, null aliases, and missing fields cleanly."
+      ]
+    },
+    {
+      "file": "src/services/work_sync/github.rs",
+      "line": 140,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Mutant in `github.rs` (`parse_sub_issue_counts`): Deleting the `errors` array check block (lines 140-146) survives testing."
+      ]
+    },
+    {
+      "file": "src/services/work_sync/github.rs",
+      "line": 141,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Surviving mutant in parse_sub_issue_counts: errors array parsing is untested"
+      ]
+    },
+    {
+      "file": "src/services/work_sync/github.rs",
+      "line": 143,
+      "lanes_agreeing": [
+        1,
+        3
+      ],
+      "claims": [
+        "Surviving mutant in parse_sub_issue_counts: untested explicit errors bail",
+        "parse_sub_issue_counts crashes the entire batch on a single missing issue or rate limit"
+      ]
+    },
+    {
+      "file": "src/services/work_sync/github.rs",
+      "line": 346,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "epic_numbers() includes closed epics, unnecessarily burning GraphQL rate limits"
+      ]
+    }
+  ],
+  "uncovered": [
+    {
+      "item": "acceptance: cargo test --lib was run",
+      "token": "cargo test",
+      "lanes_hit": 0
+    },
+    {
+      "item": "acceptance: exit codes reported",
+      "token": "exit code",
+      "lanes_hit": 0
+    }
+  ],
+  "dissent": [
+    {
+      "lane": 1,
+      "verdict": "FAIL",
+      "summary": "Review of CB-2110 (Spec Epics). The rule correctly enforces goal-mode.md doctrines, the preamble was extracted safely, and the control script rigorously asserts the conditions. However, the GraphQL integration has critical flaws: it queries sub-issues for closed epics (burning rate limits), and it bails on the first GraphQL error or null alias, crashing the entire compliance check if a single epic is missing or rate-limited. Additionally, the custom YAML parser fails on inline comments, breaking the provided example in goal-mode.md.",
+      "findings": [
+        {
+          "claim": "parse_sub_issue_counts crashes the entire batch on a single missing issue or rate limit",
+          "file": "src/services/work_sync/github.rs",
+          "fix": "Do not bail on the first error in the errors array or on a null alias. Instead, ignore or log it, so that the successfully fetched epics are still returned and the missing ones are correctly handled by bind_epics as EpicAbsent or SubIssuesUnmeasured. Implement retry/backoff for RATE_LIMITED errors.",
+          "grounding": "measured",
+          "line": 143
+        },
+        {
+          "claim": "epic_numbers() includes closed epics, unnecessarily burning GraphQL rate limits",
+          "file": "src/services/work_sync/github.rs",
+          "fix": "Filter `epic_numbers()` to only return open issues (`i.state == IssueState::Open`), since `bind_epics` emits EpicClosed before checking sub_issues.",
+          "grounding": "measured",
+          "line": 346
+        },
+        {
+          "claim": "The inline comment in the goal-mode.md example header breaks parse_epic",
+          "file": "src/services/spec_epic/mod.rs",
+          "fix": "Update `parse_front_matter` to strip inline `#` comments before processing the value, or remove the inline comments from the example in goal-mode.md.",
+          "grounding": "asserted",
+          "line": 165
+        },
+        {
+          "claim": "Surviving mutant in parse_front_matter: redundant in_vendors_block reset",
+          "file": "src/services/spec_epic/mod.rs",
+          "fix": "Remove the `if !line.starts_with(' ') { self.in_vendors_block = false; }` block since it is unconditionally superseded by the `else` branch at the end of the loop.",
+          "grounding": "asserted",
+          "line": 161
+        },
+        {
+          "claim": "Surviving mutant in parse_sub_issue_counts: errors array parsing is untested",
+          "file": "src/services/work_sync/github.rs",
+          "fix": "Mutating `errors.first()` to `errors.get(1)` survives because the only test for the errors array falls through to a null pointer exception on `data.repository`. Add a test with a valid `data` block but an `errors` array.",
+          "grounding": "measured",
+          "line": 141
+        }
+      ]
+    }
+  ],
+  "partial_reasons": [
+    "lane 1: non-empty .err (120 bytes)",
+    "lane 2: non-empty .err (79 bytes)"
+  ],
+  "coverage_source": "lanes",
+  "lane_reduce": {
+    "dedup": [
+      {
+        "file": ".github/workflows/ci.yml",
+        "line": 43,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "CB-2110 is correctly neutered in CI semantics until the epics exist."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 190,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "The 43 front-matter insertions broke no existing rules or specs."
+        ]
+      },
+      {
+        "file": "scripts/spec-epic-control.sh",
+        "line": 180,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "The control script is robust and avoids vacuous passes."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_inputs.rs",
+        "line": 136,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "The preamble split correctly preserves behaviour for roadmap rules."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs",
+        "line": 24,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "Fidelity to goal-mode.md is strictly maintained across all stated sections."
+        ]
+      },
+      {
+        "file": "src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs",
+        "line": 52,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "Surviving mutant in check_spec_epics: untested repo_hint"
+        ]
+      },
+      {
+        "file": "src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs",
+        "line": 71,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "Mutant in `check_spec_epics.rs`: Deleting `findings.sort_by(|a, b| a.spec().cmp(b.spec()));` survives testing."
+        ]
+      },
+      {
+        "file": "src/services/spec_epic/mod.rs",
+        "line": 88,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "Surviving mutant in parse_epic: untested empty/tilde values"
+        ]
+      },
+      {
+        "file": "src/services/spec_epic/mod.rs",
+        "line": 161,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "Surviving mutant in parse_front_matter: redundant in_vendors_block reset"
+        ]
+      },
+      {
+        "file": "src/services/spec_epic/mod.rs",
+        "line": 165,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "The inline comment in the goal-mode.md example header breaks parse_epic"
+        ]
+      },
+      {
+        "file": "src/services/work_sync/github.rs",
+        "line": 109,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "The live reader handles GraphQL chunking, null aliases, and missing fields cleanly."
+        ]
+      },
+      {
+        "file": "src/services/work_sync/github.rs",
+        "line": 140,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "Mutant in `github.rs` (`parse_sub_issue_counts`): Deleting the `errors` array check block (lines 140-146) survives testing."
+        ]
+      },
+      {
+        "file": "src/services/work_sync/github.rs",
+        "line": 141,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "Surviving mutant in parse_sub_issue_counts: errors array parsing is untested"
+        ]
+      },
+      {
+        "file": "src/services/work_sync/github.rs",
+        "line": 143,
+        "lanes_agreeing": [
+          1,
+          3
+        ],
+        "claims": [
+          "Surviving mutant in parse_sub_issue_counts: untested explicit errors bail",
+          "parse_sub_issue_counts crashes the entire batch on a single missing issue or rate limit"
+        ]
+      },
+      {
+        "file": "src/services/work_sync/github.rs",
+        "line": 346,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "epic_numbers() includes closed epics, unnecessarily burning GraphQL rate limits"
+        ]
+      }
+    ],
+    "uncovered": [
+      {
+        "item": "acceptance: cargo test --lib was run",
+        "token": "cargo test",
+        "lanes_hit": 0
+      },
+      {
+        "item": "acceptance: exit codes reported",
+        "token": "exit code",
+        "lanes_hit": 0
+      }
+    ],
+    "dissent": [
+      {
+        "lane": 1,
+        "verdict": "FAIL",
+        "summary": "Review of CB-2110 (Spec Epics). The rule correctly enforces goal-mode.md doctrines, the preamble was extracted safely, and the control script rigorously asserts the conditions. However, the GraphQL integration has critical flaws: it queries sub-issues for closed epics (burning rate limits), and it bails on the first GraphQL error or null alias, crashing the entire compliance check if a single epic is missing or rate-limited. Additionally, the custom YAML parser fails on inline comments, breaking the provided example in goal-mode.md.",
+        "findings": [
+          {
+            "claim": "parse_sub_issue_counts crashes the entire batch on a single missing issue or rate limit",
+            "file": "src/services/work_sync/github.rs",
+            "fix": "Do not bail on the first error in the errors array or on a null alias. Instead, ignore or log it, so that the successfully fetched epics are still returned and the missing ones are correctly handled by bind_epics as EpicAbsent or SubIssuesUnmeasured. Implement retry/backoff for RATE_LIMITED errors.",
+            "grounding": "measured",
+            "line": 143
+          },
+          {
+            "claim": "epic_numbers() includes closed epics, unnecessarily burning GraphQL rate limits",
+            "file": "src/services/work_sync/github.rs",
+            "fix": "Filter `epic_numbers()` to only return open issues (`i.state == IssueState::Open`), since `bind_epics` emits EpicClosed before checking sub_issues.",
+            "grounding": "measured",
+            "line": 346
+          },
+          {
+            "claim": "The inline comment in the goal-mode.md example header breaks parse_epic",
+            "file": "src/services/spec_epic/mod.rs",
+            "fix": "Update `parse_front_matter` to strip inline `#` comments before processing the value, or remove the inline comments from the example in goal-mode.md.",
+            "grounding": "asserted",
+            "line": 165
+          },
+          {
+            "claim": "Surviving mutant in parse_front_matter: redundant in_vendors_block reset",
+            "file": "src/services/spec_epic/mod.rs",
+            "fix": "Remove the `if !line.starts_with(' ') { self.in_vendors_block = false; }` block since it is unconditionally superseded by the `else` branch at the end of the loop.",
+            "grounding": "asserted",
+            "line": 161
+          },
+          {
+            "claim": "Surviving mutant in parse_sub_issue_counts: errors array parsing is untested",
+            "file": "src/services/work_sync/github.rs",
+            "fix": "Mutating `errors.first()` to `errors.get(1)` survives because the only test for the errors array falls through to a null pointer exception on `data.repository`. Add a test with a valid `data` block but an `errors` array.",
+            "grounding": "measured",
+            "line": 141
+          }
+        ]
+      }
+    ],
+    "partial_reasons": [
+      "lane 1: non-empty .err (120 bytes)",
+      "lane 2: non-empty .err (79 bytes)"
+    ],
+    "coverage_source": "lanes",
+    "agreed": false,
+    "exit": 1
+  },
+  "partial": true,
+  "consensus": "No cross-lane agreement on any blocker. The ONLY claim more than one lane makes is the surviving mutant in parse_sub_issue_counts' GraphQL `errors` block — lane 1 (github.rs:141), lane 2 (github.rs:140, \"Deleting the `errors` array check block (lines 140-146) survives testing\") and lane 3 (github.rs:143) name the same block; lane-reduce group_by([file,line]) split it into three dedup rows, so lanes_agreeing reads [1], [2] and [1,3] for what is one 3/3 finding. Every other dedup row is a single lane. 2 of 3 lanes returned PASS; lane 1 returned FAIL on the GraphQL reader (the batch aborts on the first errors entry or null alias; closed epics are queried) plus src/services/spec_epic/mod.rs:165 \"The inline comment in the goal-mode.md example header breaks parse_epic\". Lane 2 asserts the opposite of part of lane 1 (github.rs:109 \"The live reader handles GraphQL chunking, null aliases, and missing fields cleanly\"), and 5 of its 8 findings are affirmations with fix=\"None required\". No lane reported either acceptance command or any exit code (uncovered[]).",
+  "open_questions": [
+    "DELEGATE-VERIFIED (not a lane claim), the finding that should decide the verdict: lane 1's mod.rs:165 is REAL and is `measured`, not `asserted`. docs/specifications/goal-mode.md:257-259 documents the header as `epic: 1234         # an open GitHub issue labelled epic` / `status: active     # active | superseded | historical` / `vendors: [cuda]    # optional; adds a vendor: role...`. ParseState::process_line (src/services/spec_epic/mod.rs:148-150) skips only WHOLE-LINE `#` comments; :165-167 stores the rest of the line verbatim, so parse_epic (:84-92) sees \"1234         # an open GitHub issue labelled `epic`\" -> BadEpic; status -> BadStatus; `vendors: [cuda]    # ...` does not end in `]` -> BadVendors. Falsifier: parse_front_matter over the exact block at goal-mode.md:255-261. Nothing fails today (I checked all 44 spec headers: none carries an inline `#`), so it bites PMAT-729, where a human copies that example to fill epic:. Lanes 2 and 3 both cleared this area by answering a DIFFERENT question (that the fenced example is not goal-mode.md's own front-matter, because parse_front_matter requires `---\\n` at byte 0).",
+    "DELEGATE-VERIFIED §12 hole that NO lane raised: deleting the input passes the rule. check_spec_epics.rs:41 and :43 turn an empty docs/specifications and a NotFound read into Skip, and nothing checks whether specs were committed and are now gone — while check_roadmap_inputs.rs deliberately fails not_measured when a roadmap that WAS committed disappears (\"deleting a gate's input is not a way of passing it\"). Falsifier: `rm -rf docs/specifications && pmat comply check --checks CB-2110` -> Skip, not Fail.",
+    "Citation grading: lane 1 finding 2 has the WRONG FILE — epic_numbers() is src/services/work_sync/mod.rs:134, not github.rs:346 (that line sits inside a snapshot round-trip test); and github.rs:306-322 deliberately pins epic_numbers() returning \"open and closed epics alike — the epic leg judges the state\", so lane 1's fix would break a test that exists to stop exactly that mutation. Lane 2 finding 2 cites check_spec_epics.rs:71 (`early.name = name;`); the sort_by it names is at :78. Lane 3 finding 3 cites :52 (`let snapshot_clause;`); the repo_hint it names is at :58. The claims may still hold; the line numbers do not.",
+    "Lane 1 finding 1 (parse_sub_issue_counts bails on the first GraphQL error) is DOCUMENTED INTENT, not a defect: github.rs:100-104 says \"Every number asked for is answered or the call fails: a count that is missing is not a count of zero (goal-mode.md doctrine 2)\", and both routes end at not_measured (bind_epics -> SubIssuesUnmeasured -> is_unmeasured -> the `not_measured:` prefix at check_spec_epics.rs:102-104). It manufactures no pass. The retry/backoff half is a robustness ask, not a fidelity failure.",
+    "CB-140 measured by me, because two lanes stated it differently: 7 specs exceed 500 lines after the insertions (artifact-falsification-gates 522->528, components/audit-pmat-support-l1-l5-aprender-provable-contracts 532->538, components/commit-level-contract-enforcement 509->515, components/modern-agentic-coding-support 1204->1210, improve-coverage-80-95 727->733, pmat-architecture-crux-audit 5433->5439, pmat-spec 595->601). All 7 were already over at 85452fc83; none crossed. Lane 3 said \"the two component specs\" — the count is wrong, the conclusion holds.",
+    "No lane ran the acceptance commands: `cargo` appears 0 times in all three lane JSONs; `spec-epic-control` appears once in lanes 1 and 2 (echoing the brief) and 0 times in lane 3; no exit code anywhere. The brief required both commands and their exit codes. Fable must run them itself — this quorum is a code review only.",
+    "partial=true comes from lane-reduce's non-empty-.err rule. Both messages are agy transport chatter, not lane failure: lane-1.err = \"root agent idle; waiting for 2 background task(s) (bounded by --print-timeout)\" plus \"terminating 1 background task(s) on exit\"; lane-2.err = the same idle line. Both lanes still returned status=SUCCESS with schema-shaped output. Lane 1 was cut at the 25m print-timeout with 1 background task still running, so its review may be incomplete.",
+    "The brief named no `mode`. I composed plan mode (agy-lane.sh --mode plan --timeout 25m --schema quorum-schema.json), the only mode whose default schema is the quorum schema at writes=false; the exact call was `lane-guard.sh --exec -- agy --sandbox --dangerously-skip-permissions --print-timeout 25m --output-format json --json-schema <quorum-schema.json> --mode plan -p=<prompt>`.",
+    "Lane process exit codes were not captured: the lanes were launched detached (setsid/nohup) because a 25m lane exceeds my 10-minute per-command cap, so results[].exit is null rather than a guessed 0. Each lane JSON carries status=SUCCESS; durations 583s / 1437s / 476s.",
+    "Repo integrity across the dispatch (writes=false): .git/config sha256 unchanged (280e414e6569633d7fe5d29bfc4ae60b831cf4996b895c63e0f64764bef0b73b), git status --porcelain unchanged apart from the pre-existing untracked files, and the only commits are the operator's two docs-only ledger commits 2c027335f and f80c92082 (author Noah Gift, 2 files under docs/status/). No lane wrote into the checkout."
+  ]
+}

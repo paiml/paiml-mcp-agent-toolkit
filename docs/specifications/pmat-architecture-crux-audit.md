@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # PMAT Architecture, Performance & Competitive (CRUX) Audit
 
 > **Priority note (2026-09-03).** The delivery-pipeline capabilities in

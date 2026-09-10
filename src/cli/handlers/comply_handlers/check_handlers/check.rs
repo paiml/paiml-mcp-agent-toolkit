@@ -50,8 +50,18 @@ pub(crate) async fn handle_check(
     strict: bool,
     failures_only: bool,
     format: ComplyOutputFormat,
+    selected: &[String],
+    github_snapshot: Option<&Path>,
 ) -> Result<()> {
-    let mut report = compute_compliance_report(project_path)?;
+    let overrides = CheckOverrides {
+        github_snapshot: github_snapshot.map(Path::to_path_buf),
+    };
+    let mut report = compute_compliance_report_with(project_path, &overrides)?;
+    // PMAT-718: before `failures_only`, so a deselected rule cannot be retained
+    // as a failure, and before the summary is re-tallied.
+    select_checks(&mut report.checks, selected)?;
+    report.summary = CheckSummary::tally(&report.checks);
+    report.is_compliant = report.checks.iter().all(|c| c.status != CheckStatus::Fail);
     if failures_only {
         retain_blocking_checks(&mut report, strict);
     }
@@ -59,6 +69,62 @@ pub(crate) async fn handle_check(
     output_compliance_report(&report, format, project_path)?;
 
     apply_exit_policy(&report, strict)
+}
+
+/// The id a rule is selected by: the `CB-NNN` prefix of its name, or the whole
+/// name for a check that has no CB id (`Version Currency`, `Git Hooks`, …).
+///
+/// PMAT-718 (goal-mode.md §7.2, prerequisite P1).
+pub(crate) fn check_id(name: &str) -> &str {
+    name.split_once(": ").map_or(name, |(id, _)| id)
+}
+
+/// Restrict a report to the ids in `selected`.
+///
+/// PMAT-718 (goal-mode.md §7.2, prerequisite P1). An EMPTY selection means "no
+/// `--checks` was given" and selects everything, so every existing caller is
+/// unaffected.
+///
+/// Two properties the spec requires, and neither is decoration:
+///
+/// * a DESELECTED check reports `Skip`, never disappears. An absent check and a
+///   skipped check must not look alike, or a shrinking roster reads as a
+///   shrinking problem — `3 checks, 0 fail` and `166 checks, 0 fail` are not
+///   the same claim;
+/// * an UNKNOWN id is an ERROR. Silently selecting nothing is how a typo'd gate
+///   becomes a green gate — the job asks for `CB-2113`, gets `CB-21I3`, selects
+///   no rule, and every remaining check skips into a pass.
+///
+/// Matching is on the id, so `--checks CB-030` selects `CB-030: O(1) Hooks`;
+/// a check with no CB id is selected by its whole name.
+pub(crate) fn select_checks(checks: &mut [ComplianceCheck], selected: &[String]) -> Result<()> {
+    if selected.is_empty() {
+        return Ok(());
+    }
+
+    let known: std::collections::HashSet<&str> = checks.iter().map(|c| check_id(&c.name)).collect();
+    let unknown: Vec<&str> = selected
+        .iter()
+        .map(String::as_str)
+        .filter(|id| !known.contains(id))
+        .collect();
+    if !unknown.is_empty() {
+        anyhow::bail!(
+            "--checks names {} no rule provides: {}. \
+             Refusing rather than selecting nothing: a typo that silently selects \
+             no rule turns this command into a gate that cannot fail.",
+            if unknown.len() == 1 { "an id" } else { "ids" },
+            unknown.join(", ")
+        );
+    }
+
+    for c in checks.iter_mut() {
+        if !selected.iter().any(|id| id == check_id(&c.name)) {
+            c.status = CheckStatus::Skip;
+            c.message = "not selected (--checks)".to_string();
+        }
+    }
+    Ok(())
 }
 
 /// Reject an input no compliance verdict can honestly be given for.
@@ -102,7 +168,25 @@ fn guard_analysable_project(project_path: &Path) -> Result<()> {
 /// and report's JSON was byte-identical for an empty project and a 121-file
 /// defect-ridden one bar the timestamp. Both commands now share this function,
 /// so there is exactly one answer to give.
+/// Inputs a rule takes from the command line rather than from the tree.
+///
+/// PMAT-722: CB-2115's snapshot file. It is deliberately NOT a `.pmat.yaml`
+/// option — a committed fixture path would be a bypass token — so it travels
+/// out of band from the config, and the enforcement ledger can see the flag
+/// on the invoking line and refuse to credit that run as evidence.
+#[derive(Debug, Default, Clone)]
+pub(crate) struct CheckOverrides {
+    pub github_snapshot: Option<std::path::PathBuf>,
+}
+
 pub(crate) fn compute_compliance_report(project_path: &Path) -> Result<ComplianceReport> {
+    compute_compliance_report_with(project_path, &CheckOverrides::default())
+}
+
+pub(crate) fn compute_compliance_report_with(
+    project_path: &Path,
+    overrides: &CheckOverrides,
+) -> Result<ComplianceReport> {
     guard_analysable_project(project_path)?;
 
     crate::status_eprintln!("Checking PMAT compliance for {}", project_path.display());
@@ -119,7 +203,8 @@ pub(crate) fn compute_compliance_report(project_path: &Path) -> Result<Complianc
     let (config, version_source) = load_project_config_with_source(project_path)?;
     let project_version = &config.pmat.version;
 
-    let checks = build_all_compliance_checks(project_path, comply_config, project_version);
+    let checks =
+        build_all_compliance_checks(project_path, comply_config, project_version, overrides);
     Ok(build_compliance_report(
         checks,
         project_version,
@@ -297,6 +382,7 @@ fn build_all_compliance_checks(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
     project_version: &str,
+    overrides: &CheckOverrides,
 ) -> Vec<ComplianceCheck> {
     // Data-driven group list: each entry is independent and side-effect-free
     // w.r.t. the others, which lets `run_check_groups` both report live
@@ -369,6 +455,40 @@ fn build_all_compliance_checks(
         (
             "coherence",
             Box::new(move || build_coherence_checks(project_path, comply_config)),
+        ),
+        (
+            "traceability",
+            Box::new(move || build_traceability_checks(project_path, comply_config)),
+        ),
+        (
+            "roadmap-coherence",
+            Box::new(move || {
+                build_roadmap_coherence_checks(
+                    project_path,
+                    comply_config,
+                    overrides.github_snapshot.as_deref(),
+                )
+            }),
+        ),
+        (
+            "ticket-release",
+            Box::new(move || {
+                build_ticket_release_checks(
+                    project_path,
+                    comply_config,
+                    overrides.github_snapshot.as_deref(),
+                )
+            }),
+        ),
+        (
+            "spec-epics",
+            Box::new(move || {
+                build_spec_epic_checks(
+                    project_path,
+                    comply_config,
+                    overrides.github_snapshot.as_deref(),
+                )
+            }),
         ),
     ];
     run_check_groups(groups)
@@ -828,6 +948,128 @@ mod build_compliance_report_tests {
         let checks = vec![check("a", CheckStatus::Pass), check("b", CheckStatus::Fail)];
         let report = build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject);
         assert!(!report.is_compliant);
+    }
+
+    // ── PMAT-718 / goal-mode.md §7.2 P1: `comply check --checks <CSV>`.
+
+    #[test]
+    fn a_deselected_check_is_skipped_not_dropped() {
+        // The roster must keep its size. A check that vanishes when it is not
+        // selected makes "3 checks, 0 fail" indistinguishable from
+        // "166 checks, 0 fail" — a shrinking roster reading as a shrinking
+        // problem is the whole failure mode this guards.
+        let mut checks = vec![
+            check("CB-2113: Traceability", CheckStatus::Pass),
+            check("CB-030: O(1) Hooks", CheckStatus::Pass),
+        ];
+        select_checks(&mut checks, &["CB-2113".to_string()]).expect("known id");
+
+        assert_eq!(checks.len(), 2, "a deselected check must not disappear");
+        let deselected = &checks[1];
+        assert_eq!(
+            deselected.status,
+            CheckStatus::Skip,
+            "a deselected check must report Skip, not its unrun verdict"
+        );
+        assert!(
+            deselected.message.contains("not selected"),
+            "a Skip must say WHY it skipped, or it is indistinguishable from a \
+             rule that had nothing to look at: {}",
+            deselected.message
+        );
+    }
+
+    #[test]
+    fn an_unknown_id_is_an_error() {
+        // How a typo'd gate becomes a green gate: the job asks for CB-2113,
+        // gets CB-21I3, selects nothing, and every check skips into a pass.
+        let mut checks = vec![check("CB-2113: Traceability", CheckStatus::Pass)];
+        let err = select_checks(&mut checks, &["CB-21I3".to_string()])
+            .expect_err("an id matching no check must be refused, never ignored");
+        assert!(
+            err.to_string().contains("CB-21I3"),
+            "the error must name the id that matched nothing: {err}"
+        );
+    }
+
+    #[test]
+    fn a_selected_check_keeps_its_own_verdict() {
+        // Control. Selection must not become "pass everything": the selected
+        // rule's real status survives untouched.
+        let mut checks = vec![
+            check("CB-2113: Traceability", CheckStatus::Fail),
+            check("CB-030: O(1) Hooks", CheckStatus::Pass),
+        ];
+        select_checks(&mut checks, &["CB-2113".to_string()]).expect("known id");
+        assert_eq!(checks[0].status, CheckStatus::Fail);
+    }
+
+    #[test]
+    fn an_empty_selection_selects_everything() {
+        // Control. `--checks` absent must be byte-identical to today, or every
+        // existing caller silently starts skipping its whole roster.
+        let mut checks = vec![
+            check("CB-2113: Traceability", CheckStatus::Fail),
+            check("Git Hooks", CheckStatus::Pass),
+        ];
+        select_checks(&mut checks, &[]).expect("no selection");
+        assert_eq!(checks[0].status, CheckStatus::Fail);
+        assert_eq!(checks[1].status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn a_check_with_no_cb_id_is_selected_by_its_name() {
+        // Not every check is a CB rule: `Git Hooks`, `Version Currency` and
+        // friends have no id, so their name IS the id.
+        let mut checks = vec![
+            check("Git Hooks", CheckStatus::Pass),
+            check("CB-030: O(1) Hooks", CheckStatus::Pass),
+        ];
+        select_checks(&mut checks, &["Git Hooks".to_string()]).expect("known id");
+        assert_eq!(checks[0].status, CheckStatus::Pass);
+        assert_eq!(checks[1].status, CheckStatus::Skip);
+    }
+
+    /// The wiring, not the logic. `select_checks` being right proves nothing if
+    /// no argv reaches it — the repo has shipped a correct gate nothing invoked
+    /// more than once. Parsed through the production route, `Cli::try_parse_from`.
+    ///
+    /// Lib target on purpose: CI runs `cargo test --lib` only, so a guard in
+    /// `tests/` would never execute (see
+    /// `analysis_utilities/quality_gate_exit_status_guard_tests.rs`).
+    #[test]
+    fn the_checks_argument_reaches_the_command_as_a_split_list() {
+        use crate::cli::commands::ComplyCommands;
+        let parsed = crate::cli::commands::on_big_stack(|| {
+            use clap::Parser;
+            crate::cli::Cli::try_parse_from([
+                "pmat",
+                "comply",
+                "check",
+                "--checks",
+                "CB-2113,CB-030",
+            ])
+            .map(|cli| format!("{:?}", cli.command))
+            .map_err(|e| e.to_string())
+        })
+        .expect("`comply check --checks CB-2113,CB-030` must parse");
+
+        assert!(
+            parsed.contains("CB-2113") && parsed.contains("CB-030"),
+            "both ids must survive parsing: {parsed}"
+        );
+        assert!(
+            parsed.contains("\"CB-2113\"") && parsed.contains("\"CB-030\""),
+            "the CSV must be SPLIT on commas, not carried as one string — \
+             without value_delimiter the whole list is a single unknown id and \
+             every run errors: {parsed}"
+        );
+
+        // And the field is actually on the Check variant.
+        let _ = |c: ComplyCommands| match c {
+            ComplyCommands::Check { checks, .. } => checks,
+            _ => vec![],
+        };
     }
 
     #[test]
@@ -1332,6 +1574,14 @@ include!("check_metrics_ratchet.rs");
 include!("check_builders_ratchet.rs");
 include!("check_threshold_coherence.rs");
 include!("check_builders_coherence.rs");
+include!("check_traceability.rs");
+include!("check_builders_traceability.rs");
+include!("check_roadmap_inputs.rs");
+include!("check_roadmap_coherence.rs");
+include!("check_builders_roadmap_coherence.rs");
+include!("check_ticket_linkage.rs");
+include!("check_release_binding.rs");
+include!("check_builders_ticket_release.rs");
 include!("check_individual_basic.rs");
 include!("check_individual_cb.rs");
 include!("check_individual_ci.rs");
@@ -1342,6 +1592,13 @@ include!("check_pv_enforcement_helpers_tests.rs");
 include!("check_path_guard_tests.rs");
 include!("check_empty_project_guard_tests.rs");
 include!("check_readonly_and_exemption_tests.rs");
+include!("check_traceability_tests.rs");
+include!("check_roadmap_coherence_tests.rs");
+include!("check_ticket_release_tests.rs");
+include!("check_spec_inputs.rs");
+include!("check_spec_epics.rs");
+include!("check_builders_spec_epics.rs");
+include!("check_spec_epic_tests.rs");
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

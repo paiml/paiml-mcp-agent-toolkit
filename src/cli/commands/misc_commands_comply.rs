@@ -37,6 +37,30 @@ pub enum ComplyCommands {
         /// Additional project paths to include in cross-stack health checks
         #[arg(long, value_name = "PATH")]
         include_project: Vec<PathBuf>,
+
+        /// Run only these rules, by id (e.g. `CB-2113,CB-030`).
+        ///
+        /// PMAT-718 (goal-mode.md §7.2 P1). A CI job that gates on one rule
+        /// needs to ask for that rule; without this it must run all 166 and
+        /// grep the output, which is a gate on a substring.
+        ///
+        /// A deselected rule reports Skip("not selected"), it does not vanish:
+        /// an absent check and a skipped check must not look alike.
+        ///
+        /// An id matching no rule is an ERROR. Selecting nothing on a typo is
+        /// how `CB-21I3` becomes a green gate.
+        #[arg(long, value_name = "IDS", value_delimiter = ',')]
+        checks: Vec<String>,
+
+        /// Judge GitHub-facing rules (CB-2115) from this snapshot file instead of the live API.
+        ///
+        /// PMAT-722. For controls and offline runs only: a verdict from a file is
+        /// not evidence for the repository, so the enforcement ledger marks an
+        /// invocation carrying this flag as neutered, and the same path committed
+        /// in .pmat.yaml is refused — a fixture in the tree would be a bypass
+        /// token (goal-mode.md §12).
+        #[arg(long, value_name = "FILE")]
+        github_snapshot: Option<PathBuf>,
     },
 
     /// Migrate project to latest PMAT standards

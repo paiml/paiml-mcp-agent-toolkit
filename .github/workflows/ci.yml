@@ -5,6 +5,10 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  # PMAT-719 (goal-mode.md §7.1): a gate that is not evaluated on the merge
+  # queue is a gate the queue bypasses. No queue is known to be enabled; the
+  # trigger costs nothing and closes the hole before anyone opens it.
+  merge_group:
   workflow_dispatch:
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -28,7 +32,7 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate]
+    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability]
     if: always()
     steps:
       - name: Check required jobs
@@ -37,7 +41,8 @@ jobs:
           for j in "ci:${{ needs.ci.result }}" \
                    "windows-check:${{ needs.windows-check.result }}" \
                    "reusable-pin-drift:${{ needs.reusable-pin-drift.result }}" \
-                   "roadmap-validate:${{ needs.roadmap-validate.result }}"; do
+                   "roadmap-validate:${{ needs.roadmap-validate.result }}" \
+                   "traceability:${{ needs.traceability.result }}"; do
             name=${j%%:*}
             result=${j#*:}
             if [ "$result" != "success" ]; then
@@ -84,6 +89,83 @@ jobs:
           echo "control: a duplicated id is refused"
       - name: pmat work validate (0 = valid, 1 = invalid or unreadable)
         run: ./target/debug/pmat work validate
+
+  # PMAT-719 (goal-mode.md §7.1, step 2 of §11): the first CB rule wired into
+  # the required `gate` context OUTSIDE the `Ladder gate — pmat comply` step,
+  # which is `continue-on-error` and has been red on pre-existing failures for
+  # long enough that its 157 rules are all NEUTERED. This job carries exactly
+  # the rules it names with `--checks` (PMAT-718) — an id no rule provides is
+  # a hard error there, so a typo cannot select nothing and go green — and it
+  # sits in `gate`'s `needs` AND in its result loop, so a red verdict fails the
+  # required check. `pmat comply ledger` attributes the run to the named rules.
+  #
+  # CB-2113: every non-merge commit a pull request adds carries a
+  # `Pmat-Ticket:` trailer naming a real, non-terminal roadmap item. On a push
+  # to master the rule reports not_applicable with the measured count (§8.4:
+  # master is not judged until merges are restricted to merge commits). The
+  # rule is offline — git and the roadmap file — so it needs no token and runs
+  # on fork pull requests too.
+  #
+  # CONTROL FIRST, as roadmap-validate does: the gate is run against fixtures
+  # planted with the defect it exists to catch, and must go RED there before
+  # its GREEN on this tree is believed. `fetch-depth: 0` + `fetch-tags` because
+  # the rule reads `merge-base` against the base branch and the latest `v*` tag.
+  traceability:
+    name: traceability
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: build pmat from this tree
+        run: cargo build --bin pmat --locked
+      - name: control — a commit with no Pmat-Ticket trailer must be refused (exit 1)
+        run: bash scripts/traceability-control.sh ./target/debug/pmat
+      - name: control — an open item naming a closed issue must be refused (CB-2115, exit 1)
+        run: bash scripts/roadmap-coherence-control.sh ./target/debug/pmat
+      - name: control — pmat work sync --check-only can fail, can pass, and plans every write
+        run: bash scripts/work-sync-control.sh ./target/debug/pmat
+      - name: control — an open item with no issue, and one with no release:, must be refused (CB-2112, CB-2114, exit 1)
+        run: bash scripts/ticket-release-control.sh ./target/debug/pmat
+      - name: control — an active spec with no epic must be refused (CB-2110, exit 1)
+        run: bash scripts/spec-epic-control.sh ./target/debug/pmat
+      - name: the closed loop holds (CB-2113)
+        run: ./target/debug/pmat comply check --checks CB-2113
+      # CB-2115 is NOT yet run against this tree. goal-mode.md §5.4 sequences it: the
+      # sync reports (step 3, PMAT-720), a human resolves the thirteen items that all
+      # name #612 (PMAT-721), the orphans are fixed by the sync's own fixers, and ONLY
+      # THEN does the rule become a gate — a gate red on arrival is a gate someone
+      # disables. The control above proves the rule discriminates on every arm, so
+      # `pmat comply ledger` lists CB-2115 as NEUTERED, which is the truth until the
+      # step below lands. It lands the moment `pmat work sync --check-only` exits 0 on
+      # master (PMAT-723):
+      #   - name: the roadmap and GitHub agree (CB-2115)
+      #     env: { GH_TOKEN: ${{ github.token }} }
+      #     run: ./target/debug/pmat comply check --checks CB-2113,CB-2115
+      # CB-2112 and CB-2114 (PMAT-724, step 5) are withheld for the same reason. At
+      # PMAT-724's measurement (2026-09-10) docs/roadmaps/roadmap.yaml on master has
+      # 63 open items, 0 carrying release:, 0 whose numeric tail is an open issue
+      # (50 name no issue, 13 name #612); the branch carrying steps 1-5's tickets
+      # has 72, 0, 0 (59, 13). The control above proves both rules discriminate on
+      # every arm, so the ledger lists them NEUTERED, which is the truth. They join
+      # the step once the fixers have run and every open item has been re-minted
+      # from its issue and bound to an open milestone (PMAT-725, after PMAT-723):
+      #     run: ./target/debug/pmat comply check --checks CB-2112,CB-2113,CB-2114,CB-2115
+      # CB-2110 (PMAT-728, step 6) is withheld too. At PMAT-728's measurement
+      # (2026-09-10) every one of the 44 specs under docs/specifications carries
+      # front-matter that parses and reads `epic: null`, and the three issues
+      # labelled epic (#1017, #1018, #1019) have 0 sub-issues: the epics the specs
+      # would name do not exist. The control above proves the rule discriminates on
+      # every arm (its arm 16 runs the rule on THIS tree's specs and asserts NO-EPIC
+      # on all of them — the flip cannot happen unnoticed), so the ledger lists
+      # CB-2110 NEUTERED. It joins the step once a human has created one epic per
+      # active spec, added the tickets' issues as its sub-issues, filled `epic:`,
+      # and marked the historical and superseded specs (PMAT-729):
+      #     run: ./target/debug/pmat comply check --checks CB-2110,CB-2112,CB-2113,CB-2114,CB-2115
 
   # Two consumers of one reusable workflow on two different refs is drift, and
   # what it silently drifts is the GATES.

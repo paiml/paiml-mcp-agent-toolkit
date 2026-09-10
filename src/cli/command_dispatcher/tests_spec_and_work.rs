@@ -390,6 +390,11 @@
                 direction,
                 path: Some(temp_dir.path().to_path_buf()),
                 dry_run: true,
+                check_only: false,
+                snapshot: None,
+                write_snapshot: None,
+                grace_minutes: 60,
+                format: crate::cli::commands::SyncOutputFormat::Text,
             };
             let result = CommandDispatcher::execute_work_command(&command).await;
             assert!(result.is_ok() || result.is_err());

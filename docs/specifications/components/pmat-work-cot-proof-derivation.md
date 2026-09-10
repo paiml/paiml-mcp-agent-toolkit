@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Work Chain-of-Thought Proof Derivation
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 31

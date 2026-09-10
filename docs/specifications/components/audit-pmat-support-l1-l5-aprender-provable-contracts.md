@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Audit: PMAT Support for L1–L5 Aprender Provable Contracts
 
 > **Status:** DRAFT — audit + remediation spec | **Version:** 1.0.0 | **Date:** 2026-07-04

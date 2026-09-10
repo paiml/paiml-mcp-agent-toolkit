@@ -4906,36 +4906,7 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: 'Phase 2 landed the verdict RULE (hook_debt_scope.rs). Phase 3 landed the
-    two pieces between the rule and the command line, and did NOT land the flag.
-    Landed: staged_verdict / staged_verdict_for_file, which read git itself —
-    `git show :<path>` for the staged blob (the INDEX, not the working tree),
-    `git show HEAD:<path>` for its counterpart, `git diff --cached -U0` for the
-    ranges — and handle_analyze_complexity_diff_scoped in
-    src/cli/handlers/complexity_handlers/mod.rs, which prints the offender as
-    "<fn> - <metric> <measured> > <limit> (was <before>)" plus "Errors: N" and
-    returns Err so the exit is non-zero. 13 hook_debt_scope tests + 4
-    diff_scope entry-point tests, all over a real fixture repo for the git legs;
-    report O11 is allowed at the DEFAULT thresholds (10/15) and growth in a
-    touched function is refused naming the function. Mutation matrix, run and
-    reverted: judging every function instead of the touched ones leaves 13/13
-    and 4/4 GREEN (an untouched function measures identically at HEAD, so the
-    growth test already spares it — the touched filter is load-bearing only
-    where there is no HEAD counterpart), while the complete pre-BSE-12 rule
-    (that plus previous=None) turns 8 of 13 and 2 of 4 RED. NOT landed and NOT
-    startable in this ticket''s scope_paths: the `--diff-scope` flag. Declaring
-    `diff_scope: bool` on AnalyzeCommands::Complexity forces `diff_scope: false`
-    into 23 struct literals that rustc names across 6 files, none of them in
-    scope — src/cli/handlers/analysis_handlers/core_routes.rs (1, and it is also
-    where route_complexity_command must dispatch to the new handler),
-    src/cli/handlers/analysis/complexity.rs (4),
-    src/contracts/adapter_tests.rs (8),
-    src/contracts/cli_impl_tests_integration.rs (6),
-    src/contracts/cli_impl_tests_core.rs (3),
-    src/cli/commands/tests_cli_parsing.rs (1). Measured by adding the field and
-    running `cargo check -p pmat --all-targets --message-format short`, then
-    reverting. Until that lands the generated hook still measures WHOLE FILES
-    and its doctrine comment says so in those words.'
+  notes: 'Phase 2 landed the verdict RULE (hook_debt_scope.rs). Phase 3 landed the two pieces between the rule and the command line, and did NOT land the flag. Landed: staged_verdict / staged_verdict_for_file, which read git itself — `git show :<path>` for the staged blob (the INDEX, not the working tree), `git show HEAD:<path>` for its counterpart, `git diff --cached -U0` for the ranges — and handle_analyze_complexity_diff_scoped in src/cli/handlers/complexity_handlers/mod.rs, which prints the offender as "<fn> - <metric> <measured> > <limit> (was <before>)" plus "Errors: N" and returns Err so the exit is non-zero. 13 hook_debt_scope tests + 4 diff_scope entry-point tests, all over a real fixture repo for the git legs; report O11 is allowed at the DEFAULT thresholds (10/15) and growth in a touched function is refused naming the function. Mutation matrix, run and reverted: judging every function instead of the touched ones leaves 13/13 and 4/4 GREEN (an untouched function measures identically at HEAD, so the growth test already spares it — the touched filter is load-bearing only where there is no HEAD counterpart), while the complete pre-BSE-12 rule (that plus previous=None) turns 8 of 13 and 2 of 4 RED. NOT landed and NOT startable in this ticket''s scope_paths: the `--diff-scope` flag. Declaring `diff_scope: bool` on AnalyzeCommands::Complexity forces `diff_scope: false` into 23 struct literals that rustc names across 6 files, none of them in scope — src/cli/handlers/analysis_handlers/core_routes.rs (1, and it is also where route_complexity_command must dispatch to the new handler), src/cli/handlers/analysis/complexity.rs (4), src/contracts/adapter_tests.rs (8), src/contracts/cli_impl_tests_integration.rs (6), src/contracts/cli_impl_tests_core.rs (3), src/cli/commands/tests_cli_parsing.rs (1). Measured by adding the field and running `cargo check -p pmat --all-targets --message-format short`, then reverting. Until that lands the generated hook still measures WHOLE FILES and its doctrine comment says so in those words.'
 - id: PMAT-709
   github_issue: null
   item_type: task
@@ -5056,3 +5027,257 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-718
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 1 (P1): pmat comply check --checks <CSV> selects rules by id — a deselected rule reports Skip(not selected), never absent, and an unknown id is a hard error because that is how a typo''d gate becomes a green gate'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T12:38:41Z
+  updated: 2026-09-09T12:38:41Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+- id: PMAT-719
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 2: CB-2113 commit traceability — every non-merge commit in the PR range carries Pmat-Ticket naming a real, non-terminal roadmap item; scripts/traceability-control.sh proves the gate can fail; a traceability job wired into gate''s needs and result loop; merge_group trigger; the enforcement ledger attributes a --checks subset run to the rules it names instead of neutering the roster'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T14:40:27Z
+  updated: 2026-09-09T14:40:27Z
+  spec: null
+  acceptance_criteria:
+  - pmat comply check --checks CB-2113 exits 1 on a fixture branch whose commit carries no Pmat-Ticket trailer, and 0 once the trailer names a planned roadmap item (scripts/traceability-control.sh, both arms observed)
+  - a trailer naming an id absent from the roadmap, or a completed/cancelled item, is a Fail naming the commit and the id
+  - on the default branch the rule reports not_applicable with the §8.4 reason and the measured v<latest>..HEAD count, never a silent pass
+  - 'ci.yml has a traceability job in gate''s needs AND its result loop, with the control step before the check step, and merge_group in on:'
+  - pmat comply ledger writes CB-2113 as ENFORCED via the traceability job and names gate among the roots that reach it; a --checks subset invocation no longer neuters the rules it names
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2113 + builder + severity default), services/gate_effect (invocation/ledger per-rule attribution), .github/workflows/ci.yml + scripts/ (job, control, merge_group), docs/status ledgers. Spec: docs/specifications/goal-mode.md §7, §7.1, §8.4, §11 step 2. Depends on PMAT-718 (#1246): the job selects its rule with --checks.'
+- id: PMAT-720
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 3: release: field on roadmap items (a projection of the GitHub milestone; pmat work sync is its only writer); pmat work sync made real — --check-only reports ORPHAN-ROADMAP / ORPHAN-GITHUB / COLLISION and time-bounded field drift, --direction yaml-to-github|github-to-yaml fix the orphans, a COLLISION is never auto-fixed; the 13 #612 collisions filed for a human under their own ticket'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-09T20:21:16Z
+  updated: 2026-09-09T20:21:16Z
+  spec: null
+  acceptance_criteria:
+  - a RoadmapItem without release serializes with no release key and one with release keeps it verbatim (cargo test --lib -- roadmap_types release_field); the 279-entry roadmap.yaml load->save round-trip is byte-identical
+  - pmat work sync --check-only --snapshot <fixture> exits 1 and names every ORPHAN-ROADMAP, ORPHAN-GITHUB and COLLISION finding; on a coherent fixture it exits 0 (scripts/work-sync-control.sh, both arms observed)
+  - a matched pair whose title or state word disagrees is reported only once now - max(item.updated, issue.updated_at) exceeds staleness_grace_minutes (default 60), never by count
+  - '--direction github-to-yaml writes release: from the issue milestone title and never mints one; --direction yaml-to-github --dry-run names the issues it would create and creates none; every fixer skips a collided item and prints why'
+  - 'pmat work sync --check-only on this repository reports the 13 open MACS items naming #612 as COLLISION, and a planned ticket for a human names them for resolution (never auto-fixed, spec 5.4)'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: models/roadmap_types.rs (release field), services/work_sync (new pure engine over a GitHub snapshot), cli/commands/work_commands_work.rs + handlers/work_handlers/core_handlers (surface, fixers), scripts/ (control). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §5, §11 step 3. Branches from master; no code overlap with #1246/#1247 (steps 1-2).'
+- id: PMAT-721
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 3, the human half: resolve the 13 MACS items that all name #612 — which of MACS-004..MACS-016 is really #612 is a judgement, so this is a supervised one-off migration, never a sync auto-fix (goal-mode.md §5.4); the rest get their own issues or are cancelled'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-09T21:22:08Z
+  updated: 2026-09-09T21:22:08Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat work sync --check-only reports 0 COLLISION on master (today: 1 — #612 named by MACS-004, MACS-005, MACS-006, MACS-007, MACS-008, MACS-009, MACS-010, MACS-011, MACS-012, MACS-013, MACS-014, MACS-015, MACS-016)'
+  - 'each of the 13 items either names a distinct open issue that is its own, or is cancelled with a note saying which item kept #612'
+  - 'no auto-fix: the resolution is committed by a person under this ticket, and the sync is never given a rule for it (goal-mode.md §5.4, §12)'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:triage
+  - human
+  notes: 'Filed by PMAT-720 (goal-mode step 3) from the first real run of pmat work sync --check-only on this repository (107 findings: 1 COLLISION, 52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT). Which of the thirteen is really #612 is a judgement, and a sync that guesses is how the thirteen arose — a human owns this ticket. CB-2115 (step 4) cannot land green until it is done.'
+- id: PMAT-722
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 4: CB-2115 roadmap coherence — the open roadmap items and the open GitHub issues are in bijection and no matched pair has disagreed past the grace window (goal-mode.md §5, §7); Skip on a project with no roadmap or no GitHub repository, Fail not_measured when the snapshot cannot be read, never a silent pass; the control (scripts/roadmap-coherence-control.sh) runs in the traceability job now, and the direct gate step waits for master to measure coherent (§5.4 step 3)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T05:55:07Z
+  updated: 2026-09-10T05:55:07Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat comply check --checks CB-2115 exits 1 on a fixture whose open item names a closed issue (the §7 falsifier: close one linked issue, leave the item open) and 0 on a fixture whose open items and open issues are in bijection (scripts/roadmap-coherence-control.sh, both arms observed)'
+  - a COLLISION, an ORPHAN-GITHUB and a title disagreement older than the grace window are each a Fail naming the class and the item or issue; a disagreement inside the window is tolerated and counted; grace_minutes is read from .pmat.yaml comply.checks.cb-2115.options
+  - a project with no docs/roadmaps/roadmap.yaml or no resolvable GitHub repository reports Skip with the reason; a snapshot the rule expected and could not read (missing file, gh failure, a page at the cap) is Fail not_measured, never a pass
+  - 'the snapshot comes from gh (issues and milestones, refused at the page cap) unless comply.checks.cb-2115.options.snapshot names a file: the same GithubSnapshot pmat work sync reads, its reader moved into services/work_sync so the command and the rule share one'
+  - ci.yml's traceability job runs scripts/roadmap-coherence-control.sh and scripts/work-sync-control.sh before the CB-2113 step; the direct CB-2115 step is NOT added until pmat work sync --check-only exits 0 on master (goal-mode.md §5.4 step 3), and pmat comply ledger writes CB-2115 as NEUTERED (its only full-roster carrier is quality-gate.yml's continue-on-error step); the withholding reason is recorded in ci.yml's comment and in the receipt, not in the ledger
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (CB-2115 + builder + severity default), services/work_sync (github.rs reader moved out of the work handler), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §5, §7 row CB-2115, §11 step 4. Stacked on #1246 -> #1247 and #1248: needs the --checks selector, the traceability job and the sync engine.'
+- id: PMAT-723
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 4b: CB-2115 becomes a gate — add pmat comply check --checks CB-2113,CB-2115 (with GH_TOKEN) to the traceability job once pmat work sync --check-only exits 0 on master; blocked on PMAT-721 (the thirteen #612 collisions) and on running the sync fixers (52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB at PMAT-720''s measurement)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T06:34:18Z
+  updated: 2026-09-10T06:34:18Z
+  spec: null
+  acceptance_criteria:
+  - pmat work sync --check-only exits 0 on master, measured and quoted in the receipt before the step is added (goal-mode.md §5.4 step 3, §13 items 4-5)
+  - the traceability job in ci.yml runs pmat comply check --checks CB-2113,CB-2115 with GH_TOKEN after the controls, and pmat comply ledger writes CB-2115 as ENFORCED via that step with gate among its roots
+  - the step's first CI run is observed RED against the §7 falsifier (close one linked issue, leave the item open) and linked from the receipt (goal-mode.md §13 item 2)
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Filed by PMAT-722 (goal-mode step 4). The rule, its control (scripts/roadmap-coherence-control.sh, 8 arms, runs in the traceability job) and its ledger row exist; only the direct invocation is withheld, because a gate red on arrival is a gate someone disables (§5.4). The exact step is written as a comment in .github/workflows/ci.yml beside the CB-2113 step.
+- id: PMAT-724
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 5: CB-2112 (A, every open item names an open issue whose number is its numeric tail) and CB-2114 (B/F1, every open item carries release:, the milestone exists, the issue is on it) — control first in the traceability job, the direct step withheld while master violates both (doctrine 6, §5.4)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-10T08:58:49Z
+  updated: 2026-09-10T08:58:49Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat comply check --checks CB-2112 --github-snapshot F exits 1 on a fixture whose open item has github_issue: null (the §7 falsifier), on one naming a closed or absent issue, and on one whose id tail differs from the issue number; exits 0 when every open item names an open issue numbered as its tail (scripts/ticket-release-control.sh, every arm observed)'
+  - 'pmat comply check --checks CB-2114 --github-snapshot F exits 1 on a fixture whose open item has no release: (the §7 falsifier), names a release with no milestone of that exact title, names a v-prefixed release, or names a release whose milestone its issue is not on; exits 0 when every open item names an existing milestone its issue is on'
+  - both rules Skip with the reason on a project with no roadmap or no resolvable GitHub repository, Fail not_measured (never pass) when the snapshot cannot be read, when the committed roadmap was deleted, or when .pmat.yaml names a snapshot, and scope themselves to non-terminal items and say so (goal-mode.md §4.2)
+  - 'the predicates are pure functions in services/work_sync over the same GithubSnapshot the sync and CB-2115 read; the unit tests name the mutant each dies under: verdict inversion, unreadable snapshot to Skip, the tail clause ignored, the milestone-membership clause ignored'
+  - the control runs in ci.yml traceability job before the CB-2113 step; the direct CB-2112/CB-2114 step is withheld while master violates both (63 open items on master, 72 on this branch; 0 with release:; 0 whose tail is an open issue at this measurement) with the reason recorded beside the withheld CB-2115 step and filed as PMAT-725; pmat comply ledger writes both as NEUTERED
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: comply check_handlers (two rules + builder + severity defaults), services/work_sync (the linkage and release predicates), scripts/ (control), .github/workflows/ci.yml (traceability job). Spec: docs/specifications/goal-mode.md §4.1, §4.2, §7 rows CB-2112 and CB-2114, §11 step 5. Stacked on #1249: needs CheckOverrides/--github-snapshot, SnapshotSource and the release: field. The numeric-tail clause is PMAT-714 (#1240) ids: pmat work add --github-issue N mints PMAT-N.'
+- id: PMAT-725
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 5b: CB-2112 and CB-2114 become gates — every open item re-minted from its issue (id tail = issue number, the PMAT-714 path) and bound to its milestone by the sync, then the traceability job runs pmat comply check --checks CB-2112,CB-2113,CB-2114,CB-2115 with GH_TOKEN; blocked on PMAT-723 (the fixers) and on a human deciding the re-mint of the open ids'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T10:31:06Z
+  updated: 2026-09-10T10:31:06Z
+  spec: null
+  acceptance_criteria:
+  - 'pmat comply check --checks CB-2112,CB-2114 exits 0 on master against a fresh snapshot of paiml/paiml-mcp-agent-toolkit, measured and quoted in the receipt before the step is added (goal-mode.md doctrine 6: a rule red on the day it lands gets disabled)'
+  - 'every open item id ends in the number of its open issue and every open item carries release: naming the milestone its issue is on; the re-mint of ids minted before #1240 is decided by a human (a rename touches every trailer and receipt that names the old id), never by the sync'
+  - the traceability job runs pmat comply check --checks CB-2112,CB-2113,CB-2114,CB-2115 with GH_TOKEN after the controls; pmat comply ledger writes CB-2112 and CB-2114 as ENFORCED with gate among the roots; the first CI run is observed RED against each §7 falsifier (null one github_issue; remove one release:) and linked from the receipt (goal-mode.md §13 item 2)
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Filed by PMAT-724 (goal-mode step 5). The rules, their control (scripts/ticket-release-control.sh, 17 arms, runs in the traceability job) and their ledger rows exist; only the direct invocation is withheld (§5.4, doctrine 6). The exact step is a comment in .github/workflows/ci.yml beside the withheld CB-2115 step.
+- id: PMAT-726
+  github_issue: null
+  item_type: task
+  title: 'lib tests that call std::env::set_current_dir race the rest of the cargo test --lib process: 16 files under src/ (52 sites; hooks_command_handlers_tests 12, defect_report_service_tests 10, deep_context_config_tests 10, scaffold/tests 7) chdir the whole test binary into tempdirs, and a tempdir dropped while another test spawns cargo or resolves a relative path fails that test with ENOENT — observed on PMAT-724 as quality_proxy_property_tests::test_advisory_mode_reports_the_verdict_and_returns_the_content (''Failed to determine current directory'', ''cargo is not on PATH''), green 3 of 3 in isolation'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T11:15:16Z
+  updated: 2026-09-10T11:15:16Z
+  spec: null
+  acceptance_criteria:
+  - 'git grep -c set_current_dir -- src/*.rs reports 0 sites in test code: every test that needs a working directory passes it to the command (Command::current_dir) or the API under test instead of moving the process, or the ones that cannot are serialised behind one lock and restore the previous directory on every exit path (RAII guard), and say why'
+  - pmat verify --format json is ok:true three runs in a row on the same TMPDIR with no test filtered, quoted in the receipt
+  - 'the failing signature is pinned by a test: a tempdir dropped while another test resolves a relative path does not fail the other test'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Filed by PMAT-724 (goal-mode step 5) from its second pmat verify run (21448 passed, 1 failed, 154 ignored); the third run and the isolation reruns are quoted in docs/audits/impl-PMAT-724-receipt.md. Related traps on record - the lib suite fails a different set per TMPDIR, and vacuous tests hide env races.
+- id: PMAT-727
+  github_issue: null
+  item_type: task
+  title: 'the commit-msg hook accepts a PMAT-NNN mention anywhere in the message while CB-2113 accepts only a Pmat-Ticket trailer in the last paragraph: 11 commits passed the hook and were refused in CI on #1250 (goal-mode doctrine 5, §9)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T12:13:39Z
+  updated: 2026-09-10T12:13:39Z
+  spec: null
+  acceptance_criteria:
+  - 'one predicate, two callers: the commit-msg hook that pmat hooks install writes refuses (strict) or warns (non-strict) exactly when CB-2113 would refuse the same message - the fallback that accepts a ticket or issue reference outside the trailer block is removed, or CB-2113 is widened to accept it, and the receipt names which and why'
+  - a lib test feeds generate_commit_msg_hook a message whose Pmat-Ticket line sits in the paragraph above a Co-Authored-By block and asserts the hook's verdict equals the rule's verdict on that message (both refuse, or both accept)
+  - the hook text and pmat hooks install --help say that git reads trailers from the last paragraph only, and the commit-msg advice line shows the trailer and the co-author line in one paragraph
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Filed by PMAT-724 from PR #1250''s first CI run - the traceability job went red at the direct CB-2113 step (11 of 59 non-merge commits, no Pmat-Ticket trailer) although every commit had passed the commit-msg hook. Root cause, measured - the messages carried Pmat-Ticket in a paragraph above the Co-Authored-By block, git parses only the last paragraph as trailers, and the hook''s PATTERN fallback (PMAT-[0-9]+|#[0-9]+) matched the subject. The checkout''s hook was STRICT=0 as well - pmat hooks install --strict does write STRICT=1 (measured in a throwaway repo), but strict changes nothing when the fallback matches first. Branch fix was a message-only rewrite (12 commits, trees byte-identical), recorded in docs/audits/impl-PMAT-724-receipt.md under Post-PR. Hook template - src/cli/handlers/hooks_command_handlers/hooks_command.rs generate_commit_msg_hook; rule - src/services/commit_traceability/mod.rs.'
+- id: PMAT-728
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 6: CB-2110 spec epics (invariant E) — every active spec names an open epic issue with a sub-issue, read from GitHub''s sub-issue relation; CB-148 retired; front-matter on the 43 specs; control first, the gate step withheld until the epics exist'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-10T12:27:23Z
+  updated: 2026-09-10T12:27:23Z
+  spec: null
+  acceptance_criteria:
+  - 'CB-2110: Spec Epics fails on the §7 falsifier (delete the epic: line of an active spec), on a closed, absent or unlabelled epic and on an epic with zero sub-issues; passes an active spec whose epic is open, labelled epic and has a sub-issue; exempts historical and superseded specs from the epic leg, never the parse leg, and prints every exempt spec by name - each arm in scripts/spec-epic-control.sh and each test naming the mutant it dies under'
+  - a snapshot that lacks the sub-issue count for a named epic is not_measured and fails, never read as zero (doctrine 2); the live reader fills the count for issues labelled epic from GitHub's sub-issue relation (§4.3) and pmat work sync --write-snapshot carries it
+  - 'pmat comply check prints CB-148: RETIRED — superseded by CB-2110 as a Skip row; the detector and its predicate are deleted, not patched (§11)'
+  - 'the 43 specs without front-matter carry epic: null, status: active, vendors: [] (goal-mode.md''s own header); no spec is marked historical or superseded by this ticket - that classification is the operator''s and is filed with the epic creation'
+  - the control runs in the traceability job before the CB-2113 step; the direct --checks CB-2110 step is withheld with this tree's measurement (every spec NO-EPIC) beside the withheld CB-2115 step and filed as its own ticket; pmat comply ledger lists CB-2110 NEUTERED among 162 rules; pmat verify --format json is ok:true on the committed tree
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  notes: 'orch-basis:M>=3 — measured footprint: services/work_sync (snapshot field + live sub-issue count), services/spec_epic (new - front-matter parser + predicate), comply check_handlers (the CB-2110 rule, the GitHub preamble split from the roadmap preamble, CB-148 retired, comply report lists the exempt specs), comply_cb_detect (detector deleted), scripts/spec-epic-control.sh, .github/workflows/ci.yml, docs/specifications (44 files), README, ledgers. Stacked on PMAT-724 (#1250). Step 6 is the largest human step in goal-mode.md §11 - the epics do not exist (three issues carry the epic label today, none a spec''s, all with zero sub-issues), so the rule lands with its control and every spec reads NO-EPIC until the operator creates the epics and fills epic:, and that flip is the follow-on ticket.'
+- id: PMAT-729
+  github_issue: null
+  item_type: task
+  title: 'goal-mode step 6 flip: create one epic per active spec, add the tickets'' issues as its sub-issues, fill epic: in the front-matter, classify the historical and superseded specs, then run --checks CB-2110 in the traceability job'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-10T13:31:43Z
+  updated: 2026-09-10T13:31:43Z
+  spec: null
+  acceptance_criteria:
+  - 'one open GitHub issue labelled epic exists per active spec under docs/specifications, its sub-issues are the issues of the tickets that implement that spec (GitHub''s native sub-issue relation, goal-mode.md §4.3 - never a label or a title convention), and the spec''s front-matter epic: names it'
+  - 'every spec that is no longer the current description of the system is marked status: historical (a record) or status: superseded (replaced - the replacement named in the body); the classification is the operator''s and is recorded in the PR, and pmat comply report lists every exempt spec by name'
+  - pmat comply check --checks CB-2110 --path . exits 0 on master with a live snapshot (no --github-snapshot), and scripts/spec-epic-control.sh arm 16 (THIS TREE) is retired or rewritten to the new measurement in the same PR - the arm exists so this flip cannot happen unnoticed
+  - 'the withheld step in .github/workflows/ci.yml becomes: run: ./target/debug/pmat comply check --checks CB-2110,CB-2112,CB-2113,CB-2114,CB-2115 (or whichever of CB-2112/CB-2114/CB-2115 have landed by then), and pmat comply ledger lists CB-2110 as CI-gated, not NEUTERED'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Filed by PMAT-728 (goal-mode.md §11 step 6, doctrine 6): the rule, its control and the front-matter landed there; the direct gate step is withheld because at 2026-09-10 the epics do not exist - all 44 specs read epic: null, and the three issues labelled epic (#1017, #1018, #1019) carry 0 sub-issues. Human work first: create the epics, add the sub-issues, decide historical/superseded, fill epic:. A gate red on arrival is a gate someone disables (§5.4). Depends on PMAT-728 merging. The 44-line NO-EPIC verdict on master is the measurement: pmat comply check --checks CB-2110 --path . --github-snapshot <snapshot from pmat work sync --write-snapshot>.'

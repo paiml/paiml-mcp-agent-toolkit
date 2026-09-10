@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Work Management
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 14

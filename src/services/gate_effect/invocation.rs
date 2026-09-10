@@ -23,11 +23,44 @@ pub struct Invocation {
     pub via: String,
     /// Reasons the exit code cannot reach the required check. Empty ⇒ enforcing.
     pub suppressions: Vec<String>,
+    /// `None` ⇒ a full-roster run: this invocation covers every rule. `Some(ids)`
+    /// when the invoking line carries a rule-subsetting flag: `--checks` yields
+    /// the ids it names (upper-cased); every other `RULE_SUBSET_FLAGS` spelling
+    /// yields `Some(vec![])` — known to restrict, attribution unknown.
+    pub selected: Option<Vec<String>>,
 }
 
 impl Invocation {
     pub fn is_enforcing(&self) -> bool {
         self.suppressions.is_empty()
+    }
+
+    /// Does this invocation even name `id`? `selected` is `None` for a
+    /// full-roster run — every rule is covered — or `Some(ids)` for a run
+    /// restricted with `--checks`/`--only`/…, where only the named ids are.
+    pub fn covers_rule(&self, id: &str) -> bool {
+        match &self.selected {
+            None => true,
+            Some(ids) => ids.iter().any(|s| s.eq_ignore_ascii_case(id)),
+        }
+    }
+
+    /// True when every suppression on this invocation is the "restricts the
+    /// roster" sentence — nothing else stands between its exit code and the
+    /// required check. `is_enforcing` requires *zero* suppressions (evidence
+    /// for the whole roster); this is the weaker fact the graph's leaf edges
+    /// and per-rule attribution need: a subset run can still be a live carrier
+    /// for the rules it names.
+    pub fn carries_selected_rules(&self) -> bool {
+        self.suppressions.iter().all(|s| is_roster_restriction(s))
+    }
+
+    /// Does this invocation's exit code, if `id` fails, actually reach the
+    /// required check? Covering the rule is necessary but not sufficient — a
+    /// `continue-on-error` step that also carries `--checks CB-2100` covers
+    /// CB-2100 and enforces nothing.
+    pub fn enforces_rule(&self, id: &str) -> bool {
+        self.covers_rule(id) && self.carries_selected_rules()
     }
 }
 
@@ -92,12 +125,22 @@ fn collect_from_script(
         };
         let mut suppressions = inherited.to_vec();
         suppressions.extend(effect::assess(script, idx));
-        if selects_a_rule_subset(script.lines().nth(idx).unwrap_or("")) {
-            suppressions.push(
-                "the invocation restricts which rules run, so it cannot stand in for the \
-                 whole error-severity roster"
-                    .into(),
-            );
+        let line = script.lines().nth(idx).unwrap_or("");
+        if let Some(elsewhere) = foreign_tree(line) {
+            suppressions.push(format!(
+                "runs comply against another tree (--path {elsewhere}), so its verdict is not \
+                 evidence for this repository"
+            ));
+        }
+        if let Some(file) = fixture_snapshot(line) {
+            suppressions.push(format!(
+                "judges GitHub-facing rules from a snapshot file (--github-snapshot {file}), so its \
+                 verdict is not evidence for this repository"
+            ));
+        }
+        let selected = parse_selected(line);
+        if selected.is_some() {
+            suppressions.push(roster_restriction_reason(&selected));
         }
         out.push(Invocation {
             workflow: job.workflow.clone(),
@@ -105,6 +148,7 @@ fn collect_from_script(
             step: label.to_string(),
             via: via.to_string(),
             suppressions,
+            selected,
         });
     }
     for hop in indirect_targets(project_path, script) {
@@ -137,6 +181,145 @@ const RULE_SUBSET_FLAGS: &[&str] = &["--checks", "--only", "--rules", "--skip", 
 
 fn selects_a_rule_subset(line: &str) -> bool {
     RULE_SUBSET_FLAGS.iter().any(|f| line.contains(f))
+}
+
+/// Which rule ids (if any) a line's rule-subsetting flag names.
+///
+/// `None` when the line carries no `RULE_SUBSET_FLAGS` spelling at all — a
+/// full-roster run. `Some(ids)` when it does: `--checks` is parsed for the ids
+/// it names (`--checks a,b`, `--checks=a,b`, repeated `--checks` flags, and
+/// whitespace-separated values up to the next token starting with `-`), each
+/// trimmed and upper-cased. Every other `RULE_SUBSET_FLAGS` spelling yields
+/// `Some(vec![])`: known to restrict the roster, but attribution to specific
+/// ids is unknown, so it enforces no rule.
+fn parse_selected(line: &str) -> Option<Vec<String>> {
+    let code = line.split('#').next().unwrap_or(line);
+    if !selects_a_rule_subset(code) {
+        return None;
+    }
+    Some(parse_checks_flag(code).unwrap_or_default())
+}
+
+/// `--checks` specifically, parsed for the ids it names. `None` when the line
+/// has no `--checks` flag (but may have another `RULE_SUBSET_FLAGS` spelling).
+fn parse_checks_flag(code: &str) -> Option<Vec<String>> {
+    let toks: Vec<&str> = code.split_whitespace().collect();
+    let mut ids = Vec::new();
+    let mut found = false;
+    let mut i = 0;
+    while i < toks.len() {
+        let t = toks[i];
+        if let Some(val) = t.strip_prefix("--checks=") {
+            found = true;
+            ids.extend(split_ids(val));
+            i += 1;
+            continue;
+        }
+        if t == "--checks" {
+            found = true;
+            i += 1;
+            while i < toks.len() && !toks[i].starts_with('-') {
+                ids.extend(split_ids(toks[i]));
+                i += 1;
+            }
+            continue;
+        }
+        i += 1;
+    }
+    found.then_some(ids)
+}
+
+fn split_ids(s: &str) -> Vec<String> {
+    s.split(',')
+        .map(str::trim)
+        .filter(|x| !x.is_empty())
+        .map(str::to_uppercase)
+        .collect()
+}
+
+/// The sentence recorded when an invocation's line restricts the roster, named
+/// with the ids it selects when they are known.
+fn roster_restriction_reason(selected: &Option<Vec<String>>) -> String {
+    match selected {
+        Some(ids) if !ids.is_empty() => format!(
+            "the invocation restricts which rules run (--checks {}), so it cannot stand in for \
+             the whole error-severity roster",
+            ids.join(",")
+        ),
+        _ => "the invocation restricts which rules run, so it cannot stand in for the whole \
+              error-severity roster"
+            .to_string(),
+    }
+}
+
+/// The `--path`/`-p` argument on an invoking line, when it points somewhere
+/// other than this tree.
+///
+/// PMAT-719's control step runs the very same `pmat comply check --checks
+/// CB-2113` line as the gate, against a throwaway fixture (`--path "$repo"`).
+/// Read as an invocation of the rule it is one; read as evidence that the rule
+/// is enforced ON THIS REPOSITORY it is nothing of the kind, and a ledger that
+/// credited it would have kept CB-2113 "ENFORCED" after the real step was
+/// deleted. `.`, `./`, `$PWD` and `$GITHUB_WORKSPACE` are this tree; anything
+/// else — a variable, a temp dir, a sibling checkout — is another one.
+/// The `--github-snapshot` argument on an invoking line, when present.
+///
+/// PMAT-722: CB-2115 can be judged from a snapshot file for its control; a
+/// CI line that does so on the real tree judges a fixture, not GitHub, and
+/// must not be credited as enforcing the rule.
+fn fixture_snapshot(line: &str) -> Option<String> {
+    let code = line.split('#').next().unwrap_or(line);
+    let toks: Vec<&str> = code.split_whitespace().collect();
+    let mut i = 0;
+    while i < toks.len() {
+        let t = toks[i];
+        if let Some(v) = t.strip_prefix("--github-snapshot=") {
+            return Some(v.to_string());
+        }
+        if t == "--github-snapshot" {
+            return Some(
+                toks.get(i + 1)
+                    .map_or_else(|| "<missing>".to_string(), |v| (*v).to_string()),
+            );
+        }
+        i += 1;
+    }
+    None
+}
+
+fn foreign_tree(line: &str) -> Option<String> {
+    let code = line.split('#').next().unwrap_or(line);
+    let toks: Vec<&str> = code.split_whitespace().collect();
+    let mut i = 0;
+    while i < toks.len() {
+        let t = toks[i];
+        let value = if let Some(v) = t.strip_prefix("--path=") {
+            Some(v.to_string())
+        } else if t == "--path" || t == "-p" {
+            toks.get(i + 1).map(|v| (*v).to_string())
+        } else {
+            None
+        };
+        if let Some(v) = value {
+            let bare = v.trim_matches(|c| c == '"' || c == '\'');
+            let here = matches!(
+                bare,
+                "." | "./" | "$PWD" | "${PWD}" | "$GITHUB_WORKSPACE" | "${GITHUB_WORKSPACE}"
+            );
+            if !here {
+                return Some(v);
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
+/// Does `reason` read as [`roster_restriction_reason`]? Used to tell "nothing
+/// else suppresses this invocation" from "something genuinely does" —
+/// [`Invocation::carries_selected_rules`] needs exactly that distinction.
+pub fn is_roster_restriction(reason: &str) -> bool {
+    reason.starts_with("the invocation restricts which rules run")
 }
 
 /// One resolvable hop out of a script: where it goes, and which line goes there.

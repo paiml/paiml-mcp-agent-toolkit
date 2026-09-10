@@ -322,6 +322,61 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-2113: Commit Traceability — every PR commit carries a Pmat-Ticket trailer naming a live roadmap item; Error so it is a member of the roster CB-2100 verifies.
+    checks.insert(
+        "cb-2113".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
+    // CB-2110: Spec Epics — every active spec under docs/specifications names an open epic issue with a sub-issue (goal-mode.md §4.3, §7, invariant E); Error so it is a member of the roster CB-2100 verifies.
+    checks.insert(
+        "cb-2110".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
+    // CB-2112: Ticket Linkage — every open roadmap item names an open GitHub issue whose number is the item's numeric tail (goal-mode.md §7, invariant A); Error so it is a member of the roster CB-2100 verifies.
+    checks.insert(
+        "cb-2112".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
+    // CB-2114: Release Binding — every open roadmap item carries a release: naming an existing milestone its issue is on (goal-mode.md §4.1, §7, invariants B/F1); Error so it is a member of the roster CB-2100 verifies.
+    checks.insert(
+        "cb-2114".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
+    // CB-2115: Roadmap Coherence — the open roadmap items and the open GitHub issues are in bijection and no matched pair has disagreed past the grace window (goal-mode.md §5); Error so it is a member of the roster CB-2100 verifies.
+    checks.insert(
+        "cb-2115".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     // CB-2101: Threshold Coherence — every number `.pmat-metrics.toml` writes
     // down must bound something this tree measures. Declared Error for the same
     // reason CB-2102 is: an id nobody declares resolves to Warning, and

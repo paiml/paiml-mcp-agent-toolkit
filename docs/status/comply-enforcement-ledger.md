@@ -22,13 +22,13 @@ Source: .github/required-status-checks.txt
 | `docs build (docs.rs environment)` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `pmat score` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `provable ladder` | **no** — this required check was read in full and gates nothing in the CB roster |
-| `gate` | **no** — this required check was read in full and gates nothing in the CB roster |
+| `gate` | yes |
 
 ## Summary
 
-- rules: 157
-- ENFORCED: 0
-- NEUTERED: 157
+- rules: 162
+- ENFORCED: 1
+- NEUTERED: 161
 - UNREACHABLE: 0
 
 ## Holes
@@ -41,8 +41,8 @@ Things that could not be measured. Each one is a failure, not a blank.
 
 | Rule | Title | Severity | Status | Enforced by | Defined at |
 |---|---|---|---|---|---|
-| CB-030 | O(1) Hooks | unconfigured | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_individual_basic.rs:167` |
-| CB-031 | Cache Health | unconfigured | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_individual_basic.rs:202` |
+| CB-030 | O(1) Hooks | unconfigured | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_individual_basic.rs:160` |
+| CB-031 | Cache Health | unconfigured | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_individual_basic.rs:195` |
 | CB-040 | File Health | unconfigured | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_extended.rs:476` |
 | CB-060 | ComputeBrick Compliance | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_individual_cb.rs:96` |
 | CB-081 | Dependency Health | disabled | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_extended.rs:289` |
@@ -53,7 +53,7 @@ Things that could not be measured. Each one is a failure, not a blank.
 | CB-140 | Mono-Spec Structure | warning | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_mono_spec.rs:16` |
 | CB-141 | Memory Profiling | warning | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_mono_spec.rs:150` |
 | CB-142 | SWE-CI EvoScore | info | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_mono_spec.rs:253` |
-| CB-148 | Spec-Work Traceability | unconfigured | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_individual_basic.rs:39` |
+| CB-148 | RETIRED — superseded by CB-2110 | unconfigured | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_individual_basic.rs:43` |
 | CB-200 | TDG Grade Gate | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_tdg_grade.rs:241` |
 | CB-300 | Muda Waste Score | warning | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_extended.rs:50` |
 | CB-301 | Reproducibility Level | warning | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_extended.rs:83` |
@@ -198,3 +198,8 @@ Things that could not be measured. Each one is a failure, not a blank.
 | CB-2100 | Comply Gate Effect | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs:38` |
 | CB-2101 | Threshold Coherence | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_threshold_coherence.rs:44` |
 | CB-2102 | Ratchet Baselines | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_metrics_ratchet.rs:40` |
+| CB-2110 | Spec Epics | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs:24` |
+| CB-2112 | Ticket Linkage | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_ticket_linkage.rs:18` |
+| CB-2113 | Commit Traceability | error | ENFORCED | .github/workflows/ci.yml:traceability step `the closed loop holds (CB-2113)` (run; selected by --checks CB-2113) | `src/cli/handlers/comply_handlers/check_handlers/check_traceability.rs:25` |
+| CB-2114 | Release Binding | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_release_binding.rs:20` |
+| CB-2115 | Roadmap Coherence | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs:14` |

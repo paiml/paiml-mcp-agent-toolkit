@@ -923,4 +923,28 @@ roadmap:
                        title: \"t\"\n    status: In-Progress\n";
         assert!(serde_yaml_ng::from_str::<Roadmap>(lenient).is_ok());
     }
+
+    // PMAT-720 (goal-mode.md §4.2): `release` is a projection of the GitHub milestone of the
+    // same title, written only by `pmat work sync`. An entry that carries it must keep it
+    // across a load -> save; an entry without it must not grow the key, so the 279 existing
+    // entries round-trip byte-for-byte.
+    #[test]
+    fn release_survives_a_yaml_round_trip() {
+        let yaml = "roadmap_version: '1.0'\ngithub_enabled: true\ngithub_repo: paiml/pmat\nroadmap:\n- id: T-1\n  github_issue: 1\n  item_type: task\n  title: t\n  status: planned\n  release: 3.41.0\n";
+        let roadmap: Roadmap = serde_yaml_ng::from_str(yaml).expect("the fixture parses");
+        let out = serde_yaml_ng::to_string(&roadmap).expect("the roadmap serializes");
+        assert!(
+            out.contains("release:") && out.contains("3.41.0"),
+            "the release key was dropped on the way through RoadmapItem:\n{out}"
+        );
+        let again: Roadmap = serde_yaml_ng::from_str(&out).expect("the output parses");
+        assert_eq!(again.roadmap[0].release.as_deref(), Some("3.41.0"));
+    }
+
+    #[test]
+    fn an_item_without_release_serializes_without_the_key() {
+        let item = RoadmapItem::new("T-1".to_string(), "t".to_string());
+        let out = serde_yaml_ng::to_string(&item).expect("the item serializes");
+        assert!(!out.contains("release"), "a None release must not appear:\n{out}");
+    }
 }

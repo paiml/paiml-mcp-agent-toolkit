@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Contract Surface Types & Anti-Leak Enforcement
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 23

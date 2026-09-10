@@ -182,7 +182,7 @@ pub(super) async fn create_github_issue_from_item(
 }
 
 /// Detect GitHub repository from git remote
-pub(super) fn detect_github_repo(project_path: &PathBuf) -> Result<Option<String>> {
+pub fn detect_github_repo(project_path: &PathBuf) -> Result<Option<String>> {
     use std::process::Command;
 
     let output = Command::new("git")

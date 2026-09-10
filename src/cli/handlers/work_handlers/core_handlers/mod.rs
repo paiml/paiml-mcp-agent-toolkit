@@ -7,10 +7,11 @@
 mod checkpoint;
 mod commit;
 mod contract;
-mod github;
+pub mod github;
 mod handlers;
 mod helpers;
 mod resolution;
+mod sync;
 mod types;
 
 // Quality handlers extracted to work_quality_handlers.rs for file health compliance (CB-040)
@@ -24,5 +25,5 @@ pub use handlers::{
     handle_work_checkpoint, handle_work_complete, handle_work_continue, handle_work_cot_check,
     handle_work_cot_derive, handle_work_delegate, handle_work_event, handle_work_falsify,
     handle_work_init, handle_work_ledger_verify, handle_work_start, handle_work_status,
-    handle_work_sync,
 };
+pub use sync::{handle_work_sync, SyncOptions};

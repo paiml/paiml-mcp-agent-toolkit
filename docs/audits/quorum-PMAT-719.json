@@ -1,0 +1,158 @@
+{
+  "ticket": "PMAT-719",
+  "branch": "PMAT-719-cb2113-traceability-gate",
+  "judged_head": "487946d5f",
+  "tool": "agy quorum via paiml-agy-delegate (mode grillme, width 3, writes=false, --sandbox)",
+  "width": 3,
+  "verdict_counts": {
+    "FAIL": 3,
+    "PASS": 0
+  },
+  "agreed": false,
+  "conversations": [
+    "d6d656a1-49b2-466c-9aef-d8fa73789540",
+    "84e68a51-4d54-491f-bf1b-fa56b62d7603",
+    "ef3e3ac5-d6a4-4f3f-9454-57b7d25f1960"
+  ],
+  "interrupted_first_attempts": [
+    "6b9183b7-effe-4814-a0c5-3a56d54677c6",
+    "9d8684dc-a433-4bf2-bd7a-44c0b9f70c14"
+  ],
+  "orchestrator_adjudication": [
+    {
+      "finding": "Inputs::NoRoadmap yields Skip, so deleting docs/roadmaps/roadmap.yaml bypasses the gate (§3.3)",
+      "lanes": [
+        1,
+        2,
+        3
+      ],
+      "verdict": "CONFIRMED",
+      "action": "fixed in the same PR: a roadmap that was committed and is now gone is Inputs::RoadmapDeleted → Fail not_measured (the line CB-2102 draws for its own input); a roadmap never committed stays Skip. RED tests: commit_traceability::tests::a_roadmap_that_was_committed_and_is_now_gone_is_not_an_absence, tests_traceability::a_deleted_roadmap_is_not_measured_and_fails."
+    },
+    {
+      "finding": "ledger rule_status falls back to enforcing.first(): with the direct step deleted, the control's fixture run (--path \"$repo\") would be credited as enforcing CB-2113 on the repository",
+      "lanes": [
+        1,
+        2,
+        3
+      ],
+      "verdict": "CONFIRMED",
+      "action": "fixed at the cause rather than by removing the fallback: invocation.rs now records a --path/-p that is not this tree (., ./, $PWD, $GITHUB_WORKSPACE) as a suppression 'runs comply against another tree', so the control hop is NEUTERED, unreachable, and invisible to the fallback. RED test: gate_effect::tests::an_invocation_that_points_comply_at_another_tree_is_not_evidence_for_this_one; the_ledger_names_the_direct_step_over_a_control_hop_that_runs_the_same_rule now also asserts the hop is not credited."
+    },
+    {
+      "finding": "the 'current branch name == base short name' default-branch test misclassifies a local branch literally named master ahead of origin/master",
+      "lanes": [
+        1,
+        2
+      ],
+      "verdict": "REFUTED",
+      "action": "none. A local branch named master ahead of origin/master IS the default branch on that machine — the next push lands on master, which §8.4 says is not judged. In CI a pull_request or merge_group checkout is a detached HEAD ('HEAD' != 'master'), so the name test never fires there; a fork whose branch is named master reaches CI the same way. The behaviour is deliberate and now stated in the check's doc comment."
+    },
+    {
+      "finding": "mutant 'enforces_rule returns covers_rule alone' is killed by no test, because edge liveness is computed before the ledger asks",
+      "lanes": [
+        2
+      ],
+      "verdict": "CONFIRMED",
+      "action": "added gate_effect::tests::enforces_rule_needs_more_than_coverage, a unit test on an Invocation carrying a real suppression plus a selection: covers_rule true, enforces_rule false."
+    }
+  ],
+  "lanes": [
+    {
+      "lane": 1,
+      "conversation_id": "d6d656a1-49b2-466c-9aef-d8fa73789540",
+      "status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 444.986485254,
+      "verdict": "FAIL",
+      "summary": "Adversarial review complete. The PMAT-719 implementation was audited against the specification and codebase. While the CI wiring, subset enforcement isolation, and test rigor are mostly sound, there are critical bypass vulnerabilities (range semantics misclassification, treating a missing roadmap as a `Skip`/Pass, and potential for the ledger to falsely credit fixture runs) that weaken the gate. The verdict is FAIL due to these defects.",
+      "findings": [
+        {
+          "claim": "The 'current branch name == base short name' default-branch test misclassifies local branches named `master`.",
+          "file": "src/services/commit_traceability/mod.rs",
+          "fix": "Compare `head_commit == base_commit` strictly, or ensure the branch actually tracks the remote before assuming it's the default branch.",
+          "grounding": "measured",
+          "line": 163
+        },
+        {
+          "claim": "`Inputs::NoRoadmap` returns `Skip` (Pass) instead of failing, allowing a missing roadmap to bypass the gate.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_traceability.rs",
+          "fix": "Return a `Fail` status for `Inputs::NoRoadmap` when measuring a context that expects a roadmap.",
+          "grounding": "measured",
+          "line": 24
+        },
+        {
+          "claim": "The ledger credits the control script's fixture run as enforcing CB-2113 on the repository if the direct step is missing.",
+          "file": "src/services/gate_effect/ledger.rs",
+          "fix": "Ensure the ledger does not credit fixture runs, potentially by distinguishing runs that supply `--path` pointing outside the main repository tree.",
+          "grounding": "asserted",
+          "line": 161
+        }
+      ]
+    },
+    {
+      "lane": 2,
+      "conversation_id": "84e68a51-4d54-491f-bf1b-fa56b62d7603",
+      "status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 493.846227553,
+      "verdict": "FAIL",
+      "summary": "The adversarial review reveals that while the gate is structurally sound and the control script effectively prevents vacuously passing runs, the implementation has significant flaws violating the specification. Notably, a missing roadmap yields a `Skip` (exit 0) rather than `not_measured` (exit 1), allowing bypass by deleting the file (violating §3.3). The default branch detection is unsound against local branches named `master`, the ledger falls back to crediting a fixture run if the direct run is deleted, and the reachability graph construction was moved outside the Kani proof, leaving mutant (d) unkilled by any tests.",
+      "findings": [
+        {
+          "claim": "The default branch test misclassifies a local branch literally named master ahead of origin/master",
+          "file": "src/services/commit_traceability/mod.rs",
+          "fix": "Compare the local branch to the local default branch, not the remote tracking branch's short name.",
+          "grounding": "asserted",
+          "line": 205
+        },
+        {
+          "claim": "Inputs::NoRoadmap yields Skip, which lets a missing expected input read as a pass, violating §3.3.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_traceability.rs",
+          "fix": "Return CheckStatus::Fail (not_measured) when a roadmap is missing on a same-repo checkout.",
+          "grounding": "measured",
+          "line": 14
+        },
+        {
+          "claim": "If the direct run is deleted, the ledger credits the control script's fixture run due to the enforcing.first() fallback.",
+          "file": "src/services/gate_effect/ledger.rs",
+          "fix": "Do not fallback to enforcing.first() if it is an indirect run that tests a fixture.",
+          "grounding": "asserted",
+          "line": 136
+        },
+        {
+          "claim": "Mutant (d) where enforces_rule returns covers_rule alone is not killed by any test because the edge liveness is computed beforehand.",
+          "file": "src/services/gate_effect/invocation.rs",
+          "fix": "Add a direct unit test for Invocation::enforces_rule to ensure it checks carries_selected_rules().",
+          "grounding": "asserted",
+          "line": 62
+        }
+      ]
+    },
+    {
+      "lane": 3,
+      "conversation_id": "ef3e3ac5-d6a4-4f3f-9454-57b7d25f1960",
+      "status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 336.404228178,
+      "verdict": "FAIL",
+      "summary": "I have adversarially reviewed the PMAT-719 branch and answered all 10 questions. While the engine correctly handles subsets and PR semantics, there are two critical bypass vulnerabilities: an absent roadmap results in a silent 'Skip' pass, and the gate effect ledger will falsely credit the control script's throwaway fixture run if the actual verification step is ever removed. Therefore, the branch must fail.",
+      "findings": [
+        {
+          "claim": "Deleting the roadmap bypasses the gate as a Skip instead of failing as not_measured",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_traceability.rs",
+          "fix": "Map Inputs::NoRoadmap to CheckStatus::Fail with a not_measured message when running in a context that requires a roadmap.",
+          "grounding": "cited",
+          "line": 16
+        },
+        {
+          "claim": "The ledger fallback credits the control fixture run if the direct step is deleted",
+          "file": "src/services/gate_effect/ledger.rs",
+          "fix": "Remove the `.or_else(|| enforcing.first())` fallback. If no direct `run` is found, the rule is not enforced on the repository.",
+          "grounding": "cited",
+          "line": 162
+        }
+      ]
+    }
+  ]
+}

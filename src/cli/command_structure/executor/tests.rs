@@ -260,6 +260,8 @@ mod tests {
                 failures_only: false,
                 format: crate::cli::commands::ComplyOutputFormat::Text,
                 include_project: vec![],
+                checks: vec![],
+                github_snapshot: None,
             }),
         };
 

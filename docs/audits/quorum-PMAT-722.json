@@ -1,0 +1,636 @@
+{
+  "ticket": "PMAT-722",
+  "judged_head": "ad6bc332a",
+  "judged_range": "06031cf2d...ad6bc332a",
+  "width": 3,
+  "mode": "grillme",
+  "executor": "agy",
+  "verdicts": [
+    "FAIL",
+    "FAIL",
+    "FAIL"
+  ],
+  "fanout": {
+    "children": 3,
+    "method": "lane-files",
+    "label": "consensus"
+  },
+  "lanes": [
+    {
+      "lane": 1,
+      "conversation_id": "eadd02d4-e067-4123-aaae-17e47641f588",
+      "status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 872.518774162,
+      "verdict": "FAIL",
+      "summary": "The step fails review due to critical bypass vulnerabilities and a falsified claim in the roadmap. The check incorrectly returns Skip instead of a not_measured Fail when the roadmap or `github_repo` is missing, providing a bypass. Furthermore, the `snapshot` option acts as a security bypass token that can override live checks. The control script fails to prove the `grace_minutes` parser is working, and the PMAT-722 acceptance criteria hallucinates the reason recorded in the enforcement ledger.",
+      "findings": [
+        {
+          "claim": "Deleting the roadmap file correctly returns not_measured: Fail.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Change the check to return a not_measured Fail if the roadmap is missing, matching CB-2113.",
+          "grounding": "measured",
+          "line": 14
+        },
+        {
+          "claim": "Deleting the github_repo configuration correctly returns not_measured: Fail.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Change the check to return a not_measured Fail if the repo/remote cannot be detected.",
+          "grounding": "measured",
+          "line": 54
+        },
+        {
+          "claim": "The snapshot option is a safe testing override and not a bypass.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Refuse to read a snapshot from .pmat.yaml outside of testing contexts to prevent bypassing the live GitHub check (a security bypass token forbidden by §12).",
+          "grounding": "measured",
+          "line": 33
+        },
+        {
+          "claim": "The control script proves discrimination on the grace_minutes configuration option.",
+          "file": "scripts/roadmap-coherence-control.sh",
+          "fix": "Export GRACE in a new arm to prove the rule parses and honors grace_minutes from the config file.",
+          "grounding": "measured",
+          "line": 88
+        },
+        {
+          "claim": "pmat comply ledger writes CB-2115 as NEUTERED with the §5.4 withholding reason in the receipt.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "Update the acceptance criteria in PMAT-722 to accurately state that the ledger derives its NEUTERED status from the quality-gate.yml fallback, not the ci.yml comment.",
+          "grounding": "asserted",
+          "line": 5129
+        }
+      ]
+    },
+    {
+      "lane": 2,
+      "conversation_id": "1e31e9ed-2caf-4054-a252-c8f830c6b2f9",
+      "status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 944.598104939,
+      "verdict": "FAIL",
+      "summary": "I've reviewed the PMAT-722 step 4 implementation. The logic strictly adheres to pure evaluation with `Finding::render`, and the `github.rs` snapshot reader was moved successfully with tests intact. However, I found multiple bypass vectors and defects: deleting the roadmap skips the rule instead of failing `not_measured` (unlike CB-2113), the snapshot option can be committed to bypass CI, unmeasured text counts exist in the CI comment and roadmap, and a botched merge resurrected the obsolete `traceability-control.sh` that #1247 had correctly deleted.",
+      "findings": [
+        {
+          "claim": "Deleting the roadmap causes the rule to Skip rather than Fail, which conflates not_applicable with not_measured and creates a bypass vector (unlike CB-2113 which fails when the roadmap is deleted).",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Return a Fail not_measured when the roadmap is missing, instead of a Skip.",
+          "grounding": "measured",
+          "line": 43
+        },
+        {
+          "claim": "The snapshot option does not refuse file sources outside of tests, meaning a committed .pmat.yaml pointing to a stale snapshot will silently bypass the gate on CI.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Either reject the snapshot option in non-test modes or loudly flag it as a bypass vector in the check output.",
+          "grounding": "measured",
+          "line": 65
+        },
+        {
+          "claim": "The control script proves discrimination on the rule's classes but relies exclusively on the default grace_minutes, so a mutant hardcoding grace_minutes to 60 would survive all arms.",
+          "file": "scripts/roadmap-coherence-control.sh",
+          "fix": "Add an arm that sets a custom grace_minutes in .pmat.yaml and asserts the rule respects it.",
+          "grounding": "measured",
+          "line": 1
+        },
+        {
+          "claim": "The ci.yml comment and PMAT-723 roadmap entry state the exact number of collisions and orphans on master, which are unmeasured prose assertions.",
+          "file": ".github/workflows/ci.yml",
+          "fix": "Remove the exact counts or generate them dynamically, as they are unmeasured prose.",
+          "grounding": "measured",
+          "line": 133
+        },
+        {
+          "claim": "The PMAT-722 roadmap entry claims the ledger writes NEUTERED 'with that reason' (the missing direct step), but the ledger actually cites quality-gate.yml's continue-on-error as the reason.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "Correct the roadmap entry to align with the mechanically generated ledger reason.",
+          "grounding": "asserted",
+          "line": 100
+        },
+        {
+          "claim": "The merge resolution resurrected scripts/traceability-control.sh and its step in ci.yml, which were correctly deleted by #1247 when CB-2113 became enforced.",
+          "file": ".github/workflows/ci.yml",
+          "fix": "Delete scripts/traceability-control.sh and remove the corresponding step from .github/workflows/ci.yml.",
+          "grounding": "measured",
+          "line": 126
+        }
+      ]
+    },
+    {
+      "lane": 3,
+      "conversation_id": "569dbac1-f0fe-4ddb-b7d7-85018e664c0d",
+      "status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 787.38934451,
+      "verdict": "FAIL",
+      "summary": "The plan honors §5.4 by withholding the direct gate step until collisions are resolved, and correctly attributes it as NEUTERED in the ledger. However, it FAILS due to two critical bypasses (deleting `roadmap.yaml` or the origin remote causes the rule to Skip instead of Fail, violating doctrine 2), an exploitable security bypass token (the `snapshot` option can be committed to bypass GitHub), and a missing control script arm (mutants ignoring `grace_minutes` would survive). Additionally, PMAT-723 contains unmeasured prose claims in the roadmap.",
+      "findings": [
+        {
+          "claim": "The direct step is withheld from the traceability job, making it a neutered gate, but this correctly honours §5.4 step 3 (\"Only then does CB-2115 become a gate\"). The ledger's NEUTERED row and ci.yml comment are honest.",
+          "file": ".github/workflows/ci.yml",
+          "grounding": "asserted",
+          "line": 134
+        },
+        {
+          "claim": "The rule can be passed by deleting `docs/roadmaps/roadmap.yaml`. It returns Skip instead of failing with `not_measured` (like CB-2113's RoadmapDeleted arm). This violates doctrine 2 and acts as a bypass.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "grounding": "asserted",
+          "line": 13
+        },
+        {
+          "claim": "The rule can be passed by deleting the origin remote. `detect_github_repo` returns `Ok(None)` and the rule returns Skip, bypassing the check instead of failing.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "grounding": "asserted",
+          "line": 60
+        },
+        {
+          "claim": "The snapshot file option is a security bypass token. A committed `.pmat.yaml` pointing to a stale snapshot file makes the gate skip GitHub entirely. The source is visible in every verdict, but it should refuse a file source outside tests.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "grounding": "asserted",
+          "line": 33
+        },
+        {
+          "claim": "The control script proves discrimination on all classes (COLLISION, ORPHAN-GITHUB, DRIFT, not_measured, Skip) and the falsifier. However, a mutant ignoring the `grace_minutes` option would survive all 8 arms because the script never assigns a value to `GRACE`.",
+          "file": "scripts/roadmap-coherence-control.sh",
+          "grounding": "measured",
+          "line": 44
+        },
+        {
+          "claim": "`Finding::render` produces plain text. Terminal escapes are applied separately by `paint_finding` in the CLI, so escapes never reach the comply message or JSON report.",
+          "file": "src/services/work_sync/mod.rs",
+          "grounding": "asserted",
+          "line": 563
+        },
+        {
+          "claim": "The moved reader (fetch_snapshot, parse_snapshot, refuse_truncation, etc.) is unchanged in behavior and its tests are still run because `pub mod github;` was added to `mod.rs`.",
+          "file": "src/services/work_sync/github.rs",
+          "grounding": "asserted",
+          "line": 1
+        },
+        {
+          "claim": "The README count of 159 IS measured by the tree (via CB-1703). However, the PMAT-723 roadmap entry states \"52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB\" which the tree does not measure.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "asserted",
+          "line": 5081
+        },
+        {
+          "claim": "The merge commit `06031cf2d` successfully preserved entries from both parent branches in `roadmap.yaml` and `impl-estimates.jsonl`. The deleted tests in `unrun-tests-ledger.md` were correctly removed. Nothing was lost or duplicated.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "measured",
+          "line": 5056
+        }
+      ]
+    }
+  ],
+  "dedup": [
+    {
+      "file": ".github/workflows/ci.yml",
+      "line": 126,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The merge resolution resurrected scripts/traceability-control.sh and its step in ci.yml, which were correctly deleted by #1247 when CB-2113 became enforced."
+      ]
+    },
+    {
+      "file": ".github/workflows/ci.yml",
+      "line": 133,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The ci.yml comment and PMAT-723 roadmap entry state the exact number of collisions and orphans on master, which are unmeasured prose assertions."
+      ]
+    },
+    {
+      "file": ".github/workflows/ci.yml",
+      "line": 134,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The direct step is withheld from the traceability job, making it a neutered gate, but this correctly honours §5.4 step 3 (\"Only then does CB-2115 become a gate\"). The ledger's NEUTERED row and ci.yml comment are honest."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 100,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The PMAT-722 roadmap entry claims the ledger writes NEUTERED 'with that reason' (the missing direct step), but the ledger actually cites quality-gate.yml's continue-on-error as the reason."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 5056,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The merge commit `06031cf2d` successfully preserved entries from both parent branches in `roadmap.yaml` and `impl-estimates.jsonl`. The deleted tests in `unrun-tests-ledger.md` were correctly removed. Nothing was lost or duplicated."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 5081,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The README count of 159 IS measured by the tree (via CB-1703). However, the PMAT-723 roadmap entry states \"52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB\" which the tree does not measure."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 5129,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "pmat comply ledger writes CB-2115 as NEUTERED with the §5.4 withholding reason in the receipt."
+      ]
+    },
+    {
+      "file": "scripts/roadmap-coherence-control.sh",
+      "line": 1,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The control script proves discrimination on the rule's classes but relies exclusively on the default grace_minutes, so a mutant hardcoding grace_minutes to 60 would survive all arms."
+      ]
+    },
+    {
+      "file": "scripts/roadmap-coherence-control.sh",
+      "line": 44,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The control script proves discrimination on all classes (COLLISION, ORPHAN-GITHUB, DRIFT, not_measured, Skip) and the falsifier. However, a mutant ignoring the `grace_minutes` option would survive all 8 arms because the script never assigns a value to `GRACE`."
+      ]
+    },
+    {
+      "file": "scripts/roadmap-coherence-control.sh",
+      "line": 88,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The control script proves discrimination on the grace_minutes configuration option."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+      "line": 13,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The rule can be passed by deleting `docs/roadmaps/roadmap.yaml`. It returns Skip instead of failing with `not_measured` (like CB-2113's RoadmapDeleted arm). This violates doctrine 2 and acts as a bypass."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+      "line": 14,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Deleting the roadmap file correctly returns not_measured: Fail."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+      "line": 33,
+      "lanes_agreeing": [
+        1,
+        3
+      ],
+      "claims": [
+        "The snapshot file option is a security bypass token. A committed `.pmat.yaml` pointing to a stale snapshot file makes the gate skip GitHub entirely. The source is visible in every verdict, but it should refuse a file source outside tests.",
+        "The snapshot option is a safe testing override and not a bypass."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+      "line": 43,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Deleting the roadmap causes the rule to Skip rather than Fail, which conflates not_applicable with not_measured and creates a bypass vector (unlike CB-2113 which fails when the roadmap is deleted)."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+      "line": 54,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Deleting the github_repo configuration correctly returns not_measured: Fail."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+      "line": 60,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The rule can be passed by deleting the origin remote. `detect_github_repo` returns `Ok(None)` and the rule returns Skip, bypassing the check instead of failing."
+      ]
+    },
+    {
+      "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+      "line": 65,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The snapshot option does not refuse file sources outside of tests, meaning a committed .pmat.yaml pointing to a stale snapshot will silently bypass the gate on CI."
+      ]
+    },
+    {
+      "file": "src/services/work_sync/github.rs",
+      "line": 1,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The moved reader (fetch_snapshot, parse_snapshot, refuse_truncation, etc.) is unchanged in behavior and its tests are still run because `pub mod github;` was added to `mod.rs`."
+      ]
+    },
+    {
+      "file": "src/services/work_sync/mod.rs",
+      "line": 563,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "`Finding::render` produces plain text. Terminal escapes are applied separately by `paint_finding` in the CLI, so escapes never reach the comply message or JSON report."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "dissent": [
+    {
+      "lane": 1,
+      "verdict": "FAIL",
+      "summary": "The step fails review due to critical bypass vulnerabilities and a falsified claim in the roadmap. The check incorrectly returns Skip instead of a not_measured Fail when the roadmap or `github_repo` is missing, providing a bypass. Furthermore, the `snapshot` option acts as a security bypass token that can override live checks. The control script fails to prove the `grace_minutes` parser is working, and the PMAT-722 acceptance criteria hallucinates the reason recorded in the enforcement ledger.",
+      "findings": [
+        {
+          "claim": "Deleting the roadmap file correctly returns not_measured: Fail.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Change the check to return a not_measured Fail if the roadmap is missing, matching CB-2113.",
+          "grounding": "measured",
+          "line": 14
+        },
+        {
+          "claim": "Deleting the github_repo configuration correctly returns not_measured: Fail.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Change the check to return a not_measured Fail if the repo/remote cannot be detected.",
+          "grounding": "measured",
+          "line": 54
+        },
+        {
+          "claim": "The snapshot option is a safe testing override and not a bypass.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Refuse to read a snapshot from .pmat.yaml outside of testing contexts to prevent bypassing the live GitHub check (a security bypass token forbidden by §12).",
+          "grounding": "measured",
+          "line": 33
+        },
+        {
+          "claim": "The control script proves discrimination on the grace_minutes configuration option.",
+          "file": "scripts/roadmap-coherence-control.sh",
+          "fix": "Export GRACE in a new arm to prove the rule parses and honors grace_minutes from the config file.",
+          "grounding": "measured",
+          "line": 88
+        },
+        {
+          "claim": "pmat comply ledger writes CB-2115 as NEUTERED with the §5.4 withholding reason in the receipt.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "Update the acceptance criteria in PMAT-722 to accurately state that the ledger derives its NEUTERED status from the quality-gate.yml fallback, not the ci.yml comment.",
+          "grounding": "asserted",
+          "line": 5129
+        }
+      ]
+    },
+    {
+      "lane": 2,
+      "verdict": "FAIL",
+      "summary": "I've reviewed the PMAT-722 step 4 implementation. The logic strictly adheres to pure evaluation with `Finding::render`, and the `github.rs` snapshot reader was moved successfully with tests intact. However, I found multiple bypass vectors and defects: deleting the roadmap skips the rule instead of failing `not_measured` (unlike CB-2113), the snapshot option can be committed to bypass CI, unmeasured text counts exist in the CI comment and roadmap, and a botched merge resurrected the obsolete `traceability-control.sh` that #1247 had correctly deleted.",
+      "findings": [
+        {
+          "claim": "Deleting the roadmap causes the rule to Skip rather than Fail, which conflates not_applicable with not_measured and creates a bypass vector (unlike CB-2113 which fails when the roadmap is deleted).",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Return a Fail not_measured when the roadmap is missing, instead of a Skip.",
+          "grounding": "measured",
+          "line": 43
+        },
+        {
+          "claim": "The snapshot option does not refuse file sources outside of tests, meaning a committed .pmat.yaml pointing to a stale snapshot will silently bypass the gate on CI.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "fix": "Either reject the snapshot option in non-test modes or loudly flag it as a bypass vector in the check output.",
+          "grounding": "measured",
+          "line": 65
+        },
+        {
+          "claim": "The control script proves discrimination on the rule's classes but relies exclusively on the default grace_minutes, so a mutant hardcoding grace_minutes to 60 would survive all arms.",
+          "file": "scripts/roadmap-coherence-control.sh",
+          "fix": "Add an arm that sets a custom grace_minutes in .pmat.yaml and asserts the rule respects it.",
+          "grounding": "measured",
+          "line": 1
+        },
+        {
+          "claim": "The ci.yml comment and PMAT-723 roadmap entry state the exact number of collisions and orphans on master, which are unmeasured prose assertions.",
+          "file": ".github/workflows/ci.yml",
+          "fix": "Remove the exact counts or generate them dynamically, as they are unmeasured prose.",
+          "grounding": "measured",
+          "line": 133
+        },
+        {
+          "claim": "The PMAT-722 roadmap entry claims the ledger writes NEUTERED 'with that reason' (the missing direct step), but the ledger actually cites quality-gate.yml's continue-on-error as the reason.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "Correct the roadmap entry to align with the mechanically generated ledger reason.",
+          "grounding": "asserted",
+          "line": 100
+        },
+        {
+          "claim": "The merge resolution resurrected scripts/traceability-control.sh and its step in ci.yml, which were correctly deleted by #1247 when CB-2113 became enforced.",
+          "file": ".github/workflows/ci.yml",
+          "fix": "Delete scripts/traceability-control.sh and remove the corresponding step from .github/workflows/ci.yml.",
+          "grounding": "measured",
+          "line": 126
+        }
+      ]
+    },
+    {
+      "lane": 3,
+      "verdict": "FAIL",
+      "summary": "The plan honors §5.4 by withholding the direct gate step until collisions are resolved, and correctly attributes it as NEUTERED in the ledger. However, it FAILS due to two critical bypasses (deleting `roadmap.yaml` or the origin remote causes the rule to Skip instead of Fail, violating doctrine 2), an exploitable security bypass token (the `snapshot` option can be committed to bypass GitHub), and a missing control script arm (mutants ignoring `grace_minutes` would survive). Additionally, PMAT-723 contains unmeasured prose claims in the roadmap.",
+      "findings": [
+        {
+          "claim": "The direct step is withheld from the traceability job, making it a neutered gate, but this correctly honours §5.4 step 3 (\"Only then does CB-2115 become a gate\"). The ledger's NEUTERED row and ci.yml comment are honest.",
+          "file": ".github/workflows/ci.yml",
+          "grounding": "asserted",
+          "line": 134
+        },
+        {
+          "claim": "The rule can be passed by deleting `docs/roadmaps/roadmap.yaml`. It returns Skip instead of failing with `not_measured` (like CB-2113's RoadmapDeleted arm). This violates doctrine 2 and acts as a bypass.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "grounding": "asserted",
+          "line": 13
+        },
+        {
+          "claim": "The rule can be passed by deleting the origin remote. `detect_github_repo` returns `Ok(None)` and the rule returns Skip, bypassing the check instead of failing.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "grounding": "asserted",
+          "line": 60
+        },
+        {
+          "claim": "The snapshot file option is a security bypass token. A committed `.pmat.yaml` pointing to a stale snapshot file makes the gate skip GitHub entirely. The source is visible in every verdict, but it should refuse a file source outside tests.",
+          "file": "src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs",
+          "grounding": "asserted",
+          "line": 33
+        },
+        {
+          "claim": "The control script proves discrimination on all classes (COLLISION, ORPHAN-GITHUB, DRIFT, not_measured, Skip) and the falsifier. However, a mutant ignoring the `grace_minutes` option would survive all 8 arms because the script never assigns a value to `GRACE`.",
+          "file": "scripts/roadmap-coherence-control.sh",
+          "grounding": "measured",
+          "line": 44
+        },
+        {
+          "claim": "`Finding::render` produces plain text. Terminal escapes are applied separately by `paint_finding` in the CLI, so escapes never reach the comply message or JSON report.",
+          "file": "src/services/work_sync/mod.rs",
+          "grounding": "asserted",
+          "line": 563
+        },
+        {
+          "claim": "The moved reader (fetch_snapshot, parse_snapshot, refuse_truncation, etc.) is unchanged in behavior and its tests are still run because `pub mod github;` was added to `mod.rs`.",
+          "file": "src/services/work_sync/github.rs",
+          "grounding": "asserted",
+          "line": 1
+        },
+        {
+          "claim": "The README count of 159 IS measured by the tree (via CB-1703). However, the PMAT-723 roadmap entry states \"52 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB\" which the tree does not measure.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "asserted",
+          "line": 5081
+        },
+        {
+          "claim": "The merge commit `06031cf2d` successfully preserved entries from both parent branches in `roadmap.yaml` and `impl-estimates.jsonl`. The deleted tests in `unrun-tests-ledger.md` were correctly removed. Nothing was lost or duplicated.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "measured",
+          "line": 5056
+        }
+      ]
+    }
+  ],
+  "partial": true,
+  "partial_reasons": [
+    "lane 2: non-empty .err (79 bytes)"
+  ],
+  "coverage_source": "lanes",
+  "delegate": {
+    "agent_id": "a51156bf85e47f23f",
+    "maxTurns_hit": true,
+    "resumed": false,
+    "note": "the delegate hit its 30-turn limit while polling; the lanes had finished (.done, receipt.json in out_dir); fan-out measured and the lanes reduced by the orchestrator with fanout.sh and lane-reduce.sh"
+  },
+  "orchestrator_adjudication": [
+    {
+      "n": 1,
+      "claim": "a roadmap that was committed and is now gone reads Skip (unlike CB-2113's RoadmapDeleted arm), an input-deletion bypass",
+      "lanes": [
+        2,
+        3
+      ],
+      "verdict": "CONFIRMED",
+      "closed_by": "commit_traceability::inputs → RoadmapDeleted is Fail not_measured; test a_deleted_roadmap_is_not_measured_and_fails; control arm 9 (61b6a92ee)"
+    },
+    {
+      "n": 2,
+      "claim": "no resolvable GitHub repository (github_repo null, no origin remote) reads Skip even when items name issues",
+      "lanes": [
+        1,
+        3
+      ],
+      "verdict": "CONFIRMED with refinement",
+      "closed_by": "Skip only when no item names a github_issue; otherwise Fail not_measured naming the count; tests a_roadmap_naming_no_github_repository_and_no_issues_is_skipped and a_roadmap_naming_issues_but_no_repository_is_not_measured (61b6a92ee)"
+    },
+    {
+      "n": 3,
+      "claim": "comply.checks.cb-2115.options.snapshot in .pmat.yaml is a bypass token: a committed fixture path makes every CI run judge a file instead of GitHub",
+      "lanes": [
+        1,
+        2,
+        3
+      ],
+      "verdict": "CONFIRMED",
+      "closed_by": "the key is refused (Fail not_measured naming the flag); the file arrives only through `pmat comply check --github-snapshot FILE` (CheckOverrides, out of band from the config); gate_effect records a line carrying the flag as not evidence; test a_snapshot_path_committed_in_pmat_yaml_is_refused, the_github_snapshot_flag_reaches_the_command, a_line_judging_from_a_snapshot_file_is_not_evidence_for_the_repository; control arm 10 (61b6a92ee, next commit)"
+    },
+    {
+      "n": 4,
+      "claim": "the control has no arm proving grace_minutes is read; a rule hard-coding 60 survives every arm",
+      "lanes": [
+        1,
+        2,
+        3
+      ],
+      "verdict": "CONFIRMED",
+      "closed_by": "control arm 11: a 30-minute disagreement under grace_minutes: 10 fails, then passes under the default; mutant M3 now dies under the control (mut722-m3-control.log: ARM 11 FAILED)"
+    },
+    {
+      "n": 5,
+      "claim": "the ci.yml comment and the PMAT-723 entry state collision/orphan counts the tree does not measure",
+      "lanes": [
+        2,
+        3
+      ],
+      "verdict": "REFUTED",
+      "closed_by": "measured: `pmat work sync --check-only` on this repository today = 112 findings (1 COLLISION, 57 ORPHAN-ROADMAP, 54 ORPHAN-GITHUB, 0 DRIFT; check-real-722.json); PMAT-723's title attributes its 52/54 to PMAT-720's measurement (107) by name; the ci.yml comment states only 'thirteen items that all name #612', which the same run reports"
+    },
+    {
+      "n": 6,
+      "claim": "PMAT-722 criterion 5 says the ledger writes NEUTERED 'with that reason', but the ledger cites quality-gate.yml's continue-on-error carrier",
+      "lanes": [
+        1,
+        2
+      ],
+      "verdict": "CONFIRMED (wording)",
+      "closed_by": "criterion 5 reworded: the carrier is quality-gate.yml; the withholding reason lives in ci.yml's comment and the receipt (61b6a92ee)"
+    },
+    {
+      "n": 7,
+      "claim": "the merge resurrected scripts/traceability-control.sh and its ci.yml step, which #1247 had deleted",
+      "lanes": [
+        2
+      ],
+      "verdict": "REFUTED",
+      "closed_by": "#1247 ADDED both (its diffstat: scripts/traceability-control.sh | 143 +, ci.yml | 47 +-); the merge carried them forward"
+    },
+    {
+      "n": 8,
+      "claim": "withholding the direct CB-2115 step honours §5.4 step 3 and the ledger's NEUTERED row is honest",
+      "lanes": [
+        3
+      ],
+      "verdict": "AGREED",
+      "closed_by": "—"
+    },
+    {
+      "n": 9,
+      "claim": "Finding::render is plain text (escapes only in paint_finding); the moved reader is unchanged and its tests still run",
+      "lanes": [
+        3
+      ],
+      "verdict": "AGREED",
+      "closed_by": "—"
+    }
+  ],
+  "summary": "3/3 FAIL on ad6bc332a. Nine distinct claims after the orchestrator's dedup: 4 CONFIRMED and fixed with a test and a control arm each (61b6a92ee), 1 CONFIRMED wording fix, 2 REFUTED by measurement, 2 agreements. Every confirmed fix was re-run by the orchestrator on cargo's reported executable."
+}

@@ -1,3 +1,9 @@
+---
+epic: null
+status: active
+vendors: []
+---
+
 # Improve Coverage — 80% Honest Near-Term, 85% Mid-Term, 95% Long-Horizon
 
 > **Status**: v3.15.0 post-ship initiative — **target reframed 2026-04-26 post wave-37 empirical data**

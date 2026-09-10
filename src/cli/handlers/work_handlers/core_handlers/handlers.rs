@@ -2,7 +2,6 @@
 // Public handler functions for work commands
 
 use crate::cli::colors as c;
-use crate::cli::commands::SyncDirection;
 use crate::models::roadmap::ItemStatus;
 use crate::services::hook_manager;
 use crate::services::roadmap_service::RoadmapService;
@@ -844,51 +843,6 @@ pub async fn handle_work_status(
         println!();
     }
 
-    Ok(())
-}
-
-/// Handle work sync command
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn handle_work_sync(
-    direction: SyncDirection,
-    path: Option<PathBuf>,
-    dry_run: bool,
-) -> Result<()> {
-    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
-    let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
-    let service = RoadmapService::new(&roadmap_path);
-
-    let action = if dry_run { "Dry run" } else { "Syncing" };
-    println!("{}", c::label(&format!("🔄 {} roadmap...", action)));
-    println!();
-
-    let roadmap = service.load()?;
-
-    match direction {
-        SyncDirection::YamlToGithub => {
-            println!("{}", c::subheader("📤 Direction: YAML → GitHub"));
-            let yaml_only = roadmap.yaml_only_items();
-            println!(
-                "   Found {} YAML-only items",
-                c::number(&yaml_only.len().to_string())
-            );
-            for item in yaml_only {
-                println!("      - {} ({})", c::path(&item.id), item.title);
-            }
-            println!();
-            println!("   {}", c::warn("GitHub sync not yet implemented"));
-        }
-        SyncDirection::GithubToYaml => {
-            println!("{}", c::subheader("📥 Direction: GitHub → YAML"));
-            println!("   {}", c::warn("GitHub sync not yet implemented"));
-        }
-        SyncDirection::Full => {
-            println!("{}", c::subheader("🔄 Direction: Full bidirectional sync"));
-            println!("   {}", c::warn("GitHub sync not yet implemented"));
-        }
-    }
-
-    println!();
     Ok(())
 }
 

@@ -390,7 +390,7 @@ pmat hooks status                      # Check hook status
 
 ### Compliance Governance (`pmat comply`)
 
-157 automated checks across code quality, best practices, and governance:
+162 automated checks across code quality, best practices, and governance:
 
 ```bash
 pmat comply check                      # Run all compliance checks

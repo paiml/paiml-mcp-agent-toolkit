@@ -22,7 +22,7 @@ mod comply_check_empty_project_guard_tests {
     async fn comply_check_refuses_a_directory_with_no_project_in_it() {
         let dir = tempfile::tempdir().expect("tempdir");
 
-        let err = super::handle_check(dir.path(), false, false, ComplyOutputFormat::Text)
+        let err = super::handle_check(dir.path(), false, false, ComplyOutputFormat::Text, &[], None)
             .await
             .expect_err("an empty directory must not be reported as COMPLIANT");
 
