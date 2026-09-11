@@ -1530,6 +1530,14 @@ Aliases: `specification`
 pmat spec --help
 ```
 
+##### `spec review`
+
+Validate a spec review artifact and stage it (goal-mode.md §6.3, CB-2111). It judges the review against the spec it names exactly as `pmat comply check --checks CB-2111` will (the spec's sha256 now, a plan with a non-empty sha256, every required role PASS, `partial: false`), then writes it to `docs/audits/spec-<slug>-review.json` and runs `git add` on it. A refusal writes nothing and exits non-zero. It never produces a review: that is a quorum's job, or a human's.
+
+```bash
+pmat spec review --record review.json
+```
+
 ### `split`
 
 Analyze and suggest semantic file splits using Louvain community detection

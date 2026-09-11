@@ -344,6 +344,9 @@ impl CommandDispatcher {
                 roadmap_path,
                 format,
             } => spec_handlers::handle_spec_drift(&spec_path, &roadmap_path, format).await,
+            SpecCommands::Review { record, path } => {
+                spec_handlers::handle_spec_review(&record, &path).await
+            }
         }
     }
 

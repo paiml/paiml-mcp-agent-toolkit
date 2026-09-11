@@ -86,6 +86,10 @@ const DENY_PATHS: &[(&str, &str)] = &[
         "comply migrate",
         "writes ./.pmat/backup and may rewrite project.toml, mutating the shared fixture",
     ),
+    (
+        "spec review",
+        "writes docs/audits/spec-<slug>-review.json and runs git add on it, mutating the shared fixture",
+    ),
 ];
 
 /// Flags that mutate or block regardless of which command carries them.
