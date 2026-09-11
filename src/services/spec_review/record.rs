@@ -20,14 +20,40 @@ pub struct Recorded {
 /// writes nothing and stages nothing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecordRefusal {
-    Unreadable { file: PathBuf, reason: String },
-    BadReview { file: PathBuf, reason: String },
-    NotASpec { named: String },
-    SpecUnreadable { spec: String, reason: String },
-    Unjudgeable { spec: String, why: String },
+    Unreadable {
+        file: PathBuf,
+        reason: String,
+    },
+    BadReview {
+        file: PathBuf,
+        reason: String,
+    },
+    NotASpec {
+        named: String,
+    },
+    SpecUnreadable {
+        spec: String,
+        reason: String,
+    },
+    Unjudgeable {
+        spec: String,
+        why: String,
+    },
     Findings(Vec<ReviewFinding>),
-    Unwritable { artifact: String, reason: String },
-    NotStaged { artifact: String, reason: String },
+    Unwritable {
+        artifact: String,
+        reason: String,
+    },
+    NotStaged {
+        artifact: String,
+        reason: String,
+    },
+    /// The artifact path cannot be staged (git ignores it, or this is not a
+    /// git work tree), so nothing is written.
+    NotStageable {
+        artifact: String,
+        reason: String,
+    },
 }
 
 impl RecordRefusal {
@@ -41,6 +67,7 @@ impl RecordRefusal {
             RecordRefusal::Unjudgeable { spec, why } => format!("UNJUDGEABLE {spec}: its front-matter does not parse, so the roles its review needs cannot be read ({why}); nothing recorded"),
             RecordRefusal::Findings(findings) => format!("{} finding(s) — the review would fail CB-2111 as recorded; nothing recorded", findings.len()),
             RecordRefusal::Unwritable { artifact, reason } => format!("{artifact} cannot be written ({reason}); nothing staged"),
+            RecordRefusal::NotStageable { artifact, reason } => format!("{artifact} cannot be staged ({reason}); nothing recorded"),
             RecordRefusal::NotStaged { artifact, reason } => format!("{artifact} is written but NOT staged: git add failed ({reason})"),
         }
     }

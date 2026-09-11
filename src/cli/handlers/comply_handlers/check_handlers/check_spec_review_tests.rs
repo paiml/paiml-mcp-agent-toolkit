@@ -43,7 +43,7 @@ mod tests_spec_reviews {
         let artifact = serde_json::json!({
             "spec": spec_path,
             "spec_sha256": sha256_hex(&text),
-            "plan": {"tool": "claude-plan", "ref": "plan.md", "sha256": "abc123"},
+            "plan": {"tool": "claude-plan", "ref": "plan.md", "sha256": "64879f7d6b960a01909762d911a32d4582c20010c5641ee90278b644a9e3b525"},
             "lanes": lanes,
             "agreed": true,
             "partial": false
@@ -215,5 +215,19 @@ mod tests_spec_reviews {
             &c,
             "2 finding(s) — NO-REVIEW 1, UNJUDGEABLE 1: NO-REVIEW docs/specifications/a.md",
         );
+    }
+
+    /// Adversarial lane: `a/b.md` and `a-b.md` share one artifact path, so
+    /// one of them could never pass. The rule names the collision instead of
+    /// judging a review against the wrong spec. Mutant: the collision check dropped.
+    #[test]
+    fn two_active_specs_sharing_an_artifact_path_are_named_as_a_collision() {
+        let dir = project();
+        spec(dir.path(), "a/b.md", &fm("active", "[]"));
+        spec(dir.path(), "a-b.md", &fm("active", "[]"));
+        let c = rule(dir.path());
+        assert_fail_with(&c, "SLUG-COLLISION docs/specifications/a-b.md:");
+        assert_fail_with(&c, "SLUG-COLLISION docs/specifications/a/b.md:");
+        assert!(!c.message.contains("NO-REVIEW"), "{}", c.message);
     }
 }

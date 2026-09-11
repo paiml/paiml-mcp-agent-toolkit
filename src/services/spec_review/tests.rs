@@ -3,6 +3,9 @@
 use super::*;
 
 const SPEC: &str = "docs/specifications/goal-mode.md";
+/// A plan hash in the form §6.1 names: 64 hex digits (the sha256 of "plan").
+const PLAN: &str = "64879f7d6b960a01909762d911a32d4582c20010c5641ee90278b644a9e3b525";
+
 const TEXT: &str = "---\nepic: null\nstatus: active\nvendors: []\n---\n\n# Goal mode\n";
 
 fn artifact(text: &str, roles: &[(&str, &str)], plan_sha: Option<&str>, partial: bool) -> String {
@@ -32,7 +35,7 @@ fn classes(f: &[ReviewFinding]) -> Vec<&'static str> {
 /// The guard: a complete, current review holds.
 #[test]
 fn a_complete_review_passes() {
-    let a = artifact(TEXT, &all_pass(), Some("abc123"), false);
+    let a = artifact(TEXT, &all_pass(), Some(PLAN), false);
     assert!(judge(SPEC, TEXT, &[], Some(&a)).is_empty());
 }
 
@@ -44,7 +47,7 @@ fn an_active_spec_with_no_review_is_refused() {
 /// The §7 falsifier: append one space to the spec, and the review is stale.
 #[test]
 fn appending_one_space_to_the_spec_stales_its_review() {
-    let a = artifact(TEXT, &all_pass(), Some("abc123"), false);
+    let a = artifact(TEXT, &all_pass(), Some(PLAN), false);
     let edited = format!("{TEXT} ");
     assert_eq!(
         classes(&judge(SPEC, &edited, &[], Some(&a))),
@@ -62,7 +65,7 @@ fn an_artifact_that_does_not_parse_is_refused() {
 
 #[test]
 fn a_review_of_another_spec_is_refused() {
-    let a = artifact(TEXT, &all_pass(), Some("abc123"), false)
+    let a = artifact(TEXT, &all_pass(), Some(PLAN), false)
         .replace(SPEC, "docs/specifications/other.md");
     assert!(classes(&judge(SPEC, TEXT, &[], Some(&a))).contains(&"SPEC-MISMATCH"));
 }
@@ -83,7 +86,7 @@ fn a_review_without_a_plan_or_with_an_empty_plan_hash_is_refused() {
 fn every_required_role_must_be_present() {
     let mut roles = all_pass();
     roles.retain(|(r, _)| *r != "crux");
-    let a = artifact(TEXT, &roles, Some("abc123"), false);
+    let a = artifact(TEXT, &roles, Some(PLAN), false);
     assert_eq!(
         judge(SPEC, TEXT, &[], Some(&a)),
         vec![ReviewFinding::MissingRole {
@@ -97,7 +100,7 @@ fn every_required_role_must_be_present() {
 #[test]
 fn a_front_matter_vendor_adds_a_required_role() {
     let vendors = vec!["cuda".to_string()];
-    let a = artifact(TEXT, &all_pass(), Some("abc123"), false);
+    let a = artifact(TEXT, &all_pass(), Some(PLAN), false);
     assert_eq!(
         judge(SPEC, TEXT, &vendors, Some(&a)),
         vec![ReviewFinding::MissingRole {
@@ -107,7 +110,7 @@ fn a_front_matter_vendor_adds_a_required_role() {
     );
     let mut roles = all_pass();
     roles.push(("vendor:cuda", "PASS"));
-    let a2 = artifact(TEXT, &roles, Some("abc123"), false);
+    let a2 = artifact(TEXT, &roles, Some(PLAN), false);
     assert!(judge(SPEC, TEXT, &vendors, Some(&a2)).is_empty());
 }
 
@@ -115,7 +118,7 @@ fn a_front_matter_vendor_adds_a_required_role() {
 fn a_lane_that_is_not_pass_is_refused() {
     let mut roles = all_pass();
     roles[1] = ("architecture", "FAIL");
-    let a = artifact(TEXT, &roles, Some("abc123"), false);
+    let a = artifact(TEXT, &roles, Some(PLAN), false);
     assert_eq!(
         judge(SPEC, TEXT, &[], Some(&a)),
         vec![ReviewFinding::LaneNotPass {
@@ -128,7 +131,7 @@ fn a_lane_that_is_not_pass_is_refused() {
 
 #[test]
 fn partial_true_is_red() {
-    let a = artifact(TEXT, &all_pass(), Some("abc123"), true);
+    let a = artifact(TEXT, &all_pass(), Some(PLAN), true);
     assert_eq!(classes(&judge(SPEC, TEXT, &[], Some(&a))), vec!["PARTIAL"]);
 }
 
@@ -137,7 +140,7 @@ fn partial_true_is_red() {
 fn an_unrecognised_role_is_an_error_not_an_extra_lane() {
     let mut roles = all_pass();
     roles.push(("style", "PASS"));
-    let a = artifact(TEXT, &roles, Some("abc123"), false);
+    let a = artifact(TEXT, &roles, Some(PLAN), false);
     assert_eq!(
         judge(SPEC, TEXT, &[], Some(&a)),
         vec![ReviewFinding::UnknownRole {
@@ -214,8 +217,7 @@ fn recordable() -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all(&specs).expect("mkdir specs");
     std::fs::write(specs.join("goal-mode.md"), TEXT).expect("write spec");
     let review = dir.path().join("review.json");
-    std::fs::write(&review, artifact(TEXT, &all_pass(), Some("abc123"), false))
-        .expect("write review");
+    std::fs::write(&review, artifact(TEXT, &all_pass(), Some(PLAN), false)).expect("write review");
     (dir, review)
 }
 
@@ -265,10 +267,11 @@ fn record_refuses_a_review_that_names_a_file_outside_docs_specifications() {
         "docs/specifications/../../README.md",
         "docs/specifications/goal-mode.txt",
         "docs/specifications//goal-mode.md",
+        "docs/specifications/./goal-mode.md",
     ] {
         std::fs::write(
             &review,
-            artifact(TEXT, &all_pass(), Some("abc123"), false).replace(SPEC, named),
+            artifact(TEXT, &all_pass(), Some(PLAN), false).replace(SPEC, named),
         )
         .expect("write review");
         let refusal = record(dir.path(), &review).expect_err("refused");
@@ -300,8 +303,7 @@ fn record_refuses_a_spec_whose_front_matter_does_not_parse() {
     let (dir, review) = recordable();
     let text = "# no front-matter\n";
     std::fs::write(dir.path().join(SPEC), text).expect("write spec");
-    std::fs::write(&review, artifact(text, &all_pass(), Some("abc123"), false))
-        .expect("write review");
+    std::fs::write(&review, artifact(text, &all_pass(), Some(PLAN), false)).expect("write review");
     let refusal = record(dir.path(), &review).expect_err("refused");
     assert!(
         matches!(refusal, RecordRefusal::Unjudgeable { .. }),
@@ -315,8 +317,7 @@ fn record_reads_the_vendor_roles_from_the_specs_front_matter() {
     let (dir, review) = recordable();
     let text = TEXT.replace("vendors: []", "vendors: [cuda]");
     std::fs::write(dir.path().join(SPEC), &text).expect("write spec");
-    std::fs::write(&review, artifact(&text, &all_pass(), Some("abc123"), false))
-        .expect("write review");
+    std::fs::write(&review, artifact(&text, &all_pass(), Some(PLAN), false)).expect("write review");
     let refusal = record(dir.path(), &review).expect_err("refused");
     assert_eq!(
         refusal,
@@ -343,7 +344,7 @@ fn record_in_place_stages_the_artifact() {
 /// `partial` key is misspelt reads as complete.
 #[test]
 fn a_misspelt_partial_key_is_refused_never_defaulted_to_complete() {
-    let a = artifact(TEXT, &all_pass(), Some("abc123"), false)
+    let a = artifact(TEXT, &all_pass(), Some(PLAN), false)
         .replace("\"partial\":false", "\"partail\":true");
     assert!(
         a.contains("partail"),
@@ -352,5 +353,216 @@ fn a_misspelt_partial_key_is_refused_never_defaulted_to_complete() {
     assert_eq!(
         classes(&judge(SPEC, TEXT, &[], Some(&a))),
         vec!["BAD-REVIEW"]
+    );
+}
+
+// ── the quorum on PMAT-1299: each test names the lane that found the hole ──
+
+/// Five PASS lanes, each with every §6.1 lane field.
+fn five() -> serde_json::Value {
+    serde_json::Value::Array(
+        BASE_ROLES
+            .iter()
+            .map(|r| serde_json::json!({"role": r, "executor": "agy", "verdict": "PASS", "summary": "s"}))
+            .collect(),
+    )
+}
+
+/// A complete review of TEXT, built by serde so any value is escaped.
+fn review_with(plan_sha: &str, lanes: serde_json::Value) -> serde_json::Value {
+    serde_json::json!({
+        "spec": SPEC,
+        "spec_sha256": sha256_hex(TEXT),
+        "plan": {"tool": "claude-plan", "ref": "x", "sha256": plan_sha},
+        "lanes": lanes,
+        "agreed": true,
+        "partial": false
+    })
+}
+
+/// Remove `a.b.0.c` from a JSON value.
+fn remove_at(v: &mut serde_json::Value, path: &str) {
+    let mut parts: Vec<&str> = path.split('.').collect();
+    let last = parts.pop().expect("a non-empty path");
+    let mut cur = v;
+    for p in parts {
+        cur = match p.parse::<usize>() {
+            Ok(i) => &mut cur[i],
+            Err(_) => &mut cur[p],
+        };
+    }
+    if let serde_json::Value::Object(m) = cur {
+        m.remove(last);
+    }
+}
+
+/// Conformance lane: §6.1 lists every field, so a review missing any of them
+/// does not parse. Mutant: any one of them given a serde default again.
+#[test]
+fn a_review_missing_a_section_6_1_field_is_bad_review() {
+    let full = review_with(PLAN, five());
+    assert!(
+        judge(SPEC, TEXT, &[], Some(&full.to_string())).is_empty(),
+        "the complete fixture passes"
+    );
+    for path in [
+        "spec",
+        "spec_sha256",
+        "lanes",
+        "agreed",
+        "partial",
+        "plan.tool",
+        "plan.ref",
+        "lanes.0.role",
+        "lanes.0.executor",
+        "lanes.0.verdict",
+        "lanes.0.summary",
+    ] {
+        let mut v = full.clone();
+        remove_at(&mut v, path);
+        assert_eq!(
+            classes(&judge(SPEC, TEXT, &[], Some(&v.to_string()))),
+            vec!["BAD-REVIEW"],
+            "without {path}"
+        );
+    }
+}
+
+/// Adversarial lane: "non-empty" let a plan hash that is not one pass. The
+/// field is a sha256: 64 hex digits, either case. Mutant: the format check dropped.
+#[test]
+fn a_plan_sha256_that_is_not_64_hex_digits_is_no_plan() {
+    let long_g = "g".repeat(64);
+    let short = "a".repeat(63);
+    for sha in [
+        "abc123",
+        "\u{0}",
+        "not-a-hash",
+        long_g.as_str(),
+        short.as_str(),
+    ] {
+        let v = review_with(sha, five());
+        assert_eq!(
+            classes(&judge(SPEC, TEXT, &[], Some(&v.to_string()))),
+            vec!["NO-PLAN"],
+            "plan sha256 {sha:?}"
+        );
+    }
+    let upper = review_with(&PLAN.to_uppercase(), five());
+    assert!(
+        judge(SPEC, TEXT, &[], Some(&upper.to_string())).is_empty(),
+        "hex digits in either case"
+    );
+}
+
+/// Adversarial lane: `vendors: [nvidia cuda]` required `vendor:nvidia cuda`,
+/// which the closed set then refused as unknown, so the spec could never pass.
+/// Mutant: the vendor-name check rejects inner whitespace again.
+#[test]
+fn a_vendor_named_with_a_space_can_be_reviewed() {
+    let vendors = vec!["nvidia cuda".to_string()];
+    let mut lanes = all_pass();
+    lanes.push(("vendor:nvidia cuda", "PASS"));
+    let a = artifact(TEXT, &lanes, Some(PLAN), false);
+    assert!(judge(SPEC, TEXT, &vendors, Some(&a)).is_empty());
+    assert!(
+        !is_known_role("vendor:  "),
+        "a blank vendor name is not a role"
+    );
+}
+
+/// Conformance lane, §6.1: "six reviewers" must not decay into six copies of
+/// one. A closed-set role this spec does not require is an extra lane, and a
+/// role given twice is a copy. Mutants: either check dropped.
+#[test]
+fn an_extra_or_a_duplicate_lane_is_refused() {
+    let mut extra = all_pass();
+    extra.push(("vendor:made-up", "PASS"));
+    let a = artifact(TEXT, &extra, Some(PLAN), false);
+    assert_eq!(
+        classes(&judge(SPEC, TEXT, &[], Some(&a))),
+        vec!["EXTRA-LANE"]
+    );
+    let mut dup = all_pass();
+    dup.push(("quality", "PASS"));
+    let d = artifact(TEXT, &dup, Some(PLAN), false);
+    assert_eq!(
+        classes(&judge(SPEC, TEXT, &[], Some(&d))),
+        vec!["DUPLICATE-LANE"]
+    );
+}
+
+/// Test-adequacy lane: the verdict is the exact word PASS. Mutant: a
+/// case-insensitive comparison.
+#[test]
+fn a_lowercase_pass_is_not_pass() {
+    let mut lanes = all_pass();
+    lanes[0] = ("quality", "pass");
+    let a = artifact(TEXT, &lanes, Some(PLAN), false);
+    assert_eq!(
+        classes(&judge(SPEC, TEXT, &[], Some(&a))),
+        vec!["LANE-NOT-PASS"]
+    );
+}
+
+/// Adversarial lane: `--record` wrote through a symlink planted at the
+/// artifact path, to a file outside the project. Mutant: the symlink check dropped.
+#[cfg(unix)]
+#[test]
+fn record_refuses_to_write_through_a_symlinked_artifact_path() {
+    let (dir, review) = recordable();
+    let outside = tempfile::tempdir().expect("tempdir");
+    let victim = outside.path().join("victim.txt");
+    std::fs::write(&victim, "ORIGINAL").expect("write victim");
+    let dest = dir.path().join(artifact_path(SPEC));
+    std::fs::create_dir_all(dest.parent().expect("parent")).expect("mkdir audits");
+    std::os::unix::fs::symlink(&victim, &dest).expect("plant the symlink");
+    let refusal = record(dir.path(), &review).expect_err("refused");
+    assert!(
+        matches!(refusal, RecordRefusal::Unwritable { .. }),
+        "{refusal:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&victim).expect("victim"),
+        "ORIGINAL"
+    );
+    assert_eq!(staged(dir.path()), "");
+}
+
+/// Adversarial lane: a review recorded where git ignores it passes CB-2111
+/// locally and never reaches a commit. It is refused before anything is
+/// written. Mutant: the ignore check dropped.
+#[test]
+fn record_refuses_an_artifact_path_git_ignores_and_writes_nothing() {
+    let (dir, review) = recordable();
+    std::fs::write(dir.path().join(".gitignore"), "docs/audits\n").expect("ignore the audits");
+    let refusal = record(dir.path(), &review).expect_err("refused");
+    assert!(
+        matches!(refusal, RecordRefusal::NotStageable { .. }),
+        "{refusal:?}"
+    );
+    assert!(!dir.path().join("docs/audits").exists(), "nothing written");
+}
+
+/// Test-adequacy lane: a failed `git add` must be reported, not swallowed. The
+/// index is locked, so the write happens and the stage does not. Mutant:
+/// stage's result ignored.
+#[test]
+fn record_reports_a_failed_stage_and_says_the_file_is_written() {
+    let (dir, review) = recordable();
+    std::fs::write(dir.path().join(".git/index.lock"), "").expect("lock the index");
+    let refusal = record(dir.path(), &review).expect_err("a locked index cannot stage");
+    assert!(
+        matches!(refusal, RecordRefusal::NotStaged { .. }),
+        "{refusal:?}"
+    );
+    assert!(
+        refusal.render().contains("written but NOT staged"),
+        "{}",
+        refusal.render()
+    );
+    assert!(
+        dir.path().join(artifact_path(SPEC)).exists(),
+        "the write happened"
     );
 }
