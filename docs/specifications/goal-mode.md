@@ -555,8 +555,12 @@ ratchet)`), there is no `.pmat/coverage-baseline.txt` in this repository, and `c
 is unset — so 29 minutes of every pull request measure something nothing reads. The second
 is that the operator's standing target is 95%, and 85.25% is 29,000 lines short of it: a
 gate set at 95% today would be red on arrival, which §5.4 forbids. The floor therefore
-lands at the measured value as a ratchet that may only rise, and 95% is a programme with
-tickets, not a number written into a config file.
+lands as a ratchet that may only rise, and 95% is a programme with tickets, not a number
+written into a config file. The ratchet's first two runs taught it one more thing: the same
+Rust read 85.57% and then 85.56% — timing-dependent branches move a few lines of 287,014 per
+run — so a baseline set to the exact last reading fails the next run on noise. The committed
+value sits a jitter margin (~0.07 points, ten times the observed swing) below the measurement,
+and a raise is taken only when a run clears the new value by that margin.
 
 **Two levers are upstream, in `paiml/.github`, and both are named in PMAT-1315:** the
 thread cap above, and `skip_coverage` — an input documented as "Skip coverage job" that
