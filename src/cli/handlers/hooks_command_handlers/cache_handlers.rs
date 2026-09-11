@@ -298,3 +298,115 @@ async fn handle_cache_metrics(manager: &HooksCacheManager, format: &OutputFormat
 
     Ok(())
 }
+
+/// PMAT-1317 — this file measured 0 of 202 lines. The four inner handlers take a
+/// manager built from ANY path, so they run here over a throwaway git repository
+/// (the fixture `src/tdg/hooks_cache/tests.rs` already uses) and never touch the
+/// real `.pmat/`. `handle_cache` itself reads `current_dir()` and is exercised
+/// only through the CLI, on purpose: a test that changes the process's cwd is a
+/// race with every other test in the binary (PMAT-726).
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn repo() -> tempfile::TempDir {
+        let t = tempfile::tempdir().expect("tempdir");
+        for args in [
+            &["init", "-q"][..],
+            &["config", "user.email", "t@t"][..],
+            &["config", "user.name", "t"][..],
+        ] {
+            let o = Command::new("git")
+                .args(args)
+                .current_dir(t.path())
+                .output()
+                .expect("git");
+            assert!(
+                o.status.success(),
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&o.stderr)
+            );
+        }
+        std::fs::write(t.path().join("a.rs"), "fn main() {}").expect("write");
+        for args in [&["add", "."][..], &["commit", "-q", "-m", "init"][..]] {
+            let o = Command::new("git")
+                .args(args)
+                .current_dir(t.path())
+                .output()
+                .expect("git");
+            assert!(
+                o.status.success(),
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&o.stderr)
+            );
+        }
+        t
+    }
+
+    #[tokio::test]
+    async fn init_creates_the_documented_layout() {
+        let t = repo();
+        let m = HooksCacheManager::new(t.path());
+        handle_cache_init(&m).await.expect("init");
+        let root = t.path().join(".pmat/hooks-cache");
+        assert!(root.is_dir(), "the cache root exists after init");
+        // The banner names four entries; the ones that are directories must exist
+        // now, or the banner describes a layout that init did not create.
+        assert!(
+            root.join("gates").is_dir(),
+            "gates/ is created, as the banner says"
+        );
+        assert!(
+            root.join("files").is_dir(),
+            "files/ is created, as the banner says"
+        );
+    }
+
+    #[tokio::test]
+    async fn status_on_a_fresh_cache_is_a_miss_in_every_format() {
+        let t = repo();
+        let m = HooksCacheManager::new(t.path());
+        m.init().expect("init");
+        let fresh = m.check().expect("check");
+        assert!(
+            matches!(fresh, CacheCheckResult::Miss { .. }),
+            "nothing has been cached yet, so the first check is a miss: {fresh:?}"
+        );
+        for f in [OutputFormat::Json, OutputFormat::Yaml, OutputFormat::Table] {
+            handle_cache_status(&m, &f)
+                .await
+                .expect("status renders in every format");
+        }
+    }
+
+    #[tokio::test]
+    async fn clear_all_and_clear_one_gate_both_succeed_and_leave_the_root() {
+        let t = repo();
+        let m = HooksCacheManager::new(t.path());
+        m.init().expect("init");
+        handle_cache_clear(&m, Some("complexity"))
+            .await
+            .expect("clear one gate");
+        handle_cache_clear(&m, None).await.expect("clear all");
+        assert!(
+            matches!(m.check().expect("check"), CacheCheckResult::Miss { .. }),
+            "after a clear, the next check is a miss"
+        );
+    }
+
+    #[tokio::test]
+    async fn metrics_on_a_fresh_cache_report_zero_runs_and_render_in_every_format() {
+        let t = repo();
+        let m = HooksCacheManager::new(t.path());
+        m.init().expect("init");
+        let metrics = m.get_metrics().expect("metrics");
+        assert_eq!(metrics.total_runs, 0, "no runs yet");
+        assert_eq!(metrics.cache_hits + metrics.cache_misses, 0);
+        for f in [OutputFormat::Json, OutputFormat::Yaml, OutputFormat::Table] {
+            handle_cache_metrics(&m, &f)
+                .await
+                .expect("metrics render in every format");
+        }
+    }
+}
