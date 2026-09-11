@@ -35,11 +35,17 @@
 #   arm 14 RED   c.md with no front-matter beside reviewed a.md                  exit 1, Fail UNJUDGEABLE c.md: never skipped
 #   arm 15 RED   a.md with no review beside c.md with no front-matter            exit 1, "2 finding(s) — NO-REVIEW 1, UNJUDGEABLE 1: NO-REVIEW …a.md:": path order
 #   arm 16 RED   ten active specs with no review                                 exit 1, "10 finding(s) — NO-REVIEW 10:" and "(+2 more)": the ninth is counted
-#   arm 17 RECORD `pmat spec review --record`: a stale review refused, nothing written or staged; a current one written byte for byte and staged, then the gate passes; a review naming README.md refused
+#   arm 17 RECORD `pmat spec review --record`: a stale review refused, nothing written or staged; a current one written byte for byte and staged, then the gate passes; a review naming README.md, a `..` path or a `.` path refused; a symlink at the artifact path refused and nothing written through it; an artifact path git ignores refused before any write; a directory outside any git work tree refused
 #   arm 18 SKIP  no docs/specifications, in a repository whose history never held one  exit 0, Skip
 #   arm 19 N/M   docs/specifications committed and then deleted                 exit 1, Fail not_measured: "committed and is now gone" (§12)
 #   arm 20 THIS TREE this repository's own specs, and its own review artifacts (none today)
 #                                                                                exit 1, "N finding(s) — NO-REVIEW N:" with N = the active specs, counted from the tree
+#   arm 21 RED   a second quality lane                                           exit 1, Fail DUPLICATE-LANE a.md `quality` — a copy is not a reviewer (§6.1)
+#   arm 22 RED   a vendor:made-up lane on a spec whose front-matter names no vendor   exit 1, Fail EXTRA-LANE a.md `vendor:made-up`
+#   arm 23 RED   lanes without executor                                          exit 1, Fail BAD-REVIEW a.md naming executor — every §6.1 field is required
+#   arm 24 RED   a plan sha256 of not-a-hash                                     exit 1, Fail NO-PLAN a.md — a sha256 is 64 hex digits
+#   arm 25 GREEN vendors: [nvidia cuda] with a vendor:nvidia cuda PASS lane      exit 0, Pass reviewed 1 — a vendor named with a space can be reviewed
+#   arm 26 RED   a/b.md and a-b.md, both active, share one artifact path          exit 1, Fail SLUG-COLLISION for both, and NOT NO-REVIEW
 #
 # Arm 20 is the withheld-step measurement (goal-mode.md §11 step 7, doctrine
 # 6): it runs the rule on THIS tree's specs, copied into the fixture, and
@@ -109,7 +115,7 @@ artifact() {
   printf '%s/spec-%s-review.json' "$audits" "${s//\//-}"
 }
 FIVE=(quality:PASS architecture:PASS security:PASS crux:PASS adversarial:PASS)
-PLAN='{"tool":"claude-plan","ref":"plan.md","sha256":"abc123"}'
+PLAN='{"tool":"claude-plan","ref":"plan.md","sha256":"64879f7d6b960a01909762d911a32d4582c20010c5641ee90278b644a9e3b525"}'
 # lanes <role:VERDICT>...   a vendor role keeps its own colon: vendor:cuda:PASS
 lanes() {
   printf '%s\n' "$@" | jq -R 'split(":") as $parts | {role: ($parts | .[:-1] | join(":")), executor: "human", verdict: ($parts | last), summary: "read it"}' | jq -cs .
@@ -360,7 +366,36 @@ review_json a.md "$(lanes "${FIVE[@]}")" "$PLAN" false README.md >"$work/readme-
 record "$work/readme-review.json"
 [ "$RRC" -ne 0 ] || fail_arm 17 "a review naming a file outside docs/specifications must be refused"
 grep -q "not a spec under docs/specifications" "$work/record.err" || fail_arm 17 "the refusal must say why: $(head -3 "$work/record.err")"
-echo "spec-review-control: arm 17 RECORD — stale refused (nothing written or staged); current recorded byte-identical and staged, and the gate passes it; README.md refused"
+for named in docs/specifications/../README.md docs/specifications/./a.md; do
+  review_json a.md "$(lanes "${FIVE[@]}")" "$PLAN" false "$named" >"$work/dot-review.json"
+  record "$work/dot-review.json"
+  [ "$RRC" -ne 0 ] || fail_arm 17 "a review naming $named must be refused"
+  grep -q "not a spec under docs/specifications" "$work/record.err" || fail_arm 17 "the refusal of $named must say why"
+done
+rm -f "$(artifact a.md)"
+echo ORIGINAL >"$work/victim.txt"
+ln -s "$work/victim.txt" "$(artifact a.md)"
+record "$work/review.json"
+[ "$RRC" -ne 0 ] || fail_arm 17 "recording through a symlinked artifact path must be refused"
+grep -q "is a symlink" "$work/record.err" || fail_arm 17 "the refusal must name the symlink: $(head -3 "$work/record.err")"
+[ "$(cat "$work/victim.txt")" = ORIGINAL ] || fail_arm 17 "a refused record must not write through the symlink"
+rm -f "$(artifact a.md)"
+write_spec b.md active
+review_json b.md "$(lanes "${FIVE[@]}")" >"$work/review-b.json"
+printf 'docs/audits/spec-b-review.json\n' >"$repo/.gitignore"
+record "$work/review-b.json"
+[ "$RRC" -ne 0 ] || fail_arm 17 "recording where git ignores the artifact must be refused"
+grep -q "cannot be staged" "$work/record.err" || fail_arm 17 "the refusal must say it cannot be staged: $(head -3 "$work/record.err")"
+[ ! -e "$(artifact b.md)" ] || fail_arm 17 "a review git ignores must not be written"
+rm -f "$repo/.gitignore" "$specs/b.md"
+mkdir -p "$work/nogit/docs/specifications"
+cp "$specs/a.md" "$work/nogit/docs/specifications/a.md"
+RRC=0
+GIT_CEILING_DIRECTORIES="$work" "$PMAT" spec review --record "$work/review.json" --path "$work/nogit" >"$work/record.out" 2>"$work/record.err" || RRC=$?
+[ "$RRC" -ne 0 ] || fail_arm 17 "recording outside a git work tree must be refused"
+grep -q "cannot be staged" "$work/record.err" || fail_arm 17 "the refusal outside a work tree must say it cannot be staged: $(head -3 "$work/record.err")"
+[ ! -e "$work/nogit/docs/audits" ] || fail_arm 17 "nothing may be written outside a git work tree"
+echo "spec-review-control: arm 17 RECORD — stale refused (nothing written or staged); current recorded byte-identical and staged, and the gate passes it; README.md, .. and . refused; a symlink refused, nothing written through it; an ignored path and a non-git directory refused before any write"
 
 # arm 18: SKIP — no docs/specifications in a repository whose history never held one
 fresh
@@ -405,4 +440,53 @@ expect 20 CB-2111 Fail "pmat spec review --record"
 starts 20 "$active finding(s) — NO-REVIEW $active:"
 echo "spec-review-control: arm 20 THIS TREE — $total specs, $active active, every one NO-REVIEW: the direct step stays withheld until they are reviewed (exit 1)"
 
-echo "spec-review-control: all 20 arms behaved — CB-2111 can fail, can pass, says why, names its exemptions, refuses a deleted input, --record validates before it stages, and this tree measures NO-REVIEW on every active spec"
+# arm 21: RED — a second lane of one role is a copy, not a reviewer (§6.1)
+fresh
+write_spec a.md active
+write_review a.md "${FIVE[@]}" quality:PASS
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 21 "a review with two quality lanes must exit 1"
+expect 21 CB-2111 Fail "DUPLICATE-LANE docs/specifications/a.md: \`quality\`"
+echo "spec-review-control: arm 21 RED  — a second quality lane: DUPLICATE-LANE (exit 1)"
+
+# arm 22: RED — a closed-set role this spec does not require is an extra lane
+write_review a.md "${FIVE[@]}" vendor:made-up:PASS
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 22 "a vendor lane the front-matter does not name must exit 1"
+expect 22 CB-2111 Fail "EXTRA-LANE docs/specifications/a.md: \`vendor:made-up\`"
+echo "spec-review-control: arm 22 RED  — vendor:made-up with no vendor in the front-matter: EXTRA-LANE (exit 1)"
+
+# arm 23: RED — every §6.1 field is required: lanes without executor do not parse
+review_json a.md "$(lanes "${FIVE[@]}" | jq -c 'map(del(.executor))')" >"$(artifact a.md)"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 23 "lanes without executor must exit 1"
+expect 23 CB-2111 Fail "BAD-REVIEW docs/specifications/a.md:" "executor"
+echo "spec-review-control: arm 23 RED  — lanes without executor: BAD-REVIEW naming the field (exit 1)"
+
+# arm 24: RED — a plan sha256 that is not 64 hex digits
+review_json a.md "$(lanes "${FIVE[@]}")" '{"tool":"claude-plan","ref":"plan.md","sha256":"not-a-hash"}' >"$(artifact a.md)"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 24 "a plan sha256 that is not 64 hex digits must exit 1"
+expect 24 CB-2111 Fail "NO-PLAN docs/specifications/a.md:"
+echo "spec-review-control: arm 24 RED  — plan sha256 not-a-hash: NO-PLAN (exit 1)"
+
+# arm 25: GREEN — a vendor named with a space can be reviewed
+write_spec a.md active '[nvidia cuda]'
+write_review a.md "${FIVE[@]}" "vendor:nvidia cuda:PASS"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 25 "vendors: [nvidia cuda] with a vendor:nvidia cuda PASS lane must exit 0"
+expect 25 CB-2111 Pass "reviewed 1"
+echo "spec-review-control: arm 25 GREEN — vendors: [nvidia cuda] reviewed by a vendor:nvidia cuda lane: Pass (exit 0)"
+
+# arm 26: RED — two active specs sharing an artifact path are named as a collision
+rm -rf "${specs:?}" "${audits:?}"
+mkdir -p "$specs" "$audits"
+write_spec a/b.md active
+write_spec a-b.md active
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 26 "two active specs sharing an artifact path must exit 1"
+expect 26 CB-2111 Fail "SLUG-COLLISION docs/specifications/a-b.md:" "SLUG-COLLISION docs/specifications/a/b.md:"
+lacks 26 "NO-REVIEW"
+echo "spec-review-control: arm 26 RED  — a/b.md and a-b.md share one artifact path: SLUG-COLLISION for both (exit 1)"
+
+echo "spec-review-control: all 26 arms behaved — CB-2111 can fail, can pass, says why, names its exemptions, refuses a deleted input, --record validates before it stages, and this tree measures NO-REVIEW on every active spec"
