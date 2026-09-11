@@ -2,8 +2,8 @@
 # pr-lane-control.sh — PMAT-1313. The PR lane and the pre-release lane are not the
 # same lane, and this proves the difference is what it claims to be.
 #
-#   arm 1 GREEN  ci.yml takes the fast lane on a pull request AND ONLY THERE
-#   arm 2 RED    a workflow that turns nextest on unconditionally is refused
+#   arm 1 GREEN  ci.yml does NOT enable nextest, and says in the file why not
+#   arm 2 RED    a workflow that enables nextest without lifting the thread cap is refused
 #   arm 3 GREEN  the fast lane's exclusion names exactly two tests
 #   arm 4 GREEN  both named tests still exist in the tree
 #   arm 5 RED    an exclusion naming a test that does not exist is refused
@@ -24,8 +24,12 @@ WF=.github/workflows/ci.yml
 NT=.config/nextest.toml
 
 # The predicates, as functions, so a fixture can be judged by the SAME code.
-fast_lane_is_pr_only() {  # $1 = workflow file
-  grep -qF "use_nextest: \${{ github.event_name == 'pull_request' }}" "$1"
+nextest_is_off_and_explained() {  # $1 = workflow file
+  # OFF is not enough: the next person to try this must find the measurement that
+  # turned it off, in the file, or they will turn it back on and slow CI down again.
+  grep -qE '^ *use_nextest: false *$' "$1" \
+    && grep -qF 'NEXTEST_TEST_THREADS=4' "$1" \
+    && grep -qF 'PMAT-1315' "$1"
 }
 excluded_tests() {        # $1 = nextest config; prints one test path per line
   grep -oE 'test\(=[^)]+\)' "$1" | sed 's/^test(=//; s/)$//'
@@ -44,17 +48,17 @@ not_skipped_in_slow_lane() {  # $1 = file that may carry cargo-test skips
 }
 
 # ── arm 1 ─────────────────────────────────────────────────────────────────────
-fast_lane_is_pr_only "$WF" \
-  || fail_arm 1 "ci.yml must pass use_nextest gated on github.event_name == 'pull_request'"
-echo "pr-lane-control: arm 1 GREEN — the fast lane is the pull-request lane"
+nextest_is_off_and_explained "$WF" \
+  || fail_arm 1 "ci.yml must set use_nextest: false AND carry the measurement that says why — the 4-thread cap and PMAT-1315"
+echo "pr-lane-control: arm 1 GREEN — nextest is off, and the file says why"
 
 # ── arm 2 (falsifier) ─────────────────────────────────────────────────────────
 T=$(mktemp -d); trap 'rm -rf "${T:?}"' EXIT
-sed "s/use_nextest: \${{ github.event_name == 'pull_request' }}/use_nextest: true/" "$WF" > "$T/always.yml"
-if fast_lane_is_pr_only "$T/always.yml"; then
-  fail_arm 2 "a workflow that turns nextest on for every event must be refused — master would stop running the tests nextest cannot"
+sed 's/^ *use_nextest: false *$/      use_nextest: true/' "$WF" > "$T/on.yml"
+if nextest_is_off_and_explained "$T/on.yml"; then
+  fail_arm 2 "a workflow that enables nextest must be refused while sovereign-ci.yml caps it at 4 threads — measured SLOWER than cargo test on this suite"
 fi
-echo "pr-lane-control: arm 2 RED   — unconditional nextest is refused"
+echo "pr-lane-control: arm 2 RED   — enabling nextest under the thread cap is refused"
 
 # ── arm 3 ─────────────────────────────────────────────────────────────────────
 N=$(excluded_tests "$NT" | grep -c . )
@@ -90,4 +94,4 @@ fi
 echo "pr-lane-control: arm 7 RED   — double-exclusion is refused"
 
 [ "$FAIL" -eq 0 ] || { echo "pr-lane-control: FAILED"; exit 1; }
-echo "pr-lane-control: all 7 arms behaved — the fast lane is the PR lane, it excludes exactly two named tests that exist, and the pre-release lane still runs them"
+echo "pr-lane-control: all 7 arms behaved — nextest is off with its measurement recorded, the local fast lane excludes exactly two named tests that exist, and cargo test still runs them"

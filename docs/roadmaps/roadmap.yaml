@@ -6317,11 +6317,12 @@ roadmap:
   updated: 2026-09-11T09:55:00Z
   spec: docs/specifications/goal-mode.md
   acceptance_criteria:
-  - ci.yml passes use_nextest gated on github.event_name == 'pull_request', so a push to master still runs the full cargo test over every test
+  - 'ci.yml sets use_nextest false and carries the measurement that refuted it: NEXTEST_TEST_THREADS=4 in a container given 8 cpus made the job SLOWER than cargo test (9,047 of 21,536 tests after 11 minutes), so the local 12.2x is unreachable until the cap is raised (PMAT-1315)'
   - 'the two tests that built an AgentContextIndex over the whole repository build a one-file fixture instead: 320 seconds off both the test job and the coverage job'
   - .config/nextest.toml excludes from the fast lane only the two tests that hang under nextest, and names their ticket
-  - scripts/pr-lane-control.sh exits 0 with seven arms, three of them falsifiers that refuse a fixture carrying the defect
-  - goal-mode.md §7.3 states both lanes with the measured numbers and names what it does not fix
+  - scripts/pr-lane-control.sh exits 0 with seven arms, three of them falsifiers; arm 2 refuses a workflow that enables nextest while the thread cap stands, so the refuted change cannot be re-landed by someone who did not read the measurement
+  - goal-mode.md §7.3 states both lanes, the measurement that refuted the fast one, the coverage baseline of 85.25%, and the two levers that are upstream
+  - ci.yml sets coverage_min so the Enforce coverage floor step runs for the first time — it was skipped on every run, so ~29 minutes per pull request measured a number nothing read
   phases: []
   subtasks: []
   estimated_effort: null
@@ -6359,6 +6360,7 @@ roadmap:
   updated: 2026-09-11T09:55:00Z
   spec: null
   acceptance_criteria:
+  - 'NEXTEST_TEST_THREADS is raised from 4, or made a caller input: the container is given --cpus 8 and cargo test defaults to 8, so capping nextest at 4 makes it slower than the runner it replaces — measured on paiml/paiml-mcp-agent-toolkit#1316, 9,047 of 21,536 tests after 11 minutes'
   - a caller passing skip_coverage true gets a green ci/gate with the coverage job skipped, and the gate log names it as deliberately skipped
   - a coverage job skipped or cancelled for any other reason still fails the gate
   - the second case is proven by a workflow-level test rather than by reading the condition
@@ -6368,3 +6370,23 @@ roadmap:
   labels:
   - kind:code
   notes: sovereign-ci.yml documents skip_coverage as Skip coverage job; the coverage job is if not inputs.skip_coverage and the gate then refuses it because skipped counts as not-passed. The allowlist is correct — it was written after ci/security was cancelled on paiml/ruchy#197 and the gate passed 21 open advisories — but it makes the input unusable by any caller. ci/coverage costs ~29 minutes on every pmat PR and its only enforcement step is skipped there, so it is now the wall-clock floor of the PR lane after PMAT-1313.
+- id: PMAT-1317
+  github_issue: 1317
+  item_type: task
+  title: 'Coverage to 95%: measured 85.25%, the floor is armed at 80 and ratchets from CI''s own number'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T09:55:00Z
+  updated: 2026-09-11T09:55:00Z
+  spec: docs/specifications/goal-mode.md
+  acceptance_criteria:
+  - .pmat/coverage-baseline.txt exists, carries a number a CI run measured rather than one a laptop measured, and the coverage job fails when coverage drops below it — proven by a deliberate drop and not by reading the condition
+  - line coverage reaches 95 percent, with the baseline raised in steps and never lowered
+  - no step in the climb lowers the baseline or disables the gate in order to land a change
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Operator instruction 2026-09-11: coverage always at 95%. Measured on this tree with cargo llvm-cov nextest --lib: 85.25% of lines (297,741 lines, 43,919 uncovered), 85.56% of regions, in 469s against the ~29 minutes ci/coverage spends. 95% is 29,032 lines away, so a gate set there today is red on arrival for every PR and goal-mode.md §5.4 forbids that. PMAT-1313 armed coverage_min at 80, which turns the Enforce coverage floor step on for the first time — it had been skipped on every run. Use pmat query --coverage-gaps --rank-by impact for the climb.'

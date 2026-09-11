@@ -514,49 +514,54 @@ bypasses, and adding the trigger costs nothing.
   `.github/required-status-checks.txt` gains `gate` and loses its false sentence, in the
   same commit. A test asserts the union.
 
-### 7.3 The PR lane and the pre-release lane
+### 7.3 The PR lane, the pre-release lane, and what measuring them cost
 
-A gate a human waits forty minutes for is a gate that gets bypassed, and every rule in
-§7 is paid for in that wait. The two lanes are therefore not the same lane.
+A gate a human waits forty minutes for is a gate that gets bypassed, and every rule in §7
+is paid for in that wait. This section records what was measured when that wait was
+attacked — including the change that did not work, because the number that refuted it is
+worth more than the one that suggested it.
 
-**Measured on this tree, 21,536 lib tests, one machine, one binary:**
+**The suite, measured two ways.** 21,536 lib tests, one machine, one binary:
 
-| lane | command | test execution | what it runs |
-|---|---|---|---|
-| pull request | `cargo nextest run --lib` | **100.51s** | every test but two (below) |
-| push to master | `cargo test --lib` | **1227.83s** | every test, no exception |
+| runner | wall-clock | where |
+|---|---|---|
+| `cargo test --lib` | 1227.83s | what `ci / test` runs today |
+| `cargo nextest run --lib` | **100.51s** | a 12.2x that is real — locally |
 
-12.2x, and nothing is skipped to get it: `cargo test` runs the suite as threads in one
-process, nextest runs each test in its own, so the suite parallelises past a ceiling
-that has nothing to do with what is being tested. `make test-fast` has documented this
-as "~2.5 min" since before this section was written — CI simply never used it. The
-switch is one input on the reusable workflow, gated on the event, and
-`scripts/pr-lane-control.sh` refuses a workflow that turns it on unconditionally: the
-fast lane must never become the only lane.
+**And the switch that made CI slower.** `sovereign-ci.yml` sets `NEXTEST_TEST_THREADS=4`
+in a container given `--cpus 8`; `cargo test` defaults to available parallelism, which is
+8. Halving the workers while paying a process spawn per test loses more than isolation
+wins. Measured on the pull request that tried it: **9,047 of 21,536 tests after 11 minutes
+of running**, against 20.5 minutes for the entire suite under `cargo test`. The 12.2x is
+unreachable here until that cap is raised, so `use_nextest` is `false` in `ci.yml`, with
+the numbers beside it, and `scripts/pr-lane-control.sh` REFUSES a workflow that turns it
+on while the cap stands. A speedup measured on a 32-core workstation is not a speedup;
+it is a hypothesis about the runner.
 
-**Two tests are excluded from the fast lane, and only from it.**
-`eof_does_not_signal_while_a_request_is_in_flight` and
-`waits_for_every_outstanding_request` pass under `cargo test` and hang FOREVER under
-nextest — measured at 300s with no progress, while the two other tests in their module
-pass in milliseconds. A test that only passes in a process another test has warmed is
-order-dependent, which is a defect in the test, not in the runner (PMAT-1314). They run
-on every push to master, and the control asserts they are named, that they still exist,
-and that nothing excludes them from the pre-release lane as well — an exclusion in both
-lanes is a test nothing runs.
+**The win that needed no switch.** Two tests built an `AgentContextIndex` over the WHOLE
+REPOSITORY, 160 seconds each. `test_make_cluster_item_basic` never read the result — its
+only use was `is_err()`, and every assertion below it is on a struct literal. They now
+build a one-file fixture, and all 24 `file_split` tests finish in **0.01s**: 320 seconds
+off `ci / test` AND off `ci / coverage`, which runs the same tests serially.
+`cargo test`'s thread pool had hidden them for as long as they existed; per-test
+isolation made them visible in its first run, which is the argument for nextest restated
+as the defect it found.
 
-**What this does not fix, and the number that proves it.** `ci / coverage` still runs
-the whole suite serially on every pull request, ~29 minutes, and on a pull request its
-*only* enforcement step is skipped (`Enforce coverage floor (OPT-IN ratchet)`), so it
-gates nothing there. It is now the wall-clock floor of the PR lane. The reusable
-workflow accepts `skip_coverage`, documented as "Skip coverage job", and setting it
-FAILS the build: the org gate requires `success` from `coverage` and refuses `skipped`
-by design. A documented input that cannot be used is the same defect class this document
-is about, and it is upstream in `paiml/.github`, not here (PMAT-1315).
+**Coverage, measured.** `cargo llvm-cov nextest --lib`: **85.25% of lines** (85.56% of
+regions, 297,741 lines, 43,919 uncovered), in **469 seconds** — against the ~29 minutes
+`ci / coverage` spends on `cargo llvm-cov test`. Two facts follow. The first is that on a
+pull request that job's ONLY enforcement step is skipped (`Enforce coverage floor (OPT-IN
+ratchet)`), there is no `.pmat/coverage-baseline.txt` in this repository, and `coverage_min`
+is unset — so 29 minutes of every pull request measure something nothing reads. The second
+is that the operator's standing target is 95%, and 85.25% is 29,000 lines short of it: a
+gate set at 95% today would be red on arrival, which §5.4 forbids. The floor therefore
+lands at the measured value as a ratchet that may only rise, and 95% is a programme with
+tickets, not a number written into a config file.
 
-Two tests that built an index over the whole repository — 160s each, one of them never
-reading the result — were removed from both lanes on the way (PMAT-1313). They cost
-every `cargo test` run AND every coverage run, and `cargo test`'s thread pool hid them:
-only per-test isolation made them visible.
+**Two levers are upstream, in `paiml/.github`, and both are named in PMAT-1315:** the
+thread cap above, and `skip_coverage` — an input documented as "Skip coverage job" that
+fails the build, because the workflow's own gate requires `success` from `coverage` and
+refuses `skipped` by design. The gate is right; the input cannot be used by any caller.
 
 ## 8. Honest limits
 
