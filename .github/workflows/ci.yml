@@ -60,6 +60,16 @@ jobs:
       # .pmat/coverage-baseline.txt, after which the floor can only rise. PMAT-1317
       # carries the climb to 95%.
       coverage_min: '80'
+      # The ratchet. The gate's default path is .pmat/coverage-baseline.txt, and
+      # this repository gitignores **/.pmat/ — a baseline written there would
+      # never reach CI, and the "ratchet" would silently be coverage_min alone.
+      # Git cannot re-include a file under an ignored directory, so the file
+      # lives at the root. Its number is what THE GATE'S OWN arithmetic reads
+      # (hit DA records / total DA records from lcov.info), measured on this
+      # tree: 85.43% (244,949/286,728) — not llvm-cov's summary, which reads
+      # 85.25% over a different denominator. The effective floor is
+      # max(coverage_min, this file); it may only rise (PMAT-1317).
+      coverage_baseline_file: '.coverage-baseline.txt'
     secrets: inherit
 
   # Top-level gate satisfies the org ruleset "Green Main" which requires a

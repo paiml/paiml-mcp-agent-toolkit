@@ -220,3 +220,32 @@ end_of_record
         ));
     }
 }
+
+/// PMAT-1313: the availability check is a PATH lookup, not a `cargo llvm-cov
+/// --version` subprocess (75s inside an instrumented run). It must still answer
+/// both ways, on a PATH the test controls — a check that can only say "present"
+/// is a comment, not a check.
+#[test]
+fn coverage_tool_availability_is_decided_by_path_not_by_a_subprocess() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let empty = std::env::join_paths([dir.path()]).expect("join_paths");
+    assert!(
+        !FaultLocalizer::is_coverage_tool_available_on(&empty),
+        "a PATH with no cargo-llvm-cov must read as unavailable"
+    );
+
+    std::fs::write(dir.path().join("cargo-llvm-cov"), "").expect("plant the executable name");
+    assert!(
+        FaultLocalizer::is_coverage_tool_available_on(&empty),
+        "a PATH holding cargo-llvm-cov must read as available"
+    );
+
+    // A directory of that name is not the tool.
+    let dir2 = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir(dir2.path().join("cargo-llvm-cov")).expect("dir");
+    let only_dir = std::env::join_paths([dir2.path()]).expect("join_paths");
+    assert!(
+        !FaultLocalizer::is_coverage_tool_available_on(&only_dir),
+        "a directory named cargo-llvm-cov is not an executable"
+    );
+}

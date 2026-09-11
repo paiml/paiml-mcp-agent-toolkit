@@ -9,6 +9,10 @@
 #   arm 5 RED    an exclusion naming a test that does not exist is refused
 #   arm 6 GREEN  nothing excludes those two from the pre-release lane
 #   arm 7 RED    a Makefile that skips one of them from `cargo test` is refused
+#   arm 8 GREEN  the coverage ratchet file is tracked, parses, and is where ci.yml says
+#   arm 9 RED    the gate's own arithmetic fails a floor above a fixture's coverage
+#   arm 10 GREEN the gate's own arithmetic passes a floor at the fixture's coverage
+#   arm 11 RED   the gate refuses an lcov with no line records
 #
 # Arms 2, 5 and 7 are the ones that matter: without them this script asserts that
 # a file contains the string somebody just wrote into it, which is theater. Each
@@ -93,5 +97,33 @@ if not_skipped_in_slow_lane "$T/Makefile"; then
 fi
 echo "pr-lane-control: arm 7 RED   — double-exclusion is refused"
 
+# ── arms 8–11: the coverage ratchet ──────────────────────────────────────────
+# ci.yml sets coverage_min and coverage_baseline_file; sovereign-ci.yml's
+# `Enforce coverage floor` step reads lcov DA records and fails below
+# max(min, baseline). None of that is visible from this repository, so these arms
+# reproduce the step's arithmetic on a fixture and require it to answer both ways.
+BL=$(grep -oE "coverage_baseline_file: '[^']+'" "$WF" | sed "s/.*: '//; s/'$//")
+[ -n "$BL" ] || fail_arm 8 "ci.yml must name coverage_baseline_file"
+git ls-files --error-unmatch "$BL" >/dev/null 2>&1 \
+  || fail_arm 8 "$BL must be TRACKED — .pmat/ is gitignored, so a baseline there never reaches CI and the ratchet is coverage_min alone"
+BASE=$(tr -dc '0-9.' < "$BL" | head -c 16)
+[ -n "$BASE" ] || fail_arm 8 "$BL must hold a number"
+echo "pr-lane-control: arm 8 GREEN — the ratchet file $BL is tracked and reads $BASE"
+
+# the gate's arithmetic, as sovereign-ci.yml writes it: covered = DA records with hits>0
+gate_pct() { awk -F'[:,]' '/^DA:/ { t++; if ($3 > 0) c++ } END { if (t==0) print "EMPTY"; else printf "%.2f", (c/t)*100 }' "$1"; }
+gate_verdict() {  # $1 lcov, $2 floor → 0 pass, 1 fail (mirrors: exit 1 iff pct < floor, or empty)
+  local p; p=$(gate_pct "$1"); [ "$p" = EMPTY ] && return 1
+  awk -v p="$p" -v f="$2" 'BEGIN { exit (p < f) ? 1 : 0 }'
+}
+printf 'SF:a.rs\nDA:1,1\nDA:2,1\nDA:3,1\nDA:4,0\nend_of_record\n' > "$T/fixture.lcov"   # 75.00%
+if gate_verdict "$T/fixture.lcov" 80; then fail_arm 9 "a 75% fixture must FAIL an 80 floor"; fi
+echo "pr-lane-control: arm 9 RED   — 75% under an 80 floor is refused"
+gate_verdict "$T/fixture.lcov" 75 || fail_arm 10 "a 75% fixture must PASS a 75 floor"
+echo "pr-lane-control: arm 10 GREEN — 75% at a 75 floor passes"
+: > "$T/empty.lcov"
+if gate_verdict "$T/empty.lcov" 0; then fail_arm 11 "an lcov with no DA records must be refused even at floor 0"; fi
+echo "pr-lane-control: arm 11 RED   — empty coverage data is refused"
+
 [ "$FAIL" -eq 0 ] || { echo "pr-lane-control: FAILED"; exit 1; }
-echo "pr-lane-control: all 7 arms behaved — nextest is off with its measurement recorded, the local fast lane excludes exactly two named tests that exist, and cargo test still runs them"
+echo "pr-lane-control: all 11 arms behaved — nextest is off with its measurement recorded, the local fast lane excludes exactly two named tests that exist, and cargo test still runs them"
