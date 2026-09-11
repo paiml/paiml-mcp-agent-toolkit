@@ -228,6 +228,10 @@ mod tests_spec_reviews {
         let c = rule(dir.path());
         assert_fail_with(&c, "SLUG-COLLISION docs/specifications/a-b.md:");
         assert_fail_with(&c, "SLUG-COLLISION docs/specifications/a/b.md:");
+        assert_fail_with(
+            &c,
+            "shares docs/audits/spec-a-b-review.json with docs/specifications/a/b.md",
+        );
         assert!(!c.message.contains("NO-REVIEW"), "{}", c.message);
     }
 }

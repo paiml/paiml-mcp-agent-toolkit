@@ -566,3 +566,149 @@ fn record_reports_a_failed_stage_and_says_the_file_is_written() {
         "the write happened"
     );
 }
+
+// ── the quorum re-run on PMAT-1299 ──
+
+/// Adversarial lane (re-run): a review that records `agreed: false` says its
+/// quorum did not agree. With every lane PASS that is a contradiction, and it
+/// is red. Mutant: agreed ignored.
+#[test]
+fn a_review_that_records_agreed_false_is_red() {
+    let mut v = review_with(PLAN, five());
+    v["agreed"] = serde_json::json!(false);
+    assert_eq!(
+        classes(&judge(SPEC, TEXT, &[], Some(&v.to_string()))),
+        vec!["NOT-AGREED"]
+    );
+}
+
+/// Test-adequacy lane (re-run): the edges the first tests left open. A
+/// duplicated vendor requires its role once; a second lane is DUPLICATE-LANE
+/// whatever its verdict; a hyphen is not a hex digit; a duplicated known key
+/// does not parse. Mutants: the vendor dedup dropped; the duplicate check
+/// moved after the verdict; hyphens accepted; serde's duplicate-field check
+/// bypassed.
+#[test]
+fn the_edges_the_rerun_named_are_pinned() {
+    let twice = vec!["cuda".to_string(), "cuda".to_string()];
+    let a = artifact(TEXT, &all_pass(), Some(PLAN), false);
+    assert_eq!(
+        judge(SPEC, TEXT, &twice, Some(&a)),
+        vec![ReviewFinding::MissingRole {
+            spec: SPEC.into(),
+            role: "vendor:cuda".into()
+        }]
+    );
+    let mut dup = all_pass();
+    dup.push(("quality", "FAIL"));
+    let d = artifact(TEXT, &dup, Some(PLAN), false);
+    assert_eq!(
+        classes(&judge(SPEC, TEXT, &[], Some(&d))),
+        vec!["DUPLICATE-LANE"]
+    );
+    let hyphen = format!("{}-", &PLAN[..63]);
+    assert_eq!(
+        classes(&judge(
+            SPEC,
+            TEXT,
+            &[],
+            Some(&review_with(&hyphen, five()).to_string())
+        )),
+        vec!["NO-PLAN"]
+    );
+    let doubled = review_with(PLAN, five()).to_string().replacen(
+        "\"partial\":false",
+        "\"partial\":false,\"partial\":false",
+        1,
+    );
+    assert!(
+        doubled.matches("\"partial\"").count() == 2,
+        "the fixture must carry the key twice"
+    );
+    assert_eq!(
+        classes(&judge(SPEC, TEXT, &[], Some(&doubled))),
+        vec!["BAD-REVIEW"]
+    );
+}
+
+/// Adversarial lane (re-run): a hard link planted at the artifact path shares
+/// its inode with a file outside the project, and a direct write would change
+/// that file. record writes a temporary file beside the artifact and renames
+/// it into place, so the link is replaced, never written through. Mutant: a
+/// direct write.
+#[test]
+fn record_replaces_a_hard_linked_artifact_path_without_writing_through_it() {
+    let (dir, review) = recordable();
+    let outside = tempfile::tempdir().expect("tempdir");
+    let victim = outside.path().join("victim.txt");
+    std::fs::write(&victim, "ORIGINAL").expect("write victim");
+    let dest = dir.path().join(artifact_path(SPEC));
+    std::fs::create_dir_all(dest.parent().expect("parent")).expect("mkdir audits");
+    std::fs::hard_link(&victim, &dest).expect("plant the hard link");
+    let got = record(dir.path(), &review).expect("a hard link is replaced, not refused");
+    assert_eq!(
+        std::fs::read_to_string(&victim).expect("victim"),
+        "ORIGINAL",
+        "the outside file must not change"
+    );
+    assert_eq!(
+        std::fs::read(dir.path().join(&got.artifact)).expect("artifact"),
+        std::fs::read(&review).expect("review")
+    );
+}
+
+/// Adversarial lane (re-run): a spec path holding a control character (here a
+/// carriage return) is not a spec. Mutant: control characters accepted.
+#[test]
+fn record_refuses_a_spec_path_with_a_control_character() {
+    let (dir, review) = recordable();
+    let named = "docs/specifications/a\rb.md";
+    let mut v: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&review).expect("read review"))
+            .expect("the review parses");
+    v["spec"] = serde_json::json!(named);
+    std::fs::write(&review, v.to_string()).expect("write review");
+    assert_eq!(
+        record(dir.path(), &review).expect_err("refused"),
+        RecordRefusal::NotASpec {
+            named: named.to_string()
+        }
+    );
+}
+
+/// Test-adequacy lane (re-run): a symlinked docs/audits (an intermediate
+/// component) is refused with nothing written through it, and git's own
+/// exclude file counts as an ignore, not only a .gitignore. Mutant: the ignore
+/// check reduced to "is there a .gitignore". An equivalent mutant noted: the
+/// symlink walk reduced to the final component is masked here, because git
+/// check-ignore refuses a path beyond a symlink first.
+#[cfg(unix)]
+#[test]
+fn record_refuses_a_symlinked_audits_directory_and_an_excluded_path() {
+    let (dir, review) = recordable();
+    let outside = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(dir.path().join("docs")).expect("mkdir docs");
+    std::os::unix::fs::symlink(outside.path(), dir.path().join("docs/audits"))
+        .expect("symlink audits");
+    let refusal = record(dir.path(), &review).expect_err("refused");
+    assert!(
+        matches!(
+            refusal,
+            RecordRefusal::Unwritable { .. } | RecordRefusal::NotStageable { .. }
+        ),
+        "{refusal:?}"
+    );
+    assert_eq!(
+        std::fs::read_dir(outside.path()).expect("outside").count(),
+        0,
+        "nothing written through the link"
+    );
+    std::fs::remove_file(dir.path().join("docs/audits")).expect("unlink audits");
+    std::fs::write(dir.path().join(".git/info/exclude"), "docs/audits\n")
+        .expect("exclude the audits");
+    let refusal = record(dir.path(), &review).expect_err("an excluded path is refused");
+    assert!(
+        matches!(refusal, RecordRefusal::NotStageable { .. }),
+        "{refusal:?}"
+    );
+}
