@@ -343,6 +343,15 @@ fn default_checks() -> HashMap<String, CheckConfig> {
             options: HashMap::new(),
         },
     );
+    checks.insert(
+        "cb-2111".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
 
     // CB-2112: Ticket Linkage — every open roadmap item names an open GitHub issue whose number is the item's numeric tail (goal-mode.md §7, invariant A); Error so it is a member of the roster CB-2100 verifies.
     checks.insert(

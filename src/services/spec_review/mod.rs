@@ -14,6 +14,9 @@
 
 use serde::Deserialize;
 
+pub mod record;
+pub use record::{record, RecordRefusal, Recorded};
+
 /// Where review artifacts live.
 pub const REVIEW_DIR: &str = "docs/audits";
 

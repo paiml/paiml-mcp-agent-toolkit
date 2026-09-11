@@ -176,3 +176,165 @@ fn the_closed_role_set_is_the_five_and_vendor_roles() {
         Some("vendor:cuda")
     );
 }
+
+// ── pmat spec review --record (§6.3): validate, then stage; never produce ──
+
+/// Host git configuration is kept out of the fixture.
+fn git_in(dir: &std::path::Path, args: &[&str]) -> String {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args([
+            "-c",
+            "user.name=pmat1299",
+            "-c",
+            "user.email=pmat1299@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+        ])
+        .args(args)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .output()
+        .expect("git runs");
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8_lossy(&out.stdout).into_owned()
+}
+
+/// A git repository holding one active spec, and a complete review of it
+/// written OUTSIDE docs/audits, where a quorum would leave it.
+fn recordable() -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().expect("tempdir");
+    git_in(dir.path(), &["init", "-q"]);
+    let specs = dir.path().join("docs/specifications");
+    std::fs::create_dir_all(&specs).expect("mkdir specs");
+    std::fs::write(specs.join("goal-mode.md"), TEXT).expect("write spec");
+    let review = dir.path().join("review.json");
+    std::fs::write(&review, artifact(TEXT, &all_pass(), Some("abc123"), false))
+        .expect("write review");
+    (dir, review)
+}
+
+fn staged(dir: &std::path::Path) -> String {
+    git_in(dir, &["diff", "--cached", "--name-only"])
+}
+
+/// Mutant: record writes somewhere else, re-serialises the JSON, or never
+/// stages.
+#[test]
+fn record_writes_a_valid_review_to_its_artifact_path_and_stages_it() {
+    let (dir, review) = recordable();
+    let got = record(dir.path(), &review).expect("a valid review records");
+    assert_eq!(got.artifact, "docs/audits/spec-goal-mode-review.json");
+    assert_eq!(got.spec, SPEC);
+    assert_eq!(got.spec_sha256, sha256_hex(TEXT));
+    let written = std::fs::read(dir.path().join(&got.artifact)).expect("artifact written");
+    assert_eq!(
+        written,
+        std::fs::read(&review).expect("source"),
+        "recorded byte for byte"
+    );
+    assert_eq!(staged(dir.path()).trim(), got.artifact);
+}
+
+/// §6.3 "validates": mutant — record stages without judging.
+#[test]
+fn record_refuses_a_stale_review_and_writes_nothing() {
+    let (dir, review) = recordable();
+    std::fs::write(dir.path().join(SPEC), format!("{TEXT} ")).expect("append a space");
+    let refusal = record(dir.path(), &review).expect_err("a stale review is refused");
+    assert!(
+        matches!(&refusal, RecordRefusal::Findings(f) if classes(f) == vec!["STALE-REVIEW"]),
+        "{refusal:?}"
+    );
+    assert!(!dir.path().join("docs/audits").exists(), "nothing written");
+    assert_eq!(staged(dir.path()), "", "nothing staged");
+}
+
+/// Mutant: the spec path is trusted, so a review can point the hash at any
+/// file, or at a file outside the specifications.
+#[test]
+fn record_refuses_a_review_that_names_a_file_outside_docs_specifications() {
+    let (dir, review) = recordable();
+    for named in [
+        "README.md",
+        "docs/specifications/../../README.md",
+        "docs/specifications/goal-mode.txt",
+        "docs/specifications//goal-mode.md",
+    ] {
+        std::fs::write(
+            &review,
+            artifact(TEXT, &all_pass(), Some("abc123"), false).replace(SPEC, named),
+        )
+        .expect("write review");
+        let refusal = record(dir.path(), &review).expect_err("refused");
+        assert_eq!(
+            refusal,
+            RecordRefusal::NotASpec {
+                named: named.to_string()
+            }
+        );
+    }
+    assert!(!dir.path().join("docs/audits").exists(), "nothing written");
+}
+
+#[test]
+fn record_refuses_json_that_does_not_parse() {
+    let (dir, review) = recordable();
+    std::fs::write(&review, "{not json").expect("write review");
+    let refusal = record(dir.path(), &review).expect_err("refused");
+    assert!(
+        matches!(refusal, RecordRefusal::BadReview { .. }),
+        "{refusal:?}"
+    );
+}
+
+/// Mutant: an unparseable front-matter read as "no vendors", so a review
+/// missing its vendor lane records.
+#[test]
+fn record_refuses_a_spec_whose_front_matter_does_not_parse() {
+    let (dir, review) = recordable();
+    let text = "# no front-matter\n";
+    std::fs::write(dir.path().join(SPEC), text).expect("write spec");
+    std::fs::write(&review, artifact(text, &all_pass(), Some("abc123"), false))
+        .expect("write review");
+    let refusal = record(dir.path(), &review).expect_err("refused");
+    assert!(
+        matches!(refusal, RecordRefusal::Unjudgeable { .. }),
+        "{refusal:?}"
+    );
+}
+
+/// Mutant: record judges with an empty vendor list instead of the spec's.
+#[test]
+fn record_reads_the_vendor_roles_from_the_specs_front_matter() {
+    let (dir, review) = recordable();
+    let text = TEXT.replace("vendors: []", "vendors: [cuda]");
+    std::fs::write(dir.path().join(SPEC), &text).expect("write spec");
+    std::fs::write(&review, artifact(&text, &all_pass(), Some("abc123"), false))
+        .expect("write review");
+    let refusal = record(dir.path(), &review).expect_err("refused");
+    assert_eq!(
+        refusal,
+        RecordRefusal::Findings(vec![ReviewFinding::MissingRole {
+            spec: SPEC.into(),
+            role: "vendor:cuda".into()
+        }])
+    );
+}
+
+/// A review already at its artifact path records in place: staged, not
+/// rewritten.
+#[test]
+fn record_in_place_stages_the_artifact() {
+    let (dir, review) = recordable();
+    let dest = dir.path().join(artifact_path(SPEC));
+    std::fs::create_dir_all(dest.parent().expect("parent")).expect("mkdir audits");
+    std::fs::rename(&review, &dest).expect("move into place");
+    let got = record(dir.path(), &dest).expect("records in place");
+    assert_eq!(staged(dir.path()).trim(), got.artifact);
+}
