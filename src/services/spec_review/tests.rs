@@ -338,3 +338,19 @@ fn record_in_place_stages_the_artifact() {
     let got = record(dir.path(), &dest).expect("records in place");
     assert_eq!(staged(dir.path()).trim(), got.artifact);
 }
+
+/// Mutant: `partial` defaults again (`#[serde(default)]`), so a review whose
+/// `partial` key is misspelt reads as complete.
+#[test]
+fn a_misspelt_partial_key_is_refused_never_defaulted_to_complete() {
+    let a = artifact(TEXT, &all_pass(), Some("abc123"), false)
+        .replace("\"partial\":false", "\"partail\":true");
+    assert!(
+        a.contains("partail"),
+        "the fixture must carry the misspelling"
+    );
+    assert_eq!(
+        classes(&judge(SPEC, TEXT, &[], Some(&a))),
+        vec!["BAD-REVIEW"]
+    );
+}
