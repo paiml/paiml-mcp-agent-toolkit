@@ -68,6 +68,8 @@ Three more are partial, and also yours:
 | 2 | lane 1 ran the binary against the read-only copy (`comply ledger -p`, `comply check -p`), which its prompt forbade | the lane | nothing changed, as the fingerprint shows; recorded |
 | 3 | the delegate's first receipt shifted each role by one (a zsh 1-indexed array), and it still linted green | the delegate | rebuilt under bash, with each role checked against its prompt; the archived file is the corrected one |
 
+| 4 | ci / test failed once on #1304: a_crate_that_does_not_compile_is_reported_as_not_measured reported a measured zero for a crate that cannot compile | pre-existing | #1304 changes no Rust and master passed the same test on identical code; filed as PMAT-1305 with what was ruled out, not treated as fixed by a re-run |
+
 ## Estimates
 
 | field | value |
@@ -115,7 +117,7 @@ Finding — `k_measured` (606) is transcript-wide; `k` (5) counts from the first
 
 [status] ticket=PMAT-1303 phase=1/3 global=5/49(K=98) k_measured=606 sub=0/0 basis=docs/audits/impl-estimates.jsonl:L19-L29
          mode=quorum trigger=Q2 route=agy-quorum w=1.00 basis=absent q=? gate=FAIL slots=0/3 denied=0
-         red=review filed=- blocker=operator:D1-D8 next=escalate
+         red=review filed=PMAT-1305 blocker=operator:D1-D8 next=escalate
 
 ## Verdict
 

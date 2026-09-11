@@ -6167,3 +6167,23 @@ roadmap:
   labels:
   - kind:code
   notes: 'goal-mode.md §13 item 6, the review half; the epic: half waits on PMAT-729. Filed issue-first on this ticket''s own branch (CB-2115 is live).'
+- id: PMAT-1305
+  github_issue: 1305
+  item_type: task
+  title: 'a_crate_that_does_not_compile_is_reported_as_not_measured is flaky in ci / test: the dead-code analyzer intermittently reports a measured zero for a crate that cannot compile (run 34562657315; master passed identical Rust)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T05:24:33Z
+  updated: 2026-09-11T05:24:33Z
+  spec: null
+  acceptance_criteria:
+  - the failing condition is reproduced, or the environment the analyzer's nested cargo check inherits in ci / test is pinned, with the command or run that shows it
+  - if an inherited compiler wrapper, target dir or PATH is the cause, the analyzer (or the fixture) scrubs it, and a test plants that condition and requires not_measured
+  - a_crate_that_does_not_compile_is_reported_as_not_measured passes under the shared workflow's test-job environment (RUSTC_WRAPPER, SCCACHE_DIR, CARGO_TARGET_DIR set as in ci / test)
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Found when ci / test failed on #1304, which changes no Rust; master passed the same test on identical code. Filed by PMAT-1303 on #1304''s branch (CB-2115 is live).'
