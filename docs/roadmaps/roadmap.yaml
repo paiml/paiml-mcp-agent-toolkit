@@ -6151,11 +6151,11 @@ roadmap:
   github_issue: 1303
   item_type: task
   title: 'goal-mode.md carries its own review artifact (goal-mode.md §13 item 6): a five-role agy review of the spec, recorded with pmat spec review --record; the first of PMAT-1300''s 44'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-09-11T03:48:34Z
-  updated: 2026-09-11T03:48:34Z
+  updated: 2026-09-11T04:26:03Z
   spec: null
   acceptance_criteria:
   - 'docs/audits/spec-goal-mode-review.json is recorded with pmat spec review --record: five lanes (quality, architecture, security, crux, adversarial), each a separate agy lane that read a read-only copy, every one PASS, the plan being goal-mode.md §11'

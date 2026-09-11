@@ -1,0 +1,952 @@
+{
+  "ticket": "PMAT-1303",
+  "lane": "quorum",
+  "mode": "plan",
+  "width": 5,
+  "executor": "agy",
+  "agy_version": "1.2.0",
+  "calling_form": "agy-lane.sh --mode plan --schema ~/.claude/skills/paiml-implement/agy/quorum-schema.json --timeout 25m --prompt <lane-i.txt text> => lane-guard.sh --exec -- agy --sandbox --dangerously-skip-permissions --print-timeout 25m --output-format json --json-schema <schema> --mode plan -p=<prompt>; setsid nohup, cwd /mnt/nvme-raid0/agent-wt/pmat-goal-review; no --model, no --effort",
+  "launch": {
+    "epoch": 1789098801,
+    "at": "2026-09-11T05:53:21+02:00",
+    "not_before": 1789098581,
+    "prompts_verbatim": "all 5 dry-runs printed a prompt= byte-equal to qgoal/lane-<i>.txt"
+  },
+  "conversations": [
+    "e74e48d2-1127-4e60-a897-dd4c5ed7ee27",
+    "2374c6c6-915b-462a-a720-4fb555f83d60",
+    "bc05a933-f520-4c64-b857-9f07aec46824",
+    "991c82ad-a539-4316-85d8-698b92e77938",
+    "d7dcd8e4-680f-4730-93ad-e1b6449ccb79"
+  ],
+  "child_conversations": 5,
+  "fanout": "children=5 method=lane-files label=consensus",
+  "results": [
+    {
+      "lane": 1,
+      "role": "quality",
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-1303/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-1.json",
+      "conversation_id": "e74e48d2-1127-4e60-a897-dd4c5ed7ee27",
+      "envelope_status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 181.70028816,
+      "verdict": "FAIL",
+      "summary": "The specification presents a precise and well-structured plan for implementing a closed-loop compliance system. However, the document is significantly stale with respect to the current state of the repository, as several steps from the implementation backlog (such as P2, CB-2113, and CB-2115) have already landed. Consequently, numerous claims in the verification ledger (§14) and the staleness counts (§5) are now contradicted by the codebase. Furthermore, the command provided for measuring collisions in §14 (`roadmap parse`) does not parse, and the CI snippet in §7.1 fails to parse because it includes checks that have not yet been implemented. The specification must be updated to reflect the current repository state and provide valid commands before it can pass.",
+      "findings": 10
+    },
+    {
+      "lane": 2,
+      "role": "architecture",
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-1303/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-2.json",
+      "conversation_id": "2374c6c6-915b-462a-a720-4fb555f83d60",
+      "envelope_status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 114.831073879,
+      "verdict": "FAIL",
+      "summary": "The specification proposes a closed-loop enforcement model that introduces three critical deadlocks and contradictions. First, the version bumping logic contradicts the primary key definition: deriving the version at cut time based on ticket labels conflicts with the requirement that tickets are assigned to a milestone with a fixed semver title upfront. Second, the release volume trigger in `pmat goal` directly conflicts with CB-2116 leg 2, guaranteeing that when the release threshold is reached, master's CI turns RED, causing `pmat goal` to halt instead of cutting the tag. Finally, CB-2113's requirement that all commits in `v<latest>..HEAD` belong to a non-terminal ticket will fail all PRs immediately after the first ticket in a release merges, as the evaluation window includes the now-terminal commits. These architectural defects must be resolved before the specification can be implemented.",
+      "findings": 3
+    },
+    {
+      "lane": 3,
+      "role": "security",
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-1303/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-3.json",
+      "conversation_id": "bc05a933-f520-4c64-b857-9f07aec46824",
+      "envelope_status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 116.982693624,
+      "verdict": "FAIL",
+      "summary": "The specification's design for goal mode and compliance checking contains critical security bypasses. First, scoping the CB-2111 review gate strictly to `active` specs creates a security bypass token; an attacker can merge malicious spec changes without review simply by changing the status to `historical` or `superseded`. Second, marking the GitHub-side rules (like CB-2115) as `not_applicable` on fork PRs allows an attacker to satisfy the offline CB-2113 rule by forging tickets in `roadmap.yaml`, which passes CI and subsequently breaks master upon merge. Third, the review gate (CB-2111) inherently trusts a JSON file (`docs/audits/spec-<slug>-review.json`) that any PR author can write, providing no verifiable trust boundary for security sign-offs. These flaws contradict the invariants and §9's claim that no bypass token exists, so the design must be revised.",
+      "findings": 3
+    },
+    {
+      "lane": 4,
+      "role": "crux",
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-1303/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-4.json",
+      "conversation_id": "991c82ad-a539-4316-85d8-698b92e77938",
+      "envelope_status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 143.255264722,
+      "verdict": "FAIL",
+      "summary": "CRUX: The specification must enforce an airtight mapping between git history and release boundaries on the main branch before code ships, ensuring the continuous release loop never wedges. The design correctly models the invariants and measures the release boundary integrity (CB-2116), but catastrophically fails to defend that boundary at the point of entry (CB-2113). Because CB-2113 permits tickets for any future release to merge into the linear trunk, `master` can accumulate out-of-order work that permanently poisons the current release scope, guaranteeing a fatal CB-2116 failure on the next tag. Furthermore, skipping roadmap consistency checks on fork PRs leaves a glaring hole where external contributors can introduce invalid roadmap state that breaks `master` upon merge. I must therefore FAIL this specification until the PR-time gates enforce strict active-release boundaries and validate fork PR roadmap changes.",
+      "findings": 2
+    },
+    {
+      "lane": 5,
+      "role": "adversarial",
+      "exit": 0,
+      "file": "/run/user/1000/paiml-implement/agy/PMAT-1303/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/lane-5.json",
+      "conversation_id": "d7dcd8e4-680f-4730-93ad-e1b6449ccb79",
+      "envelope_status": "SUCCESS",
+      "num_turns": 1,
+      "duration_seconds": 143.228896651,
+      "verdict": "FAIL",
+      "summary": "As an adversarial reviewer, I found four significant loopholes and defects that defeat the invariants while satisfying the rule letters, none of which are named as honest limits. First, CB-2110 permits linking a specification to an entirely unrelated epic, bypassing true traceability. Second, the CB-2115 staleness check can be evaded indefinitely by touching a roadmap item's timestamp without actually resolving the disagreement. Third, while CB-2113 allows merging tickets for future releases, doing so will wedge the pipeline because the subsequent tag cut will fail CB-2116's tag-range check. Finally, CB-2116's text fails to exclude merge commits, which would mislead an implementer into building a gate that fails on legitimate merges.",
+      "findings": 4
+    }
+  ],
+  "consensus": "No consensus to record: all five lanes returned FAIL (agreed=false, partial=false, reduce exit 1). Under the brief's every-lane-PASS rule, `pmat spec review --record` must not run. Reading dedup[] by claim text: lanes 3 and 4 agree at goal-mode.md:189. The fork-PR not_applicable for the GitHub-side rules lets a fork PR's roadmap changes pass CI and break master on merge. Lanes 4 (:389) and 5 (:392) agree on one finding split across two groups: CB-2113 lets a later release's work merge to master, so the next tag fails CB-2116's tag-range leg and the loop wedges. Group :389 [2,4] is not agreement; lane 2's claim there is a different one (the v<latest>..HEAD window meets now-terminal tickets). Every other group is a single lane's claim. Lane 1: the stale §14/§5.1 rows (:299, :648 to :653, :657) and the §7.1 run line (:425). Lane 2: derived version vs milestone title (:532) and CB-2116 leg 2 vs the volume trigger (:391). Lane 3: CB-2111's active-only scope (:387) and the forgeable review file (:362). Lane 5: the CB-2110 epic-body gap (:386), the grace-window reset (:304) and CB-2116's 'every commit' (:392).",
+  "dissent": [
+    "lane 1 quality FAIL: the spec is stale against the repository (§14 and §5.1 counts; the §7.1 run line errors on ids that do not exist yet). 7 of 10 findings reproduce; 2 hold on evidence the lane did not use; 1 is right about the error and wrong that it 'fails to parse'.",
+    "lane 2 architecture FAIL: derived version vs pre-titled milestone; CB-2116(b) vs the volume trigger; CB-2113's v<latest>..HEAD window vs completed tickets. The first and third hold on the text. The second is a real zero-slack interaction, stated too strongly, cited one line off.",
+    "lane 3 security FAIL: a status flip exempts a spec from CB-2111; fork PRs get not_applicable; the review file is forgeable. The spec names the third (§6.2, §8.6). The first two are named and visible but not fully bounded.",
+    "lane 4 crux FAIL: its crux is that git history must map onto release boundaries so the loop never wedges. CB-2113 lets later-release work reach master, and the next tag then fails CB-2116(a); this holds. It also raises the fork roadmap gap.",
+    "lane 5 adversarial FAIL: CB-2110 ignores the EPIC-OPEN body predicate; the grace window resets on a timestamp bump; future-release merges wedge CB-2116; CB-2116 says every commit, not every non-merge commit. All four hold on the text. It covered 4 of the 8 rules."
+  ],
+  "lane_reduce": {
+    "dedup": [
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 189,
+        "lanes_agreeing": [
+          3,
+          4
+        ],
+        "claims": [
+          "Bypassing the four GitHub-side rules (CB-2110, 2112, 2114, 2115) on fork PRs leaves a hole where a PR can introduce invalid `roadmap.yaml` changes that will bypass the gate but break `master` upon merge.",
+          "Designating CB-2115 as `not_applicable` (which evaluates to PASS) on fork PRs allows an attacker to bypass the ticket requirement. They can forge a ticket in `roadmap.yaml` to satisfy the offline CB-2113 check; the PR will pass CI, merge, and then break master when CB-2115 finally runs and fails."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 299,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "13 items all name #612 in the staleness table."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 304,
+        "lanes_agreeing": [
+          5
+        ],
+        "claims": [
+          "The staleness grace window in CB-2115 (now - max(item.updated, issue.updated_at) < grace) can be reset indefinitely by touching the roadmap item's timestamp without resolving the disagreement, defeating the 'Neither may be stale' intent of Invariant D."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 362,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "The security review gate (CB-2111) is satisfied by the presence of a `docs/audits/spec-<slug>-review.json` file with `PASS` verdicts, which any PR author can forge and commit themselves. While §6.2 acknowledges this limitation, it relies entirely on a file anyone can write, offering no structural trust boundary against forged security reviews."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 386,
+        "lanes_agreeing": [
+          5
+        ],
+        "claims": [
+          "CB-2110 requires naming an open epic but does not verify the epic body links back to the spec (as required by the EPIC-OPEN state). This allows bypassing true traceability (Invariant E) by naming any unrelated open epic."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 387,
+        "lanes_agreeing": [
+          3
+        ],
+        "claims": [
+          "Scoping CB-2111 to `active` specs allows an attacker to bypass the security review requirement by changing a spec's status to `historical` or `superseded` in the front-matter. This acts as a security bypass token, violating §9, because the CI gate will pass and allow malicious spec changes to merge without oversight."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 389,
+        "lanes_agreeing": [
+          2,
+          4
+        ],
+        "claims": [
+          "CB-2113 allows commits for future releases to merge into the linear trunk, which will permanently wedge the automated release loop when `pmat goal` cuts the current release tag and CB-2116 subsequently fails.",
+          "In §7, rule CB-2113 requires every commit in `v<latest>..HEAD` to point to a non-terminal item. Since tickets become terminal (`completed`) when merged (§3.1), this will falsely block all subsequent PRs in a release because their evaluation window includes the now-terminal commits of previously merged tickets."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 391,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "In §7, rule CB-2116 leg 2 enforces `count(v<latest>..master) ≤ max_untagged_commits` in CI. This deadlocks the system because when the volume threshold is reached to trigger a release (§10.3), master's CI turns RED, causing `pmat goal` to immediately halt (§10.4) instead of cutting the tag."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 392,
+        "lanes_agreeing": [
+          5
+        ],
+        "claims": [
+          "CB-2113 allows merging tickets assigned to a future release, but doing so will wedge the pipeline because the subsequent tag cut will include the future ticket and fail CB-2116's tag-range validation, defeating the continuous operation of Invariant G.",
+          "CB-2116's statement demands that 'every commit' in a tag's range carries a trailer, failing to exclude merge commits. This contradicts CB-2113's exclusion and would cause an implementer to build a gate that fails on legitimate merges."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 425,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "The CI command is `./target/debug/pmat comply check --checks CB-2110,CB-2111,CB-2112,CB-2113,CB-2114,CB-2115,CB-2116,CB-2117`."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 532,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "In §10.3, the rule that the version is 'derived, never chosen' at cut time based on labels contradicts §4.1, which mandates that the milestone title is a fixed semver string and serves as the primary key. This contradiction makes it impossible to accurately name milestones before a release is cut, breaking the tracking system."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 648,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "`grep -c \"rules/branches\" src/services/gate_effect/required.rs` yields `0` (cannot see rulesets)."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 649,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "`cat .github/required-status-checks.txt` yields 5 entries, none is `gate`."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 650,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "`pmat comply ledger` yields rules: 157 / ENFORCED: 0 / NEUTERED: 157."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 651,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "`sed -n '43p' .github/workflows/ci.yml` yields `if [ \"$result\" != \"success\" ]`."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 652,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "`grep -rn merge_group .github/` yields no matches."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 653,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "13 items collide on #612 in the verification ledger.",
+          "The command to measure collisions is `roadmap parse`."
+        ]
+      },
+      {
+        "file": "docs/specifications/goal-mode.md",
+        "line": 657,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "`src/models/comply_config_impls.rs:127` shows CB-148 unconfigured/cannot fail."
+        ]
+      }
+    ],
+    "uncovered": [
+      {
+        "item": "lane3 security: escape hatch withheld steps",
+        "token": "withheld",
+        "lanes_hit": 0
+      },
+      {
+        "item": "lane3 security: the GH_TOKEN read in CI",
+        "token": "GH_TOKEN",
+        "lanes_hit": 0
+      },
+      {
+        "item": "lane5 adversarial: invariant E.1 judged",
+        "token": "E.1",
+        "lanes_hit": 0
+      }
+    ],
+    "dissent": [
+      {
+        "lane": 1,
+        "verdict": "FAIL",
+        "summary": "The specification presents a precise and well-structured plan for implementing a closed-loop compliance system. However, the document is significantly stale with respect to the current state of the repository, as several steps from the implementation backlog (such as P2, CB-2113, and CB-2115) have already landed. Consequently, numerous claims in the verification ledger (§14) and the staleness counts (§5) are now contradicted by the codebase. Furthermore, the command provided for measuring collisions in §14 (`roadmap parse`) does not parse, and the CI snippet in §7.1 fails to parse because it includes checks that have not yet been implemented. The specification must be updated to reflect the current repository state and provide valid commands before it can pass.",
+        "findings": [
+          {
+            "claim": "`grep -c \"rules/branches\" src/services/gate_effect/required.rs` yields `0` (cannot see rulesets).",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Update the verification ledger to reflect that `required.rs` can now see rulesets (count is 3), as step 0 has landed.",
+            "grounding": "measured",
+            "line": 648
+          },
+          {
+            "claim": "`cat .github/required-status-checks.txt` yields 5 entries, none is `gate`.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Update the verification ledger to show that the manifest now includes `gate` (6 entries), as step 0 has landed.",
+            "grounding": "measured",
+            "line": 649
+          },
+          {
+            "claim": "`pmat comply ledger` yields rules: 157 / ENFORCED: 0 / NEUTERED: 157.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Update the verification ledger to reflect that rules are now being enforced (rules: 163 / ENFORCED: 2 / NEUTERED: 161).",
+            "grounding": "measured",
+            "line": 650
+          },
+          {
+            "claim": "`sed -n '43p' .github/workflows/ci.yml` yields `if [ \"$result\" != \"success\" ]`.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Update the line number in the command; the `if [ \"$result\" != \"success\" ]; then` check is now on line 48.",
+            "grounding": "measured",
+            "line": 651
+          },
+          {
+            "claim": "`grep -rn merge_group .github/` yields no matches.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Update the verification ledger to reflect that `merge_group` is now present in `.github/workflows/ci.yml:11`.",
+            "grounding": "measured",
+            "line": 652
+          },
+          {
+            "claim": "13 items collide on #612 in the verification ledger.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Update the ledger to reflect that the collisions have been resolved (0 items collide).",
+            "grounding": "measured",
+            "line": 653
+          },
+          {
+            "claim": "`src/models/comply_config_impls.rs:127` shows CB-148 unconfigured/cannot fail.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Update or remove the CB-148 claim, as it has been retired and superseded by CB-2110.",
+            "grounding": "measured",
+            "line": 657
+          },
+          {
+            "claim": "The command to measure collisions is `roadmap parse`.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Provide a valid bash command or `pmat` subcommand. `roadmap parse` does not parse or exist.",
+            "grounding": "asserted",
+            "line": 653
+          },
+          {
+            "claim": "The CI command is `./target/debug/pmat comply check --checks CB-2110,CB-2111,CB-2112,CB-2113,CB-2114,CB-2115,CB-2116,CB-2117`.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Update the command to only include landed rules, as the CLI rejects unknown IDs like CB-2117 and fails to parse.",
+            "grounding": "measured",
+            "line": 425
+          },
+          {
+            "claim": "13 items all name #612 in the staleness table.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Update the table to reflect that the collisions have been resolved (0 items).",
+            "grounding": "measured",
+            "line": 299
+          }
+        ]
+      },
+      {
+        "lane": 2,
+        "verdict": "FAIL",
+        "summary": "The specification proposes a closed-loop enforcement model that introduces three critical deadlocks and contradictions. First, the version bumping logic contradicts the primary key definition: deriving the version at cut time based on ticket labels conflicts with the requirement that tickets are assigned to a milestone with a fixed semver title upfront. Second, the release volume trigger in `pmat goal` directly conflicts with CB-2116 leg 2, guaranteeing that when the release threshold is reached, master's CI turns RED, causing `pmat goal` to halt instead of cutting the tag. Finally, CB-2113's requirement that all commits in `v<latest>..HEAD` belong to a non-terminal ticket will fail all PRs immediately after the first ticket in a release merges, as the evaluation window includes the now-terminal commits. These architectural defects must be resolved before the specification can be implemented.",
+        "findings": [
+          {
+            "claim": "In §10.3, the rule that the version is 'derived, never chosen' at cut time based on labels contradicts §4.1, which mandates that the milestone title is a fixed semver string and serves as the primary key. This contradiction makes it impossible to accurately name milestones before a release is cut, breaking the tracking system.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Determine whether the release version is assigned upfront to a milestone (requiring the tag to match it) or calculated only at cut time (requiring milestone renaming or generic titles).",
+            "grounding": "asserted",
+            "line": 532
+          },
+          {
+            "claim": "In §7, rule CB-2116 leg 2 enforces `count(v<latest>..master) ≤ max_untagged_commits` in CI. This deadlocks the system because when the volume threshold is reached to trigger a release (§10.3), master's CI turns RED, causing `pmat goal` to immediately halt (§10.4) instead of cutting the tag.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Remove the upper bound from the CI gate, or apply a generous buffer (e.g., `count < max_untagged_commits + buffer`) in CI so that `pmat goal` has time to cut the release before the gate fails.",
+            "grounding": "asserted",
+            "line": 391
+          },
+          {
+            "claim": "In §7, rule CB-2113 requires every commit in `v<latest>..HEAD` to point to a non-terminal item. Since tickets become terminal (`completed`) when merged (§3.1), this will falsely block all subsequent PRs in a release because their evaluation window includes the now-terminal commits of previously merged tickets.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Relax CB-2113 to allow terminal items (e.g. `completed`) if the commit is already an ancestor of `master`, or change the evaluation window to `master..HEAD` for non-terminal checks.",
+            "grounding": "asserted",
+            "line": 389
+          }
+        ]
+      },
+      {
+        "lane": 3,
+        "verdict": "FAIL",
+        "summary": "The specification's design for goal mode and compliance checking contains critical security bypasses. First, scoping the CB-2111 review gate strictly to `active` specs creates a security bypass token; an attacker can merge malicious spec changes without review simply by changing the status to `historical` or `superseded`. Second, marking the GitHub-side rules (like CB-2115) as `not_applicable` on fork PRs allows an attacker to satisfy the offline CB-2113 rule by forging tickets in `roadmap.yaml`, which passes CI and subsequently breaks master upon merge. Third, the review gate (CB-2111) inherently trusts a JSON file (`docs/audits/spec-<slug>-review.json`) that any PR author can write, providing no verifiable trust boundary for security sign-offs. These flaws contradict the invariants and §9's claim that no bypass token exists, so the design must be revised.",
+        "findings": [
+          {
+            "claim": "Scoping CB-2111 to `active` specs allows an attacker to bypass the security review requirement by changing a spec's status to `historical` or `superseded` in the front-matter. This acts as a security bypass token, violating §9, because the CI gate will pass and allow malicious spec changes to merge without oversight.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Modifying an existing spec must trigger a review requirement or fail the gate if the review artifact is missing, regardless of whether the PR changes the spec's status to `historical` or `superseded`.",
+            "grounding": "asserted",
+            "line": 387
+          },
+          {
+            "claim": "Designating CB-2115 as `not_applicable` (which evaluates to PASS) on fork PRs allows an attacker to bypass the ticket requirement. They can forge a ticket in `roadmap.yaml` to satisfy the offline CB-2113 check; the PR will pass CI, merge, and then break master when CB-2115 finally runs and fails.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Fork PRs that modify `roadmap.yaml` must not be granted a `not_applicable` pass for CB-2115. They must either run the check via a maintainer-triggered workflow or fail closed until the ticket linkage is verified.",
+            "grounding": "asserted",
+            "line": 189
+          },
+          {
+            "claim": "The security review gate (CB-2111) is satisfied by the presence of a `docs/audits/spec-<slug>-review.json` file with `PASS` verdicts, which any PR author can forge and commit themselves. While §6.2 acknowledges this limitation, it relies entirely on a file anyone can write, offering no structural trust boundary against forged security reviews.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "The review artifact must be cryptographically signed by the automated reviewer, or the gate must verify the review's provenance by checking an immutable external system (e.g., GitHub Actions run logs or signed attestations) instead of trusting the PR's file contents.",
+            "grounding": "asserted",
+            "line": 362
+          }
+        ]
+      },
+      {
+        "lane": 4,
+        "verdict": "FAIL",
+        "summary": "CRUX: The specification must enforce an airtight mapping between git history and release boundaries on the main branch before code ships, ensuring the continuous release loop never wedges. The design correctly models the invariants and measures the release boundary integrity (CB-2116), but catastrophically fails to defend that boundary at the point of entry (CB-2113). Because CB-2113 permits tickets for any future release to merge into the linear trunk, `master` can accumulate out-of-order work that permanently poisons the current release scope, guaranteeing a fatal CB-2116 failure on the next tag. Furthermore, skipping roadmap consistency checks on fork PRs leaves a glaring hole where external contributors can introduce invalid roadmap state that breaks `master` upon merge. I must therefore FAIL this specification until the PR-time gates enforce strict active-release boundaries and validate fork PR roadmap changes.",
+        "findings": [
+          {
+            "claim": "CB-2113 allows commits for future releases to merge into the linear trunk, which will permanently wedge the automated release loop when `pmat goal` cuts the current release tag and CB-2116 subsequently fails.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "CB-2113 must enforce that the ticket named in the trailer belongs to the currently active milestone (the release being prepared), blocking out-of-order work from poisoning `master`.",
+            "grounding": "asserted",
+            "line": 389
+          },
+          {
+            "claim": "Bypassing the four GitHub-side rules (CB-2110, 2112, 2114, 2115) on fork PRs leaves a hole where a PR can introduce invalid `roadmap.yaml` changes that will bypass the gate but break `master` upon merge.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Fork PRs that modify `roadmap.yaml` or `docs/specifications/` must not be unconditionally marked `not_applicable`. They should fail or require a maintainer-triggered workflow to validate the roadmap changes.",
+            "grounding": "asserted",
+            "line": 189
+          }
+        ]
+      },
+      {
+        "lane": 5,
+        "verdict": "FAIL",
+        "summary": "As an adversarial reviewer, I found four significant loopholes and defects that defeat the invariants while satisfying the rule letters, none of which are named as honest limits. First, CB-2110 permits linking a specification to an entirely unrelated epic, bypassing true traceability. Second, the CB-2115 staleness check can be evaded indefinitely by touching a roadmap item's timestamp without actually resolving the disagreement. Third, while CB-2113 allows merging tickets for future releases, doing so will wedge the pipeline because the subsequent tag cut will fail CB-2116's tag-range check. Finally, CB-2116's text fails to exclude merge commits, which would mislead an implementer into building a gate that fails on legitimate merges.",
+        "findings": [
+          {
+            "claim": "CB-2110 requires naming an open epic but does not verify the epic body links back to the spec (as required by the EPIC-OPEN state). This allows bypassing true traceability (Invariant E) by naming any unrelated open epic.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "CB-2110 must also verify that the named epic's body contains the spec path.",
+            "grounding": "asserted",
+            "line": 386
+          },
+          {
+            "claim": "The staleness grace window in CB-2115 (now - max(item.updated, issue.updated_at) < grace) can be reset indefinitely by touching the roadmap item's timestamp without resolving the disagreement, defeating the 'Neither may be stale' intent of Invariant D.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Measure the grace window from the onset of the disagreement, or ensure a timestamp update does not extend the grace if the fields still disagree.",
+            "grounding": "asserted",
+            "line": 304
+          },
+          {
+            "claim": "CB-2113 allows merging tickets assigned to a future release, but doing so will wedge the pipeline because the subsequent tag cut will include the future ticket and fail CB-2116's tag-range validation, defeating the continuous operation of Invariant G.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "CB-2113 must enforce that a ticket belongs to the current open release milestone, or CB-2116 must ignore commits targeting future unreleased milestones.",
+            "grounding": "asserted",
+            "line": 392
+          },
+          {
+            "claim": "CB-2116's statement demands that 'every commit' in a tag's range carries a trailer, failing to exclude merge commits. This contradicts CB-2113's exclusion and would cause an implementer to build a gate that fails on legitimate merges.",
+            "file": "docs/specifications/goal-mode.md",
+            "fix": "Explicitly specify 'every non-merge commit' in the statement for CB-2116.",
+            "grounding": "asserted",
+            "line": 392
+          }
+        ]
+      }
+    ],
+    "partial_reasons": [],
+    "coverage_source": "lanes",
+    "agreed": false,
+    "partial": false
+  },
+  "dedup": [
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 189,
+      "lanes_agreeing": [
+        3,
+        4
+      ],
+      "claims": [
+        "Bypassing the four GitHub-side rules (CB-2110, 2112, 2114, 2115) on fork PRs leaves a hole where a PR can introduce invalid `roadmap.yaml` changes that will bypass the gate but break `master` upon merge.",
+        "Designating CB-2115 as `not_applicable` (which evaluates to PASS) on fork PRs allows an attacker to bypass the ticket requirement. They can forge a ticket in `roadmap.yaml` to satisfy the offline CB-2113 check; the PR will pass CI, merge, and then break master when CB-2115 finally runs and fails."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 299,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "13 items all name #612 in the staleness table."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 304,
+      "lanes_agreeing": [
+        5
+      ],
+      "claims": [
+        "The staleness grace window in CB-2115 (now - max(item.updated, issue.updated_at) < grace) can be reset indefinitely by touching the roadmap item's timestamp without resolving the disagreement, defeating the 'Neither may be stale' intent of Invariant D."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 362,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The security review gate (CB-2111) is satisfied by the presence of a `docs/audits/spec-<slug>-review.json` file with `PASS` verdicts, which any PR author can forge and commit themselves. While §6.2 acknowledges this limitation, it relies entirely on a file anyone can write, offering no structural trust boundary against forged security reviews."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 386,
+      "lanes_agreeing": [
+        5
+      ],
+      "claims": [
+        "CB-2110 requires naming an open epic but does not verify the epic body links back to the spec (as required by the EPIC-OPEN state). This allows bypassing true traceability (Invariant E) by naming any unrelated open epic."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 387,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "Scoping CB-2111 to `active` specs allows an attacker to bypass the security review requirement by changing a spec's status to `historical` or `superseded` in the front-matter. This acts as a security bypass token, violating §9, because the CI gate will pass and allow malicious spec changes to merge without oversight."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 389,
+      "lanes_agreeing": [
+        2,
+        4
+      ],
+      "claims": [
+        "CB-2113 allows commits for future releases to merge into the linear trunk, which will permanently wedge the automated release loop when `pmat goal` cuts the current release tag and CB-2116 subsequently fails.",
+        "In §7, rule CB-2113 requires every commit in `v<latest>..HEAD` to point to a non-terminal item. Since tickets become terminal (`completed`) when merged (§3.1), this will falsely block all subsequent PRs in a release because their evaluation window includes the now-terminal commits of previously merged tickets."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 391,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "In §7, rule CB-2116 leg 2 enforces `count(v<latest>..master) ≤ max_untagged_commits` in CI. This deadlocks the system because when the volume threshold is reached to trigger a release (§10.3), master's CI turns RED, causing `pmat goal` to immediately halt (§10.4) instead of cutting the tag."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 392,
+      "lanes_agreeing": [
+        5
+      ],
+      "claims": [
+        "CB-2113 allows merging tickets assigned to a future release, but doing so will wedge the pipeline because the subsequent tag cut will include the future ticket and fail CB-2116's tag-range validation, defeating the continuous operation of Invariant G.",
+        "CB-2116's statement demands that 'every commit' in a tag's range carries a trailer, failing to exclude merge commits. This contradicts CB-2113's exclusion and would cause an implementer to build a gate that fails on legitimate merges."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 425,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The CI command is `./target/debug/pmat comply check --checks CB-2110,CB-2111,CB-2112,CB-2113,CB-2114,CB-2115,CB-2116,CB-2117`."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 532,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "In §10.3, the rule that the version is 'derived, never chosen' at cut time based on labels contradicts §4.1, which mandates that the milestone title is a fixed semver string and serves as the primary key. This contradiction makes it impossible to accurately name milestones before a release is cut, breaking the tracking system."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 648,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "`grep -c \"rules/branches\" src/services/gate_effect/required.rs` yields `0` (cannot see rulesets)."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 649,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "`cat .github/required-status-checks.txt` yields 5 entries, none is `gate`."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 650,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "`pmat comply ledger` yields rules: 157 / ENFORCED: 0 / NEUTERED: 157."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 651,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "`sed -n '43p' .github/workflows/ci.yml` yields `if [ \"$result\" != \"success\" ]`."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 652,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "`grep -rn merge_group .github/` yields no matches."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 653,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "13 items collide on #612 in the verification ledger.",
+        "The command to measure collisions is `roadmap parse`."
+      ]
+    },
+    {
+      "file": "docs/specifications/goal-mode.md",
+      "line": 657,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "`src/models/comply_config_impls.rs:127` shows CB-148 unconfigured/cannot fail."
+      ]
+    }
+  ],
+  "uncovered": [
+    {
+      "item": "lane3 security: escape hatch withheld steps",
+      "token": "withheld",
+      "lanes_hit": 0
+    },
+    {
+      "item": "lane3 security: the GH_TOKEN read in CI",
+      "token": "GH_TOKEN",
+      "lanes_hit": 0
+    },
+    {
+      "item": "lane5 adversarial: invariant E.1 judged",
+      "token": "E.1",
+      "lanes_hit": 0
+    }
+  ],
+  "partial_reasons": [],
+  "coverage_source": "lanes",
+  "reduce": {
+    "artifact": "/run/user/1000/paiml-implement/agy/PMAT-1303/39a15c63-fab3-4148-8cb7-0cb012369b35/ph1/reduce.json",
+    "command": "lane-reduce.sh <out_dir> --width 5 --not-before 1789098581 --brief <delegate-ph1>/items.json -o <out_dir>/reduce.json",
+    "exit": 1
+  },
+  "finding_checks": [
+    {
+      "lane": 1,
+      "n": 1,
+      "line": 648,
+      "grounding": "measured",
+      "citation": "ok",
+      "conclusion": "holds",
+      "evidence": "grep -c rules/branches src/services/gate_effect/required.rs in the copy = 3; the §14 row and §1.2 say 0. Stale since step 0 (P2) landed."
+    },
+    {
+      "lane": 1,
+      "n": 2,
+      "line": 649,
+      "grounding": "measured",
+      "citation": "ok",
+      "conclusion": "holds",
+      "evidence": ".github/required-status-checks.txt lists 6 contexts, `gate` under the RULESET 13878864 heading; its PMAT-717 header replaced the 'unrequired' sentence §1.2 quotes."
+    },
+    {
+      "lane": 1,
+      "n": 3,
+      "line": 650,
+      "grounding": "measured",
+      "citation": "ok",
+      "conclusion": "holds",
+      "evidence": "docs/status/comply-enforcement-ledger.md:29-31 = rules 163 / ENFORCED 2 / NEUTERED 161. Lane step 25 ran `comply ledger -p <copy>`, which its prompt forbade; it wrote nothing and printed 'is up to date'. §1.2 and §8.10 still say 157."
+    },
+    {
+      "lane": 1,
+      "n": 4,
+      "line": 651,
+      "grounding": "measured",
+      "citation": "ok",
+      "conclusion": "holds",
+      "evidence": ".github/workflows/ci.yml:48 is the `!= success` result check; :43 is now the reusable-pin-drift result line. The same stale coordinates sit in §7.1 at goal-mode.md:428 (`ci.yml:31-50`) and :431 (`ci.yml:43`), which lane 1 did not flag."
+    },
+    {
+      "lane": 1,
+      "n": 5,
+      "line": 652,
+      "grounding": "measured",
+      "citation": "ok",
+      "conclusion": "holds",
+      "evidence": ".github/workflows/ci.yml:11 is `merge_group:` in the copy."
+    },
+    {
+      "lane": 1,
+      "n": 6,
+      "line": 653,
+      "grounding": "measured",
+      "citation": "ok",
+      "conclusion": "holds on evidence the lane did not use",
+      "evidence": "Lane step 37 grepped `roadmap.yaml` at the copy root, a 35,359-byte non-canonical file with no github_issue lines (exit 1, output 0); step 33 tried docs/status/roadmap.yaml (absent). The canonical docs/roadmaps/roadmap.yaml has 14 items naming #612, all status completed, so no open item collides and the row is stale."
+    },
+    {
+      "lane": 1,
+      "n": 7,
+      "line": 657,
+      "grounding": "measured",
+      "citation": "ok (comply_config_impls.rs:127 is still should_fail)",
+      "conclusion": "holds as staleness",
+      "evidence": "check_individual_basic.rs:27 and :43 carry `CB-148: RETIRED — superseded by CB-2110`. §11 already records the retirement, so this row is motivation, not a live claim."
+    },
+    {
+      "lane": 1,
+      "n": 8,
+      "line": 653,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "partial",
+      "evidence": "The cell 'roadmap parse' is unquoted prose, not a backticked command, so 'does not parse' treats prose as a command. The real gap: the row gives no re-measurable command, while §0 says every number carries one."
+    },
+    {
+      "lane": 1,
+      "n": 9,
+      "line": 425,
+      "grounding": "measured",
+      "citation": "ok (the run line of the §7.1 snippet)",
+      "conclusion": "partial",
+      "evidence": "Lane step 43 printed `Error: --checks names an id no rule provides: CB-2117` (lane 5 step 17 got the same for CB-2116). So the line errors today, by P1's design; it does not fail to parse. §7.1 is the design after step 9; the landed job (ci.yml:113-179) stages the rules with withheld lines."
+    },
+    {
+      "lane": 1,
+      "n": 10,
+      "line": 299,
+      "grounding": "measured",
+      "citation": "ok",
+      "conclusion": "holds on evidence the lane did not use",
+      "evidence": "Same wrong-file measurement as finding 6. On the canonical roadmap, 0 open items collide (14 #612 items, all completed). §5.4 (goal-mode.md:317) still says 13 too."
+    },
+    {
+      "lane": 2,
+      "n": 1,
+      "line": 532,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "holds",
+      "evidence": "§4.1 makes the milestone title (a fixed semver string) the primary key, and TICKET-SCHEDULED puts issues on milestone X.Y.Z before the cut. §10.3 derives the number at cut time from labels, and the cut's 'open the next' milestone step gives no title rule. The text never says what happens when a breaking-change ticket lands in milestone 3.41.0. Not named in §8."
+    },
+    {
+      "lane": 2,
+      "n": 2,
+      "line": 391,
+      "grounding": "asserted",
+      "citation": "OFF BY ONE: :391 is the CB-2115 row; CB-2116 is :392",
+      "conclusion": "partial",
+      "evidence": "§10.3 trigger 2 fires at count >= max_untagged_commits; CB-2116(b) fails at count > max_untagged_commits. One number (default 60, §10.1) is both trigger and CI bound, so a merge that carries the count past 60 turns master red before any cut, and §10.4 stops on CI red. 'Guaranteeing' overstates it: a merge landing exactly on 60 passes and fires the trigger. The text does not order the cut against master's CI."
+    },
+    {
+      "lane": 2,
+      "n": 3,
+      "line": 389,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "holds for the end-state text",
+      "evidence": "The §7 row judges `v<latest>..HEAD` with a non-terminal leg, and MERGED (§3.1) requires the item completed. So once master is measured (§8.4's end state), every completed ticket's commits since the last tag fail. The code judges only merge-base(base, HEAD)..HEAD (src/services/commit_traceability/mod.rs:11, :314-321) and reports not_applicable on master (:71; ci.yml:102-105), which is §8.4's interim. The §7 range and the implemented range disagree."
+    },
+    {
+      "lane": 3,
+      "n": 1,
+      "line": 387,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "partial",
+      "evidence": "CB-2111 covers only active specs (row :387; check_spec_reviews.rs:13 exempts historical and superseded), so a status flip does drop the review requirement. It is visible: CB-2110's verdict names every exempt spec (src/services/spec_epic/mod.rs:353-363; check_spec_epics.rs:114), and §4.3 promises that by-name listing for historical. It is not bounded: nothing restricts who may flip a status. 'Violates §9' widens §9's no-bypass-token sentence, which sits in the security-embargo row."
+    },
+    {
+      "lane": 3,
+      "n": 2,
+      "line": 189,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "partial",
+      "evidence": "§3.3 names the fork case and bounds it: 're-checked on the push to master' (goal-mode.md:192-193), and §8.8 names it again. So this is detection on master, not a bypass. But §3.3's reason, 'a fork's PR cannot change this repository's issues, milestones or epics', ignores that a fork PR CAN edit roadmap.yaml, the other side of CB-2112, CB-2114 and CB-2115. That can turn master red after a merge, against doctrine 6."
+    },
+    {
+      "lane": 3,
+      "n": 3,
+      "line": 362,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "named limitation; not a FAIL ground under the prompt's rule",
+      "evidence": "§6.2 says the file buys no evidence the review happened, §6.3 calls a hand-written review legitimate, and §8.6 repeats it. The lane's own claim says §6.2 acknowledges it. The prompt reserves FAIL for a hole the spec says is closed."
+    },
+    {
+      "lane": 4,
+      "n": 1,
+      "line": 389,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "holds",
+      "evidence": "CB-2113 (row :389) has no release leg. CB-2116(a) (:392) and §3.2 T8 forbid a tag containing another release's commit, and §4.4's hotfix row allows several open milestones. The cut (§10.3) checks only the current milestone's drain. Nothing at PR time stops a later release's work from merging to master, so the next tag fails CB-2116(a). Not named in §8. Lane 5 finding 3 is the same finding."
+    },
+    {
+      "lane": 4,
+      "n": 2,
+      "line": 189,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "partial",
+      "evidence": "Same as lane 3 finding 2."
+    },
+    {
+      "lane": 5,
+      "n": 1,
+      "line": 386,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "holds (spec and code)",
+      "evidence": "§3.1's EPIC-OPEN predicate is 'an open issue labelled epic whose body names the spec path'. CB-2110's row checks open + labelled + at least one sub-issue, and so does the code (spec_epic/mod.rs:5-7; verdicts NOT-AN-EPIC, SUB-ISSUES-UNMEASURED and NO-SUB-ISSUES at :284-330; no body read). §3.1 and §7 define EPIC-OPEN differently."
+    },
+    {
+      "lane": 5,
+      "n": 2,
+      "line": 304,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "holds",
+      "evidence": "The §5.2 formula is implemented as written (src/services/work_sync/mod.rs:23, :461). RoadmapItem.updated is a plain String that any PR edits (src/models/roadmap_types.rs:109), and issue.updated_at moves on any issue activity. Bumping either restarts the window without resolving the disagreement. Not named in §8."
+    },
+    {
+      "lane": 5,
+      "n": 3,
+      "line": 392,
+      "grounding": "asserted",
+      "citation": "ok (the claim spans the CB-2113 and CB-2116 rows)",
+      "conclusion": "holds",
+      "evidence": "Same finding as lane 4 finding 1."
+    },
+    {
+      "lane": 5,
+      "n": 4,
+      "line": 392,
+      "grounding": "asserted",
+      "citation": "ok",
+      "conclusion": "holds",
+      "evidence": "CB-2116(a) says every commit, CB-2113 says every non-merge commit, and §8.4 makes merge commits the only merge method. So a literal CB-2116 fails on every GitHub merge commit. The fix is one word. CB-2116 does not exist at this commit (lane 5 step 17: no rule provides CB-2116)."
+    }
+  ],
+  "escape_check": {
+    "fingerprint": {
+      "before_05:50:51": "e26c9beef72016cc",
+      "at_launch_05:53:21": "e26c9beef72016cc",
+      "poll_05:58:19": "e26c9beef72016cc",
+      "after_reduce_06:07:15": "e26c9beef72016cc"
+    },
+    "porcelain_md5": {
+      "before_05:50:51": "604009f457e77b8f675d7b5a6ce4a12b",
+      "at_launch_05:53:21": "604009f457e77b8f675d7b5a6ce4a12b",
+      "poll_05:58:19": "604009f457e77b8f675d7b5a6ce4a12b",
+      "after_reduce_06:07:15": "604009f457e77b8f675d7b5a6ce4a12b"
+    },
+    "main_repo_head": "29aeb5af3c75b850d703a162b9eb6dd39dbf418c before and after; porcelain --untracked-files=all diff = 0 lines",
+    "copy_dirlist_lc_all_c_md5": "9b2e878e62c37c552d72065afd6c32c1 before and after (diff 0 lines); writable non-symlinks in the copy 0 before and after",
+    "verdict": "no lane escape",
+    "tmp": "9 new /tmp entries since the 05:50:51 snapshot, none from a lane. original_t21.sh, mine_warnings.txt and orig_warnings.txt were written at 05:53:09-05:53:16, before launch, and are named in the other session's PMAT-029 lane brain d6c69170. a2-t21.log, a2-t21r.log, t21.lint, lane-lock.txt, pmat029/ and a2-t37.log were written at 06:01:52-06:08:59, after the last lane exited at 05:56:25. A full-path grep of all 5 lane brain dirs finds none of them. tmp.cRhplfoHjw (05:59:35) came and went. All left in place.",
+    "scratch": "The lanes wrote only to qgoal/scratch-<role>: quality is empty; architecture, security, crux and adversarial hold fixture git repos. Lane 5's only command naming the copy was a cp of docs/roadmaps/roadmap.yaml OUT of it, a read.",
+    "own_false_alarm": "Poll 1 printed copy_dirlist CHANGED. The pre-launch md5 37e50985d4df89704eec5fd22e353320 used a locale sort, the poll used LC_ALL=C (9b2e878e...). The LC_ALL=C lists diff to 0 lines, and the locale-sort md5 still reads 37e50985... after the run."
+  },
+  "open_questions": [
+    "mode=plan: the brief's calling form (agy-lane.sh --mode plan, quorum schema, 25m). The script adds --sandbox; cwd is the read-only copy. No --model, no --effort. The dry-runs showed all five prompts passed byte-for-byte.",
+    "Premise, binary: the prompts call pmat-1299-final3 'built from this code'. Its --version prints commit b11a21cf6, worktree dirty, which is 5 commits before eab301fa7. git diff --stat b11a21cf6 eab301fa7 touches no compiled input (src, crates, Cargo.toml, Cargo.lock, build.rs): only ci.yml, docs/audits, roadmap.yaml, the unrun-tests ledger and scripts/spec-review-control.sh. So the premise holds for committed code; what was dirty at build time cannot be checked.",
+    "Premise, master: goal-mode.md is byte-identical to origin/master (f5eccdfb3, the #1302 merge over eab301fa7). The local master ref is stale at 3893ca5f2, and its goal-mode.md differs from line 356.",
+    "Lane conduct: lane 1 ran the binary against the copy, which its prompt forbade: `comply ledger -p <copy>` at step 25 and `comply check --checks CB-2117 -p <copy>` at step 43. Nothing changed (fingerprint), and comply ledger printed 'is up to date'.",
+    "Coverage, E.1 and the rule list: no lane names E.1. Lane 5 (adversarial) was asked for every invariant A-G, E.1 and every rule CB-2110 to CB-2117. Its JSON mentions only CB-2110, CB-2113, CB-2115 and CB-2116; CB-2111, CB-2112, CB-2114 and CB-2117 appear only in lane 1's staleness findings.",
+    "Coverage, security: lane 3 never mentions GH_TOKEN or the withheld steps (uncovered[] shows both at lanes_hit 0).",
+    "Coverage, architecture: lane 2 says nothing about §11's landing order and dependencies, or the offline/live split. A re-review of a revised spec should not assume these were examined.",
+    "Coverage brief: /tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/delegate-ph1/items.json (18 short tokens drawn from the five lenses) is my synthesis, not the brief's. It only fills uncovered[] and changes no verdict.",
+    "Grading, holds on the text and not named in §8: lane 2 findings 1 (derived version vs pre-titled milestone) and 3 (the CB-2113 window vs completed tickets); lane 4 finding 1 = lane 5 finding 3 (later-release work reaches master, then the tag fails CB-2116(a)); lane 5 findings 1 (EPIC-OPEN body predicate unchecked, in spec and code), 2 (grace window resets on a timestamp bump) and 4 (CB-2116 'every commit' vs merge-commit-only).",
+    "Grading, partial: lane 2 finding 2 (a zero-slack trigger/bound interaction; citation off by one; 'guaranteeing' overstates it). Lane 3 finding 2 = lane 4 finding 2 (the fork route is named and bounded by the re-check on master, but §3.3's reason ignores roadmap.yaml edits). Lane 3 finding 1 (the exemption is visible but unbounded; the §9 reading widens an embargo-row sentence). Lane 1 findings 8 and 9.",
+    "Grading, not a FAIL ground under the prompts' own rule: lane 3 finding 3. §6.2, §6.3 and §8.6 say the review file proves nothing.",
+    "Grading, staleness: all 10 of lane 1's findings measure drift from the dated baseline §0 declares (written against d3eef0198). Seven reproduce as measured. Two (:653, :299) rest on a grep of the wrong file, though the canonical roadmap confirms the conclusion. One (:425) is right that the line errors and wrong that it 'fails to parse'. Whether staleness alone should FAIL a spec whose §0 says counts move is the orchestrator's call. Lane 1 also missed the same stale ci.yml coordinates in §7.1 (goal-mode.md:428 and :431) and the 157/13 figures repeated in §1.2, §5.4 and §8.10.",
+    "dedup[] caveats: group :389 shows lanes_agreeing [2,4] over two DIFFERENT claims, and group :392 holds two different lane-5 claims. The one finding lanes 4 and 5 share is split across :389 and :392, and group :189 [3,4] is real agreement. Read the claim text, not the counts.",
+    "Escape check: no lane escape; values in escape_check. The 9 new /tmp entries belong to another session and are left in place.",
+    "My false alarm: poll 1 printed copy_dirlist CHANGED because I hashed the pre-launch list with a locale sort and the poll with LC_ALL=C. The LC_ALL=C lists diff to 0 lines."
+  ],
+  "receipt_file": "/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/delegate-ph1/receipt.json",
+  "partial": false
+}
