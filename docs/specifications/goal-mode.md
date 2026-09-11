@@ -51,7 +51,9 @@ Its house rule is adopted verbatim:
 
 ### 1.2 The finding that makes this cheap
 
-`pmat comply ledger` reports **157 CB rules, 0 ENFORCED, 157 NEUTERED**, and names one
+`pmat comply ledger` reported **157 CB rules, 0 ENFORCED, 157 NEUTERED** when this was
+written; at `f5eccdfb3` it reports **163 rules, 2 ENFORCED, 161 NEUTERED** — CB-2113 and
+CB-2115, landed by steps 2 and 4 of §11. It names one
 cause: `continue-on-error` on the `Ladder gate — pmat comply` step. Read on its own that
 says the only way to enforce anything is to unblock a step that is *currently red on four
 pre-existing failures*, and whose own comment documents a five-step sequence to unwedge it.
@@ -147,7 +149,7 @@ A **ticket** is the unit. A spec and a release are contexts a ticket sits in.
 |---|---|---|
 | `SPEC-DRAFT` | a tracked `docs/specifications/**.md` | git |
 | `SPEC-REVIEWED` | `docs/audits/spec-<slug>-review.json` exists, `spec_sha256` matches, every required role PASS | repo |
-| `EPIC-OPEN` | an open issue labelled `epic` whose body names the spec path | GitHub |
+| `EPIC-OPEN` | an open issue labelled `epic` with the spec's tickets as sub-issues (§4.3) | GitHub |
 | `TICKET-OPEN` | roadmap item with `github_issue: N`, issue `N` open, `N` a sub-issue of the epic | roadmap + GitHub |
 | `TICKET-SCHEDULED` | roadmap `release: X.Y.Z`; issue on milestone `X.Y.Z` | roadmap + GitHub |
 | `IN-PROGRESS` | roadmap `status: inprogress` | roadmap |
@@ -192,6 +194,14 @@ milestones or epics, so there is nothing about them for this PR to have broken.*
 four are re-checked on the push to master, which is where the merge actually lands and
 where a token exists.
 
+**Except when the fork PR edits the records those rules judge.** A fork cannot change
+issues, milestones or epics, but it can edit `docs/roadmaps/roadmap.yaml` and
+`docs/specifications/`, which are the other half of every one of those four rules. A fork
+PR that touches either is `not_measured` — it fails closed — because the alternative is a
+pull request that passes here and turns master red on the merge, which is the shape
+doctrine 6 exists to refuse. A fork PR that touches neither keeps the `not_applicable`
+pass above. Implemented by PMAT-1310.
+
 The four offline rules (CB-2111, 2113, 2116, 2117) run everywhere, forks included.
 
 `not_applicable` is only legitimate when the *context* is what makes it inapplicable,
@@ -218,6 +228,13 @@ except in the tag, where the `v` is added at exactly one place in the code.
 
 Strict order — tag ⊃ milestone ⊃ roadmap — so there is no bidirectional merge and no
 conflict resolution. A surface can only *fail to reflect* the one above it.
+
+**The title is the intent until the cut derives the number.** §10.3 derives the version
+from the labels of the tickets in the release, so a milestone titled `3.41.0` that
+collects a `breaking-change` ticket is titled wrongly, not scheduled wrongly. The cut
+renames the milestone to the derived number and then tags it, and RR-RELEASE is checked
+after the rename. Only the cut may rename; a rename by anyone else is the drift CB-2114
+exists to catch.
 
 **The key is the string, not the milestone's numeric id.** The teamwork lane proposed
 tracking the id so a rename would be invisible; that is rejected. Renaming a milestone
@@ -264,6 +281,10 @@ vendors: [cuda]    # optional; adds a vendor: role to E.1's required set
 escape hatch nobody can see is a hole, so `pmat comply report` lists every `historical`
 spec **by name** on every run.
 
+`status` IS the exemption, so who may change it belongs to the gate. `CODEOWNERS` covers
+`docs/specifications/`: a front-matter change needs the owner's review, which makes a flip
+out of `active` a reviewed act rather than one line in an unrelated pull request.
+
 Epic membership is read from GitHub's native **sub-issue** relation, and only from it
 (operator decision, 2026-09-09). An `Epic: #N` line in an issue body is **not** accepted:
 a body line is prose that drifts, a sub-issue is a structural edge GitHub maintains, and
@@ -296,14 +317,25 @@ Three finding classes, reported separately because they have different fixes:
 |---|---|---|
 | `ORPHAN-ROADMAP` — open item with no issue, or naming a closed/absent one | 48 | `work sync --yaml-to-github` |
 | `ORPHAN-GITHUB` — open unlabelled issue with no item | ≈53 | `work sync --github-to-yaml` |
-| `COLLISION` — two items naming one issue | **13 items all name #612** | **never auto-fixed** — a human |
+| `COLLISION` — two items naming one issue | **0 today**; 13 items named #612 until PMAT-721 resolved them in #1252 | **never auto-fixed** — a human |
 
 ### 5.2 Field predicate — tolerance TIME
 
 For each matched pair, compare `title` and the state word. A disagreement is tolerated
-only while `now − max(item.updated, issue.updated_at) < staleness_grace_minutes`
-(default 60). A time bound, not a count: "up to 3 may disagree" means three chosen
-items may be wrong forever and nobody chooses which three.
+only while `now − first_seen(disagreement) < staleness_grace_minutes` (default 60), where
+`first_seen` is when a sync first observed THIS disagreement, recorded beside the
+snapshot. A time bound, not a count: "up to 3 may disagree" means three chosen items may
+be wrong forever and nobody chooses which three. It runs from the onset and NOT from
+`max(item.updated, issue.updated_at)`, because any edit to either side moves that maximum
+and would restart the window without resolving anything — a grace window that resets on a
+touch is not a bound. Implemented by PMAT-1309.
+
+The window covers every leg, not only a field disagreement. An issue opened less than
+`staleness_grace_minutes` ago is `not_measured` rather than a finding: the sync that would
+mint its item cannot have run yet, and a rule that turns master red the instant anyone
+opens an issue is a rule someone disables. The same holds for an item added without its
+issue. Past the window it is a finding, and `pmat work sync` is the fixer. Implemented by
+PMAT-1309.
 
 ### 5.3 `RR-COHERENCE` — which side wins
 
@@ -316,8 +348,9 @@ Disjoint field sets, so there is never a merge conflict and never a prompt.
 
 ### 5.4 Landing green
 
-CB-2115 cannot land while 13 items collide on #612 — a gate red on arrival is a gate
-someone disables. Sequence:
+CB-2115 could not land while 13 items collided on #612 — a gate red on arrival is a gate
+someone disables. PMAT-721 resolved them in #1252 and 0 collide today; the sequence that
+got there:
 
 1. `pmat work sync` becomes real, `--check-only` first. It **reports**.
 2. The 13 collisions are resolved **by a human under their own ticket**. Which of the 13
@@ -386,10 +419,10 @@ legitimate quorum. That is what "pmat does not depend on Claude or agy" means co
 | **CB-2110** | E | every `active` spec names an open epic issue with ≥1 sub-issue | delete the `epic:` line | `traceability` → `gate` |
 | **CB-2111** | E.1 | every `active` spec has a review artifact whose hash matches and whose roles all PASS | **append one space to the spec** | `traceability` → `gate` |
 | **CB-2112** | A | every open item has a `github_issue`, open, whose number is the item's numeric tail | null one `github_issue` | `traceability` → `gate` |
-| **CB-2113** | C | every non-merge commit in `v<latest>..HEAD` carries `Pmat-Ticket: <id>` naming a real, non-terminal item | `git commit --allow-empty -m 'no trailer' --no-verify` | `traceability` → `gate` |
+| **CB-2113** | C | on a PR: every non-merge commit the PR adds carries `Pmat-Ticket: <id>` naming a real, NON-TERMINAL item whose `release` is the open milestone or an earlier one; on master: every non-merge commit in `v<latest>..HEAD` names a real item, any status | `git commit --allow-empty -m 'no trailer' --no-verify` | `traceability` → `gate` |
 | **CB-2114** | B, F1 | every open item has `release:`, its milestone exists, its issue is on it | remove one `release:` | `traceability` → `gate` |
 | **CB-2115** | D | the open sets are in bijection, and no matched pair has disagreed past the grace window | close one linked issue, leave the item open | `traceability` → `gate` |
-| **CB-2116** | B, F2 | (a) every commit in a tag's range carries a trailer for a ticket of that release; (b) `count(v<latest>..master) ≤ max_untagged_commits` | move a merged ticket's `release` | `traceability` → `gate` |
+| **CB-2116** | B, F2 | (a) every non-merge commit in a tag's range carries a trailer for a ticket of that release; (b) `count(v<latest>..master) ≤ max_untagged_commits + untagged_ci_slack` | move a merged ticket's `release` | `traceability` → `gate` |
 | **CB-2117** | G | `docs/status/goal-ledger.md` matches what the generator computes now | hand-edit a row | `traceability` → `gate` |
 
 All eight are `CheckSeverity::Error`. Anything less reports and never fails — the mistake
@@ -401,7 +434,7 @@ CB-2101/2102's own comments name.
 currently red on four pre-existing failures, and unwedging it is a five-step sequence
 documented in `.github/workflows/quality-gate.yml` that would redden a required context on master and every
 open PR. Routing around it is not forum-shopping — it is refusing to make eight new rules
-hostage to a deadlock they did not cause. The 157 stay behind it and this document does
+hostage to a deadlock they did not cause. The other 161 stay behind it and this document does
 **not** claim to fix them (§8.10).
 
 A new job in `.github/workflows/ci.yml`, wired exactly as `roadmap-validate` is:
@@ -425,10 +458,11 @@ A new job in `.github/workflows/ci.yml`, wired exactly as `roadmap-validate` is:
         run: ./target/debug/pmat comply check --checks CB-2110,CB-2111,CB-2112,CB-2113,CB-2114,CB-2115,CB-2116,CB-2117
 ```
 
-added to **both** `gate`'s `needs:` and its result loop (`.github/workflows/ci.yml:31-50`). Both: the
+added to **both** `gate`'s `needs:` and its result loop (the `gate` job in
+`.github/workflows/ci.yml`). Both: the
 comment above `roadmap-validate` is explicit that the loop is what fails.
 
-`.github/workflows/ci.yml:43` is `if [ "$result" != "success" ]`, so a `skipped` or `cancelled` job also
+`The result loop's `if [ "$result" != "success" ]` treats a `skipped` or `cancelled` job as a failure, so it also
 fails the gate — the classic `if: always()` + `needs: skipped` hole is already closed
 here, verified.
 
@@ -460,19 +494,24 @@ bypasses, and adding the trigger costs nothing.
    measure **master**, not merely the PR — see §7. Setting it is a ruleset change on
    `13878864`; until it is made, CB-2113 measures the PR's commits only and says so in
    its output rather than pretending to cover master.
-5. **A trailer proves a claim, not the work.** `Pmat-Ticket: PMAT-999` on an unrelated
+5. **Three rules describe more than the code does today**, each with its ticket: CB-2113's
+   master leg reports `not_applicable` there for now (PMAT-1308), CB-2115's grace
+   window still runs from `max(updated)` rather than the onset (PMAT-1309), and the
+   fork carve-out above is not yet implemented (PMAT-1310). Each is stated here rather
+   than left for a reader to discover by running it.
+6. **A trailer proves a claim, not the work.** `Pmat-Ticket: PMAT-999` on an unrelated
    diff passes CB-2113. Only a quorum reading the diff against the ticket defends this,
    and that is a skill, not a gate.
 6. **Lane independence is unverifiable from a file** (§6.2), demonstrated twice in this
    document's own production.
-7. **Publishing needs a token pmat does not hold.** `pmat goal` cuts tags and opens
+8. **Publishing needs a token pmat does not hold.** `pmat goal` cuts tags and opens
    release PRs; it never publishes.
-8. **Four rules need network.** On a fork they are `not_applicable` (§3.3); on a
+9. **Four rules need network.** On a fork they are `not_applicable` (§3.3); on a
    same-repo PR without a token they are `not_measured` and fail.
-9. **The `gate` requirement lives in a ruleset this repository does not own.** An org
+10. **The `gate` requirement lives in a ruleset this repository does not own.** An org
    admin can disable ruleset 13878864 and every rule here silently becomes decoration.
    P2 makes that *visible* — the manifest/live comparison goes red — but cannot prevent it.
-10. **This does not un-NEUTER the other 157 rules.** It builds a second, working path for
+11. **This does not un-NEUTER the other 161 rules.** It builds a second, working path for
     eight. Saying otherwise would be the kind of claim `pmat comply numeric-claims` exists
     to catch.
 
@@ -507,7 +546,8 @@ fixed tool list, and that is the defect not to repeat.
 # actually key on is (a) semver semantics read from what is IN the release, and
 # (b) how much is sitting unreleased. Both are below; the ticket cap is opt-in and
 # unset by default.
-max_untagged_commits      = 60   # the repo's own MEDIAN commits-per-release. 44 today
+max_untagged_commits      = 60   # the repo's own MEDIAN commits-per-release, over v3.30.0..v3.40.0
+untagged_ci_slack         = 20   # CB-2116(b) fails only above max + slack, so the cut fires BEFORE the gate
 max_release_age_hours     = 72
 max_tickets_per_release   = 0    # 0 = no cap. Set it only if you want one
 staleness_grace_minutes   = 60
@@ -532,7 +572,9 @@ pmat goal status | stop [--now] | ledger [--write]
 **The version number is derived, never chosen.** Semver semantics are read from the
 labels of the tickets in the release: any `breaking-change` → major; else any
 `enhancement`/`feature` → minor; else patch. That is the Rust idiom — the number
-describes what is in the release, so it cannot be argued about.
+describes what is in the release, so it cannot be argued about. The derived number is
+what the release is called: when it differs from the milestone's title, the cut renames
+the milestone before tagging (§4.1).
 
 **The boundary** is evaluated after each ticket reaches `MERGED`; first to fire cuts:
 
@@ -640,20 +682,24 @@ greps `CLAUDE.md` prescribes for this file class.
 
 ## 14. Verification ledger
 
-| claim | command | measured |
-|---|---|---|
-| ruleset requires unprefixed `gate` | `gh api …/rules/branches/master --jq …` | `["gate"]`, ruleset 13878864 active |
-| branch protection requires 5 others | `gh api …/branches/master/protection --jq …` | `ci / gate`, `feature-gate`, docs.rs, `pmat score`, `provable ladder` |
-| both are distinct checks on a PR | `gh pr view 1243 --json statusCheckRollup` | `["ci / gate","gate"]` |
-| `src/services/gate_effect/required.rs` cannot see rulesets | `grep -c "rules/branches" src/services/gate_effect/required.rs` | `0` |
-| the manifest omits `gate` | `cat .github/required-status-checks.txt` | 5 entries, none is `gate` |
-| 157 rules, 0 enforced | `pmat comply ledger` | `rules: 157 / ENFORCED: 0 / NEUTERED: 157` |
-| a skipped `needs` fails the gate | `sed -n '43p' .github/workflows/ci.yml` | `if [ "$result" != "success" ]` |
-| `merge_group` absent | `grep -rn merge_group .github/` | no matches |
-| 13 items collide on #612 | roadmap parse | 13 of 61 open items carry an issue; **1 distinct** |
-| trailer coverage | `git log v3.39.0..master --no-merges --format='%(trailers:key=Pmat-Ticket,valueonly)'` | 30 of 81 (37%) |
-| untagged commits | `git rev-list --count v3.40.0..master` | 44 |
-| release cadence: 11 tags in 24 days, median 59 commits | `git tag --sort=creatordate` + `git rev-list --count <prev>..<tag>` | 17 min, 208 max, 59 median over `v3.30.0..v3.40.0` |
-| CB-148 cannot fail | `src/models/comply_config_impls.rs:127` | `unconfigured` → `Warning` → `should_fail(...)` = `false` |
+| claim | command | measured at `d3eef0198`, when this was written | now, at `f5eccdfb3` |
+|---|---|---|---|
+| ruleset requires unprefixed `gate` | `gh api …/rules/branches/master --jq …` | `["gate"]`, ruleset 13878864 active | unchanged |
+| branch protection requires 5 others | `gh api …/branches/master/protection --jq …` | `ci / gate`, `feature-gate`, docs.rs, `pmat score`, `provable ladder` | unchanged |
+| both are distinct checks on a PR | `gh pr view 1243 --json statusCheckRollup` | `["ci / gate","gate"]` | unchanged |
+| `src/services/gate_effect/required.rs` cannot see rulesets | `grep -c "rules/branches" src/services/gate_effect/required.rs` | `0` | **3** — step 0 landed |
+| the manifest omits `gate` | `cat .github/required-status-checks.txt` | 5 entries, none is `gate` | **6**, `gate` among them (PMAT-717) |
+| rules and how many are enforced | `pmat comply ledger` | `rules: 157 / ENFORCED: 0 / NEUTERED: 157` | **163 / 2 / 161** — CB-2113, CB-2115 |
+| a skipped `needs` fails the gate | the result loop in the `gate` job | `if [ "$result" != "success" ]` | unchanged |
+| `merge_group` absent | `grep -rn merge_group .github/` | no matches | **present** — step 2 landed |
+| items colliding on one issue | roadmap parse | 13 of 61 open items carry an issue; **1 distinct** | **0 open collide**; 14 items name #612, all completed (PMAT-721) |
+| trailer coverage | `git log v<latest>..master --no-merges --format='%(trailers:key=Pmat-Ticket,valueonly)'` | 30 of 81 (37%) since `v3.39.0` | **168 of 179 (94%)** since `v3.40.0` |
+| untagged commits | `git rev-list --count v<latest>..master` | 44 | **202** — above `max_untagged_commits`, and §10 is not built yet |
+| release cadence: 11 tags in 24 days, median 59 commits | `git tag --sort=creatordate` + `git rev-list --count <prev>..<tag>` | 17 min, 208 max, 59 median over `v3.30.0..v3.40.0` | unchanged, the same window |
+| CB-148 cannot fail | `src/models/comply_config_impls.rs:127` | `unconfigured` → `Warning` → `should_fail(...)` = `false` | **retired**, superseded by CB-2110 (PMAT-728) |
+
+Every `now` value was re-measured by PMAT-1307 against `f5eccdfb3`. A row that moved is
+a claim this document used to make and no longer does; a row marked unchanged was checked,
+not assumed.
 
 GOAL-MODE-SPEC-END

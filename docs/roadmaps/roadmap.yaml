@@ -6187,3 +6187,99 @@ roadmap:
   labels:
   - kind:code
   notes: 'Found when ci / test failed on #1304, which changes no Rust; master passed the same test on identical code. Filed by PMAT-1303 on #1304''s branch (CB-2115 is live).'
+- id: GH-1306
+  github_issue: 1306
+  item_type: task
+  title: 'comply: pmat''s own generated work contracts fail CB-1305, and pre-#357 stubs are never flagged stale'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T06:16:11.342726639+00:00
+  updated: 2026-09-11T06:16:11.342726639+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1307
+  github_issue: 1307
+  item_type: task
+  title: 'goal-mode.md revision: the nine findings from its own five-role review (#1303), and a verification ledger that says when it was measured'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-09-11T06:16:11Z
+  spec: null
+  acceptance_criteria:
+  - 'goal-mode.md states each of the nine decisions (D1 to D9) from #1303''s review: the derived version renames the milestone at the cut; CB-2113 has a PR leg and a master leg with a release constraint; EPIC-OPEN is the sub-issue relation; the grace window runs from first-seen; CB-2116 says every non-merge commit and its CI bound sits above the release trigger; a fork PR editing the roadmap or the specs fails closed; CODEOWNERS covers docs/specifications'
+  - §14 carries both the measurement it was written against and a re-measured now column, and the counts repeated in §1.2, §5.1, §5.4, §7.1 and §8 agree with the tree; no claim cites a line number that can rot
+  - §8 names each gap between this text and the code with its ticket, and a fresh five-role review of the revised text records docs/audits/spec-goal-mode-review.json with pmat spec review --record
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Applies the operator''s decisions on #1303, where goal-mode.md failed its own review 5 lanes of 5. Completes the review half of §13 item 6 and unblocks PMAT-1303.'
+- id: PMAT-1308
+  github_issue: 1308
+  item_type: task
+  title: 'CB-2113 needs both legs: the PR''s own commits against a non-terminal item of the open milestone, and master against existence (goal-mode.md §7, decision D2/D3)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-09-11T06:16:11Z
+  spec: null
+  acceptance_criteria:
+  - on a pull request CB-2113 judges the commits the PR adds, and each names a non-terminal item whose release is the open milestone or earlier; on a push to master it judges every non-merge commit since the last tag against existence only
+  - scripts/traceability-control.sh carries an arm for each leg, including a ticket of a later release being refused on a PR
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'goal-mode.md §7 states both legs after decision D2/D3 on #1303; the code judges merge-base..HEAD and reports not_applicable on master.'
+- id: PMAT-1309
+  github_issue: 1309
+  item_type: task
+  title: 'CB-2115''s grace window restarts on any timestamp bump: measure it from when the disagreement was first seen (goal-mode.md §5.2, decision D5; CB-2115 is enforced)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-09-11T06:16:11Z
+  spec: null
+  acceptance_criteria:
+  - the staleness grace window is measured from when a disagreement was first observed, recorded beside the snapshot, and a bump to item.updated or issue.updated_at does not extend it
+  - scripts/roadmap-coherence-control.sh carries an arm that bumps a timestamp and still refuses the pair once the window has passed
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'CB-2115 is ENFORCED, so this is a live hole: the rule that refuses a stale disagreement can be reset by an edit that resolves nothing. Decision D5 on #1303.'
+- id: PMAT-1310
+  github_issue: 1310
+  item_type: task
+  title: A fork PR that edits docs/roadmaps/roadmap.yaml or docs/specifications/ must fail closed, not pass as not_applicable (goal-mode.md §3.3, decision D7)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-09-11T06:16:11Z
+  spec: null
+  acceptance_criteria:
+  - a fork pull request whose diff touches docs/roadmaps/roadmap.yaml or docs/specifications/ reports not_measured for CB-2110, CB-2112, CB-2114 and CB-2115, naming that reason; one that touches neither still reports not_applicable
+  - a control arm covers both cases
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'A fork cannot change issues, but it can edit the records those four rules judge, and master turns red on the merge. Decision D7 on #1303.'
