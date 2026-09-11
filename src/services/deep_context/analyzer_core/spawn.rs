@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::services::cache::{CacheConfig, SessionCacheManager};
 use crate::services::deep_context::analyzer_core::types::{
@@ -11,6 +11,27 @@ use crate::services::deep_context::analyzer_core::types::{
 };
 use crate::services::deep_context::AnalysisType;
 use crate::services::deep_context::DeepContextAnalyzer;
+
+/// Whether `analysis_type`'s function cannot produce a real result unless the
+/// AST phase has already run — either because it reads a process-global
+/// `*_UNIFIED_CACHE` DashMap that ONLY the AST phase fills (`analyze_single_file_complexity`
+/// in `analysis_functions/metrics_complexity.rs` maps every file to `None` on a
+/// cache miss, so `Complexity` silently reports zero files rather than erroring —
+/// see #1319), or because it accepts a `prebuilt_context: Option<Arc<ProjectContext>>`
+/// that lets it reuse the AST phase's parse instead of a slower from-scratch one
+/// (`analyze_provability_with_context`, `analyze_dag_with_context` in
+/// `analysis_functions/metrics_analyses.rs` — `Provability` and `Dag`).
+///
+/// `DeadCode` and `BigO` parse independently and never touch a `*_UNIFIED_CACHE`
+/// or a `prebuilt_context`. `TechnicalDebtGradient` never spawns a task at all
+/// (`spawn_analysis_task` maps it to `Ok(())` — it is computed later in
+/// `correlate_defects`), so it is excluded too.
+fn needs_ast_cache(analysis_type: &AnalysisType) -> bool {
+    matches!(
+        analysis_type,
+        AnalysisType::Complexity | AnalysisType::Provability | AnalysisType::Dag
+    )
+}
 
 impl DeepContextAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -30,7 +51,24 @@ impl DeepContextAnalyzer {
         // instead of redundantly calling syn::parse_file() (~3 GB savings).
         let mut prebuilt_context: Option<Arc<crate::services::context::ProjectContext>> = None;
 
-        if self.config.include_analyses.contains(&AnalysisType::Ast) {
+        let ast_requested = self.config.include_analyses.contains(&AnalysisType::Ast);
+        let run_ast = ast_requested || self.config.include_analyses.iter().any(needs_ast_cache);
+
+        if run_ast {
+            if !ast_requested {
+                if let Some(dependent) = self
+                    .config
+                    .include_analyses
+                    .iter()
+                    .find(|t| needs_ast_cache(t))
+                {
+                    info!(
+                        "AST phase added implicitly: {:?} reads a cache only the AST phase fills",
+                        dependent
+                    );
+                }
+            }
+
             let file_classifier_config = self.config.file_classifier_config.clone();
             let path = project_path.to_path_buf();
             let ast_result = tokio::spawn(async move {
@@ -70,8 +108,14 @@ impl DeepContextAnalyzer {
                 }));
             }
 
-            self.integrate_analysis_result(&mut results, ast_result);
-            analysis_progress.inc(1);
+            // Only integrate the AST result into `results.ast_contexts` when the
+            // caller actually asked for Ast — an implicitly-added AST phase fills
+            // the caches and `prebuilt_context` above, but must not hand the
+            // caller `ast_contexts` it never requested (#1319).
+            if ast_requested {
+                self.integrate_analysis_result(&mut results, ast_result);
+                analysis_progress.inc(1);
+            }
         }
 
         // Phase 2: Spawn remaining analyses in parallel (they benefit from populated caches)

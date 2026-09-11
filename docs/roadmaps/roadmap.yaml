@@ -6472,3 +6472,23 @@ roadmap:
   labels:
   - kind:code
   notes: 'Found climbing to 95% (PMAT-1317). command_routing.rs, the one place every pmat subcommand passes through, reads 3.3% covered; its 11 routing tests and 86 siblings sit in an include! hub attached only under cfg(pmat_broken_tests) with the comment TEMPORARILY DISABLED: File splitting broke syntax. Lifting the hub alone: 98 x CommandDispatcher not in scope, 14 x crate::demo missing, 2 x new WorkCommands fields — stale imports and API drift, not syntax. A routing arm can be mis-wired today and nothing fails.'
+- id: PMAT-1324
+  github_issue: 1324
+  item_type: bug
+  title: 'pmat comply check runs .pmat-ratchet.toml measurement commands with no recursion guard: fork bomb when a measurement calls pmat comply'
+  status: planned
+  priority: critical
+  assigned_to: null
+  created: 2026-09-11T14:21:00Z
+  updated: 2026-09-11T14:21:00Z
+  spec: null
+  acceptance_criteria:
+  - a measurement command that invokes pmat comply is refused or bounded — the recursion is detected rather than run, and the refusal names the offending entry
+  - every measurement command runs under a timeout and a depth limit, both set in one place and both proven by a test that plants a self-referential measurement and asserts the process count stays bounded
+  - the guard is proven on the reproduction from the issue rather than asserted from the code
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Filed by the operator 2026-09-11 after pmat 3.40.0 took Lambda-Vector to a 1-minute load average of 3,026 on 48 cores with 9,740 processes. Path: pmat comply ratchet -> measurement -> pmat comply check -> check_metrics_ratchet -> the same measurement, fanning out by the number of ratchet entries at every level. Named files: check_metrics_ratchet.rs:69, metrics_ratchet/measure.rs:210 (Command::new bash), check_builders_ratchet.rs:10. Triaged as critical: it is a denial of service against the developer''s own machine, reachable from a documented workflow (ratcheting a comply check''s own finding count).'
