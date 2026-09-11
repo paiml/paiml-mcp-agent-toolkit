@@ -19,7 +19,7 @@ An earlier message in the same session: "use quorum to decide ANY open question"
 
 ## What happened
 
-**Sixteen questions were decided by five-seat quorums, in three rounds. None was decided by me.**
+**Eighteen questions were decided by five-seat quorums, in four rounds. None was decided by me.**
 
 Each seat read a read-only plain copy of the tree, chose from options it was given **without being told which option I had drafted**, and answered alone. Majority decides; every minority answer is kept verbatim. Artifact: `docs/audits/quorum-PMAT-1307.json`.
 
@@ -28,6 +28,7 @@ Each seat read a read-only plain copy of the tree, chose from options it was giv
 | 1 | D1–D10, P1–P4 | `f79fbf1ab2f3c801` → `f79fbf1ab2f3c801` | 11 clean majorities; 3 left undecided once a contaminated seat was discarded |
 | 2 | D5, D6, D10 | `264a0240e6b296ad` → `264a0240e6b296ad` | all three decided |
 | 3 | Q15, Q16 | `3b3a9cf88f0981a3` → `3b3a9cf88f0981a3` | both decided |
+| 4 | Q17, Q18 | `774a588c28ba77e4` → `774a588c28ba77e4` | both decided — Q17 sweep 4 of 5, Q18 move 5 of 5 |
 
 No fingerprint moved in any round: no lane escaped, which is the fifth quorum in this programme where that had to be checked.
 
@@ -75,7 +76,7 @@ One finding was fixed as text rather than decided: §5.2 said a fresh orphan is 
 
 ## Status: PARTIAL (escalate)
 
-**Q17 and Q18 are undecided.** Their quorum was dispatched and interrupted by the operator, whose instruction was to stop re-reviewing and land. They are real, reproduced, and unowned — the honest place for them is a ticket, not a silent fix, and **neither is introduced by this revision**: both predate it.
+**Q17 and Q18 are decided** (round 4, in PMAT-1313's PR): the cut sweeps unscheduled merged work into the release (4 of 5) and moves the milestone's open remainder forward before tagging (5 of 5). The dispatch was interrupted by the operator, but all five lane files had completed on disk with the right fingerprint, so they were counted rather than re-run. Both describe `pmat goal`, which does not exist yet (step 9), and §8.5 says so.
 
 PMAT-1303 keeps the review artifact. `docs/audits/spec-goal-mode-review.json` is **not** recorded: three lanes still FAIL, and `pmat spec review --record` would refuse it as LANE-NOT-PASS. That refusal is the gate working.
 

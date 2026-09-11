@@ -582,8 +582,9 @@ refuses `skipped` by design. The gate is right; the input cannot be used by any 
    (PMAT-1308), CB-2115's grace window covers the field-disagreement leg only and the rule
    still runs on a master push (PMAT-1309), the fork carve-out above is not yet implemented
    (PMAT-1310), and CB-2114 still binds every open item rather than the `inprogress` ones
-   while CB-2110/2112/2114 still assert live state on a master push (PMAT-1312). Each is
-   stated here rather than left for a reader to discover by running it.
+   while CB-2110/2112/2114 still assert live state on a master push (PMAT-1312), and the
+   cut's sweep-and-move of §10.3 is a description of `pmat goal`, which does not exist
+   (step 9). Each is stated here rather than left for a reader to discover by running it.
 6. **A trailer proves a claim, not the work.** `Pmat-Ticket: PMAT-999` on an unrelated
    diff passes CB-2113. Only a quorum reading the diff against the ticket defends this,
    and that is a skill, not a gate.
@@ -670,6 +671,18 @@ describes what is in the release, so it cannot be argued about. The derived numb
 what the release is called: when it differs from the milestone's title, the cut REFUSES and
 names both numbers rather than editing the surface the next gate reads (§4.1).
 
+**Settling the milestone is two moves, and both are what a release train does.** Every
+ticket merged since the last tag and not yet scheduled is **swept into the release being
+cut** — merging is what schedules work, and CB-2116(a) becomes true by construction rather
+than by a PR-time refusal that would cost what Q15 bought. And every issue still open on
+the milestone is **moved to the next one** before the tag is cut, so a cut fired by volume,
+age, the explicit label or the cap does not fail on its own first step: a "verify the
+drain" that only trigger 1 could ever satisfy made triggers 2 to 5 dead as written. Both
+moves are `pmat work sync`'s, both are printed, and neither is silent: a human sees their
+unscheduled ticket acquire a release when the cut lands, and an open ticket change
+milestone with the cut named as the reason. (Q17 decided 4 of 5 — the dissent would fail
+the PR instead, so work is scheduled before it merges; Q18 decided 5 of 5. §11.2.)
+
 **The boundary** is evaluated after each ticket reaches `MERGED`; first to fire cuts:
 
 1. **milestone drain** (primary) — zero open issues on the current milestone. Deterministic,
@@ -686,7 +699,7 @@ names both numbers rather than editing the surface the next gate reads (§4.1).
    *shape*, and turning an illustration into a threshold is how an invented number becomes
    a measurement nobody can trace.
 
-A cut: verify the drain → bump the version → regenerate `CHANGELOG.md` **from the
+A cut: **settle the milestone** → bump the version → regenerate `CHANGELOG.md` **from the
 trailers** in `v<prev>..HEAD` (this is *why* C is enforced — the changelog becomes
 derived rather than written) → tag → push → open the release PR → close the milestone →
 open the next → **stop and wait for CI**. It does not merge its own release PR and does
@@ -784,8 +797,13 @@ contradictions the fourteen decisions had introduced, and were decided the same 
 |---|---|---|---|
 | **Q15** | CB-2114's release leg binds `inprogress` items only. A `planned` item with no `release:` is unscheduled, which P1 makes the normal state of the backlog — not a violation. | **5 of 5** | §4.2, §7's CB-2114 row |
 | **Q16** | On a master push, CB-2110, CB-2112 and CB-2114 judge only their file half; every live-state assertion is deferred to the scheduled run. | 4 of 5 | §3.3 |
+| **Q17** | The cut SWEEPS: every ticket merged since the last tag and not yet scheduled is assigned to the release being cut, so CB-2116(a) is true by construction and Q15's unscheduled merge cannot wedge the tag. | 4 of 5 | §10.3 |
+| **Q18** | The cut MOVES the remainder: open issues left on the milestone go to the next one before the tag, so triggers 2–5 are live instead of dead on "verify the drain". | **5 of 5** | §10.3 |
 
-Q15 is what P1 cost: with 97 open items and one open milestone, CB-2114 as written was red on
+Q17 and Q18 came from the second five-role review, which failed the text 3 lanes to 2 on
+them: two lanes found independently that an unscheduled merge — normal under Q15 — could
+never satisfy CB-2116(a) at the tag, and one found that four of the five release triggers
+fire exactly when the cut's first step must fail. Q15 is what P1 cost: with 97 open items and one open milestone, CB-2114 as written was red on
 arrival for nearly the whole backlog, and neither the seats that decided P1 nor the author
 saw it. Two review lanes found it independently. Q16 is the other half of P4 — the hole P4
 closed for CB-2115 was open in three sibling rules, and closing it for one rule while three

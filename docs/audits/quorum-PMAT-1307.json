@@ -984,6 +984,152 @@
      "lane_file_sha256_16": "99391607ab32de20"
     }
    ]
+  },
+  {
+   "round": 4,
+   "questions": [
+    "Q17",
+    "Q18"
+   ],
+   "out_dir": "/run/user/1000/paiml-implement/agy/PMAT-1307/39a15c63-fab3-4148-8cb7-0cb012369b35/ph-q3",
+   "width": 5,
+   "brief": "q3-brief.md",
+   "brief_sha256_16": "297254dd29d3f32e",
+   "fingerprint_before": "774a588c28ba77e4",
+   "fingerprint_after": "774a588c28ba77e4",
+   "fingerprint_method": "find -type f -exec sha256sum | LC_ALL=C sort -k2 | sha256sum, first 16 (the delegate's method; the orchestrator's earlier unsorted-locale method gave 4a134547a207693b on the same bytes)",
+   "escape": false,
+   "why": "the second five-role review (2 PASS, 3 FAIL) found that CB-2113's PR leg admits an unscheduled merge that CB-2116(a) can never accept at the tag (crux and adversarial lanes, independently), and that four of five release triggers fire exactly when the cut's first step 'verify the drain' must fail (architecture lane)",
+   "note": "the dispatch was interrupted by the operator mid-flight; all five lane files had completed on disk (10:03-10:09Z) and every summary names the fingerprint, so they are counted rather than re-run",
+   "lanes": [
+    {
+     "lane": 1,
+     "conversation_id": "0260cc2d-05c0-4211-8c7e-44c4f4fd90c2",
+     "verdict": "PASS",
+     "summary": "I measured the read-only tree at fingerprint 774a588c28ba77e4. I selected Option A for both questions because they establish a cohesive 'release train' model that prevents the loop from wedging. For Q17, having the cut sweep merged unscheduled tickets prevents the permanent failure of CB-2116(a) while preserving the leniency Q15 bought for the backlog. For Q18, moving open issues to the next milestone ensures the drain verification passes, allowing all volume and age triggers to function correctly without wedging master. These choices satisfy the judging criteria and remain perfectly coherent with the sixteen settled decisions.",
+     "votes": {
+      "Q17": "A",
+      "Q18": "A"
+     },
+     "findings": [
+      {
+       "claim": "Q17=A: The release cut process automatically sweeps all merged but unscheduled tickets into the current release before cutting the tag, establishing that the act of merging schedules the work.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The human sees their pull request merge successfully with a green CI, and later observes the automated release cut assign the ticket to the release milestone it shipped in.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "Q18=A: The release cut process acts as a release train by moving any remaining open issues to the next milestone before cutting the tag, which allows all five triggers to function correctly.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The ticket is automatically moved to the next release's milestone before the cut proceeds, decided by criterion 3 (Does it wedge the loop?) to prevent the volume trigger from permanently failing the drain verification.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "e14b4fa954baa8ed"
+    },
+    {
+     "lane": 2,
+     "conversation_id": "4fe2b0f5-669d-44cb-8e74-a210bdb09362",
+     "verdict": "PASS",
+     "summary": "I evaluated the read-only tree at fingerprint 774a588c28ba77e4. Option C for Q17 ensures that CB-2116a does not become theater by strictly enforcing that work is scheduled before integration. Option A for Q18 correctly operationalizes the release triggers by moving unfinished work forward, which prevents the loop from wedging. These choices remain coherent with the sixteen settled decisions and strictly follow the five evaluation criteria.",
+     "votes": {
+      "Q17": "C",
+      "Q18": "A"
+     },
+     "findings": [
+      {
+       "claim": "Q17=C: Tighten CB-2113's PR leg so that a commit whose ticket has no release fails the PR, forcing the work to be scheduled before it merges.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The human sees the pull request build fail the CB-2113 traceability gate with an error stating the ticket lacks a release, blocking the merge until a milestone is assigned.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "Q18=A: The cut moves any open issues left on the milestone to the next milestone before cutting the tag, making all release triggers functional.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The ticket is automatically moved to the next milestone before the tag is cut, which is decided by criterion 3 (Does it wedge the loop?) to prevent the process from stalling.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "38890c157170e239"
+    },
+    {
+     "lane": 3,
+     "conversation_id": "90601f61-2f4f-4b98-a803-0985589e20d7",
+     "verdict": "PASS",
+     "summary": "I measured the read-only tree at fingerprint 774a588c28ba77e4 both before and after my review to verify it remained untouched. My decisions resolve the contradictions identified in Q17 and Q18 by preserving the established data models and avoiding loop-wedging failures. Option A for Q17 maintains the ability to merge backlog work without breaking traceability invariants. Option A for Q18 ensures release triggers remain functional by explicitly draining milestones. These choices are strictly coherent with the sixteen prior decisions.",
+     "votes": {
+      "Q17": "A",
+      "Q18": "A"
+     },
+     "findings": [
+      {
+       "claim": "Q17=A: When a release is cut, any merged tickets that are not yet scheduled are automatically assigned to the release being cut, making the traceability rule true by construction without blocking backlog merges.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The human sees their pull request pass all CI checks and merge successfully, while the ticket's release field remains empty until it is automatically populated by the next release cut.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "Q18=A: To satisfy the milestone drain requirement, any issues still open when a cut fires are moved to the next milestone before the tag is created, keeping all release triggers viable.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The ticket is automatically moved to the next milestone so the current milestone can drain and close, a design chosen by Criterion 3 (Does it wedge the loop?) because leaving open tickets behind would permanently wedge the next release cut.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "61b47339e10a1e87"
+    },
+    {
+     "lane": 4,
+     "conversation_id": "75cb73c6-7a96-4910-a859-056df80900b8",
+     "verdict": "PASS",
+     "summary": "I measured the read-only tree and obtained the fingerprint 774a588c28ba77e4. For Q17, Option A is the only choice that does not violate Criterion 2, as tightening the PR leg (Option C) would break arm 2 of the existing traceability control script and make the gate red on arrival. Option A safely batches unscheduled work into the release at cut time without wedging the loop. For Q18, Option A resolves the contradiction by moving unfinished work to the next train, which prevents the volume trigger from permanently wedging the release loop (Criterion 3). These decisions preserve the autonomous triggers and cohere completely with the sixteen settled baseline decisions.",
+     "votes": {
+      "Q17": "A",
+      "Q18": "A"
+     },
+     "findings": [
+      {
+       "claim": "Q17=A: The release cut automatically sweeps any unscheduled tickets merged since the previous tag and assigns them to the release being cut, making the validation rule true by construction.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The human sees their pull request merge successfully with a green CI status without needing to schedule it, and later sees the ticket automatically assigned to the milestone when the release is actually cut.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "Q18=A: Any open issues left on the current milestone when a cut fires are moved forward to the next milestone before the tag is cut, allowing all release triggers to remain fully functional.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The ticket is automatically moved to the next milestone before the tag is cut, which was decided by criterion 3 (Does it wedge the loop?) because failing the cut on the drain verification would permanently wedge the automated release process.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "2710324f589ed818"
+    },
+    {
+     "lane": 5,
+     "conversation_id": "958868e2-ed2f-45a9-ab34-93e23f89f0ea",
+     "verdict": "PASS",
+     "summary": "I measured the read-only tree fingerprint as 774a588c28ba77e4 both before reading and after deciding. I evaluated the questions against the five criteria and the sixteen settled decisions. For Q17, Option A preserves the unanimous Q15 decision by allowing unscheduled work to merge and sweeping it at cut time, preventing a wedge. For Q18, Option A respects release train semantics by moving unfinished work to the next milestone, keeping all triggers live and preventing a loop wedge. These choices form a coherent, safe, and highly automated closed loop.",
+     "votes": {
+      "Q17": "A",
+      "Q18": "A"
+     },
+     "findings": [
+      {
+       "claim": "Q17=A: The cut automatically sweeps any merged but unscheduled tickets into the release being cut, satisfying CB-2116(a) by construction.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The human sees their unscheduled ticket merge successfully, and it is then automatically assigned to the release and milestone when the next cut sweeps it in.",
+       "grounding": "asserted",
+       "line": 45
+      },
+      {
+       "claim": "Q18=A: The cut moves any open issues remaining on the current milestone to the next milestone before verifying the drain.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The ticket is automatically moved to the next milestone so the current one can drain and the cut can proceed, which is decided by criterion 3 (Does it wedge the loop?) to prevent a stalled release.",
+       "grounding": "asserted",
+       "line": 69
+      }
+     ],
+     "lane_file_sha256_16": "7d36cb04fdabf3ff"
+    }
+   ]
   }
  ],
  "decisions": {
@@ -1277,6 +1423,43 @@
      "why": "Under Option A, the first time somebody closes an epic issue by hand, the master branch stays green and the scheduled run catches it to open a ticket instead, a decision driven by Criterion 3 (Does it wedge the loop?)."
     }
    ]
+  },
+  "Q17": {
+   "decision": "A",
+   "seats_for": 4,
+   "seats_counted": 5,
+   "source": "round4",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "C",
+    "3": "A",
+    "4": "A",
+    "5": "A"
+   },
+   "dissent": [
+    {
+     "lane": 2,
+     "vote": "C",
+     "claim": "Q17=C: Tighten CB-2113's PR leg so that a commit whose ticket has no release fails the PR, forcing the work to be scheduled before it merges.",
+     "why": "The human sees the pull request build fail the CB-2113 traceability gate with an error stating the ticket lacks a release, blocking the merge until a milestone is assigned."
+    }
+   ]
+  },
+  "Q18": {
+   "decision": "A",
+   "seats_for": 5,
+   "seats_counted": 5,
+   "source": "round4",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "A",
+    "3": "A",
+    "4": "A",
+    "5": "A"
+   },
+   "dissent": []
   }
  },
  "overturned_the_drafted_answer": [
@@ -1301,9 +1484,10 @@
   "D9",
   "D10",
   "P2",
-  "Q15"
+  "Q15",
+  "Q18"
  ],
- "question_count": 16,
+ "question_count": 18,
  "review_that_forced_round3": {
   "artifact": "not recorded \u2014 4 of 5 lanes FAILED",
   "roles_failed": [
