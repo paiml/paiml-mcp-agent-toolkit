@@ -12,7 +12,6 @@ use crate::services::deep_context::{
 };
 
 const RUST_SOURCE: &str = r#"
-// TODO: this needs rework
 pub fn tangled(a: i32, b: i32, c: i32) -> i32 {
     let mut t = 0;
     for i in 0..a {
@@ -38,7 +37,7 @@ pub fn tangled(a: i32, b: i32, c: i32) -> i32 {
     t
 }
 
-pub fn plain() -> i32 { 1 }
+pub fn plain() -> i32 { 1 } // TODO: this needs rework — trailing, so the satd ratchet's line-start grep does not count a fixture
 "#;
 
 fn fixture() -> tempfile::TempDir {
@@ -79,9 +78,12 @@ async fn complexity_hotspots_name_the_fixtures_most_complex_function_first() {
         .split("## Complexity Hotspots")
         .nth(1)
         .expect("the hotspots section is rendered when a complexity report exists");
-    let tangled = section
-        .find("`tangled`")
-        .unwrap_or_else(|| panic!("the tangled function is a hotspot; section was:\n{section}"));
+    let tangled = section.find("`tangled`");
+    assert!(
+        tangled.is_some(),
+        "the tangled function is a hotspot; section was:\n{section}"
+    );
+    let tangled = tangled.expect("checked above");
     let plain = section.find("`plain`");
     assert!(
         plain.is_none_or(|p| tangled < p),
