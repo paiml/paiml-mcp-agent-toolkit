@@ -353,13 +353,15 @@ The gate reads a **file**. It never invokes a model.
 
 `role` is a **closed set**: `quality | architecture | security | crux | adversarial |
 vendor:<name>`. An unrecognised role is an error, not an extra lane — otherwise "six
-reviewers" decays into six copies of one.
+reviewers" decays into six copies of one. For the same reason a closed-set role the spec
+does not require (a vendor its front-matter does not name) and a second lane of one role
+are errors too.
 
 ### 6.2 What CB-2111 checks, and what it buys
 
 Checks, all offline: the file parses; `spec_sha256` equals the file's hash **now**;
-`plan` is present with a non-empty `sha256`; every required role is present; every lane
-is PASS; `partial: true` is red.
+`plan` is present with a `sha256` of 64 hex digits; every required role is present; every
+lane is PASS; `partial: true` is red.
 
 **What it buys, exactly:** it converts a skipped review from an *omission nobody can
 see* into an *auditable lie somebody wrote down*. **What it does not buy:** any evidence

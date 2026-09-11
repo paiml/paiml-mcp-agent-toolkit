@@ -1532,7 +1532,7 @@ pmat spec --help
 
 ##### `spec review`
 
-Validate a spec review artifact and stage it (goal-mode.md §6.3, CB-2111). It judges the review against the spec it names exactly as `pmat comply check --checks CB-2111` will (the spec's sha256 now, a plan with a non-empty sha256, every required role PASS, `partial: false`), then writes it to `docs/audits/spec-<slug>-review.json` and runs `git add` on it. A refusal writes nothing and exits non-zero. It never produces a review: that is a quorum's job, or a human's.
+Validate a spec review artifact and stage it (goal-mode.md §6.3, CB-2111). It judges the review against the spec it names exactly as `pmat comply check --checks CB-2111` will (the spec's sha256 now, a plan sha256 of 64 hex digits, exactly one PASS lane per required role and no other lane, `partial: false`). It refuses an artifact path git ignores, or a symlink on the way to it. Then it writes the review to `docs/audits/spec-<slug>-review.json` and runs `git add` on it. A refusal writes nothing and exits non-zero, except a failed `git add`, which says the file is written and not staged. It never produces a review: that is a quorum's job, or a human's.
 
 ```bash
 pmat spec review --record review.json
