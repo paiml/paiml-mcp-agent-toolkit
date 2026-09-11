@@ -16,8 +16,8 @@ pub struct Recorded {
     pub spec_sha256: String,
 }
 
-/// Why `--record` refused. Every refusal before [`RecordRefusal::Unwritable`]
-/// writes nothing and stages nothing.
+/// Why `--record` refused. [`RecordRefusal::NotStaged`] reports a file
+/// written and not staged; every refusal checked before the write writes nothing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecordRefusal {
     Unreadable {
@@ -106,6 +106,16 @@ pub fn record(project: &Path, file: &Path) -> Result<Recorded, RecordRefusal> {
     }
     let artifact = artifact_path(&spec);
     let dest = project.join(&artifact);
+    stageable(project, &artifact).map_err(|reason| RecordRefusal::NotStageable {
+        artifact: artifact.clone(),
+        reason,
+    })?;
+    if let Some(link) = symlink_on_the_way(project, &artifact) {
+        return Err(RecordRefusal::Unwritable {
+            artifact: artifact.clone(),
+            reason: format!("{link} is a symlink; record never writes through one"),
+        });
+    }
     let in_place = matches!(
         (std::fs::canonicalize(file), std::fs::canonicalize(&dest)),
         (Ok(a), Ok(b)) if a == b
@@ -160,4 +170,38 @@ fn stage(project: &Path, artifact: &str) -> Result<(), String> {
     } else {
         Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
     }
+}
+
+/// `git check-ignore`: exit 1 is "not ignored"; exit 0 means git would never
+/// commit the artifact; anything else (not a git work tree) is refused too.
+fn stageable(project: &Path, artifact: &str) -> Result<(), String> {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(project)
+        .args(["check-ignore", "-q", "--", artifact])
+        .output()
+        .map_err(|e| e.to_string())?;
+    match out.status.code() {
+        Some(1) => Ok(()),
+        Some(0) => Err("git ignores it, so it could never be committed".to_string()),
+        _ => Err(format!(
+            "git check-ignore failed: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        )),
+    }
+}
+
+/// The first component on the way from the project root to the artifact
+/// (`docs`, `docs/audits`, the file itself) that is a symlink, if any.
+fn symlink_on_the_way(project: &Path, artifact: &str) -> Option<String> {
+    let mut at = project.to_path_buf();
+    let mut rel = PathBuf::new();
+    for part in Path::new(artifact).components() {
+        at.push(part);
+        rel.push(part);
+        if std::fs::symlink_metadata(&at).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Some(rel.display().to_string());
+        }
+    }
+    None
 }

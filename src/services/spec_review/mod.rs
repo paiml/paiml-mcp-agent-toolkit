@@ -32,9 +32,8 @@ pub struct ReviewArtifact {
     #[serde(default)]
     pub plan: Option<Plan>,
     pub lanes: Vec<Lane>,
-    /// Recorded, not judged: §6.2 does not list it, and every lane PASS is
-    /// agreement by construction.
-    #[serde(default)]
+    /// Required, like every §6.1 field; recorded, not judged: §6.2 does not
+    /// list it, and every lane PASS is agreement by construction.
     pub agreed: bool,
     /// Required: a misspelt `partial` must not default a partial review to
     /// complete.
@@ -44,10 +43,10 @@ pub struct ReviewArtifact {
 /// The plan the review judged.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Plan {
-    #[serde(default)]
     pub tool: String,
-    #[serde(default, rename = "ref")]
+    #[serde(rename = "ref")]
     pub reference: String,
+    /// Absent or malformed is `NO-PLAN`, never `BAD-REVIEW`.
     #[serde(default)]
     pub sha256: String,
 }
@@ -56,10 +55,8 @@ pub struct Plan {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Lane {
     pub role: String,
-    #[serde(default)]
     pub executor: String,
     pub verdict: String,
-    #[serde(default)]
     pub summary: String,
 }
 
@@ -103,6 +100,24 @@ pub enum ReviewFinding {
     Partial {
         spec: String,
     },
+    /// A closed-set role this spec does not require: a vendor lane whose
+    /// vendor the front-matter does not name.
+    ExtraLane {
+        spec: String,
+        role: String,
+    },
+    /// A second lane of one role: a copy, not a reviewer (§6.1).
+    DuplicateLane {
+        spec: String,
+        role: String,
+    },
+    /// Two active specs whose paths flatten to one artifact path; a review
+    /// can name only one of them. Constructed by the rule, which sees every spec.
+    SlugCollision {
+        spec: String,
+        artifact: String,
+        with: String,
+    },
     /// The spec's front-matter does not parse, so the roles its review needs
     /// cannot be read. Constructed by the rule, which holds the parse leg.
     Unjudgeable {
@@ -124,6 +139,9 @@ impl ReviewFinding {
             ReviewFinding::MissingRole { .. } => "MISSING-ROLE",
             ReviewFinding::LaneNotPass { .. } => "LANE-NOT-PASS",
             ReviewFinding::Partial { .. } => "PARTIAL",
+            ReviewFinding::ExtraLane { .. } => "EXTRA-LANE",
+            ReviewFinding::DuplicateLane { .. } => "DUPLICATE-LANE",
+            ReviewFinding::SlugCollision { .. } => "SLUG-COLLISION",
             ReviewFinding::Unjudgeable { .. } => "UNJUDGEABLE",
         }
     }
@@ -140,6 +158,9 @@ impl ReviewFinding {
             | ReviewFinding::MissingRole { spec, .. }
             | ReviewFinding::LaneNotPass { spec, .. }
             | ReviewFinding::Partial { spec }
+            | ReviewFinding::ExtraLane { spec, .. }
+            | ReviewFinding::DuplicateLane { spec, .. }
+            | ReviewFinding::SlugCollision { spec, .. }
             | ReviewFinding::Unjudgeable { spec, .. } => spec,
         }
     }
@@ -151,10 +172,13 @@ impl ReviewFinding {
             ReviewFinding::BadReview { spec, artifact, reason } => format!("BAD-REVIEW {spec}: {artifact} does not parse ({reason})"),
             ReviewFinding::SpecMismatch { spec, named } => format!("SPEC-MISMATCH {spec}: the review names {named}"),
             ReviewFinding::StaleReview { spec, recorded, actual } => format!("STALE-REVIEW {spec}: reviewed at {recorded}, the file is {actual} now"),
-            ReviewFinding::NoPlan { spec } => format!("NO-PLAN {spec}: the review carries no plan sha256"),
+            ReviewFinding::NoPlan { spec } => format!("NO-PLAN {spec}: the review carries no plan sha256 of 64 hex digits"),
             ReviewFinding::UnknownRole { spec, role } => format!("UNKNOWN-ROLE {spec}: `{role}` is not a review role (quality, architecture, security, crux, adversarial, vendor:<name>)"),
             ReviewFinding::MissingRole { spec, role } => format!("MISSING-ROLE {spec}: no `{role}` lane"),
             ReviewFinding::LaneNotPass { spec, role, verdict } => format!("LANE-NOT-PASS {spec}: the `{role}` lane says {verdict}"),
+            ReviewFinding::ExtraLane { spec, role } => format!("EXTRA-LANE {spec}: `{role}` is not a role this spec requires (a vendor lane needs its vendor in the front-matter's vendors:)"),
+            ReviewFinding::DuplicateLane { spec, role } => format!("DUPLICATE-LANE {spec}: `{role}` has a second lane (one lane per role: six reviewers must not decay into six copies of one, §6.1)"),
+            ReviewFinding::SlugCollision { spec, artifact, with } => format!("SLUG-COLLISION {spec}: shares {artifact} with {with}; rename one of them"),
             ReviewFinding::Partial { spec } => format!("PARTIAL {spec}: the review is marked partial"),
             ReviewFinding::Unjudgeable { spec, why } => format!("UNJUDGEABLE {spec}: its front-matter does not parse, so the roles its review needs cannot be read ({why})"),
         }
@@ -201,7 +225,12 @@ pub fn is_known_role(role: &str) -> bool {
     BASE_ROLES.contains(&role)
         || role
             .strip_prefix("vendor:")
-            .is_some_and(|name| !name.is_empty() && !name.chars().any(char::is_whitespace))
+            .is_some_and(|name| !name.trim().is_empty())
+}
+
+/// A sha256 as §6.1 names it: 64 hex digits, either case.
+fn is_sha256_hex(text: &str) -> bool {
+    text.len() == 64 && text.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 /// CB-2111's judgement on one active spec: `artifact` is the review file's text,
@@ -247,28 +276,47 @@ pub fn judge(
     if review
         .plan
         .as_ref()
-        .is_none_or(|plan| plan.sha256.trim().is_empty())
+        .is_none_or(|plan| !is_sha256_hex(&plan.sha256))
     {
         findings.push(ReviewFinding::NoPlan { spec: spec.clone() });
     }
-    // An unrecognised role is reported once, as itself: its verdict is not a
-    // lane's verdict, because it is not a lane (§6.1).
+    // One lane per required role (§6.1: "six reviewers" must not decay into
+    // six copies of one). A role outside the closed set is UNKNOWN-ROLE, a
+    // closed-set role this spec does not require is EXTRA-LANE, and a second
+    // lane of one role is DUPLICATE-LANE. None of them is a lane, so none of
+    // their verdicts is judged.
+    let required = required_roles(vendors);
+    let mut seen: Vec<&str> = Vec::new();
     for lane in &review.lanes {
-        if !is_known_role(&lane.role) {
+        let role = lane.role.as_str();
+        if !is_known_role(role) {
             findings.push(ReviewFinding::UnknownRole {
                 spec: spec.clone(),
                 role: lane.role.clone(),
             });
-        } else if lane.verdict != "PASS" {
-            findings.push(ReviewFinding::LaneNotPass {
+        } else if !required.iter().any(|r| r == role) {
+            findings.push(ReviewFinding::ExtraLane {
                 spec: spec.clone(),
                 role: lane.role.clone(),
-                verdict: lane.verdict.clone(),
             });
+        } else if seen.contains(&role) {
+            findings.push(ReviewFinding::DuplicateLane {
+                spec: spec.clone(),
+                role: lane.role.clone(),
+            });
+        } else {
+            seen.push(role);
+            if lane.verdict != "PASS" {
+                findings.push(ReviewFinding::LaneNotPass {
+                    spec: spec.clone(),
+                    role: lane.role.clone(),
+                    verdict: lane.verdict.clone(),
+                });
+            }
         }
     }
-    for role in required_roles(vendors) {
-        if !review.lanes.iter().any(|lane| lane.role == role) {
+    for role in required {
+        if !seen.contains(&role.as_str()) {
             findings.push(ReviewFinding::MissingRole {
                 spec: spec.clone(),
                 role,

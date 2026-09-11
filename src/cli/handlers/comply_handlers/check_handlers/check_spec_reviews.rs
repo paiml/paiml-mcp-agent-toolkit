@@ -62,6 +62,20 @@ pub(crate) fn check_spec_reviews(project_path: &Path) -> ComplianceCheck {
     let mut active = 0usize;
     let mut reviewed = 0usize;
 
+    // Two active specs whose paths flatten to one slug share an artifact
+    // path, and a review can name only one of them: name the collision
+    // rather than judge a review against the wrong spec.
+    let mut sharing: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
+    for (path, front) in &parsed.specs {
+        if front.status == SpecStatus::Active {
+            sharing
+                .entry(artifact_path(path))
+                .or_default()
+                .push(path.clone());
+        }
+    }
+
     // One pass in path order (list_specs sorts), so the findings need no sort.
     for input in &specs {
         let Some((path, front)) = parsed.specs.iter().find(|(p, _)| *p == input.path) else {
@@ -81,6 +95,20 @@ pub(crate) fn check_spec_reviews(project_path: &Path) -> ComplianceCheck {
         }
         active += 1;
         let artifact = artifact_path(path);
+        if let Some(all) = sharing.get(&artifact).filter(|all| all.len() > 1) {
+            let with = all
+                .iter()
+                .filter(|p| *p != path)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ");
+            findings.push(ReviewFinding::SlugCollision {
+                spec: path.clone(),
+                artifact,
+                with,
+            });
+            continue;
+        }
         let text = match std::fs::read_to_string(project_path.join(&artifact)) {
             Ok(text) => Some(text),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
@@ -101,7 +129,7 @@ pub(crate) fn check_spec_reviews(project_path: &Path) -> ComplianceCheck {
     }
 
     if findings.is_empty() {
-        let pass = format!("{} spec(s) under docs/specifications; {active} active each carry a current review (docs/audits/spec-<slug>-review.json: the spec's sha256 now, a plan, every required role PASS — goal-mode.md §6): reviewed {reviewed}; exempt: {exempt}", specs.len());
+        let pass = format!("{} spec(s) under docs/specifications; {active} active each carry a current review (docs/audits/spec-<slug>-review.json: the spec's sha256 now, a plan sha256, one PASS lane per required role, partial false — goal-mode.md §6): reviewed {reviewed}; exempt: {exempt}", specs.len());
         roadmap_verdict(name, true, pass, String::new())
     } else {
         let classes = class_counts(findings.iter().map(ReviewFinding::class));
