@@ -6390,3 +6390,23 @@ roadmap:
   labels:
   - kind:code
   notes: 'Operator instruction 2026-09-11: coverage always at 95%. Measured on this tree with cargo llvm-cov nextest --lib: 85.25% of lines (297,741 lines, 43,919 uncovered), 85.56% of regions, in 469s against the ~29 minutes ci/coverage spends. 95% is 29,032 lines away, so a gate set there today is red on arrival for every PR and goal-mode.md §5.4 forbids that. PMAT-1313 armed coverage_min at 80, which turns the Enforce coverage floor step on for the first time — it had been skipped on every run. Use pmat query --coverage-gaps --rank-by impact for the climb.'
+- id: PMAT-1318
+  github_issue: 1318
+  item_type: bug
+  title: 'cancel-in-progress leaves a QUEUED predecessor alive, and the new run sits pending with 0 jobs behind it — measured 3 times in one hour on #1316'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T10:45:00Z
+  updated: 2026-09-11T10:45:00Z
+  spec: docs/specifications/goal-mode.md
+  acceptance_criteria:
+  - a push to a PR whose previous CI run is still queued results in that run being cancelled without a human, and the new run acquiring jobs within a minute
+  - a run that is in_progress keeps being cancelled exactly as today
+  - the mechanism is exercised by a test that plants a queued predecessor rather than asserted from the YAML
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Three pushes on #1316 while the clean-room pool was saturated by other repos: each time the superseded run stayed queued, the new run sat pending with 0 jobs, and the instant the predecessor was force-cancelled the new run acquired its 10 jobs. gh run cancel was accepted and ineffective on a queued run; only POST .../force-cancel moved it. The PR lane of goal-mode.md §7.3 exists to answer fast, and this adds the predecessor''s whole queue to every push, silently.'
