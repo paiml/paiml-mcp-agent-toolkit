@@ -129,7 +129,7 @@ pub(crate) fn check_spec_reviews(project_path: &Path) -> ComplianceCheck {
     }
 
     if findings.is_empty() {
-        let pass = format!("{} spec(s) under docs/specifications; {active} active each carry a current review (docs/audits/spec-<slug>-review.json: the spec's sha256 now, a plan sha256, one PASS lane per required role, partial false — goal-mode.md §6): reviewed {reviewed}; exempt: {exempt}", specs.len());
+        let pass = format!("{} spec(s) under docs/specifications; {active} active each carry a current review (docs/audits/spec-<slug>-review.json: the spec's sha256 now, a plan sha256, one PASS lane per required role, agreed, partial false — goal-mode.md §6): reviewed {reviewed}; exempt: {exempt}", specs.len());
         roadmap_verdict(name, true, pass, String::new())
     } else {
         let classes = class_counts(findings.iter().map(ReviewFinding::class));

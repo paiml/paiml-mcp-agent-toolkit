@@ -127,7 +127,7 @@ pub fn record(project: &Path, file: &Path) -> Result<Recorded, RecordRefusal> {
                 reason: e.to_string(),
             })?;
         }
-        std::fs::write(&dest, text.as_bytes()).map_err(|e| RecordRefusal::Unwritable {
+        write_by_rename(&dest, text.as_bytes()).map_err(|e| RecordRefusal::Unwritable {
             artifact: artifact.clone(),
             reason: e.to_string(),
         })?;
@@ -151,6 +151,7 @@ fn is_spec_path(spec: &str) -> bool {
         .and_then(|rest| rest.strip_prefix('/'))
         .is_some_and(|rel| {
             rel.ends_with(".md")
+                && !rel.chars().any(char::is_control)
                 && !rel
                     .split('/')
                     .any(|seg| seg.is_empty() || seg == "." || seg == "..")
@@ -204,4 +205,24 @@ fn symlink_on_the_way(project: &Path, artifact: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Write `bytes` to a new file beside `dest`, then rename it over `dest`: a
+/// hard link or a file already at `dest` is replaced, never written through,
+/// and no reader sees half a review.
+fn write_by_rename(dest: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let tmp = dest.with_extension(format!("json.tmp-{}", std::process::id()));
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp)?;
+    let written = std::io::Write::write_all(&mut file, bytes).and_then(|()| file.sync_all());
+    drop(file);
+    match written.and_then(|()| std::fs::rename(&tmp, dest)) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            let _ = std::fs::remove_file(&tmp);
+            Err(e)
+        }
+    }
 }

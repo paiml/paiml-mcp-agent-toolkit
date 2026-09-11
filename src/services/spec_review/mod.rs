@@ -32,8 +32,8 @@ pub struct ReviewArtifact {
     #[serde(default)]
     pub plan: Option<Plan>,
     pub lanes: Vec<Lane>,
-    /// Required, like every §6.1 field; recorded, not judged: §6.2 does not
-    /// list it, and every lane PASS is agreement by construction.
+    /// Required, like every §6.1 field. `false` is red (NOT-AGREED): a review
+    /// that says its quorum did not agree is not a passing review.
     pub agreed: bool,
     /// Required: a misspelt `partial` must not default a partial review to
     /// complete.
@@ -118,6 +118,10 @@ pub enum ReviewFinding {
         artifact: String,
         with: String,
     },
+    /// The review records `agreed: false`: its quorum did not agree.
+    NotAgreed {
+        spec: String,
+    },
     /// The spec's front-matter does not parse, so the roles its review needs
     /// cannot be read. Constructed by the rule, which holds the parse leg.
     Unjudgeable {
@@ -142,6 +146,7 @@ impl ReviewFinding {
             ReviewFinding::ExtraLane { .. } => "EXTRA-LANE",
             ReviewFinding::DuplicateLane { .. } => "DUPLICATE-LANE",
             ReviewFinding::SlugCollision { .. } => "SLUG-COLLISION",
+            ReviewFinding::NotAgreed { .. } => "NOT-AGREED",
             ReviewFinding::Unjudgeable { .. } => "UNJUDGEABLE",
         }
     }
@@ -161,6 +166,7 @@ impl ReviewFinding {
             | ReviewFinding::ExtraLane { spec, .. }
             | ReviewFinding::DuplicateLane { spec, .. }
             | ReviewFinding::SlugCollision { spec, .. }
+            | ReviewFinding::NotAgreed { spec }
             | ReviewFinding::Unjudgeable { spec, .. } => spec,
         }
     }
@@ -178,6 +184,7 @@ impl ReviewFinding {
             ReviewFinding::LaneNotPass { spec, role, verdict } => format!("LANE-NOT-PASS {spec}: the `{role}` lane says {verdict}"),
             ReviewFinding::ExtraLane { spec, role } => format!("EXTRA-LANE {spec}: `{role}` is not a role this spec requires (a vendor lane needs its vendor in the front-matter's vendors:)"),
             ReviewFinding::DuplicateLane { spec, role } => format!("DUPLICATE-LANE {spec}: `{role}` has a second lane (one lane per role: six reviewers must not decay into six copies of one, §6.1)"),
+            ReviewFinding::NotAgreed { spec } => format!("NOT-AGREED {spec}: the review records agreed: false (its lanes did not agree)"),
             ReviewFinding::SlugCollision { spec, artifact, with } => format!("SLUG-COLLISION {spec}: shares {artifact} with {with}; rename one of them"),
             ReviewFinding::Partial { spec } => format!("PARTIAL {spec}: the review is marked partial"),
             ReviewFinding::Unjudgeable { spec, why } => format!("UNJUDGEABLE {spec}: its front-matter does not parse, so the roles its review needs cannot be read ({why})"),
@@ -322,6 +329,9 @@ pub fn judge(
                 role,
             });
         }
+    }
+    if !review.agreed {
+        findings.push(ReviewFinding::NotAgreed { spec: spec.clone() });
     }
     if review.partial {
         findings.push(ReviewFinding::Partial { spec });
