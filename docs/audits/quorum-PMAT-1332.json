@@ -1,0 +1,71 @@
+{
+  "ticket": "PMAT-1332",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 90 commit(s); judged against origin/master",
+  "head": "f48c175c110fbde45a732a2c361214da90a5eb18",
+  "diff_sha256": "a4e680d00a3a82bc8fadf9d741ebd563be498c2d2dae4038ffb16b08deda70ad",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 8770,
+  "author": {
+    "model": "Opus 5 (1M context)",
+    "family": "claude",
+    "source": "measured"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "I have reviewed the provided diff against the acceptance criteria for PMAT-1332. \n\nThe ticket requires that four orphan issues from the PMAT-1313 cycle receive roadmap items with matching GitHub issues and titles, and that their notes contain analysis rather than proposed diffs. The diff successfully adds exactly four orphan issues (PMAT-1326, PMAT-1329, PMAT-1331, PMAT-1333) as well as the triage ticket itself (PMAT-1332) to `docs/roadmaps/roadmap.yaml`.\n\n- AC1: All four issues (plus the triage issue) are added with matching `github_issue` numbers and titles. Their `notes` sections only contain triage analysis (e.g., identifying file paths or recording failure observations), without proposing any actual diffs. \n- AC2: Bijection cannot be fully verified without running the sync command against live GitHub, but the items appear perfectly well-formed.\n- AC3: The diff strictly modifies `docs/roadmaps/roadmap.yaml` and contains no source code changes. \n- AC4: The diff merely adds roadmap YAML entries and does not contain mechanisms to close the issues itself.\n\nI found nothing that refutes the ticket's claims or violates its acceptance criteria. Therefore, the diff passes.",
+      "findings": [],
+      "raw_bytes": 3429,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff precisely fulfills the ticket's requirements. It adds the four orphan issues (PMAT-1326, PMAT-1329, PMAT-1331, PMAT-1333) and the triage ticket itself (PMAT-1332) to `docs/roadmaps/roadmap.yaml`. The notes for each item provide analysis of the problem rather than proposing specific diffs, only the permitted YAML file is modified, and no closing keywords are used.",
+      "findings": [],
+      "raw_bytes": 1806,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff correctly adds the four orphan issues (PMAT-1326, PMAT-1329, PMAT-1331, PMAT-1333) and the triage ticket itself (PMAT-1332) to the roadmap. All items have matching GitHub issue IDs, titles, and analysis notes that do not propose diffs. The PR only modifies `docs/roadmaps/roadmap.yaml` and does not close any of the issues being triaged (they remain `planned`, while the triage ticket is `inprogress`), fulfilling all acceptance criteria of PMAT-1332.",
+      "findings": [],
+      "raw_bytes": 1967,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  }
+}
