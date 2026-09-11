@@ -6147,3 +6147,23 @@ roadmap:
   labels:
   - kind:code
   notes: Found by PMAT-1299 while running pmat verify with a scratchpad TMPDIR; filed inside its PR so the item reaches master with the issue (CB-2115 is live).
+- id: PMAT-1303
+  github_issue: 1303
+  item_type: task
+  title: 'goal-mode.md carries its own review artifact (goal-mode.md §13 item 6): a five-role agy review of the spec, recorded with pmat spec review --record; the first of PMAT-1300''s 44'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T03:48:34Z
+  updated: 2026-09-11T03:48:34Z
+  spec: null
+  acceptance_criteria:
+  - 'docs/audits/spec-goal-mode-review.json is recorded with pmat spec review --record: five lanes (quality, architecture, security, crux, adversarial), each a separate agy lane that read a read-only copy, every one PASS, the plan being goal-mode.md §11'
+  - 'a FAIL lane blocks the record: its findings are fixed in goal-mode.md, or refuted in the receipt with evidence, before a re-review of the new text'
+  - scripts/spec-review-control.sh arm 20 counts this tree's current review artifacts, refuses a stale one, and expects NO-REVIEW for exactly the active specs still unreviewed; the ci.yml comment beside the withheld step says the same
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'goal-mode.md §13 item 6, the review half; the epic: half waits on PMAT-729. Filed issue-first on this ticket''s own branch (CB-2115 is live).'
