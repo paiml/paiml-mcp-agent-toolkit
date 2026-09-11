@@ -6451,3 +6451,24 @@ roadmap:
   labels:
   - kind:code
   notes: Found covering work_quality_handlers.rs for PMAT-1317 (0 of 263 lines). falsify_coverage_regression sets coverage_maintained true when the trend file is absent and falsify_binary_bloat returns (true, []) when target/release/pmat is absent — on a fresh clone both validate on every run. Same defect class as not_measured reading as pass (goal-mode.md §3.3). Pinned by two tests whose messages say to invert them.
+- id: PMAT-1321
+  github_issue: 1321
+  item_type: bug
+  title: '97 tests for the CLI''s central dispatch have not compiled since the file split: stale imports and a removed demo module, misfiled as ''broken syntax'' under pmat_broken_tests'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T12:35:00Z
+  updated: 2026-09-11T12:35:00Z
+  spec: null
+  acceptance_criteria:
+  - the hub compiles without pmat_broken_tests; tests that depend on the removed demo module are deleted with a one-line reason rather than kept quarantined
+  - the remaining tests run in cargo test --lib, and the two WorkCommands initialisers carry the new fields
+  - command_routing.rs coverage moves off 3.3 percent, measured by the gate's own lcov arithmetic
+  - the seven rows leave the orphan-files ledger and the unrun-tests ledger is re-rendered
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Found climbing to 95% (PMAT-1317). command_routing.rs, the one place every pmat subcommand passes through, reads 3.3% covered; its 11 routing tests and 86 siblings sit in an include! hub attached only under cfg(pmat_broken_tests) with the comment TEMPORARILY DISABLED: File splitting broke syntax. Lifting the hub alone: 98 x CommandDispatcher not in scope, 14 x crate::demo missing, 2 x new WorkCommands fields — stale imports and API drift, not syntax. A routing arm can be mis-wired today and nothing fails.'
