@@ -175,7 +175,7 @@ jobs:
       # this-tree arm runs the rule on THIS tree's specs and asserts NO-REVIEW on every
       # active one, so the flip cannot happen unnoticed), and the ledger lists CB-2111
       # NEUTERED. It joins the step once every active spec carries a review recorded
-      # with `pmat spec review --record` (PMAT-FLIP):
+      # with `pmat spec review --record` (PMAT-1300):
       #     run: ./target/debug/pmat comply check --checks CB-2110,CB-2111,CB-2112,CB-2113,CB-2114,CB-2115
 
   # Two consumers of one reusable workflow on two different refs is drift, and

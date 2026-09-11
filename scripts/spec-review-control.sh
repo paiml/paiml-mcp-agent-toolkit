@@ -452,7 +452,7 @@ fresh
 rm -rf "${specs:?}"
 cp -R "$here/docs/specifications" "$specs"
 reviews=$(find "$here/docs/audits" -maxdepth 1 -name 'spec-*-review.json' 2>/dev/null | wc -l | tr -d ' ')
-[ "$reviews" -eq 0 ] || fail_arm 20 "this tree now holds $reviews spec review artifact(s): re-measure, flip the direct CB-2111 step once every active spec's review is current (PMAT-FLIP), and retire this arm"
+[ "$reviews" -eq 0 ] || fail_arm 20 "this tree now holds $reviews spec review artifact(s): re-measure, flip the direct CB-2111 step once every active spec's review is current (PMAT-1300), and retire this arm"
 total=0
 active=0
 while IFS= read -r -d '' f; do

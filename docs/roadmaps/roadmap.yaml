@@ -6074,11 +6074,11 @@ roadmap:
   github_issue: 1296
   item_type: task
   title: pmat comply check --checks runs all 21 rule groups and only relabels the rest Skip — select before running (the CB-2113 step takes 9.5 min in CI to report one rule)
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T20:45:01Z
-  updated: 2026-09-10T20:45:01Z
+  updated: 2026-09-11T03:01:41Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6091,11 +6091,11 @@ roadmap:
   github_issue: 1299
   item_type: task
   title: 'goal-mode step 7: CB-2111 spec review (E.1) — every active spec has docs/audits/spec-<slug>-review.json whose spec_sha256 matches the file now, with a plan sha256 and every required role PASS; pmat spec review --record validates and stages it; control first, the gate step withheld until the specs are reviewed'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-10T23:47:23Z
-  updated: 2026-09-10T23:47:23Z
+  updated: 2026-09-11T03:01:41Z
   spec: null
   acceptance_criteria:
   - 'CB-2111: Spec Review fails on the §7 falsifier (append one space to a reviewed active spec: spec_sha256 no longer matches), on an active spec with no artifact, an artifact that does not parse, a missing plan or an empty plan.sha256, a missing required role (the five, plus vendor:<name> for each front-matter vendor), a lane that is not PASS, partial: true, and an unrecognised role; it passes when every active spec''s artifact matches, and it names every historical or superseded spec it exempts'
@@ -6108,3 +6108,42 @@ roadmap:
   labels:
   - kind:code
   notes: 'Filed by PMAT-1296 inside #1298, so the item reaches master with the issue (CB-2115 is live). goal-mode.md §11 step 7, after step 6 (CB-2110).'
+- id: PMAT-1300
+  github_issue: 1300
+  item_type: task
+  title: 'goal-mode step 7 flip: CB-2111 joins the traceability job''s direct step once every active spec''s review is recorded with pmat spec review --record (after PMAT-729 decides which specs stay active)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T02:59:56Z
+  updated: 2026-09-11T02:59:56Z
+  spec: null
+  acceptance_criteria:
+  - every active spec under docs/specifications has a review recorded with pmat spec review --record (a quorum's or a human's; it is JSON, goal-mode.md §6.3), or PMAT-729 has marked it historical or superseded; pmat comply check --checks CB-2111 exits 0 on master
+  - the traceability job's direct step names CB-2111, the line the comment beside the withheld CB-2110 step in .github/workflows/ci.yml gives, and the ledger lists CB-2111 ENFORCED
+  - scripts/spec-review-control.sh arm 20 (this tree, every active spec NO-REVIEW) is retired or re-measured in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Filed by PMAT-1299 inside its PR, so the item reaches master with the issue (CB-2115 is live). goal-mode.md §11 step 7, the direct step withheld under doctrine 6: at filing none of the 44 active specs has a review. Depends on PMAT-729.'
+- id: PMAT-1301
+  github_issue: 1301
+  item_type: task
+  title: 'Two lib tests fail when TMPDIR''s path holds ''100'' or ''src'': comprehensive_refusal_names_the_quality_score asserts on the whole refusal, and test_collect_files_with_include_filter''s include filter matches the absolute path'
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-11T02:59:57Z
+  updated: 2026-09-11T02:59:57Z
+  spec: null
+  acceptance_criteria:
+  - comprehensive_refusal_names_the_quality_score and test_collect_files_with_include_filter pass under a TMPDIR whose path holds 100 and src (e.g. TMPDIR=/tmp/x100-src-y), and under the default TMPDIR
+  - collect_files applies --include to the path under the analysed root, not the absolute path, if that is where the second file came from; a test pins a root whose absolute path holds the filter word
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Found by PMAT-1299 while running pmat verify with a scratchpad TMPDIR; filed inside its PR so the item reaches master with the issue (CB-2115 is live).
