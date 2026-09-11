@@ -115,7 +115,8 @@ Three lanes ran on the fixed commit. This time they read a **read-only plain cop
 - **Duplicate keys.** Duplicate *known* keys are already refused, and a test pins it. Unknown keys are ignored by design, because producers add metadata.
 - **A missing `plan.sha256`.** It is NO-PLAN by design.
 - **An empty `//` segment.** It was already tested.
-- **The TOCTOU race.** It was not reproduced. The rename closes it on the final component, and git refuses a path beyond a symlinked directory before the walk reaches it.
+
+**Not reproduced, and closed anyway:** the check-then-write (TOCTOU) race between the symlink check and the write. The rename closes it on the final component, and git refuses a path beyond a symlinked directory before the walk reaches it.
 
 Both receipts, lane by lane, are in `docs/audits/quorum-PMAT-1299.json`.
 
