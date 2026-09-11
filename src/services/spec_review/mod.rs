@@ -103,6 +103,12 @@ pub enum ReviewFinding {
     Partial {
         spec: String,
     },
+    /// The spec's front-matter does not parse, so the roles its review needs
+    /// cannot be read. Constructed by the rule, which holds the parse leg.
+    Unjudgeable {
+        spec: String,
+        why: String,
+    },
 }
 
 impl ReviewFinding {
@@ -118,6 +124,7 @@ impl ReviewFinding {
             ReviewFinding::MissingRole { .. } => "MISSING-ROLE",
             ReviewFinding::LaneNotPass { .. } => "LANE-NOT-PASS",
             ReviewFinding::Partial { .. } => "PARTIAL",
+            ReviewFinding::Unjudgeable { .. } => "UNJUDGEABLE",
         }
     }
 
@@ -132,7 +139,8 @@ impl ReviewFinding {
             | ReviewFinding::UnknownRole { spec, .. }
             | ReviewFinding::MissingRole { spec, .. }
             | ReviewFinding::LaneNotPass { spec, .. }
-            | ReviewFinding::Partial { spec } => spec,
+            | ReviewFinding::Partial { spec }
+            | ReviewFinding::Unjudgeable { spec, .. } => spec,
         }
     }
 
@@ -148,6 +156,7 @@ impl ReviewFinding {
             ReviewFinding::MissingRole { spec, role } => format!("MISSING-ROLE {spec}: no `{role}` lane"),
             ReviewFinding::LaneNotPass { spec, role, verdict } => format!("LANE-NOT-PASS {spec}: the `{role}` lane says {verdict}"),
             ReviewFinding::Partial { spec } => format!("PARTIAL {spec}: the review is marked partial"),
+            ReviewFinding::Unjudgeable { spec, why } => format!("UNJUDGEABLE {spec}: its front-matter does not parse, so the roles its review needs cannot be read ({why})"),
         }
     }
 }

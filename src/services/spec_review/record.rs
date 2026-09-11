@@ -3,7 +3,8 @@
 //! the artifact is JSON, and a hand-written review with real findings is a
 //! legitimate one.
 
-use super::ReviewFinding;
+use super::{artifact_path, judge, ReviewArtifact, ReviewFinding};
+use crate::services::spec_epic::{parse_front_matter, SPECS_DIR};
 use std::path::{Path, PathBuf};
 
 /// What `--record` staged.
@@ -48,9 +49,88 @@ impl RecordRefusal {
 /// Validate the review at `file` against the spec it names under `project`,
 /// exactly as CB-2111 will judge it; on success write it, byte for byte, to
 /// its artifact path and `git add` it.
-pub fn record(_project: &Path, _file: &Path) -> Result<Recorded, RecordRefusal> {
-    Err(RecordRefusal::Unreadable {
-        file: PathBuf::new(),
-        reason: "RED stub".to_string(),
+pub fn record(project: &Path, file: &Path) -> Result<Recorded, RecordRefusal> {
+    let text = std::fs::read_to_string(file).map_err(|e| RecordRefusal::Unreadable {
+        file: file.to_path_buf(),
+        reason: e.to_string(),
+    })?;
+    let review: ReviewArtifact =
+        serde_json::from_str(&text).map_err(|e| RecordRefusal::BadReview {
+            file: file.to_path_buf(),
+            reason: e.to_string(),
+        })?;
+    let spec = review.spec.clone();
+    if !is_spec_path(&spec) {
+        return Err(RecordRefusal::NotASpec { named: spec });
+    }
+    let spec_text = std::fs::read_to_string(project.join(&spec)).map_err(|e| {
+        RecordRefusal::SpecUnreadable {
+            spec: spec.clone(),
+            reason: e.to_string(),
+        }
+    })?;
+    let front = parse_front_matter(&spec_text).map_err(|e| RecordRefusal::Unjudgeable {
+        spec: spec.clone(),
+        why: e.render(),
+    })?;
+    let findings = judge(&spec, &spec_text, &front.vendors, Some(&text));
+    if !findings.is_empty() {
+        return Err(RecordRefusal::Findings(findings));
+    }
+    let artifact = artifact_path(&spec);
+    let dest = project.join(&artifact);
+    let in_place = matches!(
+        (std::fs::canonicalize(file), std::fs::canonicalize(&dest)),
+        (Ok(a), Ok(b)) if a == b
+    );
+    if !in_place {
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| RecordRefusal::Unwritable {
+                artifact: artifact.clone(),
+                reason: e.to_string(),
+            })?;
+        }
+        std::fs::write(&dest, text.as_bytes()).map_err(|e| RecordRefusal::Unwritable {
+            artifact: artifact.clone(),
+            reason: e.to_string(),
+        })?;
+    }
+    stage(project, &artifact).map_err(|reason| RecordRefusal::NotStaged {
+        artifact: artifact.clone(),
+        reason,
+    })?;
+    Ok(Recorded {
+        artifact,
+        spec,
+        spec_sha256: review.spec_sha256,
     })
+}
+
+/// `docs/specifications/<rel>.md` with no empty, `.` or `..` segment: the
+/// review's hash must be of a spec, and its artifact path must stay under
+/// docs/audits.
+fn is_spec_path(spec: &str) -> bool {
+    spec.strip_prefix(SPECS_DIR)
+        .and_then(|rest| rest.strip_prefix('/'))
+        .is_some_and(|rel| {
+            rel.ends_with(".md")
+                && !rel
+                    .split('/')
+                    .any(|seg| seg.is_empty() || seg == "." || seg == "..")
+        })
+}
+
+/// `git add -- <artifact>` in `project`; the error is git's own words.
+fn stage(project: &Path, artifact: &str) -> Result<(), String> {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(project)
+        .args(["add", "--", artifact])
+        .output()
+        .map_err(|e| e.to_string())?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+    }
 }
