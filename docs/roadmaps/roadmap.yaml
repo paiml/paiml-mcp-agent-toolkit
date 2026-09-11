@@ -6285,3 +6285,24 @@ roadmap:
   labels:
   - kind:code
   notes: 'A fork cannot change issues, but it can edit the records those four rules judge, and master turns red on the merge. Decision D7 on #1303.'
+- id: PMAT-1312
+  github_issue: 1312
+  item_type: task
+  title: CB-2114's release leg binds inprogress items only, and the live-state assertions come off the master push (goal-mode.md §11.2, decisions Q15 and Q16)
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T09:40:00Z
+  updated: 2026-09-11T09:40:00Z
+  spec: null
+  acceptance_criteria:
+  - CB-2114 reports a planned item with no release as unscheduled rather than a finding, and still fails an inprogress item that has none
+  - on a push to master CB-2110, CB-2112 and CB-2114 assert only the half they can read in the tree; every live-state assertion (epic open, issue exists and open, milestone exists and carries the issue) is deferred to the scheduled run, and the deferral is printed rather than silent
+  - scripts/roadmap-coherence-control.sh and scripts/ticket-release-control.sh carry an arm per leg, including a planned item with no release passing and an inprogress item without one failing
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Decided by quorum 2026-09-11 after the five-role review of the goal-mode.md revision failed 4 of 5 lanes. Q15 carried 5 of 5 seats, one of two unanimous answers of the sixteen: with 97 open items and one open milestone under P1, CB-2114 as written was red on arrival for nearly the whole backlog. Q16 carried 4 of 5; the dissent would take all four live-state rules off the master push as P4 does for CB-2115. Artifact docs/audits/quorum-PMAT-1307.json.'

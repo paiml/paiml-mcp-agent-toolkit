@@ -22,7 +22,7 @@ were made by *disagreeing* with the reviews, not by adopting them:
 
 - the grill's two lanes were one lane plus a retry, and the delegate said so rather
   than reporting a consensus;
-- the teamwork lane silently swapped this specification's primary key (§2.2) and the
+- the teamwork lane silently swapped this specification's primary key (§4.1) and the
   delegate caught it;
 - the load-bearing fact in §1.2 was found by neither, and is verified here.
 
@@ -111,7 +111,7 @@ automates a broken invariant automates the breakage*.
    installed.** Every gate must be checkable from a clean clone with
    `git`, `jq`, `cargo` and `gh`. `pmat goal` is the single surface permitted a driver.
 5. **One number, one place.** Where a fact could live on three surfaces, name one
-   authority and make the others projections (§2.2). A second source of truth is a
+   authority and make the others projections (§4.1). A second source of truth is a
    second number to disagree — the defect `pmat comply numeric-claims` exists to find.
 6. **Land green.** A rule that is red on the day it lands gets disabled. Where existing
    data violates a new rule, the data is fixed under its own ticket first.
@@ -192,7 +192,18 @@ A **fork PR** is `not_applicable` for the four GitHub-side rules (CB-2110, 2112,
 2115), for a stated reason: *a fork's PR cannot change this repository's issues,
 milestones or epics, so there is nothing about them for this PR to have broken.* Those
 four are re-checked on the push to master, which is where the merge actually lands and
-where a token exists — **except CB-2115**, which does not run on a master push at all. It
+where a token exists — with two carve-outs that exist for the same reason.
+
+**On a push to master, CB-2110, CB-2112 and CB-2114 judge only the half they can see in the
+tree**: front-matter present and parsable, `github_issue` present and well-formed,
+`release:` present on an `inprogress` item. Every assertion about live GitHub state — the
+epic is open, the issue exists and is open, the milestone exists and carries the issue — is
+deferred to the scheduled run. Closing an epic in the GitHub UI must not redden a commit that
+was green when it merged, and the file half is exactly the half a commit can break. (Decided
+by quorum 2026-09-11, 4 of 5 seats; the dissent would take all four rules off the master push
+entirely, as P4 does for CB-2115 — §11.2 Q16.)
+
+**CB-2115 does not run on a master push at all.** It
 reads GitHub live, so its verdict on master changes while master does not: an issue opened
 by hand turns a green commit red with no diff to blame, which is what happened on
 `5af9a0f0d` at 06:08Z on 2026-09-11. CB-2115 runs on pull requests, where a human can fix
@@ -258,8 +269,9 @@ behaviour, not a defect to design around.
 /// The release this ticket ships in: a bare semver string ("3.41.0"), never
 /// "v3.41.0". A PROJECTION of the GitHub milestone of the same title
 /// (RR-RELEASE); `pmat work sync` is the only writer. `None` on a completed or
-/// cancelled item means the item predates release tracking; `None` on an open
-/// item is a CB-2114 violation.
+/// cancelled item means the item predates release tracking; `None` on a
+/// `planned` item means NOT YET SCHEDULED, which §11.2 P1 makes the normal state
+/// of the backlog; `None` on an `inprogress` item is a CB-2114 violation.
 #[serde(default, skip_serializing_if = "Option::is_none")]
 pub release: Option<String>,
 ```
@@ -355,7 +367,7 @@ The window covers every leg, not only a field disagreement. An issue opened less
 mint its item cannot have run yet, and a rule that turns master red the instant anyone
 opens an issue is a rule someone disables. The same holds for an item added without its
 issue. Past the window it is a finding, and `pmat work sync` is the fixer. (Decided by
-quorum 2026-09-11, 5 of 5 seats — the only unanimous decision of the fourteen.) The code
+quorum 2026-09-11, 5 of 5 seats — one of the two unanimous decisions of the sixteen.) The code
 covers the field-disagreement leg only; extending it to ORPHAN and MISSING is PMAT-1309.
 
 ### 5.3 `RR-COHERENCE` — which side wins
@@ -441,7 +453,7 @@ legitimate quorum. That is what "pmat does not depend on Claude or agy" means co
 | **CB-2111** | E.1 | every `active` spec has a review artifact whose hash matches and whose roles all PASS | **append one space to the spec** | `traceability` → `gate` |
 | **CB-2112** | A | every open item has a `github_issue`, open, whose number is the item's numeric tail | null one `github_issue` | `traceability` → `gate` |
 | **CB-2113** | C | on a PR: every non-merge commit the PR adds carries `Pmat-Ticket: <id>` naming a real, NON-TERMINAL item; its `release` is compared with the open milestone and a LATER one is reported, not failed, until §11.2's milestone scheme exists (then it fails); on master: every non-merge commit in `v<latest>..HEAD` names a real item, any status | `git commit --allow-empty -m 'no trailer' --no-verify` | `traceability` → `gate` |
-| **CB-2114** | B, F1 | every open item has `release:`, its milestone exists, its issue is on it | remove one `release:` | `traceability` → `gate` |
+| **CB-2114** | B, F1 | every **`inprogress`** item has `release:`, its milestone exists, its issue is on it; a `planned` item with no `release:` is unscheduled, not a violation (§11.2 Q15) | remove the `release:` from an `inprogress` item | `traceability` → `gate` |
 | **CB-2115** | D | the open sets are in bijection, and no matched pair has disagreed past the grace window | close one linked issue, leave the item open | `traceability` → `gate` |
 | **CB-2116** | B, F2 | (a) every non-merge commit in a tag's range carries a trailer for a ticket of that release; (b) `count(v<latest>..master) ≤ max_untagged_commits + untagged_ci_slack` | move a merged ticket's `release` | `traceability` → `gate` |
 | **CB-2117** | G | `docs/status/goal-ledger.md` matches what the generator computes now | hand-edit a row | `traceability` → `gate` |
@@ -456,7 +468,7 @@ currently red on four pre-existing failures, and unwedging it is a five-step seq
 documented in `.github/workflows/quality-gate.yml` that would redden a required context on master and every
 open PR. Routing around it is not forum-shopping — it is refusing to make eight new rules
 hostage to a deadlock they did not cause. The other 161 stay behind it and this document does
-**not** claim to fix them (§8.10).
+**not** claim to fix them (§8.11).
 
 A new job in `.github/workflows/ci.yml`, wired exactly as `roadmap-validate` is:
 
@@ -515,12 +527,13 @@ bypasses, and adding the trigger costs nothing.
    measure **master**, not merely the PR — see §7. Setting it is a ruleset change on
    `13878864`; until it is made, CB-2113 measures the PR's commits only and says so in
    its output rather than pretending to cover master.
-5. **Three rules describe more than the code does today**, each with its ticket: CB-2113's
+5. **Four rules describe more than the code does today**, each with its ticket: CB-2113's
    master leg reports `not_applicable` there for now and its release leg is unwritten
    (PMAT-1308), CB-2115's grace window covers the field-disagreement leg only and the rule
-   still runs on a master push (PMAT-1309), and the fork carve-out above is not yet
-   implemented (PMAT-1310). Each is stated here rather than left for a reader to discover
-   by running it.
+   still runs on a master push (PMAT-1309), the fork carve-out above is not yet implemented
+   (PMAT-1310), and CB-2114 still binds every open item rather than the `inprogress` ones
+   while CB-2110/2112/2114 still assert live state on a master push (PMAT-1312). Each is
+   stated here rather than left for a reader to discover by running it.
 6. **A trailer proves a claim, not the work.** `Pmat-Ticket: PMAT-999` on an unrelated
    diff passes CB-2113. Only a quorum reading the diff against the ticket defends this,
    and that is a skill, not a gate.
@@ -536,6 +549,15 @@ bypasses, and adding the trigger costs nothing.
 11. **This does not un-NEUTER the other 161 rules.** It builds a second, working path for
     eight. Saying otherwise would be the kind of claim `pmat comply numeric-claims` exists
     to catch.
+12. **The thresholds are in a file the pull request can edit.** `max_untagged_commits`,
+    `untagged_ci_slack` and `staleness_grace_minutes` live in `pmat.toml` (§10.2), which is
+    in the tree like any other file: a PR that raises them passes CB-2116(b) and widens
+    CB-2115's window without cutting a release or syncing anything. Nothing in this
+    document closes that, and pretending a number in a writable file is a bound would be
+    the same mistake as `.pmat-metrics.toml`, whose budgets nothing reads. What the design
+    does buy is that the edit is **in the diff**, named in `pmat.toml`, on a line whose
+    only purpose is that threshold. The ratchet's answer — run the command, never read the
+    number — is the shape a later rule would need.
 
 ## 9. Ticket ↔ work linking model — the cases the invariants miss
 
@@ -568,7 +590,7 @@ fixed tool list, and that is the defect not to repeat.
 # actually key on is (a) semver semantics read from what is IN the release, and
 # (b) how much is sitting unreleased. Both are below; the ticket cap is opt-in and
 # unset by default.
-max_untagged_commits      = 60   # the repo's own MEDIAN commits-per-release, over v3.30.0..v3.40.0
+max_untagged_commits      = 60   # a round number just above this repo's MEDIAN of 59 (§14)
 untagged_ci_slack         = 10   # CB-2116(b) fails only above max + slack, so the cut fires BEFORE the gate
 max_release_age_hours     = 72
 max_tickets_per_release   = 0    # 0 = no cap. Set it only if you want one
@@ -604,7 +626,8 @@ names both numbers rather than editing the surface the next gate reads (§4.1).
    visible in GitHub's UI, and schedulable by a human;
 2. **unreleased volume** — `count(v<latest>..master) ≥ max_untagged_commits`. This is the
    Rust-shaped trigger: it asks how much is sitting unreleased, not how many tickets were
-   closed. Default 60 is this repository's own median commits-per-release, measured over
+   closed. Default 60 is a round number just above this repository's own median
+   commits-per-release of 59 (§14), measured over
    `v3.30.0..v3.40.0`, not a number chosen for the document;
 3. **age** — `> max_release_age_hours` with ≥1 ticket closed;
 4. **explicit** — an item labelled `release-boundary` reaching `completed`;
@@ -684,8 +707,9 @@ Fourteen questions were open when this document failed its own five-role review 
 None was settled by the author. Each was put to five independent seats that read a read-only
 copy of this tree, chose from options they were given without being told which one was
 drafted, and answered alone; the majority is the decision and every minority answer is kept.
-The artifact is `docs/audits/quorum-PMAT-1307.json`; the ten spec decisions are marked at
-the passage each one changed.
+The artifact is `docs/audits/quorum-PMAT-1307.json`. Where a decision changed a passage and
+the reasoning is not obvious from the text, the passage carries the vote inline; the table in
+this section is the complete record, and it is the one to trust.
 
 The first round was **contaminated by the author**: the copy carried a roadmap file stating
 the drafted answers as fact, and one seat cited it for nine of its fourteen votes. That seat
@@ -702,6 +726,20 @@ Four of the fourteen are programme decisions rather than text:
 | **P2** | Classify the 44 specs BEFORE minting epics: most are finished or superseded work and belong in `historical`/`superseded`; only the live set gets an epic. | 4 of 4 | PMAT-729, step 6 |
 | **P3** | CB-2111 flips after that classification, over the live set only — not after reviewing all 44. | 4 of 4 | PMAT-1300, step 7 |
 | **P4** | CB-2115 comes off the master push (§3.3). | 3 of 4 | PMAT-1309 |
+
+Two more were opened by the five-role review of this revision, which failed 4 of 5 lanes on
+contradictions the fourteen decisions had introduced, and were decided the same way:
+
+| | decision | seats | what it changes |
+|---|---|---|---|
+| **Q15** | CB-2114's release leg binds `inprogress` items only. A `planned` item with no `release:` is unscheduled, which P1 makes the normal state of the backlog — not a violation. | **5 of 5** | §4.2, §7's CB-2114 row |
+| **Q16** | On a master push, CB-2110, CB-2112 and CB-2114 judge only their file half; every live-state assertion is deferred to the scheduled run. | 4 of 5 | §3.3 |
+
+Q15 is what P1 cost: with 97 open items and one open milestone, CB-2114 as written was red on
+arrival for nearly the whole backlog, and neither the seats that decided P1 nor the author
+saw it. Two review lanes found it independently. Q16 is the other half of P4 — the hole P4
+closed for CB-2115 was open in three sibling rules, and closing it for one rule while three
+others keep it would have been a fix in name only.
 
 **P2 and P3 shrink the two largest human steps in §11** from "44 epics and 44 reviews" to
 "classify, then epic and review what is left". That is the difference between a backlog a

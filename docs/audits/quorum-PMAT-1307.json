@@ -835,6 +835,155 @@
      "lane_file_sha256_16": "d33619ce4b44888c"
     }
    ]
+  },
+  {
+   "round": 3,
+   "questions": [
+    "Q15",
+    "Q16"
+   ],
+   "out_dir": "/run/user/1000/paiml-implement/agy/PMAT-1307/39a15c63-fab3-4148-8cb7-0cb012369b35/ph-q2",
+   "width": 5,
+   "brief": "q2-brief.md",
+   "brief_sha256_16": "bd1ffec08114d5b9",
+   "fingerprint_before": "3b3a9cf88f0981a3",
+   "fingerprint_after": "3b3a9cf88f0981a3",
+   "escape": false,
+   "why": "the five-role review of the revision (4 FAIL, 1 PASS) found two contradictions the first fourteen decisions had introduced: P1 against CB-2114's release leg, found independently by the architecture and crux lanes, and P4's master-push carve-out left open in CB-2110, CB-2112 and CB-2114, found by the adversarial lane",
+   "note": "the delegate warned that lane-reduce reports agreed=true and dissent=[] because every lane VERDICT is PASS; the answer-level split on Q16 (lane 2 chose A) is only in the claims, and is recorded here",
+   "harness_observation": "two symlinks under docs/examples/ in the read-only copy point outside the chmod a-w tree \u2014 a latent write path no lane took, since both fingerprints held",
+   "lanes": [
+    {
+     "lane": 1,
+     "conversation_id": "8df61593-3426-47c5-b6fe-c375afbffb13",
+     "verdict": "PASS",
+     "summary": "I read the read-only tree at fingerprint 3b3a9cf88f0981a3. The fourteen settled decisions restrict our options, particularly P1 which mandates exactly one open milestone at a time for the next release. Therefore, Option A is the only choice for Q15 that remains coherent with P1, as it correctly permits unscheduled backlog items to exist without a milestone. For Q16, Option C ensures that external GitHub state changes cannot wedge master, satisfying Criterion 3 while preserving the file-side gate. Both decisions are fully coherent with the established quorum.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "C"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: CB-2114's release leg applies exclusively to inprogress items, allowing planned items to carry a null release since they are not yet scheduled.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option A, the rule reports a pass for an open `planned` item with no release, and this verdict can never be wrong in a way a human would notice because the item must be transitioned to `inprogress` before work begins, at which point the rule evaluates the release field.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "Q16=C: Split the three live-state rules so that a master push only checks the local file half, while the external live-state assertions are deferred to the scheduled run.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The first time somebody closes an epic issue by hand, the master push remains green because it evaluates only the local file half, while the scheduled run catches the closed epic and opens a ticket, a behavior decided by Criterion 3 (Does it wedge the loop?).",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "072905b04f4ffd60"
+    },
+    {
+     "lane": 2,
+     "conversation_id": "d1b3b041-70f5-4988-91c3-53ce75096304",
+     "verdict": "PASS",
+     "summary": "I read the read-only tree with fingerprint 3b3a9cf88f0981a3. I verified the 14 settled decisions in docs/audits/quorum-PMAT-1307.json. I chose Option A for Q15 to maintain coherence with P1, which dictates exactly one open milestone at a time and no milestone for unscheduled work. I chose Option A for Q16 because extending P4's exclusion to the other live-state rules is the least mechanism that holds, fulfilling Criterion 3 by preventing manual GitHub UI changes from wedging the master loop.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "A"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: CB-2114's release leg applies only to items that are inprogress, allowing planned items to carry release: None.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option A, the rule reports a pass for an open planned item with no release, and this verdict can be wrong in a way a human would notice if the item was intended for the release but its status was not updated to inprogress, causing it to be silently excluded from the milestone.",
+       "grounding": "cited",
+       "line": 262
+      },
+      {
+       "claim": "Q16=A: Extend P4 so all four live-state rules come off the master push and run only on pull requests and a schedule.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option A, the first time somebody closes an epic issue by hand, the master branch stays green and the scheduled run catches it to open a ticket instead, a decision driven by Criterion 3 (Does it wedge the loop?).",
+       "grounding": "cited",
+       "line": 195
+      }
+     ],
+     "lane_file_sha256_16": "6f73c07840808159"
+    },
+    {
+     "lane": 3,
+     "conversation_id": "463eade0-23f3-4dd2-87d3-a32f05920f9c",
+     "verdict": "PASS",
+     "summary": "I read the read-only tree with fingerprint 3b3a9cf88f0981a3 to evaluate the contradictions in goal-mode.md. For Q15, I selected option A to resolve the conflict between P1 and CB-2114 without reddening the backlog on arrival. For Q16, I selected option C to prevent live GitHub mutations from wedging the loop while preserving file-side validation on master. These decisions are coherent with the fourteen already-settled decisions, particularly P1 and P4. The choices satisfy the required criteria and avoid unnecessary failures.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "C"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: CB-2114's release leg applies only to items that are inprogress, allowing planned items to carry a null release.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The rule reports not_applicable for the release leg on a planned item. This verdict could be wrong if a human intended it for the release but forgot to change its status to inprogress, which they would notice since it is missing from the milestone.",
+       "grounding": "cited",
+       "line": 271
+      },
+      {
+       "claim": "Q16=C: Split each rule so that the file half is judged on the master push and the live-state assertion is deferred to the scheduled run.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The first time somebody closes an epic issue by hand, the live-state failure is caught by the scheduled run which opens a ticket, keeping the master push green. This option was decided by criterion 3 (Does it wedge the loop?).",
+       "grounding": "cited",
+       "line": 197
+      }
+     ],
+     "lane_file_sha256_16": "cb420c3c3805efb4"
+    },
+    {
+     "lane": 4,
+     "conversation_id": "be11691c-ab0a-4a6a-a564-9579dac971e0",
+     "verdict": "PASS",
+     "summary": "I read the read-only tree with fingerprint 3b3a9cf88f0981a3. I reviewed the settled decisions in quorum-PMAT-1307.json, confirming P1 and P4 are settled. I analyzed Q15 and Q16 against the five criteria in order. Q15 must be A to align with P1's 'exactly one open milestone' without reopening it. Q16 must be C because keeping live-state assertions on PRs or master would wedge the CI loop on out-of-band mutations, and criterion 3 outranks criterion 5. My decisions are coherent with each other and the fourteen settled choices.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "C"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: CB-2114's release leg applies only to items that are inprogress, meaning planned items can legitimately lack a release.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option A, the rule reports PASS (no violation) for an open `planned` item with no release. This verdict can be wrong in a way a human would notice if a user intended the item to be in the release and added it to the GitHub milestone, but forgot to update its local status to `inprogress`, leaving the item silently ignored by the rule despite being scheduled on GitHub.",
+       "grounding": "cited",
+       "line": 271
+      },
+      {
+       "claim": "Q16=C: Split each rule so that on a master push it judges only the file half, and every live-state assertion is deferred to the scheduled run.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option C, the first time somebody closes an epic issue by hand, master and pull request builds will remain green, and the deferred scheduled run will detect the closed epic and open a ticket. The criterion that decided this is '3. Does it wedge the loop?', because running live-state checks on PRs or master pushes would wedge the CI loop on out-of-band mutations.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "649ce6de513c58cf"
+    },
+    {
+     "lane": 5,
+     "conversation_id": "0d75a975-6306-4c60-b970-b0795e331880",
+     "verdict": "PASS",
+     "summary": "I read the read-only copy at fingerprint 3b3a9cf88f0981a3. The 14 settled decisions were reviewed in docs/audits/quorum-PMAT-1307.json, confirming P1 was settled as A (one milestone for the next release, unscheduled work carries no milestone) and P4 as C (CB-2115 off master push). Q15 must be A to prevent CB-2114 from being red on arrival while respecting P1's rule that unscheduled work carries no milestone. Q16 must be C to prevent live GitHub changes from wedging master without discarding the file-side checks on a master push. These two choices are coherent with the settled 14 decisions.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "C"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: Modify CB-2114 so its release requirement applies only to inprogress items, allowing planned backlog items to legally carry release: None.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The rule reports a pass for an open planned item with no release, which can be wrong in a way a human would notice if the item was intended to be in the next release but was mistakenly left in the planned state, causing it to silently miss the cut.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "Q16=C: Split the three rules so that a master push validates only their file-side syntax, deferring all live-state assertions to the scheduled run.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The first time somebody closes an epic issue by hand, the master push remains green since it only checks the file half, and the scheduled run will later catch the live-state change and open a ticket; Criterion 3 (Does it wedge the loop?) decided this.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "99391607ab32de20"
+    }
+   ]
   }
  ],
  "decisions": {
@@ -1091,6 +1240,43 @@
      "why": "Does it wedge the loop? It guarantees that a newly opened issue cannot retroactively turn a previously green master commit red."
     }
    ]
+  },
+  "Q15": {
+   "decision": "A",
+   "seats_for": 5,
+   "seats_counted": 5,
+   "source": "round3",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "A",
+    "3": "A",
+    "4": "A",
+    "5": "A"
+   },
+   "dissent": []
+  },
+  "Q16": {
+   "decision": "C",
+   "seats_for": 4,
+   "seats_counted": 5,
+   "source": "round3",
+   "majority": true,
+   "votes": {
+    "1": "C",
+    "2": "A",
+    "3": "C",
+    "4": "C",
+    "5": "C"
+   },
+   "dissent": [
+    {
+     "lane": 2,
+     "vote": "A",
+     "claim": "Q16=A: Extend P4 so all four live-state rules come off the master push and run only on pull requests and a schedule.",
+     "why": "Under Option A, the first time somebody closes an epic issue by hand, the master branch stays green and the scheduled run catches it to open a ticket instead, a decision driven by Criterion 3 (Does it wedge the loop?)."
+    }
+   ]
   }
  },
  "overturned_the_drafted_answer": [
@@ -1114,6 +1300,30 @@
   "D8",
   "D9",
   "D10",
-  "P2"
- ]
+  "P2",
+  "Q15"
+ ],
+ "question_count": 16,
+ "review_that_forced_round3": {
+  "artifact": "not recorded \u2014 4 of 5 lanes FAILED",
+  "roles_failed": [
+   "quality",
+   "architecture",
+   "crux",
+   "adversarial"
+  ],
+  "roles_passed": [
+   "security"
+  ],
+  "out_dir": "/run/user/1000/paiml-implement/agy/PMAT-1307/39a15c63-fab3-4148-8cb7-0cb012369b35/ph-review",
+  "findings_confirmed_by_the_orchestrator": [
+   "the text called 60 the median while \u00a714 measures 59",
+   "\u00a711.2 claimed ten decisions were marked inline; four were",
+   "two dead \u00a72.2 references",
+   "a dead \u00a78.10 reference, off by one after the duplicate list number was fixed",
+   "P1 against CB-2114 (Q15)",
+   "pmat.toml thresholds are editable in the PR and were not named in \u00a78",
+   "the master-push hole left open in CB-2110/2112/2114 (Q16)"
+  ]
+ }
 }
