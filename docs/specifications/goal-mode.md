@@ -361,7 +361,7 @@ are errors too.
 
 Checks, all offline: the file parses; `spec_sha256` equals the file's hash **now**;
 `plan` is present with a `sha256` of 64 hex digits; every required role is present; every
-lane is PASS; `partial: true` is red.
+lane is PASS; `agreed: false` and `partial: true` are red.
 
 **What it buys, exactly:** it converts a skipped review from an *omission nobody can
 see* into an *auditable lie somebody wrote down*. **What it does not buy:** any evidence
