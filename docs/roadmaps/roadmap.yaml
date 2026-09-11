@@ -6147,3 +6147,43 @@ roadmap:
   labels:
   - kind:code
   notes: Found by PMAT-1299 while running pmat verify with a scratchpad TMPDIR; filed inside its PR so the item reaches master with the issue (CB-2115 is live).
+- id: PMAT-1303
+  github_issue: 1303
+  item_type: task
+  title: 'goal-mode.md carries its own review artifact (goal-mode.md §13 item 6): a five-role agy review of the spec, recorded with pmat spec review --record; the first of PMAT-1300''s 44'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T03:48:34Z
+  updated: 2026-09-11T04:26:03Z
+  spec: null
+  acceptance_criteria:
+  - 'docs/audits/spec-goal-mode-review.json is recorded with pmat spec review --record: five lanes (quality, architecture, security, crux, adversarial), each a separate agy lane that read a read-only copy, every one PASS, the plan being goal-mode.md §11'
+  - 'a FAIL lane blocks the record: its findings are fixed in goal-mode.md, or refuted in the receipt with evidence, before a re-review of the new text'
+  - scripts/spec-review-control.sh arm 20 counts this tree's current review artifacts, refuses a stale one, and expects NO-REVIEW for exactly the active specs still unreviewed; the ci.yml comment beside the withheld step says the same
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'goal-mode.md §13 item 6, the review half; the epic: half waits on PMAT-729. Filed issue-first on this ticket''s own branch (CB-2115 is live).'
+- id: PMAT-1305
+  github_issue: 1305
+  item_type: task
+  title: 'a_crate_that_does_not_compile_is_reported_as_not_measured is flaky in ci / test: the dead-code analyzer intermittently reports a measured zero for a crate that cannot compile (run 34562657315; master passed identical Rust)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T05:24:33Z
+  updated: 2026-09-11T05:24:33Z
+  spec: null
+  acceptance_criteria:
+  - the failing condition is reproduced, or the environment the analyzer's nested cargo check inherits in ci / test is pinned, with the command or run that shows it
+  - if an inherited compiler wrapper, target dir or PATH is the cause, the analyzer (or the fixture) scrubs it, and a test plants that condition and requires not_measured
+  - a_crate_that_does_not_compile_is_reported_as_not_measured passes under the shared workflow's test-job environment (RUSTC_WRAPPER, SCCACHE_DIR, CARGO_TARGET_DIR set as in ci / test)
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Found when ci / test failed on #1304, which changes no Rust; master passed the same test on identical code. Filed by PMAT-1303 on #1304''s branch (CB-2115 is live).'
