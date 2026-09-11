@@ -363,9 +363,10 @@ that can lie. (Decided by quorum 2026-09-11, 4 of 5 seats; the dissent held that
 edit resets never expires — §11.2.)
 
 The window covers every leg, not only a field disagreement. An issue opened less than
-`staleness_grace_minutes` ago is `not_measured` rather than a finding: the sync that would
-mint its item cannot have run yet, and a rule that turns master red the instant anyone
-opens an issue is a rule someone disables. The same holds for an item added without its
+`staleness_grace_minutes` ago is **tolerated** — the rule PASSES and prints the count, the
+same verdict a matched pair inside the window gets. It is emphatically not `not_measured`,
+which §3.3 maps to FAIL: the sync that would mint its item cannot have run yet, and a rule
+that turns master red the instant anyone opens an issue is a rule someone disables. The same holds for an item added without its
 issue. Past the window it is a finding, and `pmat work sync` is the fixer. (Decided by
 quorum 2026-09-11, 5 of 5 seats — one of the two unanimous decisions of the sixteen.) The code
 covers the field-disagreement leg only; extending it to ORPHAN and MISSING is PMAT-1309.
@@ -513,6 +514,59 @@ bypasses, and adding the trigger costs nothing.
   `.github/required-status-checks.txt` gains `gate` and loses its false sentence, in the
   same commit. A test asserts the union.
 
+### 7.3 The PR lane, the pre-release lane, and what measuring them cost
+
+A gate a human waits forty minutes for is a gate that gets bypassed, and every rule in §7
+is paid for in that wait. This section records what was measured when that wait was
+attacked — including the change that did not work, because the number that refuted it is
+worth more than the one that suggested it.
+
+**The suite, measured two ways.** 21,536 lib tests, one machine, one binary:
+
+| runner | wall-clock | where |
+|---|---|---|
+| `cargo test --lib` | 1227.83s | what `ci / test` runs today |
+| `cargo nextest run --lib` | **100.51s** | a 12.2x that is real — locally |
+
+**And the switch that made CI slower.** `sovereign-ci.yml` sets `NEXTEST_TEST_THREADS=4`
+in a container given `--cpus 8`; `cargo test` defaults to available parallelism, which is
+8. Halving the workers while paying a process spawn per test loses more than isolation
+wins. Measured on the pull request that tried it: **9,047 of 21,536 tests after 11 minutes
+of running**, against 20.5 minutes for the entire suite under `cargo test`. The 12.2x is
+unreachable here until that cap is raised, so `use_nextest` is `false` in `ci.yml`, with
+the numbers beside it, and `scripts/pr-lane-control.sh` REFUSES a workflow that turns it
+on while the cap stands. A speedup measured on a 32-core workstation is not a speedup;
+it is a hypothesis about the runner.
+
+**The win that needed no switch.** Two tests built an `AgentContextIndex` over the WHOLE
+REPOSITORY, 160 seconds each. `test_make_cluster_item_basic` never read the result — its
+only use was `is_err()`, and every assertion below it is on a struct literal. They now
+build a one-file fixture, and all 24 `file_split` tests finish in **0.01s**: 320 seconds
+off `ci / test` AND off `ci / coverage`, which runs the same tests serially.
+`cargo test`'s thread pool had hidden them for as long as they existed; per-test
+isolation made them visible in its first run, which is the argument for nextest restated
+as the defect it found.
+
+**Coverage, measured.** `cargo llvm-cov nextest --lib`: **85.25% of lines** (85.56% of
+regions, 297,741 lines, 43,919 uncovered), in **469 seconds** — against the ~29 minutes
+`ci / coverage` spends on `cargo llvm-cov test`. Two facts follow. The first is that on a
+pull request that job's ONLY enforcement step is skipped (`Enforce coverage floor (OPT-IN
+ratchet)`), there is no `.pmat/coverage-baseline.txt` in this repository, and `coverage_min`
+is unset — so 29 minutes of every pull request measure something nothing reads. The second
+is that the operator's standing target is 95%, and 85.25% is 29,000 lines short of it: a
+gate set at 95% today would be red on arrival, which §5.4 forbids. The floor therefore
+lands as a ratchet that may only rise, and 95% is a programme with tickets, not a number
+written into a config file. The ratchet's first two runs taught it one more thing: the same
+Rust read 85.57% and then 85.56% — timing-dependent branches move a few lines of 287,014 per
+run — so a baseline set to the exact last reading fails the next run on noise. The committed
+value sits a jitter margin (~0.07 points, ten times the observed swing) below the measurement,
+and a raise is taken only when a run clears the new value by that margin.
+
+**Two levers are upstream, in `paiml/.github`, and both are named in PMAT-1315:** the
+thread cap above, and `skip_coverage` — an input documented as "Skip coverage job" that
+fails the build, because the workflow's own gate requires `success` from `coverage` and
+refuses `skipped` by design. The gate is right; the input cannot be used by any caller.
+
 ## 8. Honest limits
 
 1. **The `ci / gate` hole.** It resolves into `paiml/.github`, unreadable here. This
@@ -532,8 +586,9 @@ bypasses, and adding the trigger costs nothing.
    (PMAT-1308), CB-2115's grace window covers the field-disagreement leg only and the rule
    still runs on a master push (PMAT-1309), the fork carve-out above is not yet implemented
    (PMAT-1310), and CB-2114 still binds every open item rather than the `inprogress` ones
-   while CB-2110/2112/2114 still assert live state on a master push (PMAT-1312). Each is
-   stated here rather than left for a reader to discover by running it.
+   while CB-2110/2112/2114 still assert live state on a master push (PMAT-1312), and the
+   cut's sweep-and-move of §10.3 is a description of `pmat goal`, which does not exist
+   (step 9). Each is stated here rather than left for a reader to discover by running it.
 6. **A trailer proves a claim, not the work.** `Pmat-Ticket: PMAT-999` on an unrelated
    diff passes CB-2113. Only a quorum reading the diff against the ticket defends this,
    and that is a skill, not a gate.
@@ -620,6 +675,18 @@ describes what is in the release, so it cannot be argued about. The derived numb
 what the release is called: when it differs from the milestone's title, the cut REFUSES and
 names both numbers rather than editing the surface the next gate reads (§4.1).
 
+**Settling the milestone is two moves, and both are what a release train does.** Every
+ticket merged since the last tag and not yet scheduled is **swept into the release being
+cut** — merging is what schedules work, and CB-2116(a) becomes true by construction rather
+than by a PR-time refusal that would cost what Q15 bought. And every issue still open on
+the milestone is **moved to the next one** before the tag is cut, so a cut fired by volume,
+age, the explicit label or the cap does not fail on its own first step: a "verify the
+drain" that only trigger 1 could ever satisfy made triggers 2 to 5 dead as written. Both
+moves are `pmat work sync`'s, both are printed, and neither is silent: a human sees their
+unscheduled ticket acquire a release when the cut lands, and an open ticket change
+milestone with the cut named as the reason. (Q17 decided 4 of 5 — the dissent would fail
+the PR instead, so work is scheduled before it merges; Q18 decided 5 of 5. §11.2.)
+
 **The boundary** is evaluated after each ticket reaches `MERGED`; first to fire cuts:
 
 1. **milestone drain** (primary) — zero open issues on the current milestone. Deterministic,
@@ -636,7 +703,7 @@ names both numbers rather than editing the surface the next gate reads (§4.1).
    *shape*, and turning an illustration into a threshold is how an invented number becomes
    a measurement nobody can trace.
 
-A cut: verify the drain → bump the version → regenerate `CHANGELOG.md` **from the
+A cut: **settle the milestone** → bump the version → regenerate `CHANGELOG.md` **from the
 trailers** in `v<prev>..HEAD` (this is *why* C is enforced — the changelog becomes
 derived rather than written) → tag → push → open the release PR → close the milestone →
 open the next → **stop and wait for CI**. It does not merge its own release PR and does
@@ -734,8 +801,13 @@ contradictions the fourteen decisions had introduced, and were decided the same 
 |---|---|---|---|
 | **Q15** | CB-2114's release leg binds `inprogress` items only. A `planned` item with no `release:` is unscheduled, which P1 makes the normal state of the backlog — not a violation. | **5 of 5** | §4.2, §7's CB-2114 row |
 | **Q16** | On a master push, CB-2110, CB-2112 and CB-2114 judge only their file half; every live-state assertion is deferred to the scheduled run. | 4 of 5 | §3.3 |
+| **Q17** | The cut SWEEPS: every ticket merged since the last tag and not yet scheduled is assigned to the release being cut, so CB-2116(a) is true by construction and Q15's unscheduled merge cannot wedge the tag. | 4 of 5 | §10.3 |
+| **Q18** | The cut MOVES the remainder: open issues left on the milestone go to the next one before the tag, so triggers 2–5 are live instead of dead on "verify the drain". | **5 of 5** | §10.3 |
 
-Q15 is what P1 cost: with 97 open items and one open milestone, CB-2114 as written was red on
+Q17 and Q18 came from the second five-role review, which failed the text 3 lanes to 2 on
+them: two lanes found independently that an unscheduled merge — normal under Q15 — could
+never satisfy CB-2116(a) at the tag, and one found that four of the five release triggers
+fire exactly when the cut's first step must fail. Q15 is what P1 cost: with 97 open items and one open milestone, CB-2114 as written was red on
 arrival for nearly the whole backlog, and neither the seats that decided P1 nor the author
 saw it. Two review lanes found it independently. Q16 is the other half of P4 — the hole P4
 closed for CB-2115 was open in three sibling rules, and closing it for one rule while three

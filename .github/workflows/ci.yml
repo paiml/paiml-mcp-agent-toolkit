@@ -18,6 +18,66 @@ jobs:
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@main
     with:
       repo: ${{ github.event.repository.name }}
+      # PMAT-1313 — nextest is OFF here, and the measurement that turned it off is
+      # the point of this comment. Do not re-enable it without re-reading this.
+      #
+      # LOCAL, 21,536 lib tests, one machine, one binary:
+      #   cargo test --lib     1227.83s
+      #   cargo nextest run     100.51s      12.2x
+      #
+      # IN THIS CI, the same switch made the job SLOWER. sovereign-ci.yml sets
+      # NEXTEST_TEST_THREADS=4 in a container given `--cpus 8`, while `cargo test`
+      # defaults to available parallelism — 8. Halving the workers while paying a
+      # process spawn per test loses more than isolation wins: measured on this very
+      # PR, 9,047 of 21,536 tests after 11 minutes of running, against 20.5 minutes
+      # for the whole suite under `cargo test`. The 12.2x is real and unreachable
+      # here until that cap is raised (PMAT-1315).
+      #
+      # The durable win from this ticket needed no switch at all: two tests were
+      # building an index over the whole repository, 160s each, and are now 0.01s —
+      # 320 seconds off this job AND off `ci / coverage`, which runs them serially.
+      use_nextest: false
+      # PMAT-1317 — the coverage gate stops being theater.
+      #
+      # `Enforce coverage floor` is skipped entirely unless coverage_min is set, so
+      # until now ci / coverage spent ~29 minutes on every pull request measuring a
+      # number that gated nothing. Setting it turns the step on: it derives line
+      # coverage from the lcov.info the step above already produced (no extra
+      # compile, no extra test run) and fails the job below max(coverage_min,
+      # .pmat/coverage-baseline.txt).
+      #
+      # MEASURED on this tree with `cargo llvm-cov nextest --lib`: 85.25% of lines
+      # (85.56% of regions; 297,741 lines, 43,919 uncovered), in 469s.
+      #
+      # The operator's standing target is 95%. It is NOT set here, because 85.25%
+      # is 29,000 lines short of it and a gate that is red the day it lands is a
+      # gate someone disables (§5.4). 80 is a floor this tree clears today and
+      # would still notice a five-point collapse — a gate that can fail is the
+      # whole point. The ratchet proper lands next: this PR's own coverage job
+      # prints the number CI measures (lcov DA records, a different denominator
+      # from the one above — which is exactly why the baseline is taken from CI's
+      # measurement and not from mine), and that number becomes
+      # .pmat/coverage-baseline.txt, after which the floor can only rise. PMAT-1317
+      # carries the climb to 95%.
+      coverage_min: '80'
+      # The ratchet. The gate's default path is .pmat/coverage-baseline.txt, and
+      # this repository gitignores **/.pmat/ — a baseline written there would
+      # never reach CI, and the "ratchet" would silently be coverage_min alone.
+      # Git cannot re-include a file under an ignored directory, so the file
+      # lives at the root. Its number is what THE GATE'S OWN arithmetic reads
+      # (hit DA records / total DA records from lcov.info), measured on this
+      # tree: 85.43% (244,949/286,728) — not llvm-cov's summary, which reads
+      # 85.25% over a different denominator. The effective floor is
+      # max(coverage_min, this file); it may only rise (PMAT-1317).
+      #
+      # MEASURED JITTER: the same Rust, two consecutive runs, read 85.57% and
+      # 85.56% (245,585 vs 245,583 lines of 287,014) — timing-dependent
+      # branches move a handful of lines per run. A baseline set to the exact
+      # last reading fails the very next run on noise, which is what happened
+      # on this PR. So the file holds the measured value minus a jitter margin
+      # of ~0.07 points (ten times the observed swing), and a raise is taken
+      # only when a run clears the new value by that margin.
+      coverage_baseline_file: '.coverage-baseline.txt'
     secrets: inherit
 
   # Top-level gate satisfies the org ruleset "Green Main" which requires a
@@ -135,6 +195,12 @@ jobs:
         run: bash scripts/spec-epic-control.sh ./target/debug/pmat
       - name: control — an active spec with no current review must be refused (CB-2111, exit 1)
         run: bash scripts/spec-review-control.sh ./target/debug/pmat
+
+      # PMAT-1313. The fast PR lane is a claim about what still runs; this is the
+      # arm set that makes the claim falsifiable. It reads files only — no build,
+      # no binary — so it costs the job nothing.
+      - name: PR lane control
+        run: bash scripts/pr-lane-control.sh
       - name: the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)
         env:
           GH_TOKEN: ${{ github.token }}

@@ -350,7 +350,11 @@ async fn run_integration_tests(_timeout: u64, output: Option<PathBuf>) -> Result
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    #[cfg(not(feature = "skip-slow-tests"))] // Import only needed when slow tests enabled
+    // The import was gated behind `not(feature = "skip-slow-tests")` for as long as
+    // the slow test was the only one here; with the fast tests below, a
+    // `--features skip-slow-tests` check saw a module with no imports and failed
+    // (feature-matrix shard 3 on PMAT-1313). The import is the module's, not the
+    // slow test's.
     use super::*;
 
     #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 60s - excluded from fast test suite
@@ -372,5 +376,133 @@ mod tests {
 
         // Should complete without panic
         assert!(result.is_ok() || result.is_err());
+    }
+
+    // PMAT-1317 — this file measured 0 of 245 lines: its one test is #[ignore]d
+    // because the performance suite it drives exceeds nextest's timeout. The
+    // three functions below never spawn anything, so they are covered here for
+    // what they do: the result triage, and the two reports, written to a path
+    // the test owns and read back.
+
+    #[tokio::test]
+    async fn a_timed_out_suite_is_an_error_that_says_so_and_writes_no_report() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let out = dir.path().join("report.txt");
+        let elapsed = tokio::time::timeout(std::time::Duration::from_millis(1), async {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            Ok::<(), anyhow::Error>(())
+        })
+        .await;
+        assert!(elapsed.is_err(), "the fixture must actually time out");
+        let r = handle_performance_result(
+            elapsed,
+            std::time::Instant::now(),
+            Some(out.clone()),
+            3,
+            false,
+            false,
+            false,
+        )
+        .await;
+        let msg = r.expect_err("a timeout is an error").to_string();
+        assert!(msg.contains("timed out"), "{msg}");
+        assert!(
+            !out.exists(),
+            "no report is written for a suite that did not finish"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_failed_suite_propagates_its_own_error_unchanged() {
+        let r = handle_performance_result(
+            Ok(Err(anyhow::anyhow!("boom from the suite"))),
+            std::time::Instant::now(),
+            None,
+            1,
+            false,
+            false,
+            false,
+        )
+        .await;
+        assert_eq!(
+            r.expect_err("a failure is an error").to_string(),
+            "boom from the suite"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_passed_suite_writes_a_report_that_names_every_flag_it_was_given() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let out = dir.path().join("perf.txt");
+        handle_performance_result(
+            Ok(Ok(())),
+            std::time::Instant::now(),
+            Some(out.clone()),
+            7,
+            true,
+            false,
+            true,
+        )
+        .await
+        .expect("a passed suite is Ok");
+        let text = std::fs::read_to_string(&out).expect("the report was written");
+        for line in [
+            "Iterations: 7",
+            "Memory Tests: true",
+            "Throughput Tests: false",
+            "Regression Tests: true",
+            "Status: PASSED",
+        ] {
+            assert!(
+                text.contains(line),
+                "report must carry {line:?}; got:\n{text}"
+            );
+        }
+        assert!(
+            text.starts_with("Performance Test Report\n"),
+            "the title comes first"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_passed_suite_with_no_output_path_writes_nothing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        handle_performance_result(
+            Ok(Ok(())),
+            std::time::Instant::now(),
+            None,
+            1,
+            false,
+            false,
+            false,
+        )
+        .await
+        .expect("Ok");
+        assert_eq!(
+            std::fs::read_dir(dir.path()).expect("read_dir").count(),
+            0,
+            "no path, no file"
+        );
+    }
+
+    #[test]
+    fn the_all_suites_report_names_every_suite_and_refuses_an_unwritable_path() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let out = dir.path().join("all.txt");
+        write_all_suites_report(out.clone()).expect("written");
+        let text = std::fs::read_to_string(&out).expect("read back");
+        for line in [
+            "Performance: PASSED",
+            "Property: PASSED",
+            "Integration: PASSED",
+            "Overall: PASSED",
+        ] {
+            assert!(text.contains(line), "{line:?} missing from:\n{text}");
+        }
+        let bad = dir.path().join("no-such-dir").join("all.txt");
+        assert!(
+            write_all_suites_report(bad).is_err(),
+            "a missing parent directory is an error, not a silent skip"
+        );
     }
 }

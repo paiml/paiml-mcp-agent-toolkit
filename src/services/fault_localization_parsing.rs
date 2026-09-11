@@ -158,11 +158,26 @@ impl FaultLocalizer {
     /// Check if cargo-llvm-cov is available
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_coverage_tool_available() -> bool {
-        std::process::Command::new("cargo")
-            .args(["llvm-cov", "--version"])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+        // A PATH lookup, not a subprocess. This used to run `cargo llvm-cov
+        // --version`, which is 1.7s in a shell and 75s inside `cargo llvm-cov
+        // nextest`, where the nested cargo contends for the build lock the outer
+        // one holds — measured on test_handle_localize_basic, which timed out the
+        // coverage lane at 120s to print an advisory hint (PMAT-1313). cargo
+        // resolves `cargo llvm-cov` to an executable named `cargo-llvm-cov` on
+        // PATH, so looking for that file answers the same question.
+        let Some(path) = std::env::var_os("PATH") else {
+            return false;
+        };
+        Self::is_coverage_tool_available_on(&path)
+    }
+
+    /// The availability check must be able to answer both ways — a check that can
+    /// only say "present" is a comment. Here it answers on a PATH we control.
+    pub(crate) fn is_coverage_tool_available_on(path: &std::ffi::OsStr) -> bool {
+        std::env::split_paths(path).any(|dir| {
+            let exe = dir.join("cargo-llvm-cov");
+            exe.is_file() || dir.join("cargo-llvm-cov.exe").is_file()
+        })
     }
 
     /// Run fault localization on coverage data

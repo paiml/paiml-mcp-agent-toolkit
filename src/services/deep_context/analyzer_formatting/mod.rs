@@ -5,6 +5,8 @@
 // and these submodules add formatting impl blocks to it.
 
 mod analysis_sections;
+#[cfg(test)]
+mod analysis_sections_tests;
 mod ast_formatting;
 mod indicators;
 mod legacy;
