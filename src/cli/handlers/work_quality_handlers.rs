@@ -256,6 +256,20 @@ pub struct FalsificationResult {
     pub passed: bool,
     /// Human-readable summary
     pub summary: String,
+    /// Hypotheses that could not be measured (evidence missing), each entry
+    /// naming the hypothesis and why. Distinct from `passed`/`falsified`: a
+    /// hypothesis nobody could check did not "hold" (PMAT-1320).
+    #[serde(default)]
+    pub not_measured: Vec<String>,
+}
+
+impl FalsificationResult {
+    /// True only when every hypothesis was actually checked (no missing
+    /// evidence). Callers that must distinguish "all held" from "held, but
+    /// N could not be measured" should check this alongside `passed`.
+    pub fn fully_measured(&self) -> bool {
+        self.not_measured.is_empty()
+    }
 }
 
 impl Default for FalsificationResult {
@@ -268,6 +282,7 @@ impl Default for FalsificationResult {
             binary_size_ok: true,
             passed: false,
             summary: String::new(),
+            not_measured: Vec::new(),
         }
     }
 }
@@ -354,11 +369,12 @@ fn falsify_coverage_regression(
             }
         }
         None => {
-            result.coverage_maintained = true;
+            let reason = format!("coverage: no trend history at {}", trend_file.display());
+            result.not_measured.push(reason);
             println!(
                 "      {}",
                 c::warn(&format!(
-                    "No coverage history ({}/{} validated)",
+                    "Not measured: no coverage history ({}/{} unmeasured)",
                     step, total
                 ))
             );
@@ -382,7 +398,12 @@ fn parse_coverage_trend(path: &std::path::Path) -> Option<(f32, f32)> {
 }
 
 /// Check binary size hypothesis.
-fn falsify_binary_bloat(project_path: &PathBuf, step: usize, total: usize) -> (bool, Vec<String>) {
+fn falsify_binary_bloat(
+    project_path: &PathBuf,
+    result: &mut FalsificationResult,
+    step: usize,
+    total: usize,
+) -> (bool, Vec<String>) {
     println!();
     println!(
         "   {} Hypothesis: No dependency bloat",
@@ -391,9 +412,17 @@ fn falsify_binary_bloat(project_path: &PathBuf, step: usize, total: usize) -> (b
 
     let release_binary = project_path.join("target/release/pmat");
     if !release_binary.exists() {
+        let reason = format!(
+            "binary bloat: no release binary at {}",
+            release_binary.display()
+        );
+        result.not_measured.push(reason);
         println!(
             "      {}",
-            c::warn(&format!("No release binary ({}/{} validated)", step, total))
+            c::warn(&format!(
+                "Not measured: no release binary ({}/{} unmeasured)",
+                step, total
+            ))
         );
         return (true, vec![]);
     }
@@ -455,7 +484,7 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 
     let (cov_ok, cov_issues) = falsify_coverage_regression(project_path, &mut result, 2, total);
 
-    let (size_ok, size_issues) = falsify_binary_bloat(project_path, 3, total);
+    let (size_ok, size_issues) = falsify_binary_bloat(project_path, &mut result, 3, total);
     result.binary_size_ok = size_ok;
 
     result.passed = tests_ok && cov_ok && size_ok;
@@ -464,17 +493,38 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 
     println!();
     if result.passed {
-        result.summary = format!(
-            "{}/{} hypotheses validated - work is valid",
-            validated, total
-        );
-        println!(
-            "   {}",
-            c::pass(&format!(
-                "FALSIFICATION RESULT: PASSED ({}/{})",
+        if result.fully_measured() {
+            result.summary = format!(
+                "{}/{} hypotheses validated - work is valid",
                 validated, total
-            ))
-        );
+            );
+            println!(
+                "   {}",
+                c::pass(&format!(
+                    "FALSIFICATION RESULT: PASSED ({}/{})",
+                    validated, total
+                ))
+            );
+        } else {
+            result.summary = format!(
+                "{}/{} validated, {} not measured - work holds but is not fully verified",
+                validated,
+                total,
+                result.not_measured.len()
+            );
+            println!(
+                "   {}",
+                c::pass(&format!(
+                    "FALSIFICATION RESULT: PASSED, WITH {} NOT MEASURED ({}/{})",
+                    result.not_measured.len(),
+                    validated,
+                    total
+                ))
+            );
+            for reason in &result.not_measured {
+                println!("      {}", c::warn(&format!("Not measured: {}", reason)));
+            }
+        }
     } else {
         result.summary = format!(
             "{}/{} validated, {} falsified: {}",
@@ -600,16 +650,26 @@ mod tests {
     }
 
     /// PMAT-1320: a falsifier that reports "Hypothesis holds" when the evidence
-    /// is ABSENT cannot be falsified. No trend file → `coverage_maintained =
-    /// true`. Pinned as it is today; the fix is a third state, not a pass.
+    /// is ABSENT cannot be falsified. No trend file → a third state
+    /// (`not_measured`), not `coverage_maintained = true`.
     #[test]
-    fn coverage_regression_with_no_history_passes_today_pmat_1320() {
+    fn coverage_regression_with_no_history_is_not_measured_not_validated() {
         let dir = project_with_trend(None);
         let mut r = FalsificationResult::default();
         let (ok, reasons) = falsify_coverage_regression(&dir.path().to_path_buf(), &mut r, 1, 1);
         assert!(
-            ok && reasons.is_empty() && r.coverage_maintained,
-            "PMAT-1320: if this fails, missing history is no longer a pass — invert this test"
+            ok && reasons.is_empty(),
+            "PMAT-1320: missing evidence must not read as falsified"
+        );
+        assert!(
+            !r.coverage_maintained,
+            "PMAT-1320: missing history must not be reported as maintained coverage"
+        );
+        assert_eq!(r.not_measured.len(), 1, "{:?}", r.not_measured);
+        assert!(
+            r.not_measured[0].contains("coverage"),
+            "{:?}",
+            r.not_measured
         );
         assert_eq!((r.coverage_before, r.coverage_after), (None, None));
     }
@@ -624,24 +684,35 @@ mod tests {
         // Sparse files: the metadata length is what is measured, not the bytes on disk.
         let f = std::fs::File::create(&bin).expect("create");
         f.set_len(51 * 1024 * 1024).expect("set_len");
-        let (ok, reasons) = falsify_binary_bloat(&dir.path().to_path_buf(), 1, 1);
+        let mut r = FalsificationResult::default();
+        let (ok, reasons) = falsify_binary_bloat(&dir.path().to_path_buf(), &mut r, 1, 1);
         assert!(!ok, "51MB exceeds the 50MB limit");
         assert_eq!(reasons.len(), 1);
         assert!(reasons[0].contains("exceeds 50MB"), "{reasons:?}");
+        assert!(r.not_measured.is_empty(), "measured, just falsified");
 
         f.set_len(50 * 1024 * 1024).expect("set_len");
-        let (ok, reasons) = falsify_binary_bloat(&dir.path().to_path_buf(), 1, 1);
+        let mut r = FalsificationResult::default();
+        let (ok, reasons) = falsify_binary_bloat(&dir.path().to_path_buf(), &mut r, 1, 1);
         assert!(ok && reasons.is_empty(), "exactly 50MB is within the limit");
+        assert!(r.not_measured.is_empty(), "measured, held");
     }
 
-    /// PMAT-1320, second instance: no release binary → "validated".
+    /// PMAT-1320, second instance: no release binary is a third state, not a pass.
     #[test]
-    fn binary_bloat_with_no_binary_passes_today_pmat_1320() {
+    fn binary_bloat_with_no_binary_is_not_measured_not_validated() {
         let dir = tempfile::tempdir().expect("tempdir");
-        let (ok, reasons) = falsify_binary_bloat(&dir.path().to_path_buf(), 1, 1);
+        let mut r = FalsificationResult::default();
+        let (ok, reasons) = falsify_binary_bloat(&dir.path().to_path_buf(), &mut r, 1, 1);
         assert!(
             ok && reasons.is_empty(),
-            "PMAT-1320: if this fails, a missing binary is no longer a pass — invert this test"
+            "PMAT-1320: missing evidence must not read as falsified"
+        );
+        assert_eq!(r.not_measured.len(), 1, "{:?}", r.not_measured);
+        assert!(
+            r.not_measured[0].contains("binary bloat") || r.not_measured[0].contains("binary"),
+            "{:?}",
+            r.not_measured
         );
     }
 }
