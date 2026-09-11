@@ -498,3 +498,150 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 
     Ok(result)
 }
+
+/// PMAT-1317 — this file measured 0 of 263 lines covered. The subprocess
+/// wrappers (`cargo test`, `cargo clippy`, `renacer`) stay untested here on
+/// purpose: a nested cargo inside `cargo test` is the 75-second trap PMAT-1313
+/// removed from `handle_localize`. The three functions below are pure
+/// filesystem logic, and testing them found two falsifiers that pass on
+/// MISSING evidence — recorded as PMAT-1320, pinned below so a fix changes a test.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn trend(values: &[f64]) -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let p = dir.path().join("test-coverage.json");
+        let entries: Vec<serde_json::Value> = values
+            .iter()
+            .map(|v| serde_json::json!({ "value": v }))
+            .collect();
+        std::fs::write(&p, serde_json::to_string(&entries).expect("json")).expect("write");
+        (dir, p)
+    }
+
+    #[test]
+    fn coverage_trend_reads_the_last_two_entries_in_order() {
+        let (_d, p) = trend(&[80.0, 85.5, 90.25]);
+        assert_eq!(
+            parse_coverage_trend(&p),
+            Some((85.5, 90.25)),
+            "(previous, current)"
+        );
+    }
+
+    #[test]
+    fn coverage_trend_needs_two_entries_and_a_numeric_value() {
+        let (_d, one) = trend(&[80.0]);
+        assert_eq!(parse_coverage_trend(&one), None, "one entry is not a trend");
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let bad = dir.path().join("t.json");
+        std::fs::write(&bad, r#"[{"value":"eighty"},{"value":90}]"#).expect("write");
+        assert_eq!(
+            parse_coverage_trend(&bad),
+            None,
+            "a non-numeric value is refused"
+        );
+        std::fs::write(&bad, "not json").expect("write");
+        assert_eq!(
+            parse_coverage_trend(&bad),
+            None,
+            "unparsable is None, not a panic"
+        );
+        assert_eq!(
+            parse_coverage_trend(&dir.path().join("absent.json")),
+            None,
+            "a missing file is None"
+        );
+    }
+
+    fn project_with_trend(values: Option<&[f64]>) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        if let Some(v) = values {
+            let d = dir.path().join(".pmat-metrics/trends");
+            std::fs::create_dir_all(&d).expect("mkdir");
+            let entries: Vec<serde_json::Value> = v
+                .iter()
+                .map(|x| serde_json::json!({ "value": x }))
+                .collect();
+            std::fs::write(
+                d.join("test-coverage.json"),
+                serde_json::to_string(&entries).expect("json"),
+            )
+            .expect("write");
+        }
+        dir
+    }
+
+    #[test]
+    fn coverage_regression_is_falsified_by_a_drop_and_holds_on_a_rise() {
+        let dir = project_with_trend(Some(&[90.0, 85.0]));
+        let mut r = FalsificationResult::default();
+        let (ok, reasons) = falsify_coverage_regression(&dir.path().to_path_buf(), &mut r, 1, 1);
+        assert!(!ok, "90 → 85 is a regression");
+        assert_eq!(reasons, vec!["Coverage dropped by 5.00%".to_string()]);
+        assert_eq!(
+            (r.coverage_before, r.coverage_after),
+            (Some(90.0), Some(85.0))
+        );
+        assert!(!r.coverage_maintained);
+
+        let dir = project_with_trend(Some(&[85.0, 90.0]));
+        let mut r = FalsificationResult::default();
+        let (ok, reasons) = falsify_coverage_regression(&dir.path().to_path_buf(), &mut r, 1, 1);
+        assert!(ok && reasons.is_empty(), "85 → 90 holds");
+        assert!(r.coverage_maintained);
+
+        let dir = project_with_trend(Some(&[90.0, 90.0]));
+        let mut r = FalsificationResult::default();
+        let (ok, _) = falsify_coverage_regression(&dir.path().to_path_buf(), &mut r, 1, 1);
+        assert!(ok, "flat is maintained");
+    }
+
+    /// PMAT-1320: a falsifier that reports "Hypothesis holds" when the evidence
+    /// is ABSENT cannot be falsified. No trend file → `coverage_maintained =
+    /// true`. Pinned as it is today; the fix is a third state, not a pass.
+    #[test]
+    fn coverage_regression_with_no_history_passes_today_pmat_1320() {
+        let dir = project_with_trend(None);
+        let mut r = FalsificationResult::default();
+        let (ok, reasons) = falsify_coverage_regression(&dir.path().to_path_buf(), &mut r, 1, 1);
+        assert!(
+            ok && reasons.is_empty() && r.coverage_maintained,
+            "PMAT-1320: if this fails, missing history is no longer a pass — invert this test"
+        );
+        assert_eq!((r.coverage_before, r.coverage_after), (None, None));
+    }
+
+    #[test]
+    fn binary_bloat_is_falsified_above_fifty_megabytes_and_holds_below() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let rel = dir.path().join("target/release");
+        std::fs::create_dir_all(&rel).expect("mkdir");
+        let bin = rel.join("pmat");
+
+        // Sparse files: the metadata length is what is measured, not the bytes on disk.
+        let f = std::fs::File::create(&bin).expect("create");
+        f.set_len(51 * 1024 * 1024).expect("set_len");
+        let (ok, reasons) = falsify_binary_bloat(&dir.path().to_path_buf(), 1, 1);
+        assert!(!ok, "51MB exceeds the 50MB limit");
+        assert_eq!(reasons.len(), 1);
+        assert!(reasons[0].contains("exceeds 50MB"), "{reasons:?}");
+
+        f.set_len(50 * 1024 * 1024).expect("set_len");
+        let (ok, reasons) = falsify_binary_bloat(&dir.path().to_path_buf(), 1, 1);
+        assert!(ok && reasons.is_empty(), "exactly 50MB is within the limit");
+    }
+
+    /// PMAT-1320, second instance: no release binary → "validated".
+    #[test]
+    fn binary_bloat_with_no_binary_passes_today_pmat_1320() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (ok, reasons) = falsify_binary_bloat(&dir.path().to_path_buf(), 1, 1);
+        assert!(
+            ok && reasons.is_empty(),
+            "PMAT-1320: if this fails, a missing binary is no longer a pass — invert this test"
+        );
+    }
+}
