@@ -350,7 +350,11 @@ async fn run_integration_tests(_timeout: u64, output: Option<PathBuf>) -> Result
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    #[cfg(not(feature = "skip-slow-tests"))] // Import only needed when slow tests enabled
+    // The import was gated behind `not(feature = "skip-slow-tests")` for as long as
+    // the slow test was the only one here; with the fast tests below, a
+    // `--features skip-slow-tests` check saw a module with no imports and failed
+    // (feature-matrix shard 3 on PMAT-1313). The import is the module's, not the
+    // slow test's.
     use super::*;
 
     #[cfg(not(feature = "skip-slow-tests"))] // SLOW: 60s - excluded from fast test suite
