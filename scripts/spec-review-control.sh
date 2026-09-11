@@ -38,7 +38,7 @@
 #   arm 17 RECORD `pmat spec review --record`: a stale review refused, nothing written or staged; a current one written byte for byte and staged, then the gate passes; a review naming README.md, a `..` path or a `.` path refused; a symlink at the artifact path refused and nothing written through it; an artifact path git ignores refused before any write; a directory outside any git work tree refused; a review missing a front-matter vendor's lane refused; a hard link at the artifact path replaced, never written through; a spec path with a carriage return refused; a locked index reported as written and not staged
 #   arm 18 SKIP  no docs/specifications, in a repository whose history never held one  exit 0, Skip
 #   arm 19 N/M   docs/specifications committed and then deleted                 exit 1, Fail not_measured: "committed and is now gone" (§12)
-#   arm 20 THIS TREE this repository's own specs, and its own review artifacts (none today)
+#   arm 20 THIS TREE this repository's own specs beside its own review artifacts (a stale one refused)
 #                                                                                exit 1, "N finding(s) — NO-REVIEW N:" with N = the active specs, counted from the tree
 #   arm 21 RED   a second quality lane                                           exit 1, Fail DUPLICATE-LANE a.md `quality` — a copy is not a reviewer (§6.1)
 #   arm 22 RED   a vendor:made-up lane on a spec whose front-matter names no vendor   exit 1, Fail EXTRA-LANE a.md `vendor:made-up`
@@ -447,12 +447,22 @@ not_measured 19
 echo "spec-review-control: arm 19 N/M  — committed-then-deleted docs/specifications reported not_measured (exit 1)"
 
 # arm 20: THIS TREE — the withheld-step measurement. This repository's own
-# specs, copied into the fixture, beside its own review artifacts: none today.
+# specs, copied into the fixture beside its own review artifacts. A current
+# artifact reviews its spec; a stale one is refused here, because a stale review
+# can never let the direct step flip. Every active spec without a current review
+# reads NO-REVIEW, and the count is computed from the tree, never written here.
 fresh
 rm -rf "${specs:?}"
 cp -R "$here/docs/specifications" "$specs"
-reviews=$(find "$here/docs/audits" -maxdepth 1 -name 'spec-*-review.json' 2>/dev/null | wc -l | tr -d ' ')
-[ "$reviews" -eq 0 ] || fail_arm 20 "this tree now holds $reviews spec review artifact(s): re-measure, flip the direct CB-2111 step once every active spec's review is current (PMAT-1300), and retire this arm"
+current=0
+for a in "$here"/docs/audits/spec-*-review.json; do
+  [ -e "$a" ] || continue
+  cp "$a" "$audits/" || fail_arm 20 "could not copy $a"
+  named=$(jq -r '.spec // empty' "$a")
+  { [ -n "$named" ] && [ -f "$here/$named" ]; } || fail_arm 20 "$a names no spec in this tree"
+  [ "$(jq -r '.spec_sha256' "$a")" = "$(sha256sum "$here/$named" | cut -d' ' -f1)" ] || fail_arm 20 "$a is stale: re-review $named and record it with pmat spec review --record"
+  current=$((current + 1))
+done
 total=0
 active=0
 while IFS= read -r -d '' f; do
@@ -462,11 +472,13 @@ while IFS= read -r -d '' f; do
   fi
 done < <(find "$here/docs/specifications" -name '*.md' -print0)
 [ "$total" -gt 0 ] || { echo "spec-review-control: arm 20 found no *.md under $here/docs/specifications — the control is running in the wrong tree" >&2; exit 2; }
+missing=$((active - current))
+[ "$missing" -gt 0 ] || fail_arm 20 "every active spec in this tree has a current review: flip the direct CB-2111 step (PMAT-1300) and retire this arm"
 run_gate
-[ "$RC" -eq 1 ] || fail_arm 20 "this tree's $active active specs must exit 1 today — none has a review yet (goal-mode.md §11 step 7 is withheld)"
+[ "$RC" -eq 1 ] || fail_arm 20 "this tree's $missing active specs without a review must exit 1 today (goal-mode.md §11 step 7 is withheld)"
 expect 20 CB-2111 Fail "pmat spec review --record"
-starts 20 "$active finding(s) — NO-REVIEW $active:"
-echo "spec-review-control: arm 20 THIS TREE — $total specs, $active active, every one NO-REVIEW: the direct step stays withheld until they are reviewed (exit 1)"
+starts 20 "$missing finding(s) — NO-REVIEW $missing:"
+echo "spec-review-control: arm 20 THIS TREE — $total specs, $active active, $current with a current review, $missing NO-REVIEW: the direct step stays withheld until every one is reviewed (exit 1)"
 
 # arm 21: RED — a second lane of one role is a copy, not a reviewer (§6.1)
 fresh
