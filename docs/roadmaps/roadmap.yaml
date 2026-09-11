@@ -6414,11 +6414,11 @@ roadmap:
   github_issue: 1319
   item_type: bug
   title: 'deep-context: include_analyses without Ast yields an EMPTY complexity report that claims success — the phase reads a cache only the AST phase fills'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-11T11:50:00Z
-  updated: 2026-09-11T11:50:00Z
+  updated: 2026-09-11T15:32:58Z
   spec: null
   acceptance_criteria:
   - include_analyses [Complexity] over a one-function fixture yields a report with that function, or an error that names Ast — never Some(empty)
