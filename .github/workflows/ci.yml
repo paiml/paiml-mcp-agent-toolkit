@@ -133,6 +133,8 @@ jobs:
         run: bash scripts/ticket-release-control.sh ./target/debug/pmat
       - name: control — an active spec with no epic must be refused (CB-2110, exit 1)
         run: bash scripts/spec-epic-control.sh ./target/debug/pmat
+      - name: control — an active spec with no current review must be refused (CB-2111, exit 1)
+        run: bash scripts/spec-review-control.sh ./target/debug/pmat
       - name: the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -166,6 +168,15 @@ jobs:
       # active spec, added the tickets' issues as its sub-issues, filled `epic:`,
       # and marked the historical and superseded specs (PMAT-729):
       #     run: ./target/debug/pmat comply check --checks CB-2110,CB-2112,CB-2113,CB-2114,CB-2115
+      # CB-2111 (PMAT-1299, step 7) is withheld for the same reason. At PMAT-1299's
+      # measurement (2026-09-11) none of the 44 active specs under docs/specifications
+      # has a review artifact (docs/audits/spec-<slug>-review.json), so the rule reads
+      # 44 NO-REVIEW. The control above proves it discriminates on every arm (its
+      # this-tree arm runs the rule on THIS tree's specs and asserts NO-REVIEW on every
+      # active one, so the flip cannot happen unnoticed), and the ledger lists CB-2111
+      # NEUTERED. It joins the step once every active spec carries a review recorded
+      # with `pmat spec review --record` (PMAT-1300):
+      #     run: ./target/debug/pmat comply check --checks CB-2110,CB-2111,CB-2112,CB-2113,CB-2114,CB-2115
 
   # Two consumers of one reusable workflow on two different refs is drift, and
   # what it silently drifts is the GATES.

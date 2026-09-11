@@ -110,6 +110,24 @@ pub enum SpecCommands {
         #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
         format: SpecOutputFormat,
     },
+
+    /// Validate a spec review and stage it (goal-mode.md §6.3, CB-2111)
+    ///
+    /// Judges the review JSON against the spec it names exactly as CB-2111
+    /// will: the spec's sha256 now, a plan sha256 of 64 hex digits, one PASS
+    /// lane per required role and no other lane, agreed true and partial false. It refuses
+    /// an artifact path git ignores, or a symlink on the way to it. On success
+    /// it writes the review to docs/audits/spec-<slug>-review.json and stages
+    /// it. It does not produce a review.
+    Review {
+        /// The review to record (JSON, goal-mode.md §6.1)
+        #[arg(long = "record", value_name = "JSON")]
+        record: PathBuf,
+
+        /// Project root the review's spec path is relative to
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+    },
 }
 
 /// Direction for spec-roadmap sync

@@ -468,6 +468,7 @@ const GROUP_IDS_TRACEABILITY: &[&str] = &["cb-2113"];
 const GROUP_IDS_ROADMAP_COHERENCE: &[&str] = &["cb-2115"];
 const GROUP_IDS_TICKET_RELEASE: &[&str] = &["cb-2112", "cb-2114"];
 const GROUP_IDS_SPEC_EPICS: &[&str] = &["cb-2110"];
+const GROUP_IDS_SPEC_REVIEWS: &[&str] = &["cb-2111"];
 // 162 distinct ids across 21 groups; declared in more than one group: none
 
 /// A named compliance-check group, the rule ids it can emit, and the thunk that
@@ -624,6 +625,11 @@ fn compliance_check_groups<'a>(
                     overrides.github_snapshot.as_deref(),
                 )
             }),
+        ),
+        (
+            "spec-reviews",
+            GROUP_IDS_SPEC_REVIEWS,
+            Box::new(move || build_spec_review_checks(project_path, comply_config)),
         ),
     ];
     groups
@@ -1781,6 +1787,9 @@ include!("check_spec_inputs.rs");
 include!("check_spec_epics.rs");
 include!("check_builders_spec_epics.rs");
 include!("check_spec_epic_tests.rs");
+include!("check_spec_reviews.rs");
+include!("check_builders_spec_reviews.rs");
+include!("check_spec_review_tests.rs");
 include!("check_select_groups_tests.rs");
 
 #[cfg_attr(coverage_nightly, coverage(off))]
