@@ -1,0 +1,137 @@
+{
+  "ticket": "PMAT-1324",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 90 commit(s); judged against origin/master",
+  "head": "d5b2cc2362ece0d2893f71ee2b7591f8d68e3509",
+  "diff_sha256": "18ae5073932717f1be1f2797bcb2ebbd90e6f2151f31ecd93e7529f25ad55c8a",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 51566,
+  "author": {
+    "model": "Opus 5 (1M context)",
+    "family": "claude",
+    "source": "measured"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff precisely implements the requested behavior and perfectly matches the claims in the receipt. The recursion guard, timeouts, and bounded drains are correctly implemented. The process group kill correctly targets only pre-reap arms to prevent signalling recycled PIDs. The test strategy safely uses thread-locals. No refutations were found.",
+      "findings": [],
+      "raw_bytes": 3681,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "I've reviewed the diff against PMAT-1324 and the provided receipt. The changes exactly match the acceptance criteria and the claims made in the receipt. The recursion depth guard is implemented securely without relying on global state during tests, process groups are used correctly to terminate fork bombs, and the bounded wait accurately manages the success, error, and timeout branches without inadvertently signalling recycled PIDs. There is no scope creep and the test coverage accurately reflects the specific hang conditions described. PASS.",
+      "findings": [
+        {
+          "claim": "A depth guard. PMAT_RATCHET_DEPTH (one constant), max depth 1 (one constant). A measurement started by comply ratchet/check runs at depth 0 and is allowed; one started by another measurement is refused before anything is spawned, naming the depth, the limit, the variable and the offending command.",
+          "file": "src/services/metrics_ratchet/measure.rs",
+          "grounding": "cited",
+          "line": 352
+        },
+        {
+          "claim": "A bounded wait, on every path. Command::output() blocks forever. Measurements now spawn into their own process group, poll try_wait() to a deadline, and drain stdout/stderr through bounded channels.",
+          "file": "src/services/metrics_ratchet/measure.rs",
+          "grounding": "cited",
+          "line": 501
+        },
+        {
+          "claim": "child.kill() kills only bash; a grandchild holding the pipe makes join() hang forever — fixed: process-group kill",
+          "file": "src/services/metrics_ratchet/measure.rs",
+          "grounding": "cited",
+          "line": 256
+        },
+        {
+          "claim": "the success arm called kill_process_tree after try_wait() had reaped the child, so it signalled a PID the OS may have recycled... fixed: that arm no longer signals at all",
+          "file": "src/services/metrics_ratchet/measure.rs",
+          "grounding": "cited",
+          "line": 554
+        }
+      ],
+      "raw_bytes": 4492,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The provided diff meticulously addresses the fork bomb issue by implementing a recursion depth limit and a bounded timeout for all measurement paths. It accurately implements POSIX process group signaling to handle backgrounded stray processes while gracefully avoiding PID reuse hazards on the success path. All ticket acceptance criteria and receipt claims have been thoroughly verified and are fully backed by the code.",
+      "findings": [],
+      "raw_bytes": 1875,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "src/services/metrics_ratchet/measure.rs",
+      "line": 256,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "child.kill() kills only bash; a grandchild holding the pipe makes join() hang forever — fixed: process-group kill"
+      ]
+    },
+    {
+      "file": "src/services/metrics_ratchet/measure.rs",
+      "line": 352,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "A depth guard. PMAT_RATCHET_DEPTH (one constant), max depth 1 (one constant). A measurement started by comply ratchet/check runs at depth 0 and is allowed; one started by another measurement is refused before anything is spawned, naming the depth, the limit, the variable and the offending command."
+      ]
+    },
+    {
+      "file": "src/services/metrics_ratchet/measure.rs",
+      "line": 501,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "A bounded wait, on every path. Command::output() blocks forever. Measurements now spawn into their own process group, poll try_wait() to a deadline, and drain stdout/stderr through bounded channels."
+      ]
+    },
+    {
+      "file": "src/services/metrics_ratchet/measure.rs",
+      "line": 554,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "the success arm called kill_process_tree after try_wait() had reaped the child, so it signalled a PID the OS may have recycled... fixed: that arm no longer signals at all"
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  }
+}
