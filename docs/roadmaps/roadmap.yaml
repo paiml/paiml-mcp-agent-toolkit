@@ -6421,7 +6421,7 @@ roadmap:
   updated: 2026-09-11T11:50:00Z
   spec: null
   acceptance_criteria:
-  - 'include_analyses [Complexity] over a one-function fixture yields a report with that function, or an error that names Ast — never Some(empty)'
+  - include_analyses [Complexity] over a one-function fixture yields a report with that function, or an error that names Ast — never Some(empty)
   - the pinned test complexity_without_ast_is_an_empty_report_that_claims_success is retired or inverted in the same PR
   - every phase that reads a unified cache is listed with its dependency in one place
   phases: []
@@ -6429,7 +6429,7 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: 'Found covering analysis_sections.rs for PMAT-1317. analyze_single_file_complexity reads RUST_UNIFIED_CACHE, which only the AST phase fills; with Ast absent every file maps to None and aggregate_results of nothing is a green report. Not reachable from the CLI (--include is refused; pmat context always requests Ast); reachable by any library caller. The scope wiring tests request Complexity+Satd without Ast and pass because they never read the report. Pinned by a test whose message says what to do when it starts failing.'
+  notes: Found covering analysis_sections.rs for PMAT-1317. analyze_single_file_complexity reads RUST_UNIFIED_CACHE, which only the AST phase fills; with Ast absent every file maps to None and aggregate_results of nothing is a green report. Not reachable from the CLI (--include is refused; pmat context always requests Ast); reachable by any library caller. The scope wiring tests request Complexity+Satd without Ast and pass because they never read the report. Pinned by a test whose message says what to do when it starts failing.
 - id: PMAT-1320
   github_issue: 1320
   item_type: bug
@@ -6450,4 +6450,4 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: 'Found covering work_quality_handlers.rs for PMAT-1317 (0 of 263 lines). falsify_coverage_regression sets coverage_maintained true when the trend file is absent and falsify_binary_bloat returns (true, []) when target/release/pmat is absent — on a fresh clone both validate on every run. Same defect class as not_measured reading as pass (goal-mode.md §3.3). Pinned by two tests whose messages say to invert them.'
+  notes: Found covering work_quality_handlers.rs for PMAT-1317 (0 of 263 lines). falsify_coverage_regression sets coverage_maintained true when the trend file is absent and falsify_binary_bloat returns (true, []) when target/release/pmat is absent — on a fresh clone both validate on every run. Same defect class as not_measured reading as pass (goal-mode.md §3.3). Pinned by two tests whose messages say to invert them.
