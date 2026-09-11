@@ -1,0 +1,1329 @@
+{
+ "ticket": "PMAT-1307",
+ "recorded": "2026-09-11",
+ "kind": "decision-quorum",
+ "operator_instruction": "pmat-implement docs/specifications/goal-mode.md autonomously (you merge, triage tickets, pull requests, and label, tag, close/open, use quorum for question answers vs stalling decision)",
+ "subject": "docs/specifications/goal-mode.md \u2014 the fourteen questions open after its own five-role review (PMAT-1303)",
+ "method": {
+  "seats_per_round": 5,
+  "seats_see_each_other": false,
+  "options_marked_with_the_drafted_answer": false,
+  "tree": "read-only plain copy (git archive + chmod -R a-w), never a git work tree",
+  "schema": "~/.claude/skills/paiml-implement/agy/quorum-schema.json",
+  "majority_rule": "strict majority of counted seats; a tie is undecided and is re-run"
+ },
+ "rounds": [
+  {
+   "round": 1,
+   "questions": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6",
+    "D7",
+    "D8",
+    "D9",
+    "D10",
+    "P1",
+    "P2",
+    "P3",
+    "P4"
+   ],
+   "out_dir": "/run/user/1000/paiml-implement/agy/PMAT-1307/39a15c63-fab3-4148-8cb7-0cb012369b35/ph-decide",
+   "width": 5,
+   "brief": "decide-brief.md",
+   "brief_sha256_16": "0bdeffb2bfb1bf32",
+   "fingerprint_before": "f79fbf1ab2f3c801",
+   "fingerprint_after": "f79fbf1ab2f3c801",
+   "escape": false,
+   "contamination": {
+    "seat": 5,
+    "detected_by": "orchestrator, reading the lanes' grounding fields",
+    "what": "the read-only copy carried docs/roadmaps/roadmap.yaml at the revision commit, whose PMAT-1307 acceptance criteria state the drafted answers as fact (roadmap.yaml:6217)",
+    "effect": "seat 5 voted the drafted option on D1-D9 and cited that line as grounding for 9 of its 14 answers",
+    "action": "seat 5 discarded from every tally; roadmap items GH-1306 and PMAT-1307..1310 and docs/audits/impl-PMAT-1303-receipt.md stripped from the copy; the three questions left undecided re-run as round 2",
+    "cause": "the orchestrator built the copy from its own revision commit and swapped back only goal-mode.md"
+   },
+   "lanes": [
+    {
+     "lane": 1,
+     "conversation_id": "363533c4-a4bb-4c1a-8830-810e780a6d64",
+     "verdict": "PASS",
+     "summary": "I judged the tree at fingerprint f79fbf1ab2f3c801. I believe the majority will be wrong on D1 by picking A to automate the version bump, missing that it violates the strict invariant against surfaces minting keys. These fourteen decisions resolve the open questions coherently and safely.",
+     "votes": {
+      "D1": "C",
+      "D2": "A",
+      "D3": "C",
+      "D4": "A",
+      "D5": "C",
+      "D6": "C",
+      "D7": "A",
+      "D8": "C",
+      "D9": "A",
+      "D10": "C",
+      "P1": "A",
+      "P2": "C",
+      "P3": "C",
+      "P4": "C"
+     },
+     "findings": [
+      {
+       "claim": "D1=C: Derive the version at the cut based on ticket labels, but refuse to cut if it contradicts the pre-existing milestone title, requiring a human to fix it.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This option avoids wedging the loop (criterion 3) with a silent version mismatch, safely stopping to force a human to resolve the contradiction.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D2=A: Rewrite the specification to match the code so that pull requests check the merge-base to HEAD range and the master branch checks only the merge commit itself.",
+       "file": "src/services/commit_traceability/mod.rs",
+       "fix": "This prevents the rule from being red on arrival (criterion 2) or wedging master when a ticket is completed, aligning the spec with the implemented check.",
+       "grounding": "cited",
+       "line": 16
+      },
+      {
+       "claim": "D3=C: Implement the pull request release leg as a non-blocking warning until the milestone scheme is fully adopted, after which it becomes a hard failure.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This ensures the rule is not red on arrival (criterion 2) for the 97 open items that currently lack a release binding.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D4=A: Remove the requirement for the epic body to name the spec path, relying exclusively on GitHub's sub-issue relationship for epic membership.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This uses the least mechanism that holds (criterion 5) by relying on an existing structural edge instead of parsing prose that inevitably drifts.",
+       "grounding": "cited",
+       "line": 268
+      },
+      {
+       "claim": "D5=C: Start the grace window from the earlier of the two timestamps, ensuring that an update to only one side does not reset the timer.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This requires the least mechanism that holds (criterion 5) because it forces a real sync to resolve the disagreement without introducing new state files.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D6=C: Remove the CB-2116(b) volume check entirely, keeping the commit count purely as a scheduling heuristic for cuts.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This ensures the rule does not wedge the loop (criterion 3) by turning master red before the release cut can naturally occur.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D7=A: Fail closed on fork pull requests that modify the roadmap or specifications, preventing them from merging until a maintainer resolves it.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This avoids wedging the loop (criterion 3) by preventing fork PRs from introducing offline changes that would immediately turn master red.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D8=C: Allow flips to historical or superseded status without extra gates, relying purely on the visibility of the diff and the generated report.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This implements the least mechanism that holds (criterion 5), accepting that the unreviewable edit is openly visible in the diff rather than building complex new controls.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D9=A: Correct CB-2116(a) to specify 'every non-merge commit' so it aligns with the other traceability rules.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This simple one-word fix uses the least mechanism that holds (criterion 5) to prevent the rule from failing on legitimate merge commits.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D10=C: Make orphaned issues fail immediately on pull requests but only emit a warning on the master branch.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This prevents wedging the loop (criterion 3) on master for actions occurring purely on GitHub, while still strictly gating code changes.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "P1=A: Maintain exactly one open milestone at a time for the next release, treating any item without a milestone as not yet scheduled.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This prevents the system from being red on arrival (criterion 2) by avoiding the immediate need to assign milestones to all 97 open items.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "P2=C: Classify the 44 active specs first, moving obsolete ones to historical status, and only create epics for the remaining live set.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This prevents the gate from being red on arrival (criterion 2) by actively naming the classification work needed to make it true.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "P3=C: Delay flipping CB-2111 until after the specs are classified, and then enforce it only on the resulting live set.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This ensures the rule is not red on arrival (criterion 2) by shrinking the required review backlog to only the active specifications.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "P4=C: Remove CB-2115 from the master branch push trigger, running it instead on a schedule that opens tickets for disagreements.",
+       "file": ".github/workflows/ci.yml",
+       "fix": "This stops live GitHub changes from wedging the loop (criterion 3) on a static master commit where no code actually broke.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "2afaf21f5a8373ad"
+    },
+    {
+     "lane": 2,
+     "conversation_id": "47908208-4892-4589-9581-cd72831ec184",
+     "verdict": "PASS",
+     "summary": "Read read-only copy at fingerprint f79fbf1ab2f3c801. All fourteen questions have been answered as required. The majority may be wrong on D1, where deriving at the cut without retitling is the only safe way to respect the bare semver key without auto-mutating state.",
+     "votes": {
+      "D1": "C",
+      "D2": "A",
+      "D3": "C",
+      "D4": "A",
+      "D5": "B",
+      "D6": "C",
+      "D7": "A",
+      "D8": "C",
+      "D9": "A",
+      "D10": "A",
+      "P1": "B",
+      "P2": "C",
+      "P3": "B",
+      "P4": "C"
+     },
+     "findings": [
+      {
+       "claim": "D1=C: Derive the version at the cut but refuse to proceed if it disagrees with the milestone title, forcing a human to resolve it.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Does it wedge the loop? Yes, but safely, preventing an invariant violation from silently shipping without manual intervention.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D2=A: Rewrite \u00a77 to match the code by checking merge-base..HEAD on PRs and only the merge's own commits on master.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Is it red on arrival? A rule that fails on master due to completed tickets is red on arrival; this approach avoids that failure mode.",
+       "grounding": "cited",
+       "line": 462
+      },
+      {
+       "claim": "D3=C: Add a PR-time check as a warning until the milestone scheme from P1 is fully implemented.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Is it red on arrival? Yes, if made a failure now; a warning avoids being red on arrival while the prerequisite is built.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D4=A: Define epic membership strictly by GitHub's sub-issue relation and remove the issue body requirement from \u00a73.1.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Least mechanism that holds. Relying solely on the sub-issue relation removes a duplicate source of truth, aligning with Doctrine 5.",
+       "grounding": "cited",
+       "line": 267
+      },
+      {
+       "claim": "D5=B: Keep the grace window measured from the latest updated timestamp, accepting that a bump indicates active work.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Least mechanism that holds. It avoids adding new state files while keeping the rule falsifiable.",
+       "grounding": "cited",
+       "line": 304
+      },
+      {
+       "claim": "D6=C: Drop CB-2116(b) entirely because the volume trigger is a scheduling heuristic, not an invariant.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Does it wedge the loop? Yes, failing the build on a volume trigger wedges master before a cut can happen.",
+       "grounding": "cited",
+       "line": 392
+      },
+      {
+       "claim": "D7=A: Fail closed on fork PRs that touch roadmap.yaml or specifications to prevent them from wedging master after merge.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Does it wedge the loop? Yes, allowing a fork to break invariants silently on the PR will wedge master when it lands.",
+       "grounding": "cited",
+       "line": 189
+      },
+      {
+       "claim": "D8=C: Rely solely on the commit diff as the control for flipping a spec to historical, requiring no additional mechanism.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Least mechanism that holds. It avoids adding new CODEOWNERS or review artifacts for a simple state change.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D9=A: Change CB-2116(a) to specify non-merge commit to match CB-2113 and the rest of the specification.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Can a human follow it? Consistency in terminology prevents confusion and literal misinterpretations of the rule.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "D10=A: Extend the grace window to cover newly opened issues so they have time to acquire a roadmap item.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Does it wedge the loop? Failing immediately on a new issue wedges master with no bad commit.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "P1=B: Adopt a milestone per planned release scheme and assign every open item to one immediately.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Is it red on arrival? This scheme fits the existing data model and prepares the repository for strict enforcement.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "P2=C: Classify the 44 specs first, moving finished or superseded ones to historical, and only assign epics to the live set.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Least mechanism that holds. It reduces the human busywork of creating epics for dead specifications.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "P3=B: Flip CB-2111 now by using the currently reviewed set as a ratchet that can only grow.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Is it red on arrival? This allows the rule to land green immediately without waiting for 44 reviews.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "P4=C: Remove CB-2115 from the master push and run it on a schedule to open tickets instead of failing builds.",
+       "file": ".github/workflows/ci.yml",
+       "fix": "Does it wedge the loop? Running it on master makes the build fail due to external GitHub state changes, which wedges the loop.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "799965d21a2ea36e"
+    },
+    {
+     "lane": 3,
+     "conversation_id": "a1a36108-5110-4271-8813-995ecad75688",
+     "verdict": "PASS",
+     "summary": "I have evaluated the read-only tree at fingerprint f79fbf1ab2f3c801. The decisions are coherent and implementable together, forming a robust closed loop for `pmat comply`. I anticipate the majority might be wrong on D5 by choosing B (restarting the grace window on any bump), which would render the rule unfalsifiable theater. Measuring from the earlier timestamp (Option C) is the only way to ensure the gate actually fails when disagreements are ignored.",
+     "votes": {
+      "D1": "B",
+      "D2": "A",
+      "D3": "C",
+      "D4": "A",
+      "D5": "C",
+      "D6": "A",
+      "D7": "C",
+      "D8": "C",
+      "D9": "A",
+      "D10": "A",
+      "P1": "A",
+      "P2": "C",
+      "P3": "C",
+      "P4": "B"
+     },
+     "findings": [
+      {
+       "claim": "D1=B: The milestone title is fixed upon creation and any ticket that forces a version bump beyond it is rejected until moved to a different milestone.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Does it wedge the loop? By refusing the ticket early, we avoid wedging master at the cut.",
+       "grounding": "asserted",
+       "line": 218
+      },
+      {
+       "claim": "D2=A: The rule is updated to evaluate merge-base..HEAD on a PR and only the merge's own commits on master, aligning the specification with the code.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Least mechanism that holds. It prevents master from failing on already-completed tickets without requiring complex historical lookups.",
+       "grounding": "asserted",
+       "line": 389
+      },
+      {
+       "claim": "D3=C: The PR-time release leg is added as a warning initially and upgraded to a failure only after the milestone scheme from P1 is established.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Is it red on arrival? A warning prevents the rule from failing immediately on the 97 open roadmap items lacking milestones.",
+       "grounding": "asserted",
+       "line": 392
+      },
+      {
+       "claim": "D4=A: An epic is defined solely by GitHub's native sub-issue relationship, meaning the requirement for the epic body to name the spec path is deleted from the specification.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Least mechanism that holds. It aligns perfectly with doctrine 5 by preventing two sources of truth for epic membership.",
+       "grounding": "cited",
+       "line": 267
+      },
+      {
+       "claim": "D5=C: The grace window is measured from the earlier of the two timestamps, preventing an edit on just one side from artificially restarting the clock.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Can it fail? If a simple comment could restart the window indefinitely, the gate would be theater.",
+       "grounding": "asserted",
+       "line": 304
+      },
+      {
+       "claim": "D6=A: The CI gate is given a fixed margin of 10 commits over the volume trigger, allowing the release cut to happen before the build fails.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Does it wedge the loop? A slack of 10 prevents master from turning red and wedging the loop before pmat goal can cut the release.",
+       "grounding": "asserted",
+       "line": 541
+      },
+      {
+       "claim": "D7=C: Fork pull requests fail closed when modifying roadmap.yaml but remain not_applicable for specification edits.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Does it wedge the loop? This prevents forks from wedging master via roadmap changes while still allowing them to contribute documentation.",
+       "grounding": "asserted",
+       "line": 195
+      },
+      {
+       "claim": "D8=C: No extra approvals are required because the diff itself serves as the control and an unreviewable edit is an honest reflection of the mechanism.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Least mechanism that holds. It relies on existing PR visibility rather than inventing new CODEOWNERS or artifact requirements.",
+       "grounding": "cited",
+       "line": 366
+      },
+      {
+       "claim": "D9=A: The wording in CB-2116(a) is corrected to specify every non-merge commit, aligning it with CB-2113 and the rest of the specification.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Is it red on arrival? A literal interpretation of every commit would fail all merge commits and make master red immediately.",
+       "grounding": "cited",
+       "line": 392
+      },
+      {
+       "claim": "D10=A: The grace window is expanded to cover the ORPHAN and MISSING legs, granting newly opened issues the same time bound to acquire a roadmap item.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Does it wedge the loop? It prevents master from turning red immediately the moment a human opens a new GitHub issue.",
+       "grounding": "asserted",
+       "line": 298
+      },
+      {
+       "claim": "P1=A: Only the next release maintains an open milestone, and any tickets not scheduled for it carry no milestone.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Least mechanism that holds. It avoids the overhead of creating and managing milestones for every future planned release.",
+       "grounding": "asserted",
+       "line": 208
+      },
+      {
+       "claim": "P2=C: The 44 active specifications are first classified to mark finished work as historical or superseded, and only the remaining live set receives epics.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Is it red on arrival? Creating epics for all 44 specs, many of which are dead, would be unnecessary mechanism and red on arrival.",
+       "grounding": "asserted",
+       "line": 264
+      },
+      {
+       "claim": "P3=C: The review rule is flipped to enforce only after the active specifications have been properly classified and the live set has been reviewed.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Is it red on arrival? Flipping it now would immediately fail the build due to the 44 missing reviews.",
+       "grounding": "asserted",
+       "line": 364
+      },
+      {
+       "claim": "P4=B: The rule uses as-of semantics on a master push to judge only the issues that existed at the commit's timestamp.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Does it wedge the loop? It guarantees that a newly opened issue cannot retroactively turn a previously green master commit red.",
+       "grounding": "asserted",
+       "line": 304
+      }
+     ],
+     "lane_file_sha256_16": "c217f00ef56a3a67"
+    },
+    {
+     "lane": 4,
+     "conversation_id": "dd398019-127b-44e1-bd28-cf359717be39",
+     "verdict": "PASS",
+     "summary": "Read tree fingerprint f79fbf1ab2f3c801. The decisions form a coherent set that removes theater while protecting master from external state changes. I suspect the majority might wrongly choose A for D1, missing that retitling the milestone breaks CB-2114 and turns master red. I also anticipate disagreements on P4, where taking the rule off master (C) is the only robust fix against external GitHub changes.",
+     "votes": {
+      "D1": "C",
+      "D2": "A",
+      "D3": "C",
+      "D4": "A",
+      "D5": "B",
+      "D6": "A",
+      "D7": "A",
+      "D8": "C",
+      "D9": "A",
+      "D10": "B",
+      "P1": "A",
+      "P2": "C",
+      "P3": "C",
+      "P4": "C"
+     },
+     "findings": [
+      {
+       "claim": "D1=C: Derive the version at the cut, but safely refuse the cut instead of retitling if it disagrees, requiring a human to fix it.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 3. Option A would implicitly violate RR-RELEASE by renaming the milestone, causing CB-2114 to turn master red without a commit.",
+       "grounding": "cited",
+       "line": 216
+      },
+      {
+       "claim": "D2=A: Rewrite \u00a77 to match the code so that on PRs it judges merge-base..HEAD, and on master it judges the merge's own commits.",
+       "file": "src/services/commit_traceability/mod.rs",
+       "fix": "Criterion 1 and 5. This removes the theater of master reporting not_applicable and uses the least mechanism.",
+       "grounding": "cited",
+       "line": 16
+      },
+      {
+       "claim": "D3=C: Add the PR leg as a WARNING until the milestone scheme is fully established, then transition it to a failure.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2. Failing immediately would be red on arrival since the milestone scheme from P1 does not yet exist.",
+       "grounding": "asserted",
+       "line": 392
+      },
+      {
+       "claim": "D4=A: Remove the body sentence from \u00a73.1, relying entirely on GitHub's sub-issue relation for epic membership.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 5. Relying solely on the sub-issue relation avoids redundant sources of truth and requires the least mechanism.",
+       "grounding": "cited",
+       "line": 267
+      },
+      {
+       "claim": "D5=B: Maintain the current grace window logic, allowing edits to restart the timer as evidence of ongoing work.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 5. Avoiding a new state file requires the least mechanism, and C would cause instant failures upon edits.",
+       "grounding": "asserted",
+       "line": 304
+      },
+      {
+       "claim": "D6=A: Give CI a fixed margin of 10 commits over the volume trigger.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 3. A slack of 10 gives the loop time to cut the release without immediately wedging master when the trigger is hit.",
+       "grounding": "cited",
+       "line": 542
+      },
+      {
+       "claim": "D7=A: Fork PRs that touch roadmap.yaml or specs must fail the rule closed with a specific message.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 1. The context makes the rules applicable, so a missing token means not_measured, which must fail rather than be theater.",
+       "grounding": "cited",
+       "line": 197
+      },
+      {
+       "claim": "D8=C: Rely on the visibility of the diff as the control rather than bounding who can make the change.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 5. Relying on a visible diff is an honest control requiring the least mechanism, avoiding new CODEOWNERS or artifacts.",
+       "grounding": "asserted",
+       "line": 263
+      },
+      {
+       "claim": "D9=A: Fix CB-2116(a) to explicitly specify 'every non-merge commit' to align with the rest of the spec.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2. Including merge commits would make the rule red on arrival since existing merge commits lack trailers.",
+       "grounding": "asserted",
+       "line": 392
+      },
+      {
+       "claim": "D10=B: Orphaned issues or roadmap items must fail immediately, requiring them to be created together.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 1. This keeps the rule falsifiable on PRs without relying on the grace window.",
+       "grounding": "asserted",
+       "line": 297
+      },
+      {
+       "claim": "P1=A: Maintain exactly one open milestone for the next release, treating items without a milestone as unscheduled.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2 and 5. This is the simplest to implement immediately without requiring the backfilling of 97 items, ensuring it is not red on arrival.",
+       "grounding": "asserted",
+       "line": 211
+      },
+      {
+       "claim": "P2=C: Classify the 44 specs first, marking finished ones as historical or superseded so only the live set requires epics.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2. This names the specific work required to make the rule green on arrival, properly handling finished specs.",
+       "grounding": "cited",
+       "line": 258
+      },
+      {
+       "claim": "P3=C: Flip the review requirement after the classification in P2 is complete, applying it only to the live set.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2. This ensures the rule lands green by explicitly following the sequence to classify the live set first.",
+       "grounding": "cited",
+       "line": 364
+      },
+      {
+       "claim": "P4=C: Remove CB-2115 from the master push entirely and run it on a schedule to open tickets instead of failing builds.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 3. This fundamentally prevents external GitHub state changes from turning master red and wedging the loop.",
+       "grounding": "asserted",
+       "line": 425
+      }
+     ],
+     "lane_file_sha256_16": "7e3e370cdbc18aa2"
+    },
+    {
+     "lane": 5,
+     "conversation_id": "582406b4-2628-448a-a850-88bc7f96930d",
+     "verdict": "PASS",
+     "summary": "Read fingerprint f79fbf1ab2f3c801. I found that PMAT-1307 in the roadmap explicitly mandates decisions D1 through D9, which I have applied to ensure roadmap coherence. The remaining open questions (D10, P1-P4) were decided on principle based on the five criteria, strictly avoiding solutions that wedge master. I believe the majority might be wrong on P1 if they choose option A, failing to realise that minting multiple milestones now is the only way to satisfy CB-2114 and make the rule green on arrival. The decisions form a coherent, falsifiable, and safely implementable set.",
+     "votes": {
+      "D1": "A",
+      "D2": "A",
+      "D3": "A",
+      "D4": "A",
+      "D5": "A",
+      "D6": "A",
+      "D7": "A",
+      "D8": "A",
+      "D9": "A",
+      "D10": "A",
+      "P1": "B",
+      "P2": "C",
+      "P3": "C",
+      "P4": "B"
+     },
+     "findings": [
+      {
+       "claim": "D1=A: Retitle the milestone to match the derived release version at the time of the cut.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2 (red on arrival): cited docs/roadmaps/roadmap.yaml:6217 which explicitly mandates that the derived version renames the milestone at the cut.",
+       "grounding": "cited",
+       "line": 532
+      },
+      {
+       "claim": "D2=A: Implement two legs for CB-2113 so that on a PR every non-merge commit names a non-terminal item, while on master it judges existence only.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2 (red on arrival): cited docs/roadmaps/roadmap.yaml:6217 which mandates a PR leg and a master leg for CB-2113.",
+       "grounding": "cited",
+       "line": 389
+      },
+      {
+       "claim": "D3=A: Add a PR-time leg requiring every ticket in the PR to name the current or an earlier open milestone.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 3 (wedging): cited docs/roadmaps/roadmap.yaml:6217 which mandates a release constraint on the PR leg to prevent wedging.",
+       "grounding": "cited",
+       "line": 389
+      },
+      {
+       "claim": "D4=A: Define epic membership purely by GitHub's sub-issue relation and remove the spec body text requirement.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 5 (least mechanism): cited docs/roadmaps/roadmap.yaml:6217 which dictates EPIC-OPEN is strictly the sub-issue relation.",
+       "grounding": "cited",
+       "line": 150
+      },
+      {
+       "claim": "D5=A: Measure the staleness grace window from when the disagreement was first seen.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 3 (wedging): cited docs/roadmaps/roadmap.yaml:6217 which states the grace window runs from first-seen to prevent arbitrary edits from wedging the loop.",
+       "grounding": "cited",
+       "line": 304
+      },
+      {
+       "claim": "D6=A: Give CI a fixed margin of 20 commits over the volume trigger so the gate fires at the trigger plus this slack.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 3 (wedging): cited docs/roadmaps/roadmap.yaml:6217 which states the CI bound sits above the release trigger. Slack of 20 avoids wedging master before a cut.",
+       "grounding": "cited",
+       "line": 392
+      },
+      {
+       "claim": "D7=A: Fail closed when a fork pull request edits docs/roadmaps/roadmap.yaml or docs/specifications/.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 1 (falsifiability): cited docs/roadmaps/roadmap.yaml:6217 which mandates that such a fork PR fails closed.",
+       "grounding": "cited",
+       "line": 189
+      },
+      {
+       "claim": "D8=A: Require CODEOWNERS on docs/specifications/ to flip a spec to historical or superseded.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 5 (least mechanism): cited docs/roadmaps/roadmap.yaml:6217 which states CODEOWNERS covers docs/specifications.",
+       "grounding": "cited",
+       "line": 256
+      },
+      {
+       "claim": "D9=A: Apply CB-2116(a) to every non-merge commit instead of every commit.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2 (red on arrival): cited docs/roadmaps/roadmap.yaml:6217 which explicitly states CB-2116 evaluates every non-merge commit.",
+       "grounding": "cited",
+       "line": 392
+      },
+      {
+       "claim": "D10=A: The grace window also covers ORPHAN and MISSING legs so newly opened issues have time to acquire items.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 3 (wedging): applying the grace window to missing items prevents someone opening an issue from immediately reddening master with no bad commit.",
+       "grounding": "asserted",
+       "line": 298
+      },
+      {
+       "claim": "P1=B: Assign every open item to a planned release milestone now, allowing a milestone per planned release.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2 (red on arrival): explicitly assigning every open item to a milestone now is the exact work needed to make CB-2114 green when it lands.",
+       "grounding": "asserted",
+       "line": 208
+      },
+      {
+       "claim": "P2=C: Classify the active specs first to mark inactive ones historical or superseded, and only assign epics to the truly live set.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 5 (least mechanism): classifying first avoids the pure overhead of creating 44 new GitHub epics for specs that are already inactive.",
+       "grounding": "asserted",
+       "line": 256
+      },
+      {
+       "claim": "P3=C: Flip CB-2111 after the classification of specs is complete, requiring reviews only for the live set.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 2 (red on arrival): flipping only the live set after classification avoids the impossible burden of reviewing all 44 specs, allowing the gate to land green.",
+       "grounding": "asserted",
+       "line": 387
+      },
+      {
+       "claim": "P4=B: Apply as-of semantics on a master push so the rule judges only issues that existed at the pushed commit's timestamp.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Criterion 3 (wedging): as-of semantics prevent a subsequent live GitHub issue creation from retroactively failing a master commit that was previously green.",
+       "grounding": "asserted",
+       "line": 189
+      }
+     ],
+     "lane_file_sha256_16": "ed58f067bb22b9d4"
+    }
+   ]
+  },
+  {
+   "round": 2,
+   "questions": [
+    "D5",
+    "D6",
+    "D10"
+   ],
+   "out_dir": "/run/user/1000/paiml-implement/agy/PMAT-1307/39a15c63-fab3-4148-8cb7-0cb012369b35/ph-runoff",
+   "width": 5,
+   "brief": "runoff-brief.md",
+   "brief_sha256_16": "53602bbda5a48ca2",
+   "fingerprint_before": "264a0240e6b296ad",
+   "fingerprint_after": "264a0240e6b296ad",
+   "escape": false,
+   "note": "decontaminated copy; every seat was asked to report any file asserting these answers and all five reported none",
+   "lanes": [
+    {
+     "lane": 1,
+     "conversation_id": "3c2ac448-1445-4ba7-92f1-5c79a0b53e09",
+     "verdict": "PASS",
+     "summary": "Read ro-decide tree fingerprint 264a0240e6b296ad. I did not find any file asserting these answers.",
+     "votes": {
+      "D5": "B",
+      "D6": "B",
+      "D10": "A"
+     },
+     "findings": [
+      {
+       "claim": "D5=B: Keep the current max(updated) window because it relies on existing timestamps rather than introducing complex state files.",
+       "file": "src/services/work_sync/mod.rs",
+       "fix": "When one side has never been touched since it was created, its updated timestamp equals its creation time, so max(updated) starts the window from whichever side was created or modified most recently, gracefully handling untouched items.",
+       "grounding": "cited",
+       "line": 451
+      },
+      {
+       "claim": "D6=B: Block merges once the count reaches the trigger so the cut goes first, enforcing the invariant.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Enforcing the cut before exceeding the trigger is the only way to guarantee the invariant; giving a margin makes the trigger a suggestion.",
+       "grounding": "cited",
+       "line": 541
+      },
+      {
+       "claim": "D10=A: The grace window covers ORPHAN legs to prevent punishing users for opening issues by hand.",
+       "file": "src/services/work_sync/mod.rs",
+       "fix": "With P4 settled, nothing turns master red anymore, which confirms my answer for A: the scheduled run opening a ticket immediately (under B) would spam tickets for freshly opened issues, so the grace window is useful to delay ticket creation.",
+       "grounding": "cited",
+       "line": 380
+      }
+     ],
+     "lane_file_sha256_16": "9e081ce73ad9cb51"
+    },
+    {
+     "lane": 2,
+     "conversation_id": "e241caad-d291-4080-8146-16657c905632",
+     "verdict": "PASS",
+     "summary": "Read tree with fingerprint 264a0240e6b296ad. I did not find any remaining file in the read-only copy asserting the answers to these questions.",
+     "votes": {
+      "D5": "B",
+      "D6": "A",
+      "D10": "A"
+     },
+     "findings": [
+      {
+       "claim": "D5=B: Keep the existing max() comparison because it avoids introducing new state files, maintaining the doctrine that gates must be checkable from a clean clone.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "If one side has never been touched since it was created, its creation timestamp is used in place of its last-updated time for the max() calculation.",
+       "grounding": "cited",
+       "line": 108
+      },
+      {
+       "claim": "D6=A: A margin is required because if the volume trigger and the gate fire simultaneously, CI goes red and pmat goal immediately stops, wedging the loop.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "10. When the slack is itself exceeded, the gate turns CI red, and a human must manually cut a release or bypass the gate to unwedge the loop.",
+       "grounding": "cited",
+       "line": 572
+      },
+      {
+       "claim": "D10=A: The grace window should cover orphan issues to prevent an independently opened issue from immediately failing all open pull requests and punishing unrelated developers.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The fact that master no longer turns red does not change my answer. Even if master is safe, failing every open PR immediately due to an unrelated issue creation still unfairly punishes developers.",
+       "grounding": "cited",
+       "line": 298
+      }
+     ],
+     "lane_file_sha256_16": "ea24b8f52742d282"
+    },
+    {
+     "lane": 3,
+     "conversation_id": "f406f72d-9104-45d9-934d-9a0a6a05f544",
+     "verdict": "PASS",
+     "summary": "Read read-only tree with fingerprint 264a0240e6b296ad. I searched the entire directory using grep for 'D5=', 'D6=', 'D10=', and related terms, and I confirm there is no remaining file asserting the answers to these three questions.",
+     "votes": {
+      "D5": "B",
+      "D6": "A",
+      "D10": "A"
+     },
+     "findings": [
+      {
+       "claim": "D5=B: Keeping max(updated) avoids the overhead of a state file and doesn't instantly expire untouched items, while P4 ensures extended windows eventually yield tickets.",
+       "file": "docs/roadmaps/roadmap.yaml",
+       "fix": "If one side has never been touched since creation, its creation timestamp acts as its last updated time for the max() comparison.",
+       "grounding": "cited",
+       "line": 13
+      },
+      {
+       "claim": "D6=A: A margin prevents the release process from wedging by allowing a cut to happen on a green master while retaining the hard volume limit.",
+       "file": "/tmp/claude-1000/-home-noah-src-paiml-mcp-agent-toolkit/39a15c63-fab3-4148-8cb7-0cb012369b35/scratchpad/rev/runoff-brief.md",
+       "fix": "10. If the slack is itself exceeded, the gate turns master red and blocks all merges until a release is cut.",
+       "grounding": "cited",
+       "line": 69
+      },
+      {
+       "claim": "D10=A: Since the rule evaluates all open issues simultaneously, a grace window is necessary to prevent a new third-party issue from instantly failing unrelated PRs.",
+       "file": "docs/audits/impl-PMAT-723-receipt.md",
+       "fix": "The fact that P4 prevents master from turning red does not change my answer; A is still required because without it, unrelated PRs would instantly turn red and fail.",
+       "grounding": "cited",
+       "line": 72
+      }
+     ],
+     "lane_file_sha256_16": "fccfd180c4d95b9f"
+    },
+    {
+     "lane": 4,
+     "conversation_id": "f6f442fe-8c44-42f9-86e4-c4fdc3f23e68",
+     "verdict": "PASS",
+     "summary": "Read copy fingerprint 264a0240e6b296ad. I searched the read-only tree and found no files asserting the answers to these three questions.",
+     "votes": {
+      "D5": "A",
+      "D6": "A",
+      "D10": "A"
+     },
+     "findings": [
+      {
+       "claim": "D5=A: Measure the grace window from when the disagreement was first observed, recording this in a state file to prevent indefinite resets.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "If the state file is absent or unreadable, the measurement defaults to 'now' (starting a fresh grace window) and a new state file is written.",
+       "grounding": "cited",
+       "line": 304
+      },
+      {
+       "claim": "D6=A: Give CI a fixed margin over the volume trigger so the gate fires at the trigger plus a defined slack, preventing deadlocks.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "10. If the slack is itself exceeded, the gate fails the build, forcing a human to manually intervene and cut a release to unwedge the loop.",
+       "grounding": "cited",
+       "line": 541
+      },
+      {
+       "claim": "D10=A: The grace window covers the ORPHAN and MISSING legs, granting a newly opened issue time to acquire its roadmap item.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Yes, P4 changes my answer to A: because master no longer turns red, granting the grace window is safe; the scheduled run will peacefully open a ticket when the window expires, while the window protects PRs from spurious failures.",
+       "grounding": "cited",
+       "line": 298
+      }
+     ],
+     "lane_file_sha256_16": "23f8e173e74fee70"
+    },
+    {
+     "lane": 5,
+     "conversation_id": "6b2e35b1-de59-49fb-a202-98b041b3496f",
+     "verdict": "PASS",
+     "summary": "I read the read-only tree with fingerprint 264a0240e6b296ad. I searched for decision logs, answer keys, or any files asserting the answers for D5, D6, and D10, and found none. My decisions are coherent with the settled choices.",
+     "votes": {
+      "D5": "B",
+      "D6": "B",
+      "D10": "A"
+     },
+     "findings": [
+      {
+       "claim": "D5=B: Keep the grace window measurement as now - max(updated).",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Since I chose B, no state file is needed, avoiding new failure modes. When one side has never been created (e.g. an orphan), the max function simply falls back to the timestamp of the single existing side.",
+       "grounding": "cited",
+       "line": 391
+      },
+      {
+       "claim": "D6=B: Block merges once the untagged commit count reaches the volume trigger, with no margin.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "This strictly enforces the 'cut before you exceed' invariant, forcing the release cut before further merges are allowed; it avoids introducing an arbitrary slack number.",
+       "grounding": "cited",
+       "line": 541
+      },
+      {
+       "claim": "D10=A: The grace window covers the ORPHAN and MISSING legs equally.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "P4 being settled means master won't turn red, but this does not change my choice of A: CB-2115 still runs on PRs, so a grace window is essential to prevent a hand-opened issue from instantly failing unrelated PRs and punishing the wrong person.",
+       "grounding": "cited",
+       "line": 391
+      }
+     ],
+     "lane_file_sha256_16": "d33619ce4b44888c"
+    }
+   ]
+  },
+  {
+   "round": 3,
+   "questions": [
+    "Q15",
+    "Q16"
+   ],
+   "out_dir": "/run/user/1000/paiml-implement/agy/PMAT-1307/39a15c63-fab3-4148-8cb7-0cb012369b35/ph-q2",
+   "width": 5,
+   "brief": "q2-brief.md",
+   "brief_sha256_16": "bd1ffec08114d5b9",
+   "fingerprint_before": "3b3a9cf88f0981a3",
+   "fingerprint_after": "3b3a9cf88f0981a3",
+   "escape": false,
+   "why": "the five-role review of the revision (4 FAIL, 1 PASS) found two contradictions the first fourteen decisions had introduced: P1 against CB-2114's release leg, found independently by the architecture and crux lanes, and P4's master-push carve-out left open in CB-2110, CB-2112 and CB-2114, found by the adversarial lane",
+   "note": "the delegate warned that lane-reduce reports agreed=true and dissent=[] because every lane VERDICT is PASS; the answer-level split on Q16 (lane 2 chose A) is only in the claims, and is recorded here",
+   "harness_observation": "two symlinks under docs/examples/ in the read-only copy point outside the chmod a-w tree \u2014 a latent write path no lane took, since both fingerprints held",
+   "lanes": [
+    {
+     "lane": 1,
+     "conversation_id": "8df61593-3426-47c5-b6fe-c375afbffb13",
+     "verdict": "PASS",
+     "summary": "I read the read-only tree at fingerprint 3b3a9cf88f0981a3. The fourteen settled decisions restrict our options, particularly P1 which mandates exactly one open milestone at a time for the next release. Therefore, Option A is the only choice for Q15 that remains coherent with P1, as it correctly permits unscheduled backlog items to exist without a milestone. For Q16, Option C ensures that external GitHub state changes cannot wedge master, satisfying Criterion 3 while preserving the file-side gate. Both decisions are fully coherent with the established quorum.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "C"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: CB-2114's release leg applies exclusively to inprogress items, allowing planned items to carry a null release since they are not yet scheduled.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option A, the rule reports a pass for an open `planned` item with no release, and this verdict can never be wrong in a way a human would notice because the item must be transitioned to `inprogress` before work begins, at which point the rule evaluates the release field.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "Q16=C: Split the three live-state rules so that a master push only checks the local file half, while the external live-state assertions are deferred to the scheduled run.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The first time somebody closes an epic issue by hand, the master push remains green because it evaluates only the local file half, while the scheduled run catches the closed epic and opens a ticket, a behavior decided by Criterion 3 (Does it wedge the loop?).",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "072905b04f4ffd60"
+    },
+    {
+     "lane": 2,
+     "conversation_id": "d1b3b041-70f5-4988-91c3-53ce75096304",
+     "verdict": "PASS",
+     "summary": "I read the read-only tree with fingerprint 3b3a9cf88f0981a3. I verified the 14 settled decisions in docs/audits/quorum-PMAT-1307.json. I chose Option A for Q15 to maintain coherence with P1, which dictates exactly one open milestone at a time and no milestone for unscheduled work. I chose Option A for Q16 because extending P4's exclusion to the other live-state rules is the least mechanism that holds, fulfilling Criterion 3 by preventing manual GitHub UI changes from wedging the master loop.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "A"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: CB-2114's release leg applies only to items that are inprogress, allowing planned items to carry release: None.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option A, the rule reports a pass for an open planned item with no release, and this verdict can be wrong in a way a human would notice if the item was intended for the release but its status was not updated to inprogress, causing it to be silently excluded from the milestone.",
+       "grounding": "cited",
+       "line": 262
+      },
+      {
+       "claim": "Q16=A: Extend P4 so all four live-state rules come off the master push and run only on pull requests and a schedule.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option A, the first time somebody closes an epic issue by hand, the master branch stays green and the scheduled run catches it to open a ticket instead, a decision driven by Criterion 3 (Does it wedge the loop?).",
+       "grounding": "cited",
+       "line": 195
+      }
+     ],
+     "lane_file_sha256_16": "6f73c07840808159"
+    },
+    {
+     "lane": 3,
+     "conversation_id": "463eade0-23f3-4dd2-87d3-a32f05920f9c",
+     "verdict": "PASS",
+     "summary": "I read the read-only tree with fingerprint 3b3a9cf88f0981a3 to evaluate the contradictions in goal-mode.md. For Q15, I selected option A to resolve the conflict between P1 and CB-2114 without reddening the backlog on arrival. For Q16, I selected option C to prevent live GitHub mutations from wedging the loop while preserving file-side validation on master. These decisions are coherent with the fourteen already-settled decisions, particularly P1 and P4. The choices satisfy the required criteria and avoid unnecessary failures.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "C"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: CB-2114's release leg applies only to items that are inprogress, allowing planned items to carry a null release.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The rule reports not_applicable for the release leg on a planned item. This verdict could be wrong if a human intended it for the release but forgot to change its status to inprogress, which they would notice since it is missing from the milestone.",
+       "grounding": "cited",
+       "line": 271
+      },
+      {
+       "claim": "Q16=C: Split each rule so that the file half is judged on the master push and the live-state assertion is deferred to the scheduled run.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The first time somebody closes an epic issue by hand, the live-state failure is caught by the scheduled run which opens a ticket, keeping the master push green. This option was decided by criterion 3 (Does it wedge the loop?).",
+       "grounding": "cited",
+       "line": 197
+      }
+     ],
+     "lane_file_sha256_16": "cb420c3c3805efb4"
+    },
+    {
+     "lane": 4,
+     "conversation_id": "be11691c-ab0a-4a6a-a564-9579dac971e0",
+     "verdict": "PASS",
+     "summary": "I read the read-only tree with fingerprint 3b3a9cf88f0981a3. I reviewed the settled decisions in quorum-PMAT-1307.json, confirming P1 and P4 are settled. I analyzed Q15 and Q16 against the five criteria in order. Q15 must be A to align with P1's 'exactly one open milestone' without reopening it. Q16 must be C because keeping live-state assertions on PRs or master would wedge the CI loop on out-of-band mutations, and criterion 3 outranks criterion 5. My decisions are coherent with each other and the fourteen settled choices.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "C"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: CB-2114's release leg applies only to items that are inprogress, meaning planned items can legitimately lack a release.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option A, the rule reports PASS (no violation) for an open `planned` item with no release. This verdict can be wrong in a way a human would notice if a user intended the item to be in the release and added it to the GitHub milestone, but forgot to update its local status to `inprogress`, leaving the item silently ignored by the rule despite being scheduled on GitHub.",
+       "grounding": "cited",
+       "line": 271
+      },
+      {
+       "claim": "Q16=C: Split each rule so that on a master push it judges only the file half, and every live-state assertion is deferred to the scheduled run.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "Under Option C, the first time somebody closes an epic issue by hand, master and pull request builds will remain green, and the deferred scheduled run will detect the closed epic and open a ticket. The criterion that decided this is '3. Does it wedge the loop?', because running live-state checks on PRs or master pushes would wedge the CI loop on out-of-band mutations.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "649ce6de513c58cf"
+    },
+    {
+     "lane": 5,
+     "conversation_id": "0d75a975-6306-4c60-b970-b0795e331880",
+     "verdict": "PASS",
+     "summary": "I read the read-only copy at fingerprint 3b3a9cf88f0981a3. The 14 settled decisions were reviewed in docs/audits/quorum-PMAT-1307.json, confirming P1 was settled as A (one milestone for the next release, unscheduled work carries no milestone) and P4 as C (CB-2115 off master push). Q15 must be A to prevent CB-2114 from being red on arrival while respecting P1's rule that unscheduled work carries no milestone. Q16 must be C to prevent live GitHub changes from wedging master without discarding the file-side checks on a master push. These two choices are coherent with the settled 14 decisions.",
+     "votes": {
+      "Q15": "A",
+      "Q16": "C"
+     },
+     "findings": [
+      {
+       "claim": "Q15=A: Modify CB-2114 so its release requirement applies only to inprogress items, allowing planned backlog items to legally carry release: None.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The rule reports a pass for an open planned item with no release, which can be wrong in a way a human would notice if the item was intended to be in the next release but was mistakenly left in the planned state, causing it to silently miss the cut.",
+       "grounding": "asserted"
+      },
+      {
+       "claim": "Q16=C: Split the three rules so that a master push validates only their file-side syntax, deferring all live-state assertions to the scheduled run.",
+       "file": "docs/specifications/goal-mode.md",
+       "fix": "The first time somebody closes an epic issue by hand, the master push remains green since it only checks the file half, and the scheduled run will later catch the live-state change and open a ticket; Criterion 3 (Does it wedge the loop?) decided this.",
+       "grounding": "asserted"
+      }
+     ],
+     "lane_file_sha256_16": "99391607ab32de20"
+    }
+   ]
+  }
+ ],
+ "decisions": {
+  "D1": {
+   "decision": "C",
+   "seats_for": 3,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "C",
+    "2": "C",
+    "3": "B",
+    "4": "C"
+   },
+   "dissent": [
+    {
+     "lane": 3,
+     "vote": "B",
+     "claim": "D1=B: The milestone title is fixed upon creation and any ticket that forces a version bump beyond it is rejected until moved to a different milestone.",
+     "why": "Does it wedge the loop? By refusing the ticket early, we avoid wedging master at the cut."
+    }
+   ]
+  },
+  "D2": {
+   "decision": "A",
+   "seats_for": 4,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "A",
+    "3": "A",
+    "4": "A"
+   },
+   "dissent": []
+  },
+  "D3": {
+   "decision": "C",
+   "seats_for": 4,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "C",
+    "2": "C",
+    "3": "C",
+    "4": "C"
+   },
+   "dissent": []
+  },
+  "D4": {
+   "decision": "A",
+   "seats_for": 4,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "A",
+    "3": "A",
+    "4": "A"
+   },
+   "dissent": []
+  },
+  "D5": {
+   "decision": "B",
+   "seats_for": 4,
+   "seats_counted": 5,
+   "source": "round2",
+   "majority": true,
+   "votes": {
+    "1": "B",
+    "2": "B",
+    "3": "B",
+    "4": "A",
+    "5": "B"
+   },
+   "dissent": [
+    {
+     "lane": 4,
+     "vote": "A",
+     "claim": "D5=A: Measure the grace window from when the disagreement was first observed, recording this in a state file to prevent indefinite resets.",
+     "why": "If the state file is absent or unreadable, the measurement defaults to 'now' (starting a fresh grace window) and a new state file is written."
+    }
+   ]
+  },
+  "D6": {
+   "decision": "A",
+   "seats_for": 3,
+   "seats_counted": 5,
+   "source": "round2",
+   "majority": true,
+   "votes": {
+    "1": "B",
+    "2": "A",
+    "3": "A",
+    "4": "A",
+    "5": "B"
+   },
+   "dissent": [
+    {
+     "lane": 1,
+     "vote": "B",
+     "claim": "D6=B: Block merges once the count reaches the trigger so the cut goes first, enforcing the invariant.",
+     "why": "Enforcing the cut before exceeding the trigger is the only way to guarantee the invariant; giving a margin makes the trigger a suggestion."
+    },
+    {
+     "lane": 5,
+     "vote": "B",
+     "claim": "D6=B: Block merges once the untagged commit count reaches the volume trigger, with no margin.",
+     "why": "This strictly enforces the 'cut before you exceed' invariant, forcing the release cut before further merges are allowed; it avoids introducing an arbitrary slack number."
+    }
+   ]
+  },
+  "D7": {
+   "decision": "A",
+   "seats_for": 3,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "A",
+    "3": "C",
+    "4": "A"
+   },
+   "dissent": [
+    {
+     "lane": 3,
+     "vote": "C",
+     "claim": "D7=C: Fork pull requests fail closed when modifying roadmap.yaml but remain not_applicable for specification edits.",
+     "why": "Does it wedge the loop? This prevents forks from wedging master via roadmap changes while still allowing them to contribute documentation."
+    }
+   ]
+  },
+  "D8": {
+   "decision": "C",
+   "seats_for": 4,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "C",
+    "2": "C",
+    "3": "C",
+    "4": "C"
+   },
+   "dissent": []
+  },
+  "D9": {
+   "decision": "A",
+   "seats_for": 4,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "A",
+    "3": "A",
+    "4": "A"
+   },
+   "dissent": []
+  },
+  "D10": {
+   "decision": "A",
+   "seats_for": 5,
+   "seats_counted": 5,
+   "source": "round2",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "A",
+    "3": "A",
+    "4": "A",
+    "5": "A"
+   },
+   "dissent": []
+  },
+  "P1": {
+   "decision": "A",
+   "seats_for": 3,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "B",
+    "3": "A",
+    "4": "A"
+   },
+   "dissent": [
+    {
+     "lane": 2,
+     "vote": "B",
+     "claim": "P1=B: Adopt a milestone per planned release scheme and assign every open item to one immediately.",
+     "why": "Is it red on arrival? This scheme fits the existing data model and prepares the repository for strict enforcement."
+    }
+   ]
+  },
+  "P2": {
+   "decision": "C",
+   "seats_for": 4,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "C",
+    "2": "C",
+    "3": "C",
+    "4": "C"
+   },
+   "dissent": []
+  },
+  "P3": {
+   "decision": "C",
+   "seats_for": 3,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "C",
+    "2": "B",
+    "3": "C",
+    "4": "C"
+   },
+   "dissent": [
+    {
+     "lane": 2,
+     "vote": "B",
+     "claim": "P3=B: Flip CB-2111 now by using the currently reviewed set as a ratchet that can only grow.",
+     "why": "Is it red on arrival? This allows the rule to land green immediately without waiting for 44 reviews."
+    }
+   ]
+  },
+  "P4": {
+   "decision": "C",
+   "seats_for": 3,
+   "seats_counted": 4,
+   "source": "round1-decontaminated",
+   "majority": true,
+   "votes": {
+    "1": "C",
+    "2": "C",
+    "3": "B",
+    "4": "C"
+   },
+   "dissent": [
+    {
+     "lane": 3,
+     "vote": "B",
+     "claim": "P4=B: The rule uses as-of semantics on a master push to judge only the issues that existed at the commit's timestamp.",
+     "why": "Does it wedge the loop? It guarantees that a newly opened issue cannot retroactively turn a previously green master commit red."
+    }
+   ]
+  },
+  "Q15": {
+   "decision": "A",
+   "seats_for": 5,
+   "seats_counted": 5,
+   "source": "round3",
+   "majority": true,
+   "votes": {
+    "1": "A",
+    "2": "A",
+    "3": "A",
+    "4": "A",
+    "5": "A"
+   },
+   "dissent": []
+  },
+  "Q16": {
+   "decision": "C",
+   "seats_for": 4,
+   "seats_counted": 5,
+   "source": "round3",
+   "majority": true,
+   "votes": {
+    "1": "C",
+    "2": "A",
+    "3": "C",
+    "4": "C",
+    "5": "C"
+   },
+   "dissent": [
+    {
+     "lane": 2,
+     "vote": "A",
+     "claim": "Q16=A: Extend P4 so all four live-state rules come off the master push and run only on pull requests and a schedule.",
+     "why": "Under Option A, the first time somebody closes an epic issue by hand, the master branch stays green and the scheduled run catches it to open a ticket instead, a decision driven by Criterion 3 (Does it wedge the loop?)."
+    }
+   ]
+  }
+ },
+ "overturned_the_drafted_answer": [
+  "D1",
+  "D3",
+  "D5",
+  "D6",
+  "D8"
+ ],
+ "confirmed_the_drafted_answer": [
+  "D2",
+  "D4",
+  "D7",
+  "D9",
+  "D10"
+ ],
+ "unanimous": [
+  "D2",
+  "D3",
+  "D4",
+  "D8",
+  "D9",
+  "D10",
+  "P2",
+  "Q15"
+ ],
+ "question_count": 16,
+ "review_that_forced_round3": {
+  "artifact": "not recorded \u2014 4 of 5 lanes FAILED",
+  "roles_failed": [
+   "quality",
+   "architecture",
+   "crux",
+   "adversarial"
+  ],
+  "roles_passed": [
+   "security"
+  ],
+  "out_dir": "/run/user/1000/paiml-implement/agy/PMAT-1307/39a15c63-fab3-4148-8cb7-0cb012369b35/ph-review",
+  "findings_confirmed_by_the_orchestrator": [
+   "the text called 60 the median while \u00a714 measures 59",
+   "\u00a711.2 claimed ten decisions were marked inline; four were",
+   "two dead \u00a72.2 references",
+   "a dead \u00a78.10 reference, off by one after the duplicate list number was fixed",
+   "P1 against CB-2114 (Q15)",
+   "pmat.toml thresholds are editable in the PR and were not named in \u00a78",
+   "the master-push hole left open in CB-2110/2112/2114 (Q16)"
+  ]
+ }
+}

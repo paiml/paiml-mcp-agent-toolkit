@@ -6187,3 +6187,122 @@ roadmap:
   labels:
   - kind:code
   notes: 'Found when ci / test failed on #1304, which changes no Rust; master passed the same test on identical code. Filed by PMAT-1303 on #1304''s branch (CB-2115 is live).'
+- id: GH-1306
+  github_issue: 1306
+  item_type: task
+  title: 'comply: pmat''s own generated work contracts fail CB-1305, and pre-#357 stubs are never flagged stale'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T06:16:11.342726639+00:00
+  updated: 2026-09-11T06:16:11.342726639+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1307
+  github_issue: 1307
+  item_type: task
+  title: 'goal-mode.md revision: the nine findings from its own five-role review (#1303), and a verification ledger that says when it was measured'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-09-11T06:16:11Z
+  spec: null
+  acceptance_criteria:
+  - 'goal-mode.md states each of the fourteen decisions the quorum took (D1-D10, P1-P4): the cut REFUSES when the derived version disagrees with the milestone title and never renames it; CB-2113 has a PR leg and a master leg, its release leg reported not failed until a milestone scheme exists; epic membership is sub-issues alone; the grace window stays at now - max(updated) and covers the ORPHAN and MISSING legs; untagged_ci_slack is 10; a fork PR editing the records fails closed; nothing bounds who flips a spec status and the text says so; every non-merge commit; and CB-2115 comes off the master push'
+  - §14 carries both the measurement it was written against and a re-measured now column, and the counts repeated in §1.2, §5.1, §5.4, §7.1 and §8 agree with the tree; no claim cites a line number that can rot
+  - §8 names each gap between this text and the code with its ticket, and a fresh five-role review of the revised text records docs/audits/spec-goal-mode-review.json with pmat spec review --record
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Applies the operator''s decisions on #1303, where goal-mode.md failed its own review 5 lanes of 5. Completes the review half of §13 item 6 and unblocks PMAT-1303.'
+- id: PMAT-1308
+  github_issue: 1308
+  item_type: task
+  title: 'CB-2113 needs both legs: the PR''s own commits against a non-terminal item of the open milestone, and master against existence (goal-mode.md §7, decision D2/D3)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-09-11T06:16:11Z
+  spec: null
+  acceptance_criteria:
+  - on a pull request CB-2113 judges the commits the PR adds and each names a non-terminal item; the item's release is compared with the open milestone and a LATER release is REPORTED, not failed, until the one-open-milestone scheme of goal-mode.md §11.2 P1 exists; on a push to master it judges the merge's own commits
+  - scripts/traceability-control.sh carries an arm for each leg, including a ticket of a later release being REPORTED and not failed on a PR, and an arm proving the report becomes a refusal once the milestone scheme is configured
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'goal-mode.md §7 states both legs. D2 was decided A by quorum 4 of 4 seats (2026-09-11) and D3 was decided C, 4 of 4: the release leg warns first and only fails once P1''s milestone scheme exists. The code judges merge-base..HEAD and reports not_applicable on master. Artifact docs/audits/quorum-PMAT-1307.json.'
+- id: PMAT-1309
+  github_issue: 1309
+  item_type: task
+  title: 'CB-2115: the grace window must cover the ORPHAN and MISSING legs, and the rule comes off the master push (goal-mode.md §3.3 and §5.2, decisions D10 and P4)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-09-11T06:16:11Z
+  spec: null
+  acceptance_criteria:
+  - 'the staleness grace window covers the ORPHAN and MISSING legs as well as a field disagreement: an issue opened less than staleness_grace_minutes ago is not_measured rather than a finding, and so is an item added without its issue'
+  - CB-2115 no longer runs on a push to master; it runs on pull requests, and on a schedule whose finding OPENS A TICKET instead of failing the build
+  - the window stays at now - max(item.updated, issue.updated_at); no first-seen state file is added, and a control arm proves a timestamp bump restarts it, which is the accepted cost recorded in goal-mode.md §5.2
+  - scripts/roadmap-coherence-control.sh carries an arm for a freshly opened orphan issue inside the window, one for the same issue past it, and one proving the master-push path is gone
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'CB-2115 is ENFORCED and this is the live hole that reddened master 5af9a0f0d at 06:08Z on 2026-09-11: five issues opened by hand, no roadmap item, no commit to blame. The quorum REFUSED the first-seen state file this ticket was originally filed for (D5 decided B, 4 of 5 seats: a gate whose verdict depends on a state file cannot be judged from a clean clone). What it decided instead is D10 (5 of 5, the only unanimous answer) and P4 (3 of 4). Artifact docs/audits/quorum-PMAT-1307.json.'
+- id: PMAT-1310
+  github_issue: 1310
+  item_type: task
+  title: A fork PR that edits docs/roadmaps/roadmap.yaml or docs/specifications/ must fail closed, not pass as not_applicable (goal-mode.md §3.3, decision D7)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-09-11T06:16:11Z
+  spec: null
+  acceptance_criteria:
+  - a fork pull request whose diff touches docs/roadmaps/roadmap.yaml or docs/specifications/ reports not_measured for CB-2110, CB-2112, CB-2114 and CB-2115, naming that reason; one that touches neither still reports not_applicable
+  - a control arm covers both cases
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'A fork cannot change issues, but it can edit the records those four rules judge, and master turns red on the merge. Decision D7 on #1303.'
+- id: PMAT-1312
+  github_issue: 1312
+  item_type: task
+  title: CB-2114's release leg binds inprogress items only, and the live-state assertions come off the master push (goal-mode.md §11.2, decisions Q15 and Q16)
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T09:40:00Z
+  updated: 2026-09-11T09:40:00Z
+  spec: null
+  acceptance_criteria:
+  - CB-2114 reports a planned item with no release as unscheduled rather than a finding, and still fails an inprogress item that has none
+  - on a push to master CB-2110, CB-2112 and CB-2114 assert only the half they can read in the tree; every live-state assertion (epic open, issue exists and open, milestone exists and carries the issue) is deferred to the scheduled run, and the deferral is printed rather than silent
+  - scripts/roadmap-coherence-control.sh and scripts/ticket-release-control.sh carry an arm per leg, including a planned item with no release passing and an inprogress item without one failing
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Decided by quorum 2026-09-11 after the five-role review of the goal-mode.md revision failed 4 of 5 lanes. Q15 carried 5 of 5 seats, one of two unanimous answers of the sixteen: with 97 open items and one open milestone under P1, CB-2114 as written was red on arrival for nearly the whole backlog. Q16 carried 4 of 5; the dissent would take all four live-state rules off the master push as P4 does for CB-2115. Artifact docs/audits/quorum-PMAT-1307.json.'
