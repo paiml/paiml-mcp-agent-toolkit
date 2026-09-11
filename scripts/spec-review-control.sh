@@ -35,7 +35,7 @@
 #   arm 14 RED   c.md with no front-matter beside reviewed a.md                  exit 1, Fail UNJUDGEABLE c.md: never skipped
 #   arm 15 RED   a.md with no review beside c.md with no front-matter            exit 1, "2 finding(s) — NO-REVIEW 1, UNJUDGEABLE 1: NO-REVIEW …a.md:": path order
 #   arm 16 RED   ten active specs with no review                                 exit 1, "10 finding(s) — NO-REVIEW 10:" and "(+2 more)": the ninth is counted
-#   arm 17 RECORD `pmat spec review --record`: a stale review refused, nothing written or staged; a current one written byte for byte and staged, then the gate passes; a review naming README.md, a `..` path or a `.` path refused; a symlink at the artifact path refused and nothing written through it; an artifact path git ignores refused before any write; a directory outside any git work tree refused
+#   arm 17 RECORD `pmat spec review --record`: a stale review refused, nothing written or staged; a current one written byte for byte and staged, then the gate passes; a review naming README.md, a `..` path or a `.` path refused; a symlink at the artifact path refused and nothing written through it; an artifact path git ignores refused before any write; a directory outside any git work tree refused; a review missing a front-matter vendor's lane refused; a hard link at the artifact path replaced, never written through; a spec path with a carriage return refused; a locked index reported as written and not staged
 #   arm 18 SKIP  no docs/specifications, in a repository whose history never held one  exit 0, Skip
 #   arm 19 N/M   docs/specifications committed and then deleted                 exit 1, Fail not_measured: "committed and is now gone" (§12)
 #   arm 20 THIS TREE this repository's own specs, and its own review artifacts (none today)
@@ -45,7 +45,8 @@
 #   arm 23 RED   lanes without executor                                          exit 1, Fail BAD-REVIEW a.md naming executor — every §6.1 field is required
 #   arm 24 RED   a plan sha256 of not-a-hash                                     exit 1, Fail NO-PLAN a.md — a sha256 is 64 hex digits
 #   arm 25 GREEN vendors: [nvidia cuda] with a vendor:nvidia cuda PASS lane      exit 0, Pass reviewed 1 — a vendor named with a space can be reviewed
-#   arm 26 RED   a/b.md and a-b.md, both active, share one artifact path          exit 1, Fail SLUG-COLLISION for both, and NOT NO-REVIEW
+#   arm 26 RED   a/b.md and a-b.md, both active, share one artifact path          exit 1, Fail SLUG-COLLISION for both, naming the other, and NOT NO-REVIEW
+#   arm 27 RED   agreed: false with every lane PASS                              exit 1, Fail NOT-AGREED a.md — a review that says its quorum did not agree
 #
 # Arm 20 is the withheld-step measurement (goal-mode.md §11 step 7, doctrine
 # 6): it runs the rule on THIS tree's specs, copied into the fixture, and
@@ -288,6 +289,10 @@ write_review a.md quality:PASS architecture:PASS security:FAIL crux:PASS adversa
 run_gate
 [ "$RC" -eq 1 ] || fail_arm 10 "a review with a FAIL lane must exit 1"
 expect 10 CB-2111 Fail "LANE-NOT-PASS docs/specifications/a.md: the \`security\` lane says FAIL"
+write_review a.md quality:pass architecture:PASS security:PASS crux:PASS adversarial:PASS
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 10 "a lane whose verdict is lowercase pass must exit 1 — the verdict is the exact word PASS"
+expect 10 CB-2111 Fail "LANE-NOT-PASS docs/specifications/a.md: the \`quality\` lane says pass"
 echo "spec-review-control: arm 10 RED  — the security lane says FAIL: LANE-NOT-PASS (exit 1)"
 
 # arm 11: RED — partial: true
@@ -395,6 +400,29 @@ GIT_CEILING_DIRECTORIES="$work" "$PMAT" spec review --record "$work/review.json"
 [ "$RRC" -ne 0 ] || fail_arm 17 "recording outside a git work tree must be refused"
 grep -q "cannot be staged" "$work/record.err" || fail_arm 17 "the refusal outside a work tree must say it cannot be staged: $(head -3 "$work/record.err")"
 [ ! -e "$work/nogit/docs/audits" ] || fail_arm 17 "nothing may be written outside a git work tree"
+write_spec v.md active '[cuda]'
+review_json v.md "$(lanes "${FIVE[@]}")" >"$work/review-v.json"
+record "$work/review-v.json"
+[ "$RRC" -ne 0 ] || fail_arm 17 "recording a review missing the front-matter vendor's lane must be refused"
+grep -q "MISSING-ROLE docs/specifications/v.md: no \`vendor:cuda\` lane" "$work/record.err" || fail_arm 17 "the refusal must name the missing vendor lane: $(head -3 "$work/record.err")"
+[ ! -e "$(artifact v.md)" ] || fail_arm 17 "a refused review must not be written"
+rm -f "$specs/v.md"
+echo ORIGINAL >"$work/victim2.txt"
+ln "$work/victim2.txt" "$(artifact a.md)"
+record "$work/review.json"
+[ "$RRC" -eq 0 ] || fail_arm 17 "a hard link at the artifact path must be replaced, not refused: $(head -3 "$work/record.err")"
+[ "$(cat "$work/victim2.txt")" = ORIGINAL ] || fail_arm 17 "record must never write through a hard link to a file outside the project"
+cmp -s "$work/review.json" "$(artifact a.md)" || fail_arm 17 "the review must replace the hard link byte for byte"
+review_json a.md "$(lanes "${FIVE[@]}")" "$PLAN" false "$(printf 'docs/specifications/a\rb.md')" >"$work/cr-review.json"
+record "$work/cr-review.json"
+[ "$RRC" -ne 0 ] || fail_arm 17 "a spec path holding a carriage return must be refused"
+grep -q "not a spec under docs/specifications" "$work/record.err" || fail_arm 17 "the refusal of a carriage return must say why"
+rm -f "$(artifact a.md)"
+: >"$repo/.git/index.lock"
+record "$work/review.json"
+rm -f "$repo/.git/index.lock"
+[ "$RRC" -ne 0 ] || fail_arm 17 "a failed git add must be reported, not swallowed"
+grep -q "written but NOT staged" "$work/record.err" || fail_arm 17 "the refusal must say the file is written and not staged: $(head -3 "$work/record.err")"
 echo "spec-review-control: arm 17 RECORD — stale refused (nothing written or staged); current recorded byte-identical and staged, and the gate passes it; README.md, .. and . refused; a symlink refused, nothing written through it; an ignored path and a non-git directory refused before any write"
 
 # arm 18: SKIP — no docs/specifications in a repository whose history never held one
@@ -461,6 +489,12 @@ review_json a.md "$(lanes "${FIVE[@]}" | jq -c 'map(del(.executor))')" >"$(artif
 run_gate
 [ "$RC" -eq 1 ] || fail_arm 23 "lanes without executor must exit 1"
 expect 23 CB-2111 Fail "BAD-REVIEW docs/specifications/a.md:" "executor"
+for field in agreed lanes; do
+  review_json a.md "$(lanes "${FIVE[@]}")" | jq -c "del(.$field)" >"$(artifact a.md)"
+  run_gate
+  [ "$RC" -eq 1 ] || fail_arm 23 "a review without $field must exit 1"
+  expect 23 CB-2111 Fail "BAD-REVIEW docs/specifications/a.md:" "$field"
+done
 echo "spec-review-control: arm 23 RED  — lanes without executor: BAD-REVIEW naming the field (exit 1)"
 
 # arm 24: RED — a plan sha256 that is not 64 hex digits
@@ -485,8 +519,18 @@ write_spec a/b.md active
 write_spec a-b.md active
 run_gate
 [ "$RC" -eq 1 ] || fail_arm 26 "two active specs sharing an artifact path must exit 1"
-expect 26 CB-2111 Fail "SLUG-COLLISION docs/specifications/a-b.md:" "SLUG-COLLISION docs/specifications/a/b.md:"
+expect 26 CB-2111 Fail "SLUG-COLLISION docs/specifications/a-b.md:" "SLUG-COLLISION docs/specifications/a/b.md:" "shares docs/audits/spec-a-b-review.json with docs/specifications/a/b.md"
 lacks 26 "NO-REVIEW"
 echo "spec-review-control: arm 26 RED  — a/b.md and a-b.md share one artifact path: SLUG-COLLISION for both (exit 1)"
 
-echo "spec-review-control: all 26 arms behaved — CB-2111 can fail, can pass, says why, names its exemptions, refuses a deleted input, --record validates before it stages, and this tree measures NO-REVIEW on every active spec"
+# arm 27: RED — a review that records agreed: false says its quorum did not agree
+rm -rf "${specs:?}" "${audits:?}"
+mkdir -p "$specs" "$audits"
+write_spec a.md active
+review_json a.md "$(lanes "${FIVE[@]}")" | jq -c '.agreed = false' >"$(artifact a.md)"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 27 "a review that records agreed: false must exit 1"
+expect 27 CB-2111 Fail "NOT-AGREED docs/specifications/a.md:"
+echo "spec-review-control: arm 27 RED  — agreed: false with every lane PASS: NOT-AGREED (exit 1)"
+
+echo "spec-review-control: all 27 arms behaved — CB-2111 can fail, can pass, says why, names its exemptions, refuses a deleted input, --record validates before it stages, and this tree measures NO-REVIEW on every active spec"
