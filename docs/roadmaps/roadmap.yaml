@@ -6310,11 +6310,11 @@ roadmap:
   github_issue: 1313
   item_type: task
   title: 'The PR lane runs nextest: 1227s of test execution becomes 100s, and two tests stop indexing the whole repository (goal-mode.md §7.3)'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-11T09:55:00Z
-  updated: 2026-09-11T09:55:00Z
+  updated: 2026-09-11T16:20:07Z
   spec: docs/specifications/goal-mode.md
   acceptance_criteria:
   - 'ci.yml sets use_nextest false and carries the measurement that refuted it: NEXTEST_TEST_THREADS=4 in a container given 8 cpus made the job SLOWER than cargo test (9,047 of 21,536 tests after 11 minutes), so the local 12.2x is unreachable until the cap is raised (PMAT-1315)'
@@ -6434,11 +6434,11 @@ roadmap:
   github_issue: 1320
   item_type: bug
   title: 'Two Popper falsifiers pass on MISSING evidence: no coverage history and no release binary both print ''validated'''
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-11T11:58:00Z
-  updated: 2026-09-11T11:58:00Z
+  updated: 2026-09-11T16:20:07Z
   spec: null
   acceptance_criteria:
   - with no coverage trend file the coverage hypothesis reports not measured rather than validated
