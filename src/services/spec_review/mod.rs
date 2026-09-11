@@ -25,13 +25,16 @@ pub const BASE_ROLES: [&str; 5] = ["quality", "architecture", "security", "crux"
 pub struct ReviewArtifact {
     pub spec: String,
     pub spec_sha256: String,
+    /// Optional in the parse so its absence is `NO-PLAN`, never `BAD-REVIEW`.
     #[serde(default)]
     pub plan: Option<Plan>,
-    #[serde(default)]
     pub lanes: Vec<Lane>,
+    /// Recorded, not judged: §6.2 does not list it, and every lane PASS is
+    /// agreement by construction.
     #[serde(default)]
     pub agreed: bool,
-    #[serde(default)]
+    /// Required: a misspelt `partial` must not default a partial review to
+    /// complete.
     pub partial: bool,
 }
 
@@ -147,8 +150,12 @@ impl ReviewFinding {
 }
 
 /// `docs/specifications/components/cli-api.md` → `components-cli-api`.
-pub fn slug(_spec_path: &str) -> String {
-    String::new()
+pub fn slug(spec_path: &str) -> String {
+    let under = spec_path
+        .strip_prefix(crate::services::spec_epic::SPECS_DIR)
+        .and_then(|rest| rest.strip_prefix('/'))
+        .unwrap_or(spec_path);
+    under.strip_suffix(".md").unwrap_or(under).replace('/', "-")
 }
 
 /// Where the review of `spec_path` lives.
@@ -166,24 +173,100 @@ pub fn sha256_hex(text: &str) -> String {
 }
 
 /// The five base roles, then `vendor:<name>` for each front-matter vendor.
-pub fn required_roles(_vendors: &[String]) -> Vec<String> {
-    Vec::new()
+pub fn required_roles(vendors: &[String]) -> Vec<String> {
+    let mut roles: Vec<String> = BASE_ROLES.iter().map(|r| (*r).to_string()).collect();
+    for vendor in vendors {
+        let role = format!("vendor:{vendor}");
+        if !roles.contains(&role) {
+            roles.push(role);
+        }
+    }
+    roles
 }
 
 /// Is `role` in the closed set (§6.1)?
-pub fn is_known_role(_role: &str) -> bool {
-    true
+pub fn is_known_role(role: &str) -> bool {
+    BASE_ROLES.contains(&role)
+        || role
+            .strip_prefix("vendor:")
+            .is_some_and(|name| !name.is_empty() && !name.chars().any(char::is_whitespace))
 }
 
 /// CB-2111's judgement on one active spec: `artifact` is the review file's text,
 /// or `None` when there is no file.
 pub fn judge(
-    _spec_path: &str,
-    _spec_text: &str,
-    _vendors: &[String],
-    _artifact: Option<&str>,
+    spec_path: &str,
+    spec_text: &str,
+    vendors: &[String],
+    artifact: Option<&str>,
 ) -> Vec<ReviewFinding> {
-    Vec::new()
+    let spec = spec_path.to_string();
+    let Some(text) = artifact else {
+        return vec![ReviewFinding::NoReview {
+            spec,
+            artifact: artifact_path(spec_path),
+        }];
+    };
+    let review: ReviewArtifact = match serde_json::from_str(text) {
+        Ok(review) => review,
+        Err(e) => {
+            return vec![ReviewFinding::BadReview {
+                spec,
+                artifact: artifact_path(spec_path),
+                reason: e.to_string(),
+            }];
+        }
+    };
+    let mut findings = Vec::new();
+    if review.spec != spec_path {
+        findings.push(ReviewFinding::SpecMismatch {
+            spec: spec.clone(),
+            named: review.spec.clone(),
+        });
+    }
+    let actual = sha256_hex(spec_text);
+    if review.spec_sha256 != actual {
+        findings.push(ReviewFinding::StaleReview {
+            spec: spec.clone(),
+            recorded: review.spec_sha256.clone(),
+            actual,
+        });
+    }
+    if review
+        .plan
+        .as_ref()
+        .is_none_or(|plan| plan.sha256.trim().is_empty())
+    {
+        findings.push(ReviewFinding::NoPlan { spec: spec.clone() });
+    }
+    // An unrecognised role is reported once, as itself: its verdict is not a
+    // lane's verdict, because it is not a lane (§6.1).
+    for lane in &review.lanes {
+        if !is_known_role(&lane.role) {
+            findings.push(ReviewFinding::UnknownRole {
+                spec: spec.clone(),
+                role: lane.role.clone(),
+            });
+        } else if lane.verdict != "PASS" {
+            findings.push(ReviewFinding::LaneNotPass {
+                spec: spec.clone(),
+                role: lane.role.clone(),
+                verdict: lane.verdict.clone(),
+            });
+        }
+    }
+    for role in required_roles(vendors) {
+        if !review.lanes.iter().any(|lane| lane.role == role) {
+            findings.push(ReviewFinding::MissingRole {
+                spec: spec.clone(),
+                role,
+            });
+        }
+    }
+    if review.partial {
+        findings.push(ReviewFinding::Partial { spec });
+    }
+    findings
 }
 
 #[cfg(test)]
