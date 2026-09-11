@@ -6214,7 +6214,7 @@ roadmap:
   updated: 2026-09-11T06:16:11Z
   spec: null
   acceptance_criteria:
-  - 'goal-mode.md states each of the nine decisions (D1 to D9) from #1303''s review: the derived version renames the milestone at the cut; CB-2113 has a PR leg and a master leg with a release constraint; EPIC-OPEN is the sub-issue relation; the grace window runs from first-seen; CB-2116 says every non-merge commit and its CI bound sits above the release trigger; a fork PR editing the roadmap or the specs fails closed; CODEOWNERS covers docs/specifications'
+  - 'goal-mode.md states each of the fourteen decisions the quorum took (D1-D10, P1-P4): the cut REFUSES when the derived version disagrees with the milestone title and never renames it; CB-2113 has a PR leg and a master leg, its release leg reported not failed until a milestone scheme exists; epic membership is sub-issues alone; the grace window stays at now - max(updated) and covers the ORPHAN and MISSING legs; untagged_ci_slack is 10; a fork PR editing the records fails closed; nothing bounds who flips a spec status and the text says so; every non-merge commit; and CB-2115 comes off the master push'
   - §14 carries both the measurement it was written against and a re-measured now column, and the counts repeated in §1.2, §5.1, §5.4, §7.1 and §8 agree with the tree; no claim cites a line number that can rot
   - §8 names each gap between this text and the code with its ticket, and a fresh five-role review of the revised text records docs/audits/spec-goal-mode-review.json with pmat spec review --record
   phases: []
@@ -6234,19 +6234,19 @@ roadmap:
   updated: 2026-09-11T06:16:11Z
   spec: null
   acceptance_criteria:
-  - on a pull request CB-2113 judges the commits the PR adds, and each names a non-terminal item whose release is the open milestone or earlier; on a push to master it judges every non-merge commit since the last tag against existence only
-  - scripts/traceability-control.sh carries an arm for each leg, including a ticket of a later release being refused on a PR
+  - on a pull request CB-2113 judges the commits the PR adds and each names a non-terminal item; the item's release is compared with the open milestone and a LATER release is REPORTED, not failed, until the one-open-milestone scheme of goal-mode.md §11.2 P1 exists; on a push to master it judges the merge's own commits
+  - scripts/traceability-control.sh carries an arm for each leg, including a ticket of a later release being REPORTED and not failed on a PR, and an arm proving the report becomes a refusal once the milestone scheme is configured
   - goal-mode.md §8's limit entry for this gap is removed in the same PR
   phases: []
   subtasks: []
   estimated_effort: null
   labels:
   - kind:code
-  notes: 'goal-mode.md §7 states both legs after decision D2/D3 on #1303; the code judges merge-base..HEAD and reports not_applicable on master.'
+  notes: 'goal-mode.md §7 states both legs. D2 was decided A by quorum 4 of 4 seats (2026-09-11) and D3 was decided C, 4 of 4: the release leg warns first and only fails once P1''s milestone scheme exists. The code judges merge-base..HEAD and reports not_applicable on master. Artifact docs/audits/quorum-PMAT-1307.json.'
 - id: PMAT-1309
   github_issue: 1309
   item_type: task
-  title: 'CB-2115''s grace window restarts on any timestamp bump: measure it from when the disagreement was first seen (goal-mode.md §5.2, decision D5; CB-2115 is enforced)'
+  title: 'CB-2115: the grace window must cover the ORPHAN and MISSING legs, and the rule comes off the master push (goal-mode.md §3.3 and §5.2, decisions D10 and P4)'
   status: planned
   priority: high
   assigned_to: null
@@ -6254,15 +6254,17 @@ roadmap:
   updated: 2026-09-11T06:16:11Z
   spec: null
   acceptance_criteria:
-  - the staleness grace window is measured from when a disagreement was first observed, recorded beside the snapshot, and a bump to item.updated or issue.updated_at does not extend it
-  - scripts/roadmap-coherence-control.sh carries an arm that bumps a timestamp and still refuses the pair once the window has passed
+  - 'the staleness grace window covers the ORPHAN and MISSING legs as well as a field disagreement: an issue opened less than staleness_grace_minutes ago is not_measured rather than a finding, and so is an item added without its issue'
+  - CB-2115 no longer runs on a push to master; it runs on pull requests, and on a schedule whose finding OPENS A TICKET instead of failing the build
+  - the window stays at now - max(item.updated, issue.updated_at); no first-seen state file is added, and a control arm proves a timestamp bump restarts it, which is the accepted cost recorded in goal-mode.md §5.2
+  - scripts/roadmap-coherence-control.sh carries an arm for a freshly opened orphan issue inside the window, one for the same issue past it, and one proving the master-push path is gone
   - goal-mode.md §8's limit entry for this gap is removed in the same PR
   phases: []
   subtasks: []
   estimated_effort: null
   labels:
   - kind:code
-  notes: 'CB-2115 is ENFORCED, so this is a live hole: the rule that refuses a stale disagreement can be reset by an edit that resolves nothing. Decision D5 on #1303.'
+  notes: 'CB-2115 is ENFORCED and this is the live hole that reddened master 5af9a0f0d at 06:08Z on 2026-09-11: five issues opened by hand, no roadmap item, no commit to blame. The quorum REFUSED the first-seen state file this ticket was originally filed for (D5 decided B, 4 of 5 seats: a gate whose verdict depends on a state file cannot be judged from a clean clone). What it decided instead is D10 (5 of 5, the only unanimous answer) and P4 (3 of 4). Artifact docs/audits/quorum-PMAT-1307.json.'
 - id: PMAT-1310
   github_issue: 1310
   item_type: task

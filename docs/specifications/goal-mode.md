@@ -192,7 +192,12 @@ A **fork PR** is `not_applicable` for the four GitHub-side rules (CB-2110, 2112,
 2115), for a stated reason: *a fork's PR cannot change this repository's issues,
 milestones or epics, so there is nothing about them for this PR to have broken.* Those
 four are re-checked on the push to master, which is where the merge actually lands and
-where a token exists.
+where a token exists — **except CB-2115**, which does not run on a master push at all. It
+reads GitHub live, so its verdict on master changes while master does not: an issue opened
+by hand turns a green commit red with no diff to blame, which is what happened on
+`5af9a0f0d` at 06:08Z on 2026-09-11. CB-2115 runs on pull requests, where a human can fix
+what the diff caused, and on a schedule, where a disagreement **opens a ticket instead of
+failing a build**. (Decided by quorum 2026-09-11, 3 of 4 seats — §11.2; PMAT-1309.)
 
 **Except when the fork PR edits the records those rules judge.** A fork cannot change
 issues, milestones or epics, but it can edit `docs/roadmaps/roadmap.yaml` and
@@ -229,12 +234,16 @@ except in the tag, where the `v` is added at exactly one place in the code.
 Strict order — tag ⊃ milestone ⊃ roadmap — so there is no bidirectional merge and no
 conflict resolution. A surface can only *fail to reflect* the one above it.
 
-**The title is the intent until the cut derives the number.** §10.3 derives the version
-from the labels of the tickets in the release, so a milestone titled `3.41.0` that
-collects a `breaking-change` ticket is titled wrongly, not scheduled wrongly. The cut
-renames the milestone to the derived number and then tags it, and RR-RELEASE is checked
-after the rename. Only the cut may rename; a rename by anyone else is the drift CB-2114
-exists to catch.
+**The title is the intent, and the cut refuses rather than overrule it.** §10.3 derives the
+version from the labels of the tickets in the release, so a milestone titled `3.41.0` that
+collects a `breaking-change` ticket is titled wrongly, not scheduled wrongly. The cut does
+**not** rename it. It stops, prints both numbers, and a human either retitles the milestone
+or moves the ticket out of it. An automatic rename would let the cut satisfy RR-RELEASE by
+editing the very surface CB-2114 compares against — the rule would pass because the evidence
+moved, and master would go red afterwards on drift no commit introduced. Refusing is the loud
+failure; renaming is the quiet one. A rename by anyone else, at any other time, is the drift
+CB-2114 exists to catch. (Decided by quorum 2026-09-11, 3 of 4 seats; the dissent would fix
+the title at creation and refuse the ticket at assignment instead — §11.2.)
 
 **The key is the string, not the milestone's numeric id.** The teamwork lane proposed
 tracking the id so a rename would be invisible; that is rejected. Renaming a milestone
@@ -281,9 +290,14 @@ vendors: [cuda]    # optional; adds a vendor: role to E.1's required set
 escape hatch nobody can see is a hole, so `pmat comply report` lists every `historical`
 spec **by name** on every run.
 
-`status` IS the exemption, so who may change it belongs to the gate. `CODEOWNERS` covers
-`docs/specifications/`: a front-matter change needs the owner's review, which makes a flip
-out of `active` a reviewed act rather than one line in an unrelated pull request.
+`status` IS the exemption, and **nothing bounds who changes it**. That is stated here rather
+than papered over: the diff is the only control. A `CODEOWNERS` entry on
+`docs/specifications/` and a review artifact for the flip were both considered and both
+rejected — each is a gate whose own bypass is another line in the same pull request, and a
+rule that can be switched off by an unreviewable edit is better honest about it than dressed
+in ceremony. What makes the hatch visible is the naming above: every `historical` and
+`superseded` spec is listed by name on every `pmat comply report` run, so a flip shows up in
+the next report whoever made it. (Decided by quorum 2026-09-11, 4 of 4 seats — §11.2.)
 
 Epic membership is read from GitHub's native **sub-issue** relation, and only from it
 (operator decision, 2026-09-09). An `Epic: #N` line in an issue body is **not** accepted:
@@ -321,21 +335,28 @@ Three finding classes, reported separately because they have different fixes:
 
 ### 5.2 Field predicate — tolerance TIME
 
-For each matched pair, compare `title` and the state word. A disagreement is tolerated
-only while `now − first_seen(disagreement) < staleness_grace_minutes` (default 60), where
-`first_seen` is when a sync first observed THIS disagreement, recorded beside the
-snapshot. A time bound, not a count: "up to 3 may disagree" means three chosen items may
-be wrong forever and nobody chooses which three. It runs from the onset and NOT from
-`max(item.updated, issue.updated_at)`, because any edit to either side moves that maximum
-and would restart the window without resolving anything — a grace window that resets on a
-touch is not a bound. Implemented by PMAT-1309.
+For each matched pair, compare `title` and the state word. A disagreement is tolerated only
+while `now − max(item.updated, issue.updated_at) < staleness_grace_minutes` (default 60). A
+time bound, not a count: "up to 3 may disagree" means three chosen items may be wrong forever
+and nobody chooses which three.
+
+**Any edit to either side restarts that window, and that is accepted.** Measuring instead
+from when a sync first SAW the disagreement was considered and rejected: it needs a
+first-seen record that must be written, committed, read back and kept honest across every
+clone and every CI runner, and a gate whose verdict depends on a state file that can be
+absent, stale or wrong is a gate that cannot be judged from a clean clone. A timestamp bump
+is also some evidence that a human touched the disagreement. Neither side of this trade is
+free — the cost taken here is a window a touch can restart, instead of a new source of truth
+that can lie. (Decided by quorum 2026-09-11, 4 of 5 seats; the dissent held that a window any
+edit resets never expires — §11.2.)
 
 The window covers every leg, not only a field disagreement. An issue opened less than
 `staleness_grace_minutes` ago is `not_measured` rather than a finding: the sync that would
 mint its item cannot have run yet, and a rule that turns master red the instant anyone
 opens an issue is a rule someone disables. The same holds for an item added without its
-issue. Past the window it is a finding, and `pmat work sync` is the fixer. Implemented by
-PMAT-1309.
+issue. Past the window it is a finding, and `pmat work sync` is the fixer. (Decided by
+quorum 2026-09-11, 5 of 5 seats — the only unanimous decision of the fourteen.) The code
+covers the field-disagreement leg only; extending it to ORPHAN and MISSING is PMAT-1309.
 
 ### 5.3 `RR-COHERENCE` — which side wins
 
@@ -419,7 +440,7 @@ legitimate quorum. That is what "pmat does not depend on Claude or agy" means co
 | **CB-2110** | E | every `active` spec names an open epic issue with ≥1 sub-issue | delete the `epic:` line | `traceability` → `gate` |
 | **CB-2111** | E.1 | every `active` spec has a review artifact whose hash matches and whose roles all PASS | **append one space to the spec** | `traceability` → `gate` |
 | **CB-2112** | A | every open item has a `github_issue`, open, whose number is the item's numeric tail | null one `github_issue` | `traceability` → `gate` |
-| **CB-2113** | C | on a PR: every non-merge commit the PR adds carries `Pmat-Ticket: <id>` naming a real, NON-TERMINAL item whose `release` is the open milestone or an earlier one; on master: every non-merge commit in `v<latest>..HEAD` names a real item, any status | `git commit --allow-empty -m 'no trailer' --no-verify` | `traceability` → `gate` |
+| **CB-2113** | C | on a PR: every non-merge commit the PR adds carries `Pmat-Ticket: <id>` naming a real, NON-TERMINAL item; its `release` is compared with the open milestone and a LATER one is reported, not failed, until §11.2's milestone scheme exists (then it fails); on master: every non-merge commit in `v<latest>..HEAD` names a real item, any status | `git commit --allow-empty -m 'no trailer' --no-verify` | `traceability` → `gate` |
 | **CB-2114** | B, F1 | every open item has `release:`, its milestone exists, its issue is on it | remove one `release:` | `traceability` → `gate` |
 | **CB-2115** | D | the open sets are in bijection, and no matched pair has disagreed past the grace window | close one linked issue, leave the item open | `traceability` → `gate` |
 | **CB-2116** | B, F2 | (a) every non-merge commit in a tag's range carries a trailer for a ticket of that release; (b) `count(v<latest>..master) ≤ max_untagged_commits + untagged_ci_slack` | move a merged ticket's `release` | `traceability` → `gate` |
@@ -495,14 +516,15 @@ bypasses, and adding the trigger costs nothing.
    `13878864`; until it is made, CB-2113 measures the PR's commits only and says so in
    its output rather than pretending to cover master.
 5. **Three rules describe more than the code does today**, each with its ticket: CB-2113's
-   master leg reports `not_applicable` there for now (PMAT-1308), CB-2115's grace
-   window still runs from `max(updated)` rather than the onset (PMAT-1309), and the
-   fork carve-out above is not yet implemented (PMAT-1310). Each is stated here rather
-   than left for a reader to discover by running it.
+   master leg reports `not_applicable` there for now and its release leg is unwritten
+   (PMAT-1308), CB-2115's grace window covers the field-disagreement leg only and the rule
+   still runs on a master push (PMAT-1309), and the fork carve-out above is not yet
+   implemented (PMAT-1310). Each is stated here rather than left for a reader to discover
+   by running it.
 6. **A trailer proves a claim, not the work.** `Pmat-Ticket: PMAT-999` on an unrelated
    diff passes CB-2113. Only a quorum reading the diff against the ticket defends this,
    and that is a skill, not a gate.
-6. **Lane independence is unverifiable from a file** (§6.2), demonstrated twice in this
+7. **Lane independence is unverifiable from a file** (§6.2), demonstrated twice in this
    document's own production.
 8. **Publishing needs a token pmat does not hold.** `pmat goal` cuts tags and opens
    release PRs; it never publishes.
@@ -547,7 +569,7 @@ fixed tool list, and that is the defect not to repeat.
 # (b) how much is sitting unreleased. Both are below; the ticket cap is opt-in and
 # unset by default.
 max_untagged_commits      = 60   # the repo's own MEDIAN commits-per-release, over v3.30.0..v3.40.0
-untagged_ci_slack         = 20   # CB-2116(b) fails only above max + slack, so the cut fires BEFORE the gate
+untagged_ci_slack         = 10   # CB-2116(b) fails only above max + slack, so the cut fires BEFORE the gate
 max_release_age_hours     = 72
 max_tickets_per_release   = 0    # 0 = no cap. Set it only if you want one
 staleness_grace_minutes   = 60
@@ -573,8 +595,8 @@ pmat goal status | stop [--now] | ledger [--write]
 labels of the tickets in the release: any `breaking-change` → major; else any
 `enhancement`/`feature` → minor; else patch. That is the Rust idiom — the number
 describes what is in the release, so it cannot be argued about. The derived number is
-what the release is called: when it differs from the milestone's title, the cut renames
-the milestone before tagging (§4.1).
+what the release is called: when it differs from the milestone's title, the cut REFUSES and
+names both numbers rather than editing the surface the next gate reads (§4.1).
 
 **The boundary** is evaluated after each ticket reaches `MERGED`; first to fire cuts:
 
@@ -655,6 +677,36 @@ the step that delivered it, never before. A specification that
 cites its own outputs as though they already existed is exactly the drift this document
 is about — and every OTHER path and command in this file resolves, checked with the two
 greps `CLAUDE.md` prescribes for this file class.
+
+### 11.2 Decisions taken by quorum, 2026-09-11
+
+Fourteen questions were open when this document failed its own five-role review (PMAT-1303).
+None was settled by the author. Each was put to five independent seats that read a read-only
+copy of this tree, chose from options they were given without being told which one was
+drafted, and answered alone; the majority is the decision and every minority answer is kept.
+The artifact is `docs/audits/quorum-PMAT-1307.json`; the ten spec decisions are marked at
+the passage each one changed.
+
+The first round was **contaminated by the author**: the copy carried a roadmap file stating
+the drafted answers as fact, and one seat cited it for nine of its fourteen votes. That seat
+was discarded, the file stripped, and the three questions its removal left undecided were
+re-run on a clean copy. Both rounds are in the artifact. The lesson is recorded here because
+it is the same failure this document is about: evidence that says what you wanted it to say
+is not evidence.
+
+Four of the fourteen are programme decisions rather than text:
+
+| | decision | seats | what it changes |
+|---|---|---|---|
+| **P1** | Exactly one open milestone at a time — the next release. Work not scheduled for it carries no milestone, and the rules read "no milestone" as "not yet scheduled". | 3 of 4 | PMAT-725's re-mint, and D3's release leg above |
+| **P2** | Classify the 44 specs BEFORE minting epics: most are finished or superseded work and belong in `historical`/`superseded`; only the live set gets an epic. | 4 of 4 | PMAT-729, step 6 |
+| **P3** | CB-2111 flips after that classification, over the live set only — not after reviewing all 44. | 4 of 4 | PMAT-1300, step 7 |
+| **P4** | CB-2115 comes off the master push (§3.3). | 3 of 4 | PMAT-1309 |
+
+**P2 and P3 shrink the two largest human steps in §11** from "44 epics and 44 reviews" to
+"classify, then epic and review what is left". That is the difference between a backlog a
+person can finish and one that is quietly abandoned — which is what step 6 and step 7 have
+been since 2026-09-10.
 
 ## 12. Do-not-do
 
