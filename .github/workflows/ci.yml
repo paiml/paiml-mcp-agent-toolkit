@@ -18,6 +18,22 @@ jobs:
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@main
     with:
       repo: ${{ github.event.repository.name }}
+      # PMAT-1313 — the PR lane and the pre-release lane are not the same lane.
+      #
+      # MEASURED on this tree, 21,536 lib tests, same machine, same binary:
+      #   cargo test --lib     1227.83s   (the number `ci / test` has been paying
+      #                                    on every pull request — see the job log)
+      #   cargo nextest run    100.51s    (12.2x, and NOTHING is skipped for it)
+      #
+      # nextest runs each test in its own process, so the suite parallelises past
+      # the one-process ceiling `cargo test` hits. `make test-fast` has documented
+      # this as "~2.5 min" since before this change; CI simply never used it.
+      #
+      # Only pull requests take the fast lane. Every push to master runs the full
+      # `cargo test --lib`, which is what runs the two tests nextest cannot
+      # (PMAT-1314) — so the fast lane never becomes the only lane, and no test
+      # stops being run anywhere.
+      use_nextest: ${{ github.event_name == 'pull_request' }}
     secrets: inherit
 
   # Top-level gate satisfies the org ruleset "Green Main" which requires a
@@ -135,6 +151,12 @@ jobs:
         run: bash scripts/spec-epic-control.sh ./target/debug/pmat
       - name: control — an active spec with no current review must be refused (CB-2111, exit 1)
         run: bash scripts/spec-review-control.sh ./target/debug/pmat
+
+      # PMAT-1313. The fast PR lane is a claim about what still runs; this is the
+      # arm set that makes the claim falsifiable. It reads files only — no build,
+      # no binary — so it costs the job nothing.
+      - name: PR lane control
+        run: bash scripts/pr-lane-control.sh
       - name: the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)
         env:
           GH_TOKEN: ${{ github.token }}

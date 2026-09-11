@@ -369,8 +369,13 @@ mod tests {
 
     #[test]
     fn test_suggest_split_missing_file() {
-        // Build index on current project
-        let index = match AgentContextIndex::build(std::path::Path::new(".")) {
+        // A one-file fixture, NOT `.`. The assertion is that a file the index does not
+        // hold yields None, which any index satisfies — and building one over this
+        // repository took 160s of every `cargo test --lib`, on both the test and the
+        // coverage job, to prove nothing the fixture cannot (PMAT-1313).
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("only.rs"), "pub fn f() {}\n").expect("write fixture");
+        let index = match AgentContextIndex::build(dir.path()) {
             Ok(i) => i,
             Err(_) => return, // Skip if can't build index
         };
@@ -470,10 +475,10 @@ mod tests {
         let mut global_to_local = HashMap::new();
         global_to_local.insert(0usize, 0usize);
 
-        let index_stub = AgentContextIndex::build(std::path::Path::new("."));
-        if index_stub.is_err() {
-            return; // Skip if can't build
-        }
+        // The whole-repository index this test used to build was never read: its only
+        // use was `is_err()`, and every assertion below is on a struct literal. 160s a
+        // run, on both the test and the coverage job, for a value that was discarded
+        // (PMAT-1313).
         // Just test with the struct creation path
         let item = ClusterItem {
             name: "process".to_string(),

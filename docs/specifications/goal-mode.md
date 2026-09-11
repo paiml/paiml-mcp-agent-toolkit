@@ -363,9 +363,10 @@ that can lie. (Decided by quorum 2026-09-11, 4 of 5 seats; the dissent held that
 edit resets never expires — §11.2.)
 
 The window covers every leg, not only a field disagreement. An issue opened less than
-`staleness_grace_minutes` ago is `not_measured` rather than a finding: the sync that would
-mint its item cannot have run yet, and a rule that turns master red the instant anyone
-opens an issue is a rule someone disables. The same holds for an item added without its
+`staleness_grace_minutes` ago is **tolerated** — the rule PASSES and prints the count, the
+same verdict a matched pair inside the window gets. It is emphatically not `not_measured`,
+which §3.3 maps to FAIL: the sync that would mint its item cannot have run yet, and a rule
+that turns master red the instant anyone opens an issue is a rule someone disables. The same holds for an item added without its
 issue. Past the window it is a finding, and `pmat work sync` is the fixer. (Decided by
 quorum 2026-09-11, 5 of 5 seats — one of the two unanimous decisions of the sixteen.) The code
 covers the field-disagreement leg only; extending it to ORPHAN and MISSING is PMAT-1309.
@@ -512,6 +513,50 @@ bypasses, and adding the trigger costs nothing.
 - **P2 — `required::resolve` must union rulesets with branch protection**, and
   `.github/required-status-checks.txt` gains `gate` and loses its false sentence, in the
   same commit. A test asserts the union.
+
+### 7.3 The PR lane and the pre-release lane
+
+A gate a human waits forty minutes for is a gate that gets bypassed, and every rule in
+§7 is paid for in that wait. The two lanes are therefore not the same lane.
+
+**Measured on this tree, 21,536 lib tests, one machine, one binary:**
+
+| lane | command | test execution | what it runs |
+|---|---|---|---|
+| pull request | `cargo nextest run --lib` | **100.51s** | every test but two (below) |
+| push to master | `cargo test --lib` | **1227.83s** | every test, no exception |
+
+12.2x, and nothing is skipped to get it: `cargo test` runs the suite as threads in one
+process, nextest runs each test in its own, so the suite parallelises past a ceiling
+that has nothing to do with what is being tested. `make test-fast` has documented this
+as "~2.5 min" since before this section was written — CI simply never used it. The
+switch is one input on the reusable workflow, gated on the event, and
+`scripts/pr-lane-control.sh` refuses a workflow that turns it on unconditionally: the
+fast lane must never become the only lane.
+
+**Two tests are excluded from the fast lane, and only from it.**
+`eof_does_not_signal_while_a_request_is_in_flight` and
+`waits_for_every_outstanding_request` pass under `cargo test` and hang FOREVER under
+nextest — measured at 300s with no progress, while the two other tests in their module
+pass in milliseconds. A test that only passes in a process another test has warmed is
+order-dependent, which is a defect in the test, not in the runner (PMAT-1314). They run
+on every push to master, and the control asserts they are named, that they still exist,
+and that nothing excludes them from the pre-release lane as well — an exclusion in both
+lanes is a test nothing runs.
+
+**What this does not fix, and the number that proves it.** `ci / coverage` still runs
+the whole suite serially on every pull request, ~29 minutes, and on a pull request its
+*only* enforcement step is skipped (`Enforce coverage floor (OPT-IN ratchet)`), so it
+gates nothing there. It is now the wall-clock floor of the PR lane. The reusable
+workflow accepts `skip_coverage`, documented as "Skip coverage job", and setting it
+FAILS the build: the org gate requires `success` from `coverage` and refuses `skipped`
+by design. A documented input that cannot be used is the same defect class this document
+is about, and it is upstream in `paiml/.github`, not here (PMAT-1315).
+
+Two tests that built an index over the whole repository — 160s each, one of them never
+reading the result — were removed from both lanes on the way (PMAT-1313). They cost
+every `cargo test` run AND every coverage run, and `cargo test`'s thread pool hid them:
+only per-test isolation made them visible.
 
 ## 8. Honest limits
 
