@@ -95,14 +95,15 @@ async fn complexity_hotspots_name_the_fixtures_most_complex_function_first() {
     );
 }
 
-/// Found while covering this file: `include_analyses: [Complexity]` WITHOUT
-/// `Ast` yields `Some(report)` with ZERO files — the complexity phase reads a
-/// process-global cache the AST phase fills, and an empty cache is not an
-/// error. The CLI cannot reach this (`--include` is refused as unimplemented),
-/// but a library caller can, and gets a green report of nothing. Pinned here
-/// so a fix — an error, or an implicit AST phase — changes a test.
+/// PMAT-1319: `include_analyses: [Complexity]` WITHOUT `Ast` used to yield
+/// `Some(report)` with ZERO files — the complexity phase reads a process-global
+/// cache only the AST phase fills, and an empty cache was not treated as an
+/// error. `execute_parallel_analyses_with_progress` now runs the AST phase
+/// implicitly whenever a cache-dependent phase (Complexity, Provability, Dag)
+/// is requested without Ast, so the cache is populated either way — but the
+/// caller must not receive `ast_contexts` it never asked for.
 #[tokio::test]
-async fn complexity_without_ast_is_an_empty_report_that_claims_success() {
+async fn complexity_without_ast_still_finds_the_fixtures_functions() {
     let (_dir, _analyzer, context) = analyzed(vec![AnalysisType::Complexity]).await;
     let report = context
         .analyses
@@ -111,9 +112,26 @@ async fn complexity_without_ast_is_an_empty_report_that_claims_success() {
         .expect("the phase ran and returned Ok");
     assert_eq!(
         report.files.len(),
-        0,
-        "PMAT-1319: if this now finds the file, the cold-cache trap is fixed — retire this test \
-         and drop the Ast from the other tests' requests"
+        1,
+        "the implicit AST phase fills the cache, so the one fixture file is found"
+    );
+    let names: Vec<&str> = report
+        .files
+        .iter()
+        .flat_map(|f| f.functions.iter())
+        .map(|f| f.name.as_str())
+        .collect();
+    assert!(
+        names.contains(&"tangled"),
+        "tangled must be present; got {names:?}"
+    );
+    assert!(
+        names.contains(&"plain"),
+        "plain must be present; got {names:?}"
+    );
+    assert!(
+        context.analyses.ast_contexts.is_empty(),
+        "Ast was not requested, so the implicit AST phase must not leak ast_contexts to the caller"
     );
 }
 

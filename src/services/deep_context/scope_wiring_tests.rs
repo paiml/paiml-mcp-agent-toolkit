@@ -163,3 +163,35 @@ async fn an_empty_include_pattern_list_still_means_every_file() {
         .expect("analysis");
     assert_eq!(context.file_tree.total_files, 2);
 }
+
+/// PMAT-1319: `config()` requests `Complexity + Satd` without `Ast` — the
+/// implicit AST phase must still fill the process-global cache Complexity
+/// reads, so this fixture's own `complexity_report` is a real report and not
+/// the empty-but-Ok result the defect produced.
+#[tokio::test]
+async fn complexity_report_is_real_without_ast_in_the_request() {
+    let dir = fixture();
+    let context = DeepContextAnalyzer::new(config(vec![]))
+        .analyze_project(&dir.path().to_path_buf())
+        .await
+        .expect("analysis");
+    let report = context
+        .analyses
+        .complexity_report
+        .as_ref()
+        .expect("Complexity was requested");
+    assert!(
+        !report.files.is_empty(),
+        "the implicit AST phase must populate the cache Complexity reads"
+    );
+    let names: Vec<&str> = report
+        .files
+        .iter()
+        .flat_map(|f| f.functions.iter())
+        .map(|f| f.name.as_str())
+        .collect();
+    assert!(
+        names.contains(&"tangled"),
+        "tangled must be present; got {names:?}"
+    );
+}
