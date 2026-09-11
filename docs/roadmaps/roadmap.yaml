@@ -6492,3 +6492,104 @@ roadmap:
   labels:
   - kind:code
   notes: 'Filed by the operator 2026-09-11 after pmat 3.40.0 took Lambda-Vector to a 1-minute load average of 3,026 on 48 cores with 9,740 processes. Path: pmat comply ratchet -> measurement -> pmat comply check -> check_metrics_ratchet -> the same measurement, fanning out by the number of ratchet entries at every level. Named files: check_metrics_ratchet.rs:69, metrics_ratchet/measure.rs:210 (Command::new bash), check_builders_ratchet.rs:10. Triaged as critical: it is a denial of service against the developer''s own machine, reachable from a documented workflow (ratcheting a comply check''s own finding count).'
+- id: PMAT-1326
+  github_issue: 1326
+  item_type: bug
+  title: 'paiml-implement release-lint: a cancelled roadmap entry is treated as open work and must name a release'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T17:30:00Z
+  updated: 2026-09-11T17:30:00Z
+  spec: null
+  acceptance_criteria:
+  - 'release-lint.sh R1 skips cancelled as well as completed, and its comment says so: every entry whose status is not completed or cancelled must name exactly one release'
+  - a self-test plants a cancelled entry with no release label and asserts R1 stays green, and plants a planned entry with no release label and asserts R1 goes red
+  - the three long-cancelled bashrs entries named in the issue no longer fail the lint
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Filed by the operator 2026-09-11. The rule exists so open work names the release it ships in; cancelled work ships in no release, exactly like completed. R2 reinforces it — unscheduled is allowed only while blocked — so a cancelled entry cannot even use that escape. The only ways to satisfy the rule today are to label cancelled work with a release it will never ship in, or to leave the lint red. The rule lives in the paiml-implement skill scripts, not in this repository, so whoever takes it is editing the skill bundle.
+- id: PMAT-1329
+  github_issue: 1329
+  item_type: bug
+  title: 'cargo test --lib mutates a TRACKED file: the dispatcher tests append duplicate ✅ COMPLETED markers to docs/execution/roadmap.md on every run'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T18:20:00Z
+  updated: 2026-09-11T18:20:00Z
+  spec: null
+  acceptance_criteria:
+  - git status --porcelain is empty after cargo test --lib, proven by a check that runs the suite and asserts the tree is clean rather than by reading the tests
+  - no test writes anywhere under docs/
+  - the duplicated COMPLETED markers already committed to docs/execution/roadmap.md are cleaned up once, in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Found un-quarantining the 97 dispatcher tests (PMAT-1321). The side effect was dormant, not absent: the tests reaching the writer were attached only under cfg(pmat_broken_tests) and had not compiled since a file split, so running them again makes this happen on every cargo test. It also collides with analyze unrun-tests --write-ledger, which refuses a dirty tree by design — a developer who runs the tests then regenerates a ledger gets a refusal whose cause is invisible. Default roadmap path is hardcoded in roadmap_config.rs:22, configuration_defaults.rs:105 and roadmap_commands.rs:37.'
+- id: PMAT-1331
+  github_issue: 1331
+  item_type: bug
+  title: handle_quality_gate calls process::exit(1), which silently kills the test binary — 32 handler files do it
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T18:40:00Z
+  updated: 2026-09-11T18:40:00Z
+  spec: null
+  acceptance_criteria:
+  - handle_quality_gate returns an error instead of calling process::exit, and main maps it to the same exit code — proven by a CLI test asserting the process exit status is unchanged
+  - 'test_quality_gate_complexity_check runs without #[ignore] and asserts the error instead of dying on it'
+  - a count of the remaining process::exit call sites under src/cli/handlers is recorded so the next PR can lower it
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Found un-quarantining the dispatcher tests (PMAT-1321): the test reaches the real process::exit(1) and every test after it simply never runs, with no failure reported. A handler that exits is untestable by construction, takes its caller with it, and skips every Drop, flush and ledger write between it and main. PMAT-1321 marks the test #[ignore] pointing here — a disclosed limit with an owner, not a fix.'
+- id: PMAT-1332
+  github_issue: 1332
+  item_type: task
+  title: 'triage: four orphan issues from the PMAT-1313 cycle need roadmap items (kind:triage)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T18:45:00Z
+  updated: 2026-09-11T18:45:00Z
+  spec: null
+  acceptance_criteria:
+  - every orphan issue named in the ticket has a roadmap item whose github_issue matches, whose title matches the issue, and whose notes record the analysis rather than proposing a diff
+  - pmat work sync --check-only reports a bijection with zero findings against live GitHub
+  - the branch touches only docs/roadmaps/roadmap.yaml and docs/audits, so a source change means it is not a triage
+  - no issue named in the ticket is closed by this ticket; each is closed by whatever fixes it
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:triage
+  notes: 'A quorum judges a diff against the acceptance criteria of the ticket it names, so a triage PR that files an item without implementing the fix fails by construction — measured on PR #1328, 3 FAIL, all three lanes correctly noting no release-lint.sh change was present. Triage therefore gets its own ticket whose criteria a triage PR can satisfy, matching the paiml-implement skill kind:triage contract: classify and link, no diff, only docs/roadmaps/roadmap.yaml and docs/audits may change.'
+- id: PMAT-1333
+  github_issue: 1333
+  item_type: bug
+  title: 'quorum-review briefs lanes with pmat work status, so scope is judged against a one-line title — PR #1327 took four rounds, the last finding only scope'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T19:10:00Z
+  updated: 2026-09-11T19:10:00Z
+  spec: null
+  acceptance_criteria:
+  - a lane's brief contains the ticket's acceptance_criteria verbatim, proven by a test that plants a ticket with a distinctive criterion and asserts the string reaches the lane prompt
+  - a ticket that cannot be read completely is still a hard harness failure with no artifact, never a substitute string — the rule F-B already established for the title
+  - 're-running PR #1327 round 4 with the fuller brief produces no scope finding, recorded in the artifact rather than asserted'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Measured on PR #1327 (PMAT-1324): four rounds. Rounds 1-3 each found a real bug, which is the quorum working. Round 4 found nothing but scope — 3 of 3 FAIL, every lane calling the wall-clock timeout unrequested, while the ticket''s own acceptance criterion 2 reads every measurement command runs under a timeout and a depth limit and the issue names no timeout as part of the defect. The lanes reasoned correctly from what they were given: a title. Writing the receipt unblocked it, but that makes correct review contingent on the author having written their own account first, which is the one thing a reviewer should not have to take on trust for what was this ticket for.'
