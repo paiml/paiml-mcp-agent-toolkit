@@ -39,6 +39,7 @@ fn issue(number: u64, title: &str, state: IssueState) -> IssueSnapshot {
         state_reason: None,
         labels: Vec::new(),
         milestone: None,
+        created_at: None,
         updated_at: t0(),
         sub_issues: None,
     }
@@ -98,8 +99,11 @@ fn a_bijection_with_agreeing_fields_is_coherent() {
 
 #[test]
 fn an_open_item_with_no_issue_is_an_orphan_roadmap() {
+    // Past the grace window, so this is the classification and not the
+    // freshness question `a_roadmap_item_with_no_issue_is_tolerated_inside_the_window`
+    // asks (PMAT-1309: the fixture used to be judged at age zero).
     let r = roadmap(vec![open("A", "alpha", None)]);
-    let report = check(&r, &snapshot(vec![]), &now());
+    let report = check(&r, &snapshot(vec![]), &later(61));
     assert_eq!(
         report.findings,
         vec![Finding::OrphanRoadmap {
@@ -161,7 +165,7 @@ fn blocked_and_review_items_are_open() {
         item("B", "blocked", ItemStatus::Blocked, None),
         item("R", "review", ItemStatus::Review, None),
     ]);
-    let report = check(&r, &snapshot(vec![]), &now());
+    let report = check(&r, &snapshot(vec![]), &later(61));
     assert_eq!(report.open_items, 2);
     assert_eq!(report.count("ORPHAN-ROADMAP"), 2, "{report:?}");
 }
@@ -170,7 +174,7 @@ fn blocked_and_review_items_are_open() {
 fn an_open_issue_no_item_names_is_an_orphan_github() {
     let mut nine = issue(9, "nine", IssueState::Open);
     nine.milestone = Some("3.42.0".to_string());
-    let report = check(&roadmap(vec![]), &snapshot(vec![nine]), &now());
+    let report = check(&roadmap(vec![]), &snapshot(vec![nine]), &later(61));
     assert_eq!(
         report.findings,
         vec![Finding::OrphanGithub {
@@ -245,7 +249,7 @@ fn a_closed_issue_no_item_names_is_not_an_orphan() {
 fn an_open_issue_named_only_by_a_completed_item_is_an_orphan_github() {
     let r = roadmap(vec![item("C", "five", ItemStatus::Completed, Some(5))]);
     let s = snapshot(vec![issue(5, "five", IssueState::Open)]);
-    let report = check(&r, &s, &now());
+    let report = check(&r, &s, &later(61));
     assert_eq!(classes(&report), vec!["ORPHAN-GITHUB"], "{report:?}");
 }
 
@@ -439,6 +443,7 @@ fn findings_are_ordered_by_class_then_key() {
 fn a_snapshot_round_trips_through_json() {
     let mut one = issue(1, "alpha", IssueState::Closed);
     one.state_reason = Some(CloseReason::NotPlanned);
+    one.created_at = Some(at(-100));
     one.labels.push("bug".to_string());
     one.milestone = Some("3.42.0".to_string());
     let mut s = snapshot(vec![one]);
@@ -962,5 +967,80 @@ fn a_tolerated_orphan_is_still_the_fixers_work() {
             },
         ],
         "a tolerated orphan is still an orphan the fixer closes"
+    );
+}
+
+#[test]
+fn an_issue_created_long_ago_but_touched_now_is_a_finding() {
+    // The freshness leg asks when the issue was OPENED, not when it was last
+    // commented on: `created_at` is read when the snapshot carries one. Under
+    // `updated_at` alone this orphan — open for seventeen hours, relabelled a
+    // minute ago — would read as brand new and be tolerated forever.
+    let mut touched = issue(5, "an old orphan", IssueState::Open);
+    touched.created_at = Some(at(-1000));
+    touched.updated_at = at(59);
+    let report = check(&roadmap(vec![]), &snapshot(vec![touched]), &later(60));
+    assert_eq!(
+        report.findings,
+        vec![Finding::OrphanGithub {
+            number: 5,
+            title: "an old orphan".to_string(),
+            milestone: None,
+        }],
+        "{report:?}"
+    );
+    assert_eq!(report.tolerated, 0);
+}
+
+#[test]
+fn a_snapshot_without_created_at_falls_back_to_the_update_stamp() {
+    // A snapshot written before the field existed carries `created_at: None`
+    // (`#[serde(default)]`), and then the update stamp is the only evidence
+    // there is. Measured, not assumed: the fallback is exercised here.
+    let mut old_format = issue(5, "opened by hand", IssueState::Open);
+    old_format.created_at = None;
+    old_format.updated_at = at(55);
+    let report = check(&roadmap(vec![]), &snapshot(vec![old_format]), &later(60));
+    assert!(report.is_coherent(), "{report:?}");
+    assert_eq!(report.tolerated, 1);
+    assert!(
+        GithubSnapshot::from_json(
+            r#"{"repo":"paiml/pmat","taken_at":"2026-09-09T12:00:00Z","issues":[{"number":5,"title":"t","state":"open","updated_at":"2026-09-09T12:00:00Z"}]}"#
+        )
+        .expect("a snapshot with no created_at still parses")
+        .issues[0]
+            .created_at
+            .is_none()
+    );
+}
+
+#[test]
+fn the_tolerated_notes_name_every_toleration() {
+    // The count and the names agree, always, and each name says WHICH kind of
+    // toleration it is — a single number cannot tell "a field drifted" from
+    // "an orphan issue is young", and the rule's PASS prints these lines.
+    let r = roadmap(vec![open("A", "alpha", None), open("B", "beta", Some(1))]);
+    let s = snapshot(vec![
+        issue(1, "beta (renamed)", IssueState::Open),
+        issue(5, "opened by hand", IssueState::Open),
+    ]);
+    let report = check(&r, &s, &later(30));
+    assert_eq!(report.tolerated, report.tolerated_notes.len(), "{report:?}");
+    let notes = report.tolerated_notes.join(" | ");
+    for needle in [
+        "ORPHAN-ROADMAP A: no issue",
+        "ORPHAN-GITHUB #5: opened by hand",
+        "DRIFT B <-> #1 title",
+        "30 min old, inside the 60-minute grace window",
+    ] {
+        assert!(
+            notes.contains(needle),
+            "the notes must name {needle}: {notes}"
+        );
+    }
+    assert_eq!(
+        report.tolerated_orphans.len(),
+        2,
+        "a tolerated DRIFT is not the fixer's work, the two orphans are: {report:?}"
     );
 }
