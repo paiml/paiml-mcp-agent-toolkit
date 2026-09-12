@@ -1,0 +1,137 @@
+{
+  "ticket": "PMAT-1329",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 102 commit(s); judged against origin/master",
+  "head": "d5f1028dc0827f709b234fc799c7e5f1c6c8c81d",
+  "diff_sha256": "1aaee3f6ddb250a0c77c487f14fa3be41021c086b2ecf93858a1600e607b2f9c",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 37613,
+  "author": {
+    "model": "Opus 5 (1M context)",
+    "family": "claude",
+    "source": "measured"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff successfully implements all criteria of PMAT-1329 and addresses the cross-ticket constraints for PMAT-1321. The fix introduces a clean seam (`PMAT_ROADMAP_PATH`) to redirect roadmap writes during tests to a `TempDir`, safely guarded by an RAII pattern and `#[serial_test::serial(env_vars)]` to prevent races. The assertions in the tests are meaningful and actually assert the success and side-effects of the commands. The duplicated `✅ COMPLETED` markers in `roadmap.md` are removed. The control script correctly implements the 'unchanged tree' check using `git status --porcelain` before and after the full suite, and robustly tests its own falsification arms using temporary copies rather than destructive checkouts. The minor numbering mix-up in the bash script comments (referencing arm 1 vs arm 3 interchangeably) does not affect the script's correctness or exit codes. The justification for closing PMAT-1321 in this PR to satisfy CB-2113 and CB-2115 is sound.",
+      "findings": [],
+      "raw_bytes": 4054,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff successfully implements all three acceptance criteria from PMAT-1329 and accurately reflects the receipt's claims. The seam effectively prevents tests from mutating `docs/execution/roadmap.md` by redirecting writes to a TempDir. The `tests-dont-write-control.sh` script is correctly implemented with self-testing falsifier arms that skip appropriately if the tree is already modified. The cross-ticket edit resolving PMAT-1321 is well-justified in the receipt to avoid breaking the CB-2113 and CB-2115 ratchets. No defects found.",
+      "findings": [
+        {
+          "claim": "Tests point at a TempDir using RoadmapPathEnvGuard and #[serial(env_vars)] instead of writing to the hardcoded docs path",
+          "file": "src/cli/command_dispatcher/tests_spec_and_work.rs",
+          "grounding": "cited",
+          "line": 154
+        },
+        {
+          "claim": "A new CI check proves that git status --porcelain remains unchanged after running the full suite, with falsifier arms to ensure the checker works",
+          "file": "scripts/tests-dont-write-control.sh",
+          "grounding": "cited",
+          "line": 37
+        },
+        {
+          "claim": "Duplicated '✅ COMPLETED' markers are cleaned up",
+          "file": "docs/execution/roadmap.md",
+          "grounding": "cited",
+          "line": 11
+        },
+        {
+          "claim": "PMAT-1321 is marked as completed in the same PR to satisfy CB-2113 and CB-2115 without leaving master in an ORPHAN-ROADMAP state",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 6458
+        }
+      ],
+      "raw_bytes": 3768,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The PR successfully implements all requirements for PMAT-1329 and aligns with its receipt perfectly. \n\n1. **Criteria 1 (Tree cleanliness)**: Correctly introduces `scripts/tests-dont-write-control.sh` which compares `git status --porcelain` before and after the test suite. The script enforces strict checks and includes reliable falsifiers (with its own `--self-test` mechanism) to verify it can detect both modified tracked files and newly created untracked files. \n2. **Criteria 2 (No test writes under docs/)**: Fixed by replacing the hardcoded `docs/execution/roadmap.md` path with an environment variable seam (`PMAT_ROADMAP_PATH`), utilizing `tempfile::TempDir` and an RAII `RoadmapPathEnvGuard` wrapped in `serial(env_vars)` locking. The test suite correctly isolates reads and writes from the real repository files.\n3. **Criteria 3 (Cleanup)**: All duplicate `✅ COMPLETED` markers have been collapsed into single instances in `docs/execution/roadmap.md` exactly as requested.\n4. **Cross-ticket edits**: Modifying `PMAT-1321` status is well-justified in the receipt to avoid an ORPHAN-ROADMAP error (CB-2113/CB-2115 constraints). \n5. **Claims matched**: All claims from the receipt match their corresponding implementations in the diff, including the correction of \"empty\" to \"unchanged\" on the control scripts to prevent blocking innocent untracked files.\n\nNo contradictions, weakened gates, or missing implementations were found.",
+      "findings": [],
+      "raw_bytes": 3957,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "docs/execution/roadmap.md",
+      "line": 11,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Duplicated '✅ COMPLETED' markers are cleaned up"
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 6458,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-1321 is marked as completed in the same PR to satisfy CB-2113 and CB-2115 without leaving master in an ORPHAN-ROADMAP state"
+      ]
+    },
+    {
+      "file": "scripts/tests-dont-write-control.sh",
+      "line": 37,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "A new CI check proves that git status --porcelain remains unchanged after running the full suite, with falsifier arms to ensure the checker works"
+      ]
+    },
+    {
+      "file": "src/cli/command_dispatcher/tests_spec_and_work.rs",
+      "line": 154,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Tests point at a TempDir using RoadmapPathEnvGuard and #[serial(env_vars)] instead of writing to the hardcoded docs path"
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  }
+}
