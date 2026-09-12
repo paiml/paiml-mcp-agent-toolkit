@@ -85,6 +85,18 @@ struct EofSignalingTransport<T: Transport> {
     /// Why the session ended, recorded on the first receive error and held
     /// until `in_flight` drains to zero.
     pending_end: Option<String>,
+    /// How long `receive()` will withhold EOF while a request is unanswered.
+    ///
+    /// A per-instance field rather than only [`Self::DRAIN_BACKSTOP`] used
+    /// directly: production always gets the full backstop (set in [`Self::new`]),
+    /// but a unit test that calls `receive()` and awaits it to completion —
+    /// with no outer `select!` to cancel it, unlike the real actor (see
+    /// `handle_terminal_receive_error`) — pays this wait in full every time.
+    /// `eof_drain_tests` overrides it to a few milliseconds so the worst-case
+    /// path it deliberately exercises does not cost 300 real seconds per test
+    /// (PMAT-1314; this, not test order, is why the two tests that observe
+    /// EOF with a request still in flight used to hang under every runner).
+    drain_backstop: std::time::Duration,
 }
 
 impl<T: Transport> EofSignalingTransport<T> {
@@ -101,12 +113,13 @@ impl<T: Transport> EofSignalingTransport<T> {
                 session_end_tx: Some(tx),
                 in_flight: 0,
                 pending_end: None,
+                drain_backstop: Self::DRAIN_BACKSTOP,
             },
             rx,
         )
     }
 
-    /// How long `receive()` will withhold EOF while a request is unanswered.
+    /// The production value of [`Self::drain_backstop`].
     ///
     /// Only a backstop: the actor's biased outbound arm normally wins in
     /// microseconds. It exists so a handler that never answers degrades to the
@@ -236,7 +249,7 @@ impl<T: Transport> EofSignalingTransport<T> {
             // truncation rather than wedging the process forever; a hang is
             // worse for a user than a lost response. The normal path never
             // waits: the outbound arm wins in microseconds.
-            tokio::time::sleep(Self::DRAIN_BACKSTOP).await;
+            tokio::time::sleep(self.drain_backstop).await;
         }
 
         self.signal_if_drained();
@@ -570,10 +583,19 @@ mod eof_drain_tests {
 
     /// The regression: EOF observed while a request is still being handled
     /// must NOT end the session, or that response is truncated.
+    ///
+    /// PMAT-1314: this test deliberately awaits the withheld `receive()` call
+    /// to completion, with no outer `select!` to cancel it — unlike the real
+    /// actor, nothing here can decrement `in_flight` while that call is
+    /// suspended, so it always pays the full `drain_backstop` fallback. Set
+    /// to a few milliseconds here rather than production's 300s (used to
+    /// hang for the full 300s under EVERY runner, `cargo test` included, not
+    /// just `nextest` — the tests were never order-dependent).
     #[tokio::test]
     async fn eof_does_not_signal_while_a_request_is_in_flight() {
         let (mut transport, mut session_end) =
             EofSignalingTransport::new(ScriptedTransport::new(vec![Some(a_request()), None]));
+        transport.drain_backstop = std::time::Duration::from_millis(5);
 
         assert!(transport.receive().await.is_ok(), "request should arrive");
         assert!(transport.receive().await.is_err(), "then EOF");
@@ -608,6 +630,10 @@ mod eof_drain_tests {
     }
 
     /// Several requests may be consumed before EOF; all must be answered.
+    ///
+    /// PMAT-1314: same `drain_backstop` override as
+    /// `eof_does_not_signal_while_a_request_is_in_flight`, for the same
+    /// reason — see that test's doc comment.
     #[tokio::test]
     async fn waits_for_every_outstanding_request() {
         let (mut transport, mut session_end) =
@@ -616,6 +642,7 @@ mod eof_drain_tests {
                 Some(a_request()),
                 None,
             ]));
+        transport.drain_backstop = std::time::Duration::from_millis(5);
 
         transport.receive().await.unwrap();
         transport.receive().await.unwrap();
