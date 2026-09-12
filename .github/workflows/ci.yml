@@ -201,6 +201,30 @@ jobs:
       # no binary — so it costs the job nothing.
       - name: PR lane control
         run: bash scripts/pr-lane-control.sh
+
+      # PMAT-1329 acceptance criterion 1: the tree stays clean after the suite runs,
+      # "proven by a check that runs the suite and asserts the tree is clean rather
+      # than by reading the tests". A test that writes to the repository was dormant
+      # for as long as the tests reaching it did not compile; this is what notices
+      # the next one. Arm 2 plants a write and requires the checker to see it, so a
+      # checker that has stopped looking fails here rather than passing quietly.
+      # PRE-RELEASE LANE ONLY. Arm 1 runs the full `cargo test --lib`, so on a pull
+      # request this would be the suite a second time — exactly the duplication the
+      # 80/20 mandate exists to remove (goal-mode.md §7.3). A push to master is the
+      # thorough lane, and a test that writes to the repository is caught there
+      # before it can reach anyone's desk.
+      # The falsifiers first, on EVERY event: a checker that has stopped looking is
+      # caught in a second, on a pull request, where someone can fix it.
+      - name: the tree-cleanliness checker can still detect a write
+        run: bash scripts/tests-dont-write-control.sh --self-test
+
+      # Then the expensive arm, on the PRE-RELEASE lane only. It runs the full
+      # `cargo test --lib`, so on a pull request this would be the suite a second
+      # time — the duplication the 80/20 mandate exists to remove (goal-mode.md
+      # §7.3). A push to master is the thorough lane.
+      - name: the test suite does not write to the repository (pre-release lane)
+        if: github.event_name == 'push'
+        run: bash scripts/tests-dont-write-control.sh
       - name: the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)
         env:
           GH_TOKEN: ${{ github.token }}

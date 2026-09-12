@@ -115,9 +115,43 @@
 
     // Test: execute_roadmap_command routing
 
+    /// RAII guard restoring `PMAT_ROADMAP_PATH` to its previous value on drop.
+    ///
+    /// Env vars are process-global (#1329); this guard, combined with
+    /// `#[serial(env_vars)]`, keeps this test from racing or permanently
+    /// clobbering the variable for any other test in the binary.
+    struct RoadmapPathEnvGuard {
+        previous: Option<String>,
+    }
+
+    impl RoadmapPathEnvGuard {
+        fn set(path: &std::path::Path) -> Self {
+            let previous = std::env::var("PMAT_ROADMAP_PATH").ok();
+            std::env::set_var("PMAT_ROADMAP_PATH", path);
+            Self { previous }
+        }
+    }
+
+    impl Drop for RoadmapPathEnvGuard {
+        fn drop(&mut self) {
+            match &self.previous {
+                Some(value) => std::env::set_var("PMAT_ROADMAP_PATH", value),
+                None => std::env::remove_var("PMAT_ROADMAP_PATH"),
+            }
+        }
+    }
+
     #[tokio::test]
+    #[serial_test::serial(env_vars)]
     async fn test_roadmap_init_routing() {
         use crate::cli::commands::RoadmapCommands;
+        use tempfile::TempDir;
+
+        // #1329: this test must never write to the repository's own
+        // docs/execution/roadmap.md. Point the seam at a temp file instead.
+        let temp_dir = TempDir::new().expect("internal error");
+        let roadmap_path = temp_dir.path().join("roadmap.md");
+        let _guard = RoadmapPathEnvGuard::set(&roadmap_path);
 
         let roadmap_cmd = RoadmapCommands::Init {
             version: "v1.0.0".to_string(),
@@ -126,12 +160,35 @@
             priority: "P0".to_string(),
         };
         let result = CommandDispatcher::execute_roadmap_command(roadmap_cmd).await;
-        assert!(result.is_ok() || result.is_err());
+        assert!(
+            result.is_ok(),
+            "roadmap init should succeed against a fresh temp path: {result:?}"
+        );
+        let written = std::fs::read_to_string(&roadmap_path)
+            .expect("Init must have written the roadmap file");
+        assert!(
+            written.contains("Test Sprint"),
+            "written roadmap must contain the sprint title: {written}"
+        );
     }
 
     #[tokio::test]
+    #[serial_test::serial(env_vars)]
     async fn test_roadmap_status_routing() {
         use crate::cli::commands::RoadmapCommands;
+        use tempfile::TempDir;
+
+        // #1329: Status loads the roadmap and writes it back through the
+        // serialiser, which appends a ` ✅ COMPLETED` marker to every completed
+        // heading (`parser_serialize.rs:83`) — so reading the status of the
+        // repository's own roadmap rewrites it. Point the seam at a temp file.
+        // Guarding only `Init` left this one writing: the full-suite control
+        // caught it where the dispatcher-subset check had not.
+        let temp_dir = TempDir::new().expect("internal error");
+        let roadmap_path = temp_dir.path().join("roadmap.md");
+        std::fs::write(&roadmap_path, "# Roadmap\n\n## Sprint: v1.0.0\n")
+            .expect("seed the temp roadmap");
+        let _guard = RoadmapPathEnvGuard::set(&roadmap_path);
 
         let roadmap_cmd = RoadmapCommands::Status {
             sprint: None,
@@ -139,19 +196,38 @@
             format: OutputFormat::Json,
         };
         let result = CommandDispatcher::execute_roadmap_command(roadmap_cmd).await;
-        assert!(result.is_ok() || result.is_err());
+        // The stub above has no CURRENT sprint, and Status says so rather than
+        // guessing — that is the behaviour, and asserting `is_ok()` here was my
+        // error, not the code's. What this pins is the routing and the seam: the
+        // error arrives from the temp roadmap, never from the repository's own.
+        let err = result.expect_err("Status on a roadmap with no current sprint is an error");
+        assert!(
+            err.to_string().contains("no current sprint"),
+            "the error must name the missing current sprint, not something else: {err}"
+        );
     }
 
     #[tokio::test]
+    #[serial_test::serial(env_vars)]
     async fn test_roadmap_validate_routing() {
         use crate::cli::commands::RoadmapCommands;
+        use tempfile::TempDir;
+
+        // #1329: same seam as Status above — Validate reads the roadmap through
+        // the same loader and must not touch the repository's own copy.
+        let temp_dir = TempDir::new().expect("internal error");
+        let roadmap_path = temp_dir.path().join("roadmap.md");
+        std::fs::write(&roadmap_path, "# Roadmap\n\n## Sprint: sprint-1\n")
+            .expect("seed the temp roadmap");
+        let _guard = RoadmapPathEnvGuard::set(&roadmap_path);
 
         let roadmap_cmd = RoadmapCommands::Validate {
             sprint: "sprint-1".to_string(),
             strict: true,
         };
-        let result = CommandDispatcher::execute_roadmap_command(roadmap_cmd).await;
-        assert!(result.is_ok() || result.is_err());
+        // Validate's verdict on a stub sprint is not what this test pins — the
+        // routing and the seam are. An Err here is a verdict, not a panic.
+        let _ = CommandDispatcher::execute_roadmap_command(roadmap_cmd).await;
     }
 
     // Test: execute_test_command routing with different suites
