@@ -96,11 +96,24 @@ pub fn gate_exits_on_violation(report_only: bool) -> bool {
 ///
 /// `exit_on_violation` is the resolved policy from `gate_exits_on_violation`,
 /// not a flag the user typed: it is `true` unless `--report-only` was passed.
-fn handle_quality_gate_exit_status(exit_on_violation: bool, passed: bool) {
+///
+/// Returns `Err` rather than calling `std::process::exit` (#1331): a handler
+/// that terminates the process is unreachable to every caller that is not a
+/// live CLI binary — in particular to `#[tokio::test]`s that call the
+/// dispatcher in-process, which it killed outright. `src/bin/pmat.rs` routes
+/// every `Err` the dispatcher returns through `pmat::cli_exit::code_for`,
+/// which maps an undeclared error to `ExitCode::GeneralError = 1` — the same
+/// code this used to produce via `process::exit(1)`, so the shipped binary's
+/// observable behaviour is unchanged. This deliberately does NOT attach an
+/// `ExitCoded` (e.g. `ExitCode::QualityGateFailure = 3`): doing so would
+/// change the exit status from today's 1, which is a separate decision this
+/// ticket does not make.
+fn handle_quality_gate_exit_status(exit_on_violation: bool, passed: bool) -> Result<()> {
     if exit_on_violation && !passed {
         eprintln!("\n❌ Quality gate FAILED");
-        std::process::exit(1);
+        return Err(anyhow::anyhow!("Quality gate FAILED"));
     }
+    Ok(())
 }
 
 /// Persist all quality gate violations to SQLite for `pmat sql` queryability.
@@ -266,21 +279,31 @@ mod part2b_pure_tests {
         print_quality_gate_final_status(&r, &v);
     }
 
-    // ── handle_quality_gate_exit_status: no-exit branches only ──
-    // (The `std::process::exit(1)` branch would terminate the test process,
-    // so we only drive the three non-exiting combos.)
+    // ── handle_quality_gate_exit_status: all three combos, now that a failing
+    // verdict returns `Err` instead of calling `std::process::exit` (#1331).
 
     #[test]
     fn test_handle_quality_gate_exit_status_not_fail_on_violation_noop() {
-        // exit_on_violation=false (`--report-only`): never exits, pass or fail.
-        handle_quality_gate_exit_status(false, false);
-        handle_quality_gate_exit_status(false, true);
+        // exit_on_violation=false (`--report-only`): never fails, pass or fail.
+        handle_quality_gate_exit_status(false, false).expect("report-only never fails");
+        handle_quality_gate_exit_status(false, true).expect("report-only never fails");
     }
 
     #[test]
     fn test_handle_quality_gate_exit_status_passed_fail_on_violation_noop() {
-        // exit_on_violation=true + passed=true: no exit.
-        handle_quality_gate_exit_status(true, true);
+        // exit_on_violation=true + passed=true: no failure.
+        handle_quality_gate_exit_status(true, true).expect("a passing gate is Ok");
+    }
+
+    #[test]
+    fn test_handle_quality_gate_exit_status_failing_gate_returns_err() {
+        // exit_on_violation=true + passed=false: the one failing combo.
+        let err = handle_quality_gate_exit_status(true, false)
+            .expect_err("a failing gate with exit_on_violation must return Err");
+        assert!(
+            err.to_string().contains("Quality gate FAILED"),
+            "{err}"
+        );
     }
 
     // ── the exit-status policy, resolved from the parser ─────────────────
