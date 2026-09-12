@@ -43,6 +43,9 @@ mod drive_tests;
 #[cfg(test)]
 mod coherence_drive_tests;
 
+#[cfg(test)]
+mod tests;
+
 use std::path::Path;
 
 /// How a project relates to a ratchet file.
