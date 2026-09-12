@@ -1,6 +1,20 @@
 // Configuration structs for roadmap management with default implementations.
 // Covers RoadmapConfig, QualityGateConfig, GitConfig, and TrackingConfig.
 
+/// The default roadmap markdown path, overridable via `PMAT_ROADMAP_PATH`.
+///
+/// This seam exists so a test can never write to the repository's own
+/// `docs/execution/roadmap.md` (see #1329, where `test_roadmap_init_routing`
+/// mutated that tracked file on every `cargo test` run, appending a
+/// `✅ COMPLETED` marker each time). Tests set `PMAT_ROADMAP_PATH` to a path
+/// inside a `tempfile::TempDir` for the duration of the call; production
+/// code never sets this variable, so it keeps writing to the real file.
+pub fn default_roadmap_path() -> PathBuf {
+    std::env::var("PMAT_ROADMAP_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("docs/execution/roadmap.md"))
+}
+
 /// Configuration for roadmap management
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoadmapConfig {
@@ -19,7 +33,7 @@ impl Default for RoadmapConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            path: PathBuf::from("docs/execution/roadmap.md"),
+            path: default_roadmap_path(),
             auto_generate_todos: true,
             enforce_quality_gates: true,
             require_task_ids: true,

@@ -13,7 +13,6 @@ impl CommandDispatcher {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_roadmap_command(roadmap_cmd: RoadmapCommands) -> anyhow::Result<()> {
         use crate::roadmap::{self, RoadmapConfig};
-        use std::path::PathBuf;
 
         // MACS-013: `pmat roadmap sync` renders ROADMAP.yaml directly and
         // returns early — it does not use the sprint-config pipeline below.
@@ -34,7 +33,7 @@ impl CommandDispatcher {
 
         // Load configuration (with defaults)
         let config = RoadmapConfig {
-            path: PathBuf::from("docs/execution/roadmap.md"),
+            path: roadmap::default_roadmap_path(),
             quality_gates: roadmap::QualityGateConfig {
                 complexity_max: 20,
                 coverage_min: 80,
