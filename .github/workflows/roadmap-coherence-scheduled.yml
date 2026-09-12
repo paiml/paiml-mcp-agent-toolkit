@@ -1,0 +1,78 @@
+# PMAT-1309 criterion 2 — the other half of taking CB-2115 off the master push.
+#
+# CB-2115 reads GitHub live, so its verdict on a push to master is a function of
+# what the world looks like at that instant rather than of the diff. Master went
+# red at 5af9a0f0d (06:08Z, 2026-09-11) because five issues had been opened by
+# hand minutes earlier: nothing in the push was wrong and no commit was to blame.
+# `.github/workflows/ci.yml` now guards that step with `github.event_name !=
+# 'push'`, which closes the false-red — and opens a real hole, because an issue
+# opened by hand between two pull requests is then seen by nothing.
+#
+# This workflow is that hole's floor. It asks the same question on a cron and
+# reports the answer as a TICKET, never as a red build: there is no build here
+# whose failure anybody owns, and a permanently-red scheduled workflow is a
+# notification people turn off. The finding lands where the fix is tracked.
+#
+# Held by scripts/roadmap-coherence-control.sh arm 18, which fails if the check
+# step loses `continue-on-error` (the finding would fail the build again) or if
+# the issue-opening step disappears (the finding would reach nobody).
+name: roadmap coherence (scheduled)
+
+on:
+  schedule:
+    # Daily, offset from quality-gate (06:17) so the two do not contend for a
+    # runner. The window CB-2115 tolerates is 60 minutes, so a daily cadence
+    # sees every issue this lane exists to catch: anything opened by hand is
+    # hours old by the time this runs.
+    - cron: "37 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: roadmap-coherence-scheduled
+  cancel-in-progress: false
+
+jobs:
+  roadmap-coherence:
+    name: the roadmap and GitHub agree (CB-2115)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: build pmat from this tree
+        run: cargo build --bin pmat --locked
+
+      # continue-on-error is the whole design, not a workaround: a finding here
+      # must open a ticket INSTEAD OF failing the build (PMAT-1309 criterion 2).
+      # The step's own outcome is still recorded, which is what the next step
+      # branches on.
+      - name: CB-2115 against live GitHub
+        id: check
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          ./target/debug/pmat comply check --checks CB-2115 2>&1 | tee cb2115.out
+
+      - name: Open or refresh the ticket
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="CB-2115: the roadmap and GitHub have drifted apart"
+          body="$(printf 'Found by the scheduled roadmap-coherence lane (PMAT-1309 criterion 2, goal-mode.md §3.3 and §5.2).\n\nThis is a TICKET and not a red build on purpose: CB-2115 reads GitHub live, so its verdict is not a function of any commit. Fix it with `pmat work sync --direction github-to-yaml` for an issue with no item, or by closing the item for an item naming a closed issue.\n\n```\n%s\n```\n\nRun: %s/%s/actions/runs/%s' "$(cat cb2115.out)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
+          n=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
+
+      - name: Say so when it is clean
+        if: steps.check.outcome == 'success'
+        run: |
+          echo "CB-2115 clean: every open issue has an open item and every open item an open issue."

@@ -225,10 +225,41 @@ jobs:
       - name: the test suite does not write to the repository (pre-release lane)
         if: github.event_name == 'push'
         run: bash scripts/tests-dont-write-control.sh
-      - name: the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)
+      - name: the closed loop holds (CB-2113)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./target/debug/pmat comply check --checks CB-2113,CB-2115
+        run: ./target/debug/pmat comply check --checks CB-2113
+
+      # PMAT-1309 criterion 2. CB-2115 is guarded OFF the master push, and the
+      # guard is the point of the rule rather than an exemption from it.
+      #
+      # CB-2113 reads the commits in the push. Its verdict is a function of the
+      # diff, so a red one always names a commit someone can fix. CB-2115 reads
+      # GitHub LIVE, so on a push its verdict is a function of what the world
+      # looks like at that instant: master went red at 5af9a0f0d (06:08Z,
+      # 2026-09-11) because five issues had been opened by hand minutes earlier.
+      # Nothing in that push was wrong, no commit was to blame, and the only way
+      # to green master was to write the roadmap items — which is work, not a
+      # revert. A gate that reds the default branch for something no commit did
+      # teaches people to ignore the default branch.
+      #
+      # `!= 'push'` and not `== 'pull_request'`: the rule must also hold on the
+      # merge queue, or the queue is the bypass (the same reasoning as the
+      # `merge_group:` trigger at the top of this file). The scheduled lane that
+      # catches what lands between pull requests is
+      # `.github/workflows/roadmap-coherence-scheduled.yml`, and it opens a
+      # ticket rather than failing a build, because there is no build on a cron
+      # whose failure anybody owns.
+      #
+      # scripts/roadmap-coherence-control.sh arms 17 and 18 hold both halves:
+      # 17 reads THIS file and fails if any push can reach CB-2115, 18 reads the
+      # scheduled workflow and fails if its finding fails the build instead of
+      # opening an issue.
+      - name: the roadmap and GitHub agree (CB-2115) — not on the master push, see below
+        if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./target/debug/pmat comply check --checks CB-2115
       # CB-2115 joined this step on PMAT-723, in the order goal-mode.md §5.4 sets: the
       # sync reported (PMAT-720), the thirteen items naming #612 were resolved under
       # their own ticket (PMAT-721), the orphans were triaged and fixed by the sync's

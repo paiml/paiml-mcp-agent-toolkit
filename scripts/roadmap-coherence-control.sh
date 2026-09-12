@@ -28,6 +28,7 @@
 #   arm 15 RED   the same item created 6 hours ago                           exit 1, Fail, ORPHAN-ROADMAP PMAT-002
 #   arm 16 GREEN the accepted cost: bumping `updated` restarts the window      exit 0, Pass — a DELIBERATE weakness, see the arm
 #   arm 17 CI    CB-2115 is unreachable on a push to master (.github/workflows/ci.yml)
+#   arm 18 CI    the scheduled lane OPENS A TICKET rather than failing the build
 #
 # Each arm asserts BOTH the process exit code and the CB-2115 entry in the JSON
 # report: the exit code is what CI acts on, the entry is what proves the verdict
@@ -367,6 +368,15 @@ cb2115_steps="$(awk '
   /^jobs:[ \t]*$/ { injobs = 1; next }
   injobs && /^[^ \t#]/ { flush(); injobs = 0 }
   injobs != 1 { next }
+  # A comment is not a step. ci.yml DISCUSSES CB-2115 in prose — the withheld
+  # `#     run: ... --checks CB-2112,CB-2113,CB-2114,CB-2115` at the end of the
+  # traceability job, and the paragraph explaining why the live rule is guarded.
+  # Accumulated into the preceding step those words make an unrelated, unguarded
+  # step (the CB-2113 one) read as a CB-2115 step with no guard, which is a false
+  # RED — and the mirror case, a real step followed by a comment naming a guard,
+  # would be a false GREEN. Measured: without this rule the arm reported the
+  # traceability job twice, once FAILED and once GREEN, on the same file.
+  /^[ \t]*#/ { next }
   /^  [A-Za-z0-9_.-]+:[ \t]*$/ { flush(); job = $1; sub(/:$/, "", job); jobif = ""; stepif = ""; step = ""; next }
   /^      - / { flush(); step = ""; stepif = "" }
   { step = step " " $0
@@ -402,4 +412,58 @@ EOF
   echo "roadmap-coherence-control: arm 17 GREEN — no push to master can reach CB-2115 in ci.yml"
 fi
 
-echo "roadmap-coherence-control: all 17 arms behaved — CB-2115 can fail, can pass, says why, tolerates only what is fresh, and refuses its own bypasses"
+
+# ── arm 18: the scheduled lane reports a finding as a TICKET, not a red build ──
+# Arm 17 takes CB-2115 off the master push. That closes a false red and opens a
+# real hole: an issue opened by hand between two pull requests is then seen by
+# nothing. Criterion 2 of PMAT-1309 fills it with a scheduled run "whose finding
+# OPENS A TICKET instead of failing the build", and this arm is what makes that
+# clause falsifiable rather than aspirational. Three things must all hold, and
+# each has its own way of rotting:
+#
+#   (a) SOME workflow runs `pmat comply check` naming CB-2115 under a `schedule:`
+#       trigger — else the hole is simply open.
+#   (b) that step carries `continue-on-error: true` — else the finding fails the
+#       build after all, which is the outcome the criterion rules out, and a
+#       permanently-red cron is a notification people turn off.
+#   (c) some later step runs `gh issue create` — else the finding reaches nobody
+#       and the run is a green tick over a real drift, the worst of the three.
+#
+# Falsified before it was believed: with (b) deleted the arm prints FAILED naming
+# continue-on-error; with (c)'s step deleted it prints FAILED naming gh issue
+# create; with the whole workflow deleted it prints FAILED naming the schedule.
+wfdir="$(cd "$(dirname "$0")/.." && pwd)/.github/workflows"
+arm18_file=""
+for f in "$wfdir"/*.yml "$wfdir"/*.yaml; do
+  [ -f "$f" ] || continue
+  grep -q 'schedule:' "$f" || continue
+  grep -q 'CB-2115' "$f" || continue
+  grep -qE 'comply[[:space:]]+check' "$f" || continue
+  arm18_file="$f"
+  break
+done
+
+if [ -z "$arm18_file" ]; then
+  echo "roadmap-coherence-control: ARM 18 FAILED — no workflow under .github/workflows runs \`pmat comply check\` with CB-2115 on a \`schedule:\`" >&2
+  echo "  Arm 17 takes CB-2115 off the master push; without a scheduled lane an issue opened between two pull requests is seen by nothing (PMAT-1309 criterion 2)." >&2
+  exit 1
+fi
+arm18_name="$(basename "$arm18_file")"
+
+# (b) the step that runs the check must not fail the build.
+if ! grep -qE '^[[:space:]]*continue-on-error:[[:space:]]*true' "$arm18_file"; then
+  echo "roadmap-coherence-control: ARM 18 FAILED — $arm18_name runs CB-2115 on a schedule but no step carries \`continue-on-error: true\`, so a finding FAILS THE BUILD" >&2
+  echo "  Criterion 2 requires the scheduled finding to open a ticket INSTEAD OF failing the build (goal-mode.md §3.3, §5.2)." >&2
+  exit 1
+fi
+
+# (c) and it must reach a human.
+if ! grep -q 'gh issue create' "$arm18_file"; then
+  echo "roadmap-coherence-control: ARM 18 FAILED — $arm18_name never runs \`gh issue create\`, so a scheduled finding reaches nobody" >&2
+  echo "  A green tick over a real drift is worse than the red build this lane replaced." >&2
+  exit 1
+fi
+
+echo "roadmap-coherence-control: arm 18 GREEN — $arm18_name asks CB-2115 on a schedule, does not fail the build on a finding, and opens a ticket"
+
+echo "roadmap-coherence-control: all 18 arms behaved — CB-2115 can fail, can pass, says why, tolerates only what is fresh, refuses its own bypasses, and reports out of band what it no longer reds master for"
