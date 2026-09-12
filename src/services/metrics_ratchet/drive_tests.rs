@@ -538,3 +538,56 @@ fn zero_is_still_reachable_when_it_is_declared_or_already_the_baseline() {
         Measurement::Value(7)
     );
 }
+
+// ── the per-metric measurement budget ───────────────────────────────────────
+
+/// A metric fixture built by DESERIALISING its TOML rather than by a struct
+/// literal, so `extra` can carry a key this build may not yet know about —
+/// which is what lets the budget tests below be written against the file
+/// format a human edits rather than against the shape of the struct.
+fn metric_from_toml(command: &str, extra: &str) -> MetricBaseline {
+    let text = format!(
+        "baseline = 1\n\
+         unit = \"count\"\n\
+         band = 0\n\
+         includes_test_files = false\n\
+         command = '{command}'\n\
+         description = \"a fixture\"\n\
+         {extra}\n"
+    );
+    toml::from_str(&text).expect("the metric fixture parses")
+}
+
+/// The defect PMAT-1339 names. One flat 300s budget bounds a runaway AND a
+/// legitimately slow measurement, and the two cannot be told apart by a number
+/// chosen for a workstation: this repo's compiler-derived metric took 203s on
+/// intel-clean-room-8 (run 34676994867) and was killed at 300s on the slower
+/// intel-clean-room-6 (run 34680577045). So the budget belongs to the metric.
+///
+/// Read in reverse here: a metric that declares ONE second must be killed after
+/// about one second, not after the five its command asks for, and the message
+/// must name the second — a budget the operator cannot see in the failure is a
+/// budget they cannot correct.
+#[test]
+fn a_metric_declares_its_own_budget() {
+    let dir = scratch("budget-declared");
+    let m = metric_from_toml("sleep 5 && printf 1", "timeout_secs = 1");
+
+    let started = std::time::Instant::now();
+    let got = measure::measure_metric(&dir, &m);
+    let elapsed = started.elapsed();
+
+    let Measurement::Unavailable(why) = &got else {
+        unreachable!("a 1s budget against a 5s command produced {got:?}")
+    };
+    assert!(
+        why.contains("1s measurement timeout"),
+        "the message must name the budget it applied, got: {why}"
+    );
+    assert!(
+        elapsed < std::time::Duration::from_secs(3),
+        "the declared 1s budget was not applied: the measurement took {elapsed:?}, so it \
+         waited out the command (or the 300s default) instead"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
