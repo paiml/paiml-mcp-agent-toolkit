@@ -107,6 +107,18 @@ I briefed the worker that `demo` "is not in default features and no CI leg build
 | ratchets | `panic!(` 785, SATD 324 — unmoved |
 | CB-2113 | ✓ against live GitHub |
 
+## Why this PR completes PMAT-1324, a different ticket
+
+Three lanes flagged `status: completed` on PMAT-1324 as an unjustified cross-ticket edit. It is cross-ticket, and it is required — by CB-2113, which this repository enforces:
+
+> every non-merge commit the PR adds names a real, **NON-TERMINAL** roadmap item
+
+A commit that marks PMAT-1324 completed while naming `Pmat-Ticket: PMAT-1324` names a **terminal** item, and CB-2113 fails it. **A ticket therefore cannot complete itself**, and the completion has to ride in the next open ticket's PR. That is the convention this repository already runs on, and it is why PMAT-1313 was completed in PMAT-1324's PR, and PMAT-1319 in PMAT-1320's.
+
+The alternative is worse: PMAT-1324 merged as `ebf761117` and its issue #1324 is closed, so leaving the item non-terminal makes master **ORPHAN-ROADMAP under CB-2115** — red, with no commit to blame, until some later PR corrects it.
+
+The lanes were right to demand a justification. It was missing; it is here.
+
 ## Honest limits
 
 - `docs/execution/roadmap.md` must be restored with `git checkout` after each test run until #1329 lands; no commit here carries it.
