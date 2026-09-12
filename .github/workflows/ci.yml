@@ -201,6 +201,15 @@ jobs:
       # no binary — so it costs the job nothing.
       - name: PR lane control
         run: bash scripts/pr-lane-control.sh
+
+      # PMAT-1329 acceptance criterion 1: the tree stays clean after the suite runs,
+      # "proven by a check that runs the suite and asserts the tree is clean rather
+      # than by reading the tests". A test that writes to the repository was dormant
+      # for as long as the tests reaching it did not compile; this is what notices
+      # the next one. Arm 2 plants a write and requires the checker to see it, so a
+      # checker that has stopped looking fails here rather than passing quietly.
+      - name: the test suite does not write to the repository
+        run: bash scripts/tests-dont-write-control.sh
       - name: the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)
         env:
           GH_TOKEN: ${{ github.token }}
