@@ -6516,11 +6516,11 @@ roadmap:
   github_issue: 1329
   item_type: bug
   title: 'cargo test --lib mutates a TRACKED file: the dispatcher tests append duplicate ✅ COMPLETED markers to docs/execution/roadmap.md on every run'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-11T18:20:00Z
-  updated: 2026-09-12T01:11:45Z
+  updated: 2026-09-12T04:02:54Z
   spec: null
   acceptance_criteria:
   - 'the full cargo test --lib leaves git status --porcelain EXACTLY as it found it — tracked and untracked, whole tree — proven by a check that runs the suite rather than by reading the tests. Corrected from empty to unchanged: this repository legitimately carries untracked scratch a developer has every right to have, so empty would fail on their desk and teach them to skip the check, while unchanged is stricter for the question the ticket asks because a NEW untracked file registers too'
@@ -6556,11 +6556,11 @@ roadmap:
   github_issue: 1332
   item_type: task
   title: 'triage: four orphan issues from the PMAT-1313 cycle need roadmap items (kind:triage)'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-11T18:45:00Z
-  updated: 2026-09-11T18:45:00Z
+  updated: 2026-09-12T04:02:54Z
   spec: null
   acceptance_criteria:
   - every orphan issue named in the ticket has a roadmap item whose github_issue matches, whose title matches the issue, and whose notes record the analysis rather than proposing a diff
@@ -6593,3 +6593,23 @@ roadmap:
   labels:
   - kind:code
   notes: 'Measured on PR #1327 (PMAT-1324): four rounds. Rounds 1-3 each found a real bug, which is the quorum working. Round 4 found nothing but scope — 3 of 3 FAIL, every lane calling the wall-clock timeout unrequested, while the ticket''s own acceptance criterion 2 reads every measurement command runs under a timeout and a depth limit and the issue names no timeout as part of the defect. The lanes reasoned correctly from what they were given: a title. Writing the receipt unblocked it, but that makes correct review contingent on the author having written their own account first, which is the one thing a reviewer should not have to take on trust for what was this ticket for.'
+- id: PMAT-1336
+  github_issue: 1336
+  item_type: task
+  title: 'lifecycle: a ticket cannot complete itself, and no other ticket''s criteria cover doing it for them (kind:lifecycle)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-12T05:21:15Z
+  updated: 2026-09-12T05:21:15Z
+  spec: null
+  acceptance_criteria:
+  - every roadmap item whose issue is closed is terminal and every non-terminal item's issue is open — pmat work sync --check-only reports a bijection with zero findings against live GitHub
+  - the branch touches only docs/roadmaps/roadmap.yaml and docs/audits; any source change means it is not a lifecycle PR
+  - each completion names in the commit message the merge commit that landed the ticket, so the claim is checkable rather than asserted
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:lifecycle
+  notes: 'CB-2113 requires every commit to name a NON-TERMINAL item, so a commit marking PMAT-X completed while naming PMAT-X fails it: a ticket cannot complete itself. The completion must ride in another PR — but a quorum judges a diff against the criteria of the ticket that PR names, and complete the previous ticket is in no ticket''s criteria, so it is flagged out-of-scope every time however well justified. Measured three times in one session: PR 1330 three FAIL, 1334 one FAIL, 1335 three FAIL, each naming the same cross-ticket status change. Not doing it is worse: GitHub closes the issue on merge and the item goes ORPHAN-ROADMAP under CB-2115, reddening master with no commit to blame. The repository already solved the identical problem for triage by giving it its own ticket (PMAT-1332); this is that, for lifecycle.'
