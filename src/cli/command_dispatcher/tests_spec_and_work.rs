@@ -176,6 +176,7 @@
     #[serial_test::serial(env_vars)]
     async fn test_roadmap_status_routing() {
         use crate::cli::commands::RoadmapCommands;
+        use tempfile::TempDir;
 
         // #1329: Status loads the roadmap and writes it back through the
         // serialiser, which appends a ` ✅ COMPLETED` marker to every completed
@@ -205,6 +206,7 @@
     #[serial_test::serial(env_vars)]
     async fn test_roadmap_validate_routing() {
         use crate::cli::commands::RoadmapCommands;
+        use tempfile::TempDir;
 
         // #1329: same seam as Status above — Validate reads the roadmap through
         // the same loader and must not touch the repository's own copy.
