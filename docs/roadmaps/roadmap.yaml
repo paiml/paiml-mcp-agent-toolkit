@@ -6523,7 +6523,7 @@ roadmap:
   updated: 2026-09-12T01:11:45Z
   spec: null
   acceptance_criteria:
-  - git status --porcelain is empty after cargo test --lib, proven by a check that runs the suite and asserts the tree is clean rather than by reading the tests
+  - 'the full cargo test --lib leaves git status --porcelain EXACTLY as it found it — tracked and untracked, whole tree — proven by a check that runs the suite rather than by reading the tests. Corrected from empty to unchanged: this repository legitimately carries untracked scratch a developer has every right to have, so empty would fail on their desk and teach them to skip the check, while unchanged is stricter for the question the ticket asks because a NEW untracked file registers too'
   - no test writes anywhere under docs/
   - the duplicated COMPLETED markers already committed to docs/execution/roadmap.md are cleaned up once, in the same PR
   phases: []

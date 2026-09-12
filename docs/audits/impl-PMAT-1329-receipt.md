@@ -47,7 +47,13 @@ Rewriting it to the criterion as stated — **full `cargo test --lib`, whole tre
 
 **The weakened control would have shipped a green gate over a file that was still being rewritten.** Three quorum rounds on this one script bought that.
 
-The control compares `git status --porcelain` before and after rather than requiring an absolutely empty tree, because this repository legitimately carries untracked scratch a developer has every right to have. For the question the ticket asks — does the suite leave something behind — "unchanged" is stricter than "empty": a new untracked file registers, and arm 3 proves it does.
+The control compares `git status --porcelain` before and after rather than requiring an absolutely empty tree, because this repository legitimately carries untracked scratch a developer has every right to have. For the question the ticket asks — does the suite leave something behind — "unchanged" is stricter than "empty": a new untracked file registers, and arm 3 proves it does. **Criterion 1 said "empty"; I corrected the criterion, on the issue and in the roadmap, rather than the control.** Two lanes held me to the literal text and were right to; the text was the defect.
+
+Two further hazards the lanes found in the falsifiers, both real and both fixed:
+
+- arm 2 restored its victim with `git checkout -- <file>`, which **destroys a developer's unstaged work** on that file. It restores from a copy the script itself makes.
+- arm 2 could not detect anything if the victim was **already modified** — appending leaves the porcelain line ` M ` either way — so it now skips with a stated reason and fails loudly rather than reporting a checker fault that is not one.
+- `--self-test` exercises both falsifiers in a second without arm 1, and says explicitly that arm 1 did NOT run rather than printing a GREEN for a suite nobody executed.
 
 ## Verification (RED and GREEN both re-run by the orchestrator)
 
