@@ -1,0 +1,144 @@
+{
+  "ticket": "PMAT-1339",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 115 commit(s); judged against origin/master",
+  "head": "cc00aabed440612a97b78e73ba2c521b241ffe4e",
+  "diff_sha256": "6c9cfed86bf8330782bb6287eb36bf7655bd909ceb1d29506db10d26bc1f9259",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 32472,
+  "author": {
+    "model": "Opus 5 (1M context)",
+    "family": "claude",
+    "source": "measured"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff implements PMAT-1339 strictly according to the acceptance criteria. It introduces `timeout_secs` to `MetricBaseline` allowing per-metric configuration for long-running tests like `unwrap_calls_shipped_code` without increasing the flat 300s default for standard metrics. The changes are comprehensively tested (including memoization, default application, budget adherence, and preservation during lowering) and documentation is accurately updated. No criteria are violated.",
+      "findings": [
+        {
+          "claim": "The metric's own wall-clock budget is now used if declared, defaulting to MEASUREMENT_TIMEOUT (300s) otherwise, fulfilling AC1.",
+          "file": "src/services/metrics_ratchet/measure.rs",
+          "grounding": "cited",
+          "line": 383
+        },
+        {
+          "claim": "The lowering pass preserves the `timeout_secs` field byte-for-byte, as verified by `lowering_preserves_a_timeout_secs_line` test, fulfilling AC2.",
+          "file": "src/services/metrics_ratchet/drive_tests.rs",
+          "grounding": "cited",
+          "line": 690
+        },
+        {
+          "claim": "The `unwrap_calls_shipped_code` metric is explicitly assigned a `timeout_secs = 1800` budget with runner statistics in the comments, fulfilling AC3.",
+          "file": ".pmat-ratchet.toml",
+          "grounding": "cited",
+          "line": 76
+        },
+        {
+          "claim": "The `MEASUREMENT_TIMEOUT` documentation is updated to use runner figures instead of the workstation figures, fulfilling AC4.",
+          "file": "src/services/metrics_ratchet/measure.rs",
+          "grounding": "cited",
+          "line": 57
+        }
+      ],
+      "raw_bytes": 4176,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff perfectly implements the acceptance criteria for PMAT-1339. \n\n- `timeout_secs` is added to `.pmat-ratchet.toml` for the cold clippy metric with the exact notes requested.\n- `MEASUREMENT_TIMEOUT` documentation is updated to describe the default budget and includes the CI runner metrics instead of the workstation metrics.\n- `measure_with_budget` parses and enforces the new `timeout_secs` field, gracefully falling back to the 300s default.\n- The `memo_key` logic prevents false caching by embedding the timeout duration in the memoization key.\n- All four acceptance criteria have dedicated, exact-match tests implemented (`a_metric_declares_its_own_budget`, `lowering_preserves_a_timeout_secs_line`, `the_committed_ratchet_holds_at_head` failure messaging, etc.).\n\nNo gates are weakened. The tests ensure that an override beats a declared budget and that a budget only buys time, not a bypass. The code precisely satisfies the ticket.",
+      "findings": [],
+      "raw_bytes": 3227,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff implements all acceptance criteria of PMAT-1339 correctly:\n1. `timeout_secs` is properly parsed from the config and falls back to the `MEASUREMENT_TIMEOUT` default of 300s.\n2. `.pmat-ratchet.toml` gives `unwrap_calls_shipped_code` an 1800s budget along with the CI run reasoning.\n3. Tests (`a_metric_declares_its_own_budget`, `a_metric_without_a_budget_keeps_the_default`, etc.) accurately prove that the budgets apply (e.g. 1s kills a 5s task, and the timeout message includes the applied budget).\n4. `the_committed_ratchet_holds_at_head` parses out the correct budget and reports it gracefully.\n5. The rewrite editor `rewrite::apply` preserves the `timeout_secs` config field during lowering, as evidenced by `lowering_preserves_a_timeout_secs_line`.\n6. `MEASUREMENT_TIMEOUT` docstrings accurately reflect the runner metrics instead of the 40s workstation timings.\n\nI found nothing that refutes the ticket's claims.",
+      "findings": [],
+      "raw_bytes": 3140,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": ".pmat-ratchet.toml",
+      "line": 76,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The `unwrap_calls_shipped_code` metric is explicitly assigned a `timeout_secs = 1800` budget with runner statistics in the comments, fulfilling AC3."
+      ]
+    },
+    {
+      "file": "src/services/metrics_ratchet/drive_tests.rs",
+      "line": 690,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The lowering pass preserves the `timeout_secs` field byte-for-byte, as verified by `lowering_preserves_a_timeout_secs_line` test, fulfilling AC2."
+      ]
+    },
+    {
+      "file": "src/services/metrics_ratchet/measure.rs",
+      "line": 57,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The `MEASUREMENT_TIMEOUT` documentation is updated to use runner figures instead of the workstation figures, fulfilling AC4."
+      ]
+    },
+    {
+      "file": "src/services/metrics_ratchet/measure.rs",
+      "line": 383,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The metric's own wall-clock budget is now used if declared, defaulting to MEASUREMENT_TIMEOUT (300s) otherwise, fulfilling AC1."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=Opus 5 (1M context)/claude"
+  }
+}
