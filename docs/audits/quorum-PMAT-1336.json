@@ -1,0 +1,71 @@
+{
+  "ticket": "PMAT-1336",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 112 commit(s); judged against origin/master",
+  "head": "fe04f49855e3a304e5809b82cc1ff28d59d62fa7",
+  "diff_sha256": "49c40d49bdeed79aa038901d6cd9713dfda43cde7073a4aa5c1f3cad75e6b87c",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 5048,
+  "author": {
+    "model": "Opus 5 (1M context)",
+    "family": "claude",
+    "source": "measured"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff perfectly executes the intent of PMAT-1336. By modifying only `docs/roadmaps/roadmap.yaml`, it marks previously merged tickets (PMAT-1329 and PMAT-1332) as `completed`, resolving the CB-2113 Catch-22 that prevents tickets from completing themselves. Adding PMAT-1336 to the roadmap as `inprogress` is necessary to satisfy the first acceptance criterion (maintaining a bijection between non-terminal roadmap items and open GitHub issues). There are no out-of-scope changes, weakened gates, or unbacked claims.",
+      "findings": [],
+      "raw_bytes": 2077,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff correctly implements PMAT-1336 by creating the lifecycle ticket itself and using its authority to mark PMAT-1329 and PMAT-1332 as completed. This perfectly adheres to the ticket's stated purpose of providing a valid scope for cross-ticket completions, it respects the constraint to only modify roadmap.yaml, and it does not violate any acceptance criteria.",
+      "findings": [],
+      "raw_bytes": 2866,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff strictly conforms to the acceptance criteria of PMAT-1336. It limits its changes to the whitelisted 'docs/roadmaps/roadmap.yaml' file and successfully transitions PMAT-1329 and PMAT-1332 to a terminal 'completed' state, acting as the designated lifecycle ticket. There are no source changes or other forbidden modifications that refute the ticket's requirements.",
+      "findings": [],
+      "raw_bytes": 1773,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  }
+}
