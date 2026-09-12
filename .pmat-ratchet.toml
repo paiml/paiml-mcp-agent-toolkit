@@ -57,6 +57,23 @@ baseline = 0
 unit = "count"
 band = 0
 includes_test_files = false
+# This metric's own wall-clock budget, because the 300s default is not a bound
+# on a runaway here — it is a coin toss on the runner. Same commit, same
+# command, two CI hosts:
+#   intel-clean-room-8, run 34676994867: 203s, measured, green (suite 694s)
+#   intel-clean-room-6, run 34680577045: KILLED at the 300s default, and the
+#                                        three metrics_ratchet drive tests
+#                                        failed together with "command exceeded
+#                                        the 300s measurement timeout and was
+#                                        killed" (suite 1287s)
+# The measurement is a COLD full-crate clippy into its own CARGO_TARGET_DIR, run
+# from inside `cargo test --lib`, so its cost is set by how loaded the runner is
+# and how cold target/ratchet-unwrap is, neither of which the command controls.
+# 1800 is ~9x the observed 203s: wide enough that a slow but honest build
+# finishes, narrow enough that a runaway is still cut off inside half an hour.
+# Raising it is not a way of passing — exceeding whichever budget applies is
+# Unavailable, which is a FAIL (INV-2102-4).
+timeout_secs = 1800
 command = '''o=$(CLIPPY_CONF_DIR=. CARGO_TARGET_DIR=target/ratchet-unwrap cargo clippy --quiet --lib --bins --features full --message-format=json -- -D unknown_lints --force-warn clippy::unwrap_used 2>/dev/null) || exit 9
 printf '%s\n' "$o" | grep -qF '"reason":"build-finished","success":true' || exit 9
 printf '%s\n' "$o" | grep -oF '"code":"clippy::unwrap_used"' | wc -l'''

@@ -142,6 +142,7 @@ equations:
     - "deleting .pmat-ratchet.toml from a repository that once committed one is a FAILURE, not a Skip"
     - "the lowering pass writes back min(baseline, observed) and never anything larger, never for an unmeasured metric, and preserves the file's comments byte for byte — a job that strips a config's documentation each time it runs is worse than no job"
     - "the lowering pass re-parses what it wrote and verifies it says exactly what was asked, because a plausible-looking wrong number silently becomes the new truth"
+    - "INV-2102-7: every measurement is bounded by the budget the metric declares in `timeout_secs`, defaulting to 300s when it declares none, and exceeding that budget is UNAVAILABLE — which is FAIL by INV-2102-4 — never a pass. The budget is per-metric because one constant has to bound a runaway AND let a legitimately expensive measurement finish, and no single number does both: `unwrap_calls_shipped_code` is a cold full-crate clippy that measured 203s and passed on intel-clean-room-8 (run 34676994867) and was killed at the 300s default on the more loaded intel-clean-room-6 (run 34680577045) — the same commit and the same command, reported as a broken measurement on one host and a clean one on the other. Declaring a wider budget therefore buys time, never a verdict; and the lowering pass must preserve the declaration, since a budget a nightly job silently dropped would re-arm this on the next slow runner with nothing in the diff but a baseline. Held by src/services/metrics_ratchet/drive_tests.rs::a_metric_declares_its_own_budget"
     preconditions:
     - ".pmat-ratchet.toml exists (otherwise CB-2102 Skips: the project declares no baselines), and bash and git are available"
 
@@ -300,3 +301,23 @@ falsification_tests:
     prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::cb_2102_is_in_the_comply_rule_registry
     if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_26
+    rule: "INV-2102-7: a metric's declared `timeout_secs` is ignored and every measurement is bounded by the flat default, so the cap that exists to stop a runaway also kills a legitimately slow measurement — and the failure reads as UNAVAILABLE, which is indistinguishable from a rotted command"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/metrics_ratchet/drive_tests.rs::a_metric_declares_its_own_budget
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_26_control
+    rule: "the control: a metric that declares no budget stops getting the 300s default — a per-metric budget implemented by shortening every measurement would kill the cold clippy metric on every runner instead of only the loaded ones"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/metrics_ratchet/drive_tests.rs::a_metric_without_a_budget_keeps_the_default
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_27
+    rule: "the lowering pass drops a metric's `timeout_secs`, re-arming the flat-budget defect on the next slow runner with nothing in the nightly job's diff to review but a baseline"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/metrics_ratchet/drive_tests.rs::lowering_preserves_a_timeout_secs_line
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_28
+    rule: "this repository's own cold full-crate clippy metric stops declaring a budget and goes back to the 300s default, which does not make the gate stricter — it makes it flaky, and a flaky UNAVAILABLE reads as a failed measurement rather than a regression anyone can act on"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/metrics_ratchet/drive_tests.rs::the_committed_unwrap_metric_declares_a_budget
+    if_fails: "P1 — this contract's guarantee does not hold"

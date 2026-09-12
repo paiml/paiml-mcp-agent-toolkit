@@ -237,6 +237,7 @@ fn baseline(value: i64) -> MetricBaseline {
         justification: None,
         zero_is_reachable: false,
         analyzer: None,
+        timeout_secs: None,
     }
 }
 

@@ -178,6 +178,7 @@ fn baseline(v: i64, justification: Option<&str>) -> MetricBaseline {
         justification: justification.map(str::to_string),
         zero_is_reachable: false,
         analyzer: None,
+        timeout_secs: None,
     }
 }
 
@@ -265,6 +266,7 @@ fn lowering_a_metric_with_no_baseline_line_is_an_error() {
 /// nothing today. `cargo test --lib` is reached.
 #[test]
 fn the_committed_ratchet_holds_at_head() {
+    let cfg = RatchetConfig::load(repo_root()).expect("the ratchet file parses");
     let report = run(repo_root()).expect("the repository's own ratchet file must load");
     if report.outcome != Outcome::Ok {
         let mut lines = report.holes.clone();
@@ -274,9 +276,32 @@ fn the_committed_ratchet_holds_at_head() {
                 .metrics
                 .iter()
                 .filter(|m| m.outcome == Outcome::Fail)
-                .map(|m| format!("{}: {}", m.metric, m.detail)),
+                .map(|m| {
+                    format!(
+                        "{}: {} [{}]",
+                        m.metric,
+                        m.detail,
+                        budget_of(&cfg, &m.metric)
+                    )
+                }),
         );
         panic!("{RATCHET_FILE} is red at HEAD:\n  {}", lines.join("\n  "));
+    }
+}
+
+/// Which wall-clock budget a metric was measured under, for the failure above.
+///
+/// A timed-out measurement and a regression are both `Fail` here, and they need
+/// opposite responses — one is "the runner was slow, the budget is wrong", the
+/// other is "the tree got worse". Naming the budget that applied is what lets a
+/// reader tell them apart without opening the config, which is the whole reason
+/// PMAT-1339 exists: the 300s default appeared in the failure text of three
+/// tests on intel-clean-room-6 (run 34680577045) while nothing in the message
+/// said where the 300 came from or that it could be changed.
+fn budget_of(cfg: &RatchetConfig, id: &str) -> String {
+    match cfg.metric.get(id).and_then(|m| m.timeout_secs) {
+        Some(secs) => format!("budget {secs}s, declared by the metric"),
+        None => "budget 300s, the default for a metric that declares none".to_string(),
     }
 }
 
@@ -590,4 +615,121 @@ fn a_metric_declares_its_own_budget() {
          waited out the command (or the 300s default) instead"
     );
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The control for the test above, in two parts: the default must still be
+/// exactly 300s for a metric that declares nothing, and it must apply to a
+/// metric that declares nothing even while another declares a budget. Without
+/// this, the budget test above is satisfied by a change that shortens EVERY
+/// measurement — which would kill the cold clippy metric on every runner
+/// instead of only the loaded ones.
+#[test]
+fn a_metric_without_a_budget_keeps_the_default() {
+    assert_eq!(
+        measure::resolve_timeout(None),
+        std::time::Duration::from_secs(300),
+        "a metric that declares no budget must still get the 300s default"
+    );
+    assert_eq!(
+        measure::resolve_timeout(Some(1800)),
+        std::time::Duration::from_secs(1800),
+        "a declared budget is applied verbatim, in seconds"
+    );
+
+    let dir = scratch("budget-default");
+    let m = metric_from_toml("printf 4", "");
+    assert_eq!(
+        m.timeout_secs, None,
+        "a metric that names no budget deserialises to None, not to some default number"
+    );
+    assert_eq!(measure::measure_metric(&dir, &m), Measurement::Value(4));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The test-only override must keep WINNING over a declared budget. It is the
+/// only reason the kill paths are testable at all — no test can wait out 300s,
+/// still less the 1800s a metric may legitimately declare — so a declared
+/// budget that outranked it would not slow those tests down, it would make
+/// them unrunnable and they would be deleted.
+#[test]
+fn a_test_override_beats_a_declared_budget() {
+    let dir = scratch("budget-override");
+    let m = metric_from_toml("sleep 30 && printf 1", "timeout_secs = 3600");
+
+    measure::set_test_timeout_override_ms(Some(50));
+    let resolved = measure::resolve_timeout(m.timeout_secs);
+    let started = std::time::Instant::now();
+    let got = measure::measure_metric(&dir, &m);
+    let elapsed = started.elapsed();
+    measure::set_test_timeout_override_ms(None);
+
+    assert_eq!(
+        resolved,
+        std::time::Duration::from_millis(50),
+        "the thread-local override must outrank the metric's own declaration"
+    );
+    assert!(
+        matches!(got, Measurement::Unavailable(_)),
+        "the 50ms override did not fire against a 3600s declaration: {got:?}"
+    );
+    assert!(
+        elapsed < std::time::Duration::from_secs(3),
+        "the 50ms override did not fire: the measurement took {elapsed:?}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// INV-2102-7's write-back half. The lowering editor is line-oriented and
+/// passes through every key it does not rewrite — but "passes through" is a
+/// property of the current implementation, not a promise, and a budget silently
+/// dropped by a scheduled nightly job would re-arm the exact defect PMAT-1339
+/// closes on the next slow runner, with nothing in the diff to review but a
+/// baseline. So it is asserted byte for byte.
+#[test]
+fn lowering_preserves_a_timeout_secs_line() {
+    let with_budget = SAMPLE.replace(
+        "[metric.u]\n",
+        "[metric.u]\n# the budget this metric's cost needs\ntimeout_secs = 1800\n",
+    );
+    let mut want = BTreeMap::new();
+    want.insert("u".to_string(), 97i64);
+    let out = rewrite::apply(&with_budget, &want).expect("rewrite succeeds");
+
+    assert_eq!(
+        out,
+        with_budget
+            .replace("baseline = 100", "baseline = 97")
+            .replace("justification = \"a reason that no longer applies\"\n", ""),
+        "the lowering pass must change the baseline, drop the justification, and touch \
+         nothing else"
+    );
+
+    let parsed = RatchetConfig::parse(&out).expect("the rewritten file re-parses");
+    assert_eq!(
+        parsed.metric["u"].timeout_secs,
+        Some(1800),
+        "the rewritten file lost the metric's measurement budget"
+    );
+}
+
+/// The committed declaration. This repository's compiler-derived metric costs
+/// far more than the 300s default on a loaded runner (203s green on
+/// intel-clean-room-8 run 34676994867; killed at 300s on intel-clean-room-6 run
+/// 34680577045), so deleting this line does not make the gate stricter — it
+/// makes it flaky, and a flaky UNAVAILABLE reads as a failed measurement rather
+/// than as a regression anybody can act on.
+#[test]
+fn the_committed_unwrap_metric_declares_a_budget() {
+    let cfg = RatchetConfig::load(repo_root()).expect("the ratchet file parses");
+    let m = cfg
+        .metric
+        .get("unwrap_calls_shipped_code")
+        .expect("the compiler-derived unwrap metric is committed");
+    assert_eq!(
+        m.timeout_secs,
+        Some(1800),
+        "the cold full-crate clippy metric must declare its own budget: the 300s default \
+         killed it on intel-clean-room-6 (run 34680577045) at the same commit that measured \
+         203s on intel-clean-room-8 (run 34676994867)"
+    );
 }
