@@ -72,7 +72,7 @@ pub fn fetch_snapshot(repo: &str) -> Result<GithubSnapshot> {
         "--limit",
         &ISSUE_CAP.to_string(),
         "--json",
-        "number,title,state,stateReason,labels,milestone,updatedAt",
+        "number,title,state,stateReason,labels,milestone,createdAt,updatedAt",
     ])?;
     refuse_truncation(
         issues.as_array().map(Vec::len).unwrap_or(0),
@@ -211,6 +211,10 @@ pub fn parse_snapshot(
                 })
                 .unwrap_or_default(),
             milestone: v["milestone"]["title"].as_str().map(str::to_string),
+            created_at: v["createdAt"]
+                .as_str()
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|d| d.with_timezone(&Utc)),
             updated_at,
             sub_issues: None,
         });

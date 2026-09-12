@@ -29,6 +29,7 @@ fn issue(
         state_reason: None,
         labels: labels.iter().map(|l| (*l).to_string()).collect(),
         milestone: None,
+        created_at: None,
         updated_at: Utc::now(),
         sub_issues,
     }

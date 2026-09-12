@@ -1,0 +1,78 @@
+{
+  "ticket": "PMAT-1309",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 121 commit(s); judged against origin/master",
+  "head": "052d181f07f9efd7d18f041269bfccf1cbafe8dd",
+  "diff_sha256": "60af9ff7150b53375abca5802f4bac8d5c161399699a493b2cbea17a7fe1033c",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 67000,
+  "author": {
+    "model": "Opus 5 (1M context)",
+    "family": "claude",
+    "source": "measured"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "I have reviewed the diff against the requirements for PMAT-1309 and found no issues. The implementation perfectly aligns with the ticket, the specification, and the acceptance criteria.\n\nHere is a summary of the verification:\n1. **The grace window covers the ORPHAN and MISSING legs**: \n   - `src/services/work_sync/mod.rs` successfully implements logic to tolerate `OrphanRoadmap` (`NoIssue` only) and `OrphanGithub` if their age is within the `grace_minutes` window.\n   - The age is accurately measured from the issue's `createdAt` and the item's `created` timestamps, properly falling back to `updatedAt`/`updated` when they are unavailable or unparseable.\n   - Tolerated findings are correctly logged in `tolerated_notes` and do not fail the CI check, resolving the problem of the master branch going red when an issue is manually opened. \n   - Tolerated findings are appropriately added to `tolerated_orphans` and correctly included in the `plan` so `pmat work sync` will still process them.\n\n2. **The rule comes off the master push**:\n   - `.github/workflows/ci.yml` successfully guards the execution of `CB-2115` with `if: github.event_name != 'push'`, removing it from the master push while preserving its presence on pull requests and merge queues.\n\n3. **Scheduled workflow opens tickets rather than failing the build**:\n   - `.github/workflows/roadmap-coherence-scheduled.yml` is introduced to cover the gap left by removing the check from the master push.\n   - It runs on a daily schedule, executes with `continue-on-error: true`, and strictly opens or updates an issue on failure using `gh issue create` / `gh issue comment`, adhering to the exact specification without failing the build.\n\n4. **Rigorous validation**:\n   - `scripts/roadmap-coherence-control.sh` comprehensively guards these new behaviors. Arms 12 to 15 correctly verify that fresh orphans are tolerated and older ones fail. Arm 17 enforces that no step in `ci.yml` runs `CB-2115` on a push. Arm 18 ensures that the scheduled workflow maintains `continue-on-error: true` and the issue reporting logic.\n   - `src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence_tests.rs` and `src/services/work_sync/tests.rs` include robust unit tests for the age calculations, formatting of `tolerated_notes`, and `plan` integration.\n\nThe change does exactly what the ticket asks for, and nothing it forbids. No gates are improperly weakened, and all receipt claims are backed by the diff.",
+      "findings": [],
+      "raw_bytes": 6255,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff successfully implements the requirements of PMAT-1309. The grace window is extended to cover both the ORPHAN-GITHUB and ORPHAN-ROADMAP legs by verifying timestamps (`created` for items, and `created_at` falling back to `updated_at` for issues). Instances within the grace window are appropriately categorized as tolerated and still planned by the fixer. Furthermore, it successfully removes the CB-2115 check from the master push by conditioning its execution in `ci.yml`, and introduces a new scheduled workflow to handle live checking by creating issues rather than failing the build. Comprehensive bash and rust tests are provided to ensure this behavior holds. No extra unrequested changes were included.",
+      "findings": [],
+      "raw_bytes": 2686,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff successfully implements both requirements of PMAT-1309. It introduces a `created_at` / `created` age check for issues and roadmap items to tolerate orphans (ORPHAN and MISSING legs) inside the grace window. It properly delegates these tolerated orphans to `tolerated_orphans` so that `pmat work sync` can still fix them immediately. Additionally, it takes the CB-2115 check off the master push in `ci.yml` (using `if: github.event_name != 'push'`) and adds a scheduled workflow (`roadmap-coherence-scheduled.yml`) that opens a ticket rather than failing the build when discrepancies are found. The bash control scripts and Rust tests have been thoroughly updated to verify this new logic.",
+      "findings": [],
+      "raw_bytes": 3546,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=Opus 5 (1M context)/claude"
+  }
+}

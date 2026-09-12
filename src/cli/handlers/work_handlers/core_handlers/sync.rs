@@ -429,10 +429,13 @@ mod tests {
     #[test]
     fn report_json_carries_the_verdict_and_the_classes() {
         let mut r = crate::models::roadmap::Roadmap::new(Some("paiml/pmat".to_string()));
-        r.roadmap.push(crate::models::roadmap::RoadmapItem::new(
-            "A".to_string(),
-            "alpha".to_string(),
-        ));
+        let mut a = crate::models::roadmap::RoadmapItem::new("A".to_string(), "alpha".to_string());
+        // Past the 60-minute grace window, or the missing issue is a TOLERATED
+        // freshness case rather than the ORPHAN-ROADMAP this test is about
+        // (goal-mode.md §5.2, PMAT-1309).
+        a.created = (Utc::now() - chrono::Duration::hours(2)).to_rfc3339();
+        a.updated = a.created.clone();
+        r.roadmap.push(a);
         let s = GithubSnapshot::from_json(&snap("")).expect("snapshot");
         let report = engine::check(&r, &s, &Settings::new(Utc::now(), 60));
         let doc: serde_json::Value =

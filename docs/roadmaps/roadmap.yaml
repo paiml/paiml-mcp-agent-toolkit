@@ -6254,7 +6254,7 @@ roadmap:
   updated: 2026-09-11T06:16:11Z
   spec: null
   acceptance_criteria:
-  - 'the staleness grace window covers the ORPHAN and MISSING legs as well as a field disagreement: an issue opened less than staleness_grace_minutes ago is not_measured rather than a finding, and so is an item added without its issue'
+  - 'the staleness grace window covers the ORPHAN and MISSING legs as well as a field disagreement: an issue opened less than staleness_grace_minutes ago is tolerated (the rule PASSES and prints the count, goal-mode.md §5.2, quorum 5 of 5) rather than a finding, and so is an item added without its issue; past the window each is a finding'
   - CB-2115 no longer runs on a push to master; it runs on pull requests, and on a schedule whose finding OPENS A TICKET instead of failing the build
   - the window stays at now - max(item.updated, issue.updated_at); no first-seen state file is added, and a control arm proves a timestamp bump restarts it, which is the accepted cost recorded in goal-mode.md §5.2
   - scripts/roadmap-coherence-control.sh carries an arm for a freshly opened orphan issue inside the window, one for the same issue past it, and one proving the master-push path is gone
