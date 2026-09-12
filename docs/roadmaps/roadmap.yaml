@@ -6617,11 +6617,11 @@ roadmap:
   github_issue: 1339
   item_type: bug
   title: 'ratchet: a flat 300 s measurement timeout kills the cold clippy metric on a loaded runner — 3 lib tests red on #1337, sized from a workstation figure'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-12T08:07:34Z
-  updated: 2026-09-12T08:07:34Z
+  updated: 2026-09-12T11:58:01Z
   spec: null
   acceptance_criteria:
   - a metric declaring timeout_secs = 1 whose command sleeps 5 s is reported Unavailable naming a 1 s budget, in about 1 s — and a metric declaring none is still bounded by the 300 s default (a test that fails on the current tree, where timeout_secs is not a field)
