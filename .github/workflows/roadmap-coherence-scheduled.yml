@@ -40,6 +40,13 @@ jobs:
       contents: read
       issues: write
     steps:
+      # @v7 is not a typo for @v4, and this is the second reader to ask. It is
+      # what 37 other steps in .github/workflows already pin, actions/checkout
+      # v7.0.1 is real, and `gh api repos/actions/checkout/git/ref/tags/v7`
+      # resolves to 3d3c42e5aac5ba805825da76410c181273ba90b1. The confusion is
+      # understandable: v4.4.0, v5.1.0, v6.1.0 and v7.0.1 were all published
+      # within 26 minutes of each other on 2026-07-20, so a memory of "v4 is
+      # the latest" is recent enough to feel current and is wrong.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -53,6 +60,14 @@ jobs:
       # must open a ticket INSTEAD OF failing the build (PMAT-1309 criterion 2).
       # The step's own outcome is still recorded, which is what the next step
       # branches on.
+      #
+      # It covers THIS step and deliberately not the ones above it, because a
+      # finding and a broken lane are opposite things. A finding means the lane
+      # worked: the roadmap and GitHub really have drifted, nobody's build is at
+      # fault, and the answer is a ticket. A checkout or a build that fails means
+      # the lane did not run at all — nothing was measured, and a green tick over
+      # an unasked question is the failure mode this whole ticket is about. That
+      # one is supposed to go red and page someone.
       - name: CB-2115 against live GitHub
         id: check
         continue-on-error: true
