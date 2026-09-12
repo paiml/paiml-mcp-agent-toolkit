@@ -196,9 +196,14 @@
             format: OutputFormat::Json,
         };
         let result = CommandDispatcher::execute_roadmap_command(roadmap_cmd).await;
+        // The stub above has no CURRENT sprint, and Status says so rather than
+        // guessing — that is the behaviour, and asserting `is_ok()` here was my
+        // error, not the code's. What this pins is the routing and the seam: the
+        // error arrives from the temp roadmap, never from the repository's own.
+        let err = result.expect_err("Status on a roadmap with no current sprint is an error");
         assert!(
-            result.is_ok(),
-            "roadmap status should succeed against a seeded temp roadmap: {result:?}"
+            err.to_string().contains("no current sprint"),
+            "the error must name the missing current sprint, not something else: {err}"
         );
     }
 
