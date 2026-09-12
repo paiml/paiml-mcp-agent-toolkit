@@ -14,9 +14,9 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-24110 of 27334 lib tests are executed; 3224 are compiled by no leg.
+24207 of 27334 lib tests are executed; 3127 are compiled by no leg.
 
-## `<unsatisfiable>` — 2195 test(s)
+## `<unsatisfiable>` — 2098 test(s)
 
 NOT a clean bill of health — the strongest finding in this ledger, and it grew from 18 to 2199 without a single test changing. #1023 moved the `broken-tests` quarantine from a Cargo FEATURE to the cfg flag `pmat_broken_tests`, and that reclassified 2181 tests out of five `broken-tests,*` buckets into this one. The old buckets read as 'enable this feature and they run', which was never true — the bodies do not compile. `<unsatisfiable>` says what is actually the case. Of the original 18: 14 are `#[cfg(all(feature = "F", not(feature = "F")))]` — a `test_..._without_feature` body written to cover the feature-OFF branch, placed inside a module already gated ON that feature — and 4 are `#[cfg(any())]`, which is `false` by definition. No `--features` invocation can compile any of these; only moving the bodies out of the gated module can. The 2181 quarantined ones need their tests repaired or deleted, which is #1023's remaining work.
 
@@ -348,103 +348,6 @@ crate::cli::analysis_utilities::tests::tests::test_write_comprehensive_output
 crate::cli::analysis_utilities::tests::tests::test_write_markdown_summary_table
 crate::cli::analysis_utilities::tests::tests::test_write_markdown_summary_table_empty
 crate::cli::analysis_utilities::tests::tests::test_write_markdown_summary_table_format
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_analyze_dead_code_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_cache_stats_with_history
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_command_dispatcher_basic
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_command_handler_trait_is_send_sync
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_config_validate
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_config_with_section
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_config_with_set_values
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_context_command_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_convert_demo_protocol_all
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_convert_demo_protocol_cli
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_convert_demo_protocol_cli_flag_true
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_convert_demo_protocol_http
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_convert_demo_protocol_mcp
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_convert_protocol_cli_override
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_create_config_all_suite_enables_all
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_create_config_integration_suite
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_create_config_performance_suite
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_create_config_property_suite
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_create_demo_args_defaults
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_create_demo_args_skip_vendor_override
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_create_demo_args_with_values
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_create_test_config
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_create_test_config_memory_suite
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_demo_args_no_skip_vendor_override
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_demo_args_web_mode
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_demo_args_with_all_none_options
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_execute_cache_command_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_execute_command_generate
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_execute_command_list
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_execute_command_scaffold_list
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_execute_config_command
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_execute_memory_command_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_execute_quality_gate_command
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_execute_report_command
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_generate_metric_recommendations_build_release
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_generate_metric_recommendations_coverage
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_generate_metric_recommendations_lint
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_generate_metric_recommendations_lint_critical
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_generate_metric_recommendations_test_fast
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_generate_metric_recommendations_unknown_metric
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_memory_cleanup_command
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_memory_stats_detailed
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_metric_recommendations_build_release_critical
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_metric_recommendations_coverage_critical
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_metric_recommendations_negative_slope_lint
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_metric_recommendations_zero_slope_test_fast
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_print_performance_summary_if_requested
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_print_startup_all_suites
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_qdd_create_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_quality_gate_all_checks
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_quality_gate_complexity_check
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_quality_gate_dead_code_check
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_quality_gate_entropy_check
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_quality_gate_unknown_check_filtered
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_quality_gate_with_file_filter
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_quality_gate_with_output_file
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_record_metric_basic
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_record_metric_with_timestamp
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_refactor_status_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_report_analysis_hyphen_variants
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_report_csv_format
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_report_dead_code_analysis
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_report_markdown_format
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_report_text_format
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_report_with_visualizations
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_roadmap_init_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_roadmap_status_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_roadmap_validate_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_scaffold_agent_deterministic_probabilistic
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_scaffold_agent_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_scaffold_agent_with_features
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_scaffold_list_subagents_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_scaffold_project_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_scaffold_show_tool_mapping_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_scaffold_validate_template_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_scaffold_wasm_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_search_command_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_show_metrics_failures_only
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_show_metrics_json_output
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_show_metrics_no_trend_error
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_show_metrics_with_trend
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_spec_comply_dry_run
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_spec_create_command
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_spec_list_command
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_spec_score_command
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_test_command_integration_suite
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_test_command_property_suite
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_validate_command_routing
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_work_init_with_github
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_work_list_statuses
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_work_migrate_with_backup
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_work_start_with_spec
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_work_sync_directions
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_work_validate_with_fix
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_write_results_with_output_failure
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_write_results_with_output_success
-crate::cli::command_dispatcher::tests::command_dispatcher_tests::tests::test_write_test_results_no_output
 crate::cli::handlers::analysis_handlers::tests::coverage_tests::test_advanced_analysis_commands_are_routed
 crate::cli::handlers::analysis_handlers::tests::coverage_tests::test_all_cache_strategies_convert
 crate::cli::handlers::analysis_handlers::tests::coverage_tests::test_all_dag_types_convert
@@ -3377,7 +3280,7 @@ crate::cli::handlers::timeline_mode::coverage_tests::check_feature_availability_
 
 ## Residual — what this walk could not reach
 
-161 `#[ignore]`d test(s) are compiled by some leg and executed by none.
+165 `#[ignore]`d test(s) are compiled by some leg and executed by none.
 `cargo test` prints its own "N ignored" line, so they are declared, not
 hidden, and are not ledgered here.
 
