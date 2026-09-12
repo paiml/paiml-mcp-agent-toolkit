@@ -290,7 +290,7 @@ async fn handle_project_quality_gate(
     print_quality_gate_final_status(&results, &violations);
 
     // Handle exit status
-    handle_quality_gate_exit_status(exit_on_violation, results.passed);
+    handle_quality_gate_exit_status(exit_on_violation, results.passed)?;
 
     Ok(())
 }
