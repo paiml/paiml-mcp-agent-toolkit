@@ -208,7 +208,13 @@ jobs:
       # for as long as the tests reaching it did not compile; this is what notices
       # the next one. Arm 2 plants a write and requires the checker to see it, so a
       # checker that has stopped looking fails here rather than passing quietly.
-      - name: the test suite does not write to the repository
+      # PRE-RELEASE LANE ONLY. Arm 1 runs the full `cargo test --lib`, so on a pull
+      # request this would be the suite a second time — exactly the duplication the
+      # 80/20 mandate exists to remove (goal-mode.md §7.3). A push to master is the
+      # thorough lane, and a test that writes to the repository is caught there
+      # before it can reach anyone's desk.
+      - name: the test suite does not write to the repository (pre-release lane)
+        if: github.event_name == 'push'
         run: bash scripts/tests-dont-write-control.sh
       - name: the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)
         env:

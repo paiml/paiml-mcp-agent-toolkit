@@ -39,14 +39,25 @@ Dormant until PMAT-1321 un-quarantined these tests. It also collides with `pmat 
 - **The committed damage is cleaned**: four headings' repeated markers collapsed to one each.
 - **`scripts/tests-dont-write-control.sh`**, 3 arms, wired into the `traceability` job.
 
+## The control caught a second writer that the first control could not
+
+Three lanes refused the first `tests-dont-write-control.sh`, unanimously, for weakening the criterion it claimed to enforce: it ran only the `command_dispatcher` subset "to save time", filtered untracked entries out of its predicate, and scoped it to `docs/`. Each shortcut would have passed while a test created a new file, or wrote anywhere else.
+
+Rewriting it to the criterion as stated — **full `cargo test --lib`, whole tree, tracked and untracked** — failed immediately, and correctly: `docs/execution/roadmap.md` was still being written. `test_roadmap_status_routing` and `test_roadmap_validate_routing` call the same `execute_roadmap_command`, and `Status` writes the roadmap back through the serialiser, which appends ` ✅ COMPLETED` to every completed heading (`parser_serialize.rs:83`). Only `Init` had been guarded.
+
+**The weakened control would have shipped a green gate over a file that was still being rewritten.** Three quorum rounds on this one script bought that.
+
+The control compares `git status --porcelain` before and after rather than requiring an absolutely empty tree, because this repository legitimately carries untracked scratch a developer has every right to have. For the question the ticket asks — does the suite leave something behind — "unchanged" is stricter than "empty": a new untracked file registers, and arm 3 proves it does.
+
 ## Verification (RED and GREEN both re-run by the orchestrator)
 
 | what | result |
 |---|---|
 | suite, with the fix | `docs/` dirty lines = **0** |
 | suite, production seam reverted, test kept | `docs/` dirty lines = **1** |
-| `tests-dont-write-control.sh`, with the fix | **3/3 arms**, exit 0 |
-| the same control, seam reverted | **FAILED**, exit 1 |
+| `tests-dont-write-control.sh` (full suite, whole tree), with the fix | **3/3 arms**, exit 0 |
+| the same control, before guarding Status and Validate | **arm 1 FAILED** — it named the file |
+| the same control, production seam reverted | **FAILED**, exit 1 |
 | `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings` | clean |
 | ratchets | `panic!(` 785, SATD 324 — unmoved |
 | CB-2113 / CB-2115 | ✓ / ✓ against live GitHub, 106 ↔ 106 |
