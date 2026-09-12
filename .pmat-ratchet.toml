@@ -212,7 +212,7 @@ docs/status/orphan-files-ledger.md, checked by `--check-ledger` in CI.
 """
 
 [metric.quarantined_files]
-baseline = 82
+baseline = 75
 unit = "count"
 band = 0
 includes_test_files = true

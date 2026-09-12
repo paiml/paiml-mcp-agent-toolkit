@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4482 tracked `.rs` files: 3993 reachable from 138 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 82 quarantined (35840 lines, 2017 `#[test]` fns).
+4482 tracked `.rs` files: 4000 reachable from 138 target root(s), 407 orphaned (126920 lines, 6294 `#[test]` fns), 75 quarantined (34146 lines, 1920 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -63,13 +63,6 @@ same change; do not edit counts by hand.
 | `src/cli/analysis_utilities/tests_markdown.rs` | quarantined-#1023 | 11 | 242 |
 | `src/cli/analysis_utilities/tests_pmatignore.rs` | quarantined-#1023 | 3 | 119 |
 | `src/cli/analysis_utilities/tests_red_bug.rs` | quarantined-#1023 | 4 | 107 |
-| `src/cli/command_dispatcher/command_dispatcher_tests.rs` | quarantined-#1023 | 0 | 38 |
-| `src/cli/command_dispatcher/tests_command_routing.rs` | quarantined-#1023 | 11 | 214 |
-| `src/cli/command_dispatcher/tests_config_extended.rs` | quarantined-#1023 | 19 | 324 |
-| `src/cli/command_dispatcher/tests_metric_and_demo.rs` | quarantined-#1023 | 14 | 183 |
-| `src/cli/command_dispatcher/tests_report_and_metrics.rs` | quarantined-#1023 | 15 | 237 |
-| `src/cli/command_dispatcher/tests_scaffold_quality_gate.rs` | quarantined-#1023 | 14 | 255 |
-| `src/cli/command_dispatcher/tests_spec_and_work.rs` | quarantined-#1023 | 24 | 443 |
 | `src/cli/handlers/complexity_handlers_tests.rs` | pending-#1017 | 0 | 16 |
 | `src/cli/handlers/complexity_tests_coverage.rs` | pending-#1017 | 41 | 649 |
 | `src/cli/handlers/complexity_tests_dead_code.rs` | pending-#1017 | 6 | 311 |

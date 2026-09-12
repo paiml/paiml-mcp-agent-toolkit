@@ -13,8 +13,8 @@
             false,
             false,
             false,
-            vec!["dead_code".to_string()],
-            None,
+            vec![crate::cli::enums::AnalysisType::DeadCode],
+            50,
             None,
             false,
             false,
@@ -38,8 +38,8 @@
             true, // include_visualizations
             true, // include_executive_summary
             true, // include_recommendations
-            vec!["complexity".to_string()],
-            Some(0.9),
+            vec![crate::cli::enums::AnalysisType::Complexity],
+            90,
             None,
             false,
             false,
@@ -63,8 +63,8 @@
             false,
             false,
             false,
-            vec!["complexity".to_string()],
-            None,
+            vec![crate::cli::enums::AnalysisType::Complexity],
+            50,
             None,
             false,
             true, // text
@@ -88,8 +88,8 @@
             false,
             false,
             false,
-            vec!["complexity".to_string()],
-            None,
+            vec![crate::cli::enums::AnalysisType::Complexity],
+            50,
             None,
             false,
             false,
@@ -113,8 +113,8 @@
             false,
             false,
             false,
-            vec!["complexity".to_string()],
-            None,
+            vec![crate::cli::enums::AnalysisType::Complexity],
+            50,
             None,
             false,
             false,
@@ -128,16 +128,30 @@
     // Test: execute_show_metrics_command
 
     #[tokio::test]
-    async fn test_show_metrics_no_trend_error() {
+    async fn test_show_metrics_no_trend_reports_observations() {
+        // This test used to assert `trend=false` was an error path
+        // (`assert!(result.is_err())`, under the name
+        // `test_show_metrics_no_trend_error`), and it was correct when written:
+        // at introduction `execute_show_metrics_command` had
+        // `if !trend { anyhow::bail!("Only --trend mode is currently
+        // supported"); }`. Commit 79cb0af8a ("show-metrics: remove --trend
+        // requirement, always show trends") deleted that bail in favour of
+        // `let _ = trend;`, and commit 3dcb88d39 (#915) replaced the discard
+        // with real handling: `--trend` is now the opt-in for the trend view
+        // (direction/std-dev/slope); metrics_commands.rs:22-30 documents that
+        // omitting it is a valid, always-Ok "observations only" mode, not an
+        // error path. The `is_err()` assertion pinned a behaviour two commits
+        // upstream of this one already removed; updated to match what
+        // `execute_show_metrics_command` actually does today.
         let result = CommandDispatcher::execute_show_metrics_command(
-            false, // trend=false should error
+            false, // trend=false: observations-only, not an error
             30,
             None,
             OutputFormat::Table,
             false,
         )
         .await;
-        assert!(result.is_err());
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
