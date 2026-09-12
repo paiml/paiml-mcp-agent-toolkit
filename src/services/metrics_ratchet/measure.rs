@@ -48,13 +48,27 @@ const RATCHET_DEPTH_ENV: &str = "PMAT_RATCHET_DEPTH";
 /// value that still lets the depth-0 case through.
 const RATCHET_MAX_DEPTH: u32 = 1;
 
-/// How long a single metric's command may run before [`measure_now`] kills it
-/// and reports `Unavailable`. A ratchet measurement is a `grep`/`git grep`
-/// pipeline or, at the expensive end, a single `cargo` invocation over an
-/// already-built tree (this repo's own compiler-derived metric is ~40s); 300s
-/// is generous enough to absorb a cold cache or a slow CI runner without ever
-/// being generous enough to let a runaway process (recursive or otherwise)
-/// sit unbounded.
+/// The DEFAULT budget: how long a metric that declares no
+/// [`MetricBaseline::timeout_secs`] of its own may run before [`measure_now`]
+/// kills it and reports `Unavailable`.
+///
+/// It is a default rather than the rule because one number cannot do both
+/// jobs. Most ratchet measurements are a `grep`/`git grep` pipeline and finish
+/// in under a second, so 300s bounds a runaway (recursive or otherwise)
+/// without ever being close to legitimate. At the expensive end sits a COLD
+/// `cargo clippy` over the whole crate, and there 300s is not a bound on a
+/// runaway at all — it is a coin toss on the runner. This repository's
+/// `unwrap_calls_shipped_code` measured 203s and passed on intel-clean-room-8
+/// (run 34676994867) and was killed at this default on the more loaded
+/// intel-clean-room-6 (run 34680577045): the same commit and the same command,
+/// reported as a broken measurement on one machine and a clean one on the
+/// other.
+///
+/// A metric whose legitimate cost can exceed this declares `timeout_secs` in
+/// `.pmat-ratchet.toml`, next to the command whose cost it describes. What a
+/// larger budget never buys is a verdict: exceeding whichever budget applies is
+/// still `Unavailable`, because "we could not measure it" must never read as
+/// "it did not regress" (`INV-2102-4`).
 const MEASUREMENT_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// How often [`measure_now`]'s wait loop polls the child for completion.
@@ -114,7 +128,7 @@ pub fn measure_all(
 pub fn measure_metric(project_path: &Path, metric: &MetricBaseline) -> Measurement {
     let raw = match metric.analyzer.as_deref() {
         Some(name) => measure_analyzer(project_path, name),
-        None => measure(project_path, &metric.command),
+        None => measure_with_budget(project_path, &metric.command, metric.timeout_secs),
     };
     guard_zero(raw, metric)
 }
@@ -190,6 +204,20 @@ pub fn guard_zero(raw: Measurement, metric: &MetricBaseline) -> Measurement {
 /// upward, greets as the largest improvement in the project's history and the
 /// lowering job then makes permanent.
 pub fn measure(project_path: &Path, command: &str) -> Measurement {
+    measure_with_budget(project_path, command, None)
+}
+
+/// [`measure`], with the metric's own wall-clock budget in seconds.
+///
+/// `None` means the [`MEASUREMENT_TIMEOUT`] default; see
+/// [`MetricBaseline::timeout_secs`] for why the budget travels with the metric
+/// rather than living in one constant.
+pub fn measure_with_budget(
+    project_path: &Path,
+    command: &str,
+    timeout_secs: Option<u64>,
+) -> Measurement {
+    let timeout = resolve_timeout(timeout_secs);
     #[cfg(test)]
     if is_own_repo(project_path) {
         // Take the map lock only long enough to hand out this command's cell,
@@ -202,13 +230,29 @@ pub fn measure(project_path: &Path, command: &str) -> Measurement {
             let mut map = REPO_MEASUREMENTS
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            std::sync::Arc::clone(map.entry(command.to_owned()).or_default())
+            std::sync::Arc::clone(map.entry(memo_key(command, timeout)).or_default())
         };
         return cell
-            .get_or_init(|| measure_now(project_path, command))
+            .get_or_init(|| measure_now(project_path, command, timeout))
             .clone();
     }
-    measure_now(project_path, command)
+    measure_now(project_path, command, timeout)
+}
+
+/// The memo key: the command text AND the budget it was measured under.
+///
+/// The budget has to be in the key. A command killed at 1s and the same command
+/// given 1800s are two different measurements — one `Unavailable`, one a count —
+/// and a memo keyed on the text alone would hand the first caller's verdict to
+/// the second, making a result depend on which test won a race. Keying on the
+/// pair keeps the whole point of the memo (six callers, one cold clippy) for
+/// every caller that agrees about the budget, which is every production caller
+/// of a given metric, and separates only those that do not. `\u{1f}` (ASCII
+/// unit separator) cannot appear in a `u64` rendering, so the two fields cannot
+/// be confused for one another.
+#[cfg(test)]
+fn memo_key(command: &str, timeout: Duration) -> String {
+    format!("{}\u{1f}{command}", timeout.as_millis())
 }
 
 /// Test-only memo for measurements taken against THIS repository.
@@ -220,8 +264,11 @@ pub fn measure(project_path: &Path, command: &str) -> Measurement {
 /// roughly four minutes measuring the same unchanged tree six times, on each of
 /// the eight feature legs CI runs.
 ///
-/// Keyed on the command text, which IS the metric's identity here: two metrics
-/// sharing a command must measure the same thing, or one of them is misdeclared.
+/// Keyed on the command text AND the budget it ran under (see [`memo_key`]).
+/// The text alone IS the metric's identity here — two metrics sharing a command
+/// must measure the same thing, or one of them is misdeclared — but a command
+/// killed at 1s and the same command given 1800s are not the same measurement,
+/// so the budget joins the key rather than being averaged over by the memo.
 ///
 /// Scoped to this repository on purpose. Fixture-driven tests build a temp dir,
 /// measure it, mutate it and measure again — caching those would make a test
@@ -250,7 +297,7 @@ fn is_own_repo(project_path: &Path) -> bool {
 }
 
 // Test-only, thread-local overrides for `current_depth` and
-// `measurement_timeout`.
+// `resolve_timeout`.
 //
 // `cargo test` runs many tests concurrently as OS threads inside one
 // process, and `std::env::set_var` is process-global — a test that wants to
@@ -279,7 +326,8 @@ pub(crate) fn set_test_depth_override(depth: Option<u32>) {
 }
 
 /// Make every measurement on the CALLING THREAD use `ms` milliseconds instead
-/// of [`MEASUREMENT_TIMEOUT`], without touching the real process environment.
+/// of the budget it would otherwise get — the metric's own `timeout_secs`, or
+/// [`MEASUREMENT_TIMEOUT`] — without touching the real process environment.
 /// `None` clears the override. `#[cfg(test)]` only.
 #[cfg(test)]
 pub(crate) fn set_test_timeout_override_ms(ms: Option<u64>) {
@@ -317,19 +365,27 @@ fn truncate_command(command: &str) -> String {
     }
 }
 
-/// The wall-clock budget for one measurement. Overridable only under
-/// `#[cfg(test)]`, and only via the thread-local set by
-/// [`set_test_timeout_override_ms`], so a test can assert the kill path
-/// without waiting out [`MEASUREMENT_TIMEOUT`] and without affecting any
-/// other test's measurements.
-fn measurement_timeout() -> Duration {
+/// The wall-clock budget for one measurement, in precedence order: the
+/// `#[cfg(test)]` thread-local override, then the metric's own declared
+/// `timeout_secs`, then [`MEASUREMENT_TIMEOUT`].
+///
+/// The override is first on purpose and must stay first. It is how the kill
+/// paths are tested at all — a test asserting that a runaway is killed cannot
+/// wait out 300s, still less the 1800s a metric may legitimately declare — so a
+/// declared budget that outranked it would make those tests unrunnable rather
+/// than merely slow. It is set only by this module's own tests, only on the
+/// calling thread, and no production path can reach it.
+pub(crate) fn resolve_timeout(declared_secs: Option<u64>) -> Duration {
     #[cfg(test)]
     {
         if let Some(ms) = TEST_TIMEOUT_OVERRIDE_MS.with(std::cell::Cell::get) {
             return Duration::from_millis(ms);
         }
     }
-    MEASUREMENT_TIMEOUT
+    match declared_secs {
+        Some(secs) => Duration::from_secs(secs),
+        None => MEASUREMENT_TIMEOUT,
+    }
 }
 
 /// Drain one of the child's pipes on its own thread, delivering the bytes
@@ -452,7 +508,7 @@ fn kill_process_tree(child: &mut Child) {
 /// process group now holds this recycled id" — worse than the hang it
 /// replaces. The bound (not a signal) is what protects this arm; see the
 /// comment at the success-arm drain below for the full argument.
-fn measure_now(project_path: &Path, command: &str) -> Measurement {
+fn measure_now(project_path: &Path, command: &str, timeout: Duration) -> Measurement {
     if command.trim().is_empty() {
         return Measurement::Unavailable(
             "the metric declares no command, so its baseline cannot be reproduced".into(),
@@ -516,7 +572,6 @@ fn measure_now(project_path: &Path, command: &str) -> Measurement {
     let out_rx = drain_on_thread(child.stdout.take());
     let err_rx = drain_on_thread(child.stderr.take());
 
-    let timeout = measurement_timeout();
     let deadline = Instant::now() + timeout;
     let status = loop {
         match child.try_wait() {

@@ -6613,3 +6613,24 @@ roadmap:
   labels:
   - kind:lifecycle
   notes: 'CB-2113 requires every commit to name a NON-TERMINAL item, so a commit marking PMAT-X completed while naming PMAT-X fails it: a ticket cannot complete itself. The completion must ride in another PR — but a quorum judges a diff against the criteria of the ticket that PR names, and complete the previous ticket is in no ticket''s criteria, so it is flagged out-of-scope every time however well justified. Measured three times in one session: PR 1330 three FAIL, 1334 one FAIL, 1335 three FAIL, each naming the same cross-ticket status change. Not doing it is worse: GitHub closes the issue on merge and the item goes ORPHAN-ROADMAP under CB-2115, reddening master with no commit to blame. The repository already solved the identical problem for triage by giving it its own ticket (PMAT-1332); this is that, for lifecycle.'
+- id: PMAT-1339
+  github_issue: 1339
+  item_type: bug
+  title: 'ratchet: a flat 300 s measurement timeout kills the cold clippy metric on a loaded runner — 3 lib tests red on #1337, sized from a workstation figure'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-12T08:07:34Z
+  updated: 2026-09-12T08:07:34Z
+  spec: null
+  acceptance_criteria:
+  - a metric declaring timeout_secs = 1 whose command sleeps 5 s is reported Unavailable naming a 1 s budget, in about 1 s — and a metric declaring none is still bounded by the 300 s default (a test that fails on the current tree, where timeout_secs is not a field)
+  - 'pmat comply ratchet --lower preserves a timeout_secs line: the rewrite editor round-trips the committed file byte-for-byte apart from the baselines it lowers'
+  - .pmat-ratchet.toml gives unwrap_calls_shipped_code a budget with the two CI runs recorded beside it, and the_committed_ratchet_holds_at_head reads it (the failure message names the budget it applied)
+  - the MEASUREMENT_TIMEOUT doc comment no longer carries the ~40 s workstation figure; it carries the runner figures (203 s green on intel-clean-room-8 run 34676994867; killed at 300 s on intel-clean-room-6 run 34680577045)
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Introduced by #1327 (PMAT-1324): MEASUREMENT_TIMEOUT is one flat 300 s for every metric, sized from a ~40 s workstation figure. unwrap_calls_shipped_code is a cold cargo clippy of the whole crate into its own target dir, run inside cargo test --lib; on intel-clean-room-8 it took 203 s (green), on intel-clean-room-6 (suite 1287 s vs 694 s) it was killed at 300 s and three drive tests failed together, serialised on the build-directory lock. A cap that bounds a runaway must not bound a legitimate slow build: the metric declares its own budget.'

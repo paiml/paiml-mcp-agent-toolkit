@@ -122,6 +122,27 @@ pub struct MetricBaseline {
     /// never a zero (CRUX-12, #1152).
     #[serde(default)]
     pub analyzer: Option<String>,
+    /// Wall-clock budget, in seconds, for ONE measurement of this metric.
+    /// `None` means the 300s default in [`super::measure`].
+    ///
+    /// A per-metric budget exists because one flat number has to serve two
+    /// jobs that pull in opposite directions: bounding a runaway (the
+    /// fork-bomb of GH #1324, which must be cut off quickly) and letting an
+    /// expensive but legitimate measurement finish. A single constant sized
+    /// for the first kills the second, and it cannot be sized from the
+    /// machine that wrote it down: `unwrap_calls_shipped_code` here is a cold
+    /// full-crate clippy into its own target dir, which took 203s and passed
+    /// on intel-clean-room-8 (run 34676994867) and was killed at the 300s
+    /// default on the slower intel-clean-room-6 (run 34680577045) — same
+    /// commit, same command, opposite verdicts, and the second one reported a
+    /// timeout rather than a regression.
+    ///
+    /// So the budget is declared next to the command whose cost it describes,
+    /// by whoever can justify it, rather than inferred from whichever runner
+    /// happened to measure fastest. Exceeding it is still `Unavailable`, never
+    /// a pass: a generous budget buys time, it never buys a verdict.
+    #[serde(default)]
+    pub timeout_secs: Option<u64>,
 }
 
 /// Declarations that make the `.pmat-metrics.toml` audit total.
