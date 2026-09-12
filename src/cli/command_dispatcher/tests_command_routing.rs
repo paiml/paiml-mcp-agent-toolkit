@@ -87,7 +87,7 @@
         let test_file = temp_dir.path().join("test.rs");
         fs::write(&test_file, "fn simple() -> i32 { 42 }").expect("internal error");
 
-        let analyses = vec![String::from("complexity")];
+        let analyses = vec![crate::cli::enums::AnalysisType::Complexity];
 
         let result = CommandDispatcher::execute_report_command(
             Some(temp_dir.path().to_path_buf()),
@@ -96,7 +96,7 @@
             false,
             false,
             analyses,
-            None,
+            50,
             None,
             false,
             false,

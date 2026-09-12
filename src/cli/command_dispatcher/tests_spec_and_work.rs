@@ -228,16 +228,31 @@
         assert!(result.is_ok() || result.is_err());
     }
 
-    // Test: report analysis type conversions with hyphen variants
+    // Test: report analysis type conversions
+    //
+    // This test was introduced (48f15dd59) as `test_report_analysis_hyphen_
+    // variants`, passing `vec!["dead-code".to_string(), "technical-debt"
+    // .to_string(), "big-o".to_string()]` into `execute_report_command`'s
+    // then-`Vec<String>` `analyses` parameter and a `confidence_threshold:
+    // Option<f64>`, to exercise a hand-rolled hyphen-string -> AnalysisType
+    // matcher inside that function. Commit 432393bb6 (#918, issue #706;
+    // see the doc comment on `execute_report_command` in
+    // quality_commands.rs:88-97) deleted that matcher along with the
+    // `Vec<String>`/`Option<f64>` parameters themselves: `analyses` is now
+    // the already-parsed `Vec<AnalysisType>` clap produces from
+    // `--analyses`, and `confidence_threshold` is a `u8`. There is no
+    // string re-parse left in production to test, so this no longer
+    // compiles as written; renamed and rewritten to pass real
+    // `AnalysisType` variants, kept as a routing check across the
+    // multi-variant case (dead-code/technical-debt/big-o).
 
     #[tokio::test]
-    async fn test_report_analysis_hyphen_variants() {
+    async fn test_report_analysis_multiple_types() {
         use tempfile::TempDir;
         let temp_dir = TempDir::new().expect("internal error");
         let test_file = temp_dir.path().join("test.rs");
         std::fs::write(&test_file, "fn main() {}").expect("internal error");
 
-        // Test hyphen variants
         let result = CommandDispatcher::execute_report_command(
             Some(temp_dir.path().to_path_buf()),
             crate::cli::enums::ReportOutputFormat::Text,
@@ -245,11 +260,11 @@
             false,
             false,
             vec![
-                "dead-code".to_string(),
-                "technical-debt".to_string(),
-                "big-o".to_string(),
+                crate::cli::enums::AnalysisType::DeadCode,
+                crate::cli::enums::AnalysisType::TechnicalDebt,
+                crate::cli::enums::AnalysisType::BigO,
             ],
-            None,
+            50,
             None,
             false,
             false,
@@ -263,7 +278,14 @@
     // Test: handle_spec_command variants
 
     #[tokio::test]
-    #[ignore = "Calls process::exit"]
+    // This test is correct; the handler is what must change (#1331, which
+    // tracks the whole class — 32 handler files do this):
+    // `spec_handlers::handle_spec_score`
+    // (src/cli/handlers/spec_handlers/spec_handlers_commands.rs) calls
+    // `std::process::exit(1)` on its failure branch, which kills the whole
+    // test binary instead of returning the `Result` this test wants to
+    // assert on.
+    #[ignore = "reaches handle_spec_score's process::exit(1), which kills the test binary — see #1331"]
     async fn test_spec_score_command() {
         use crate::cli::commands::{SpecCommands, SpecOutputFormat};
         use tempfile::NamedTempFile;
@@ -368,7 +390,8 @@
             without: None,
             iteration: 1,
             implements: Vec::new(),
-                agent: Default::default(),
+            agent: Default::default(),
+            level: None,
         };
         let result = CommandDispatcher::execute_work_command(&command).await;
         assert!(result.is_ok() || result.is_err());
@@ -412,6 +435,7 @@
             path: Some(temp_dir.path().to_path_buf()),
             verbose: false,
             fix: true,
+            check_base: None,
         };
         let result = CommandDispatcher::execute_work_command(&command).await;
         assert!(result.is_ok() || result.is_err());
@@ -428,6 +452,7 @@
             path: Some(temp_dir.path().to_path_buf()),
             dry_run: false,
             backup: true,
+            levels: false,
         };
         let result = CommandDispatcher::execute_work_command(&command).await;
         assert!(result.is_ok() || result.is_err());

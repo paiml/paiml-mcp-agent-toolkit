@@ -6476,11 +6476,11 @@ roadmap:
   github_issue: 1324
   item_type: bug
   title: 'pmat comply check runs .pmat-ratchet.toml measurement commands with no recursion guard: fork bomb when a measurement calls pmat comply'
-  status: planned
+  status: completed
   priority: critical
   assigned_to: null
   created: 2026-09-11T14:21:00Z
-  updated: 2026-09-11T14:21:00Z
+  updated: 2026-09-12T00:19:27Z
   spec: null
   acceptance_criteria:
   - a measurement command that invokes pmat comply is refused or bounded — the recursion is detected rather than run, and the refusal names the offending entry

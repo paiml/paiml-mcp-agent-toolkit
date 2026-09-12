@@ -321,3 +321,6 @@ satd.json
 # keeping belongs in scripts/dogfood/ with a name and a guard, not in the root.
 /run_audit*.sh
 /run_checks*.sh
+
+# quorum-review per-run lane scratch: one set per round, never a repository artifact
+docs/audits/quorum-*.json.lanes/
