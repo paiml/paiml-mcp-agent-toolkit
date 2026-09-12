@@ -795,3 +795,172 @@ fn apply_on_an_unknown_id_changes_nothing() {
     assert_eq!(n, 0);
     assert_eq!(r, before);
 }
+
+// ── §5.2 the window covers the ORPHAN legs too (PMAT-1309) ───────────────────
+//
+// An issue opened seconds ago, and an item added seconds ago, are not evidence
+// that the roadmap and GitHub disagree — they are evidence that the sync that
+// would have joined them has not run yet. CB-2115 turned master red at
+// 5af9a0f0d for exactly that, with no commit to blame. Inside the window each
+// is TOLERATED (the rule passes and counts it); past it each is a finding.
+
+#[test]
+fn a_freshly_opened_orphan_issue_is_tolerated() {
+    // #5 was opened at t0 and the clock is 30 minutes later: inside the default
+    // 60-minute window, so the bijection is not yet expected to hold.
+    let report = check(
+        &roadmap(vec![]),
+        &snapshot(vec![issue(5, "opened by hand", IssueState::Open)]),
+        &later(30),
+    );
+    assert!(
+        report.is_coherent(),
+        "an issue opened 30 minutes ago is inside the window: {report:?}"
+    );
+    assert_eq!(report.tolerated, 1, "{report:?}");
+    assert_eq!(
+        report.open_issues, 1,
+        "it is still counted in G: {report:?}"
+    );
+}
+
+#[test]
+fn an_orphan_issue_past_the_window_is_a_finding() {
+    // The control for the test above: the same issue, one minute past the
+    // window, is the ORPHAN-GITHUB it always was.
+    let report = check(
+        &roadmap(vec![]),
+        &snapshot(vec![issue(5, "opened by hand", IssueState::Open)]),
+        &later(61),
+    );
+    assert_eq!(
+        report.findings,
+        vec![Finding::OrphanGithub {
+            number: 5,
+            title: "opened by hand".to_string(),
+            milestone: None,
+        }]
+    );
+    assert_eq!(report.tolerated, 0, "{report:?}");
+}
+
+#[test]
+fn a_roadmap_item_with_no_issue_is_tolerated_inside_the_window() {
+    // The mirror case: the item was written 30 minutes ago and its issue has
+    // not been minted yet.
+    let report = check(
+        &roadmap(vec![open("A", "alpha", None)]),
+        &snapshot(vec![]),
+        &later(30),
+    );
+    assert!(report.is_coherent(), "{report:?}");
+    assert_eq!(report.tolerated, 1, "{report:?}");
+}
+
+#[test]
+fn a_roadmap_item_with_no_issue_past_the_window_is_a_finding() {
+    let report = check(
+        &roadmap(vec![open("A", "alpha", None)]),
+        &snapshot(vec![]),
+        &later(61),
+    );
+    assert_eq!(
+        report.findings,
+        vec![Finding::OrphanRoadmap {
+            id: "A".to_string(),
+            title: "alpha".to_string(),
+            github_issue: None,
+            reason: OrphanReason::NoIssue,
+        }]
+    );
+    assert_eq!(report.tolerated, 0, "{report:?}");
+}
+
+#[test]
+fn a_closed_issue_is_a_finding_however_recent() {
+    // The window is a freshness tolerance, and only NoIssue and ORPHAN-GITHUB
+    // are freshness problems. A closed issue does not become un-closed by being
+    // recent, an absent one does not appear, and a no-roadmap label does not
+    // fall off — all three stay findings at age zero. This test dies if someone
+    // later puts them behind the window.
+    let mut excluded = issue(9, "bump deps", IssueState::Open);
+    excluded.labels.push(NO_ROADMAP_LABEL.to_string());
+    let r = roadmap(vec![
+        open("A", "alpha", Some(7)),
+        open("B", "beta", Some(77)),
+        open("C", "gamma", Some(9)),
+    ]);
+    let s = snapshot(vec![issue(7, "alpha", IssueState::Closed), excluded]);
+    let report = check(&r, &s, &now());
+    assert_eq!(
+        classes(&report),
+        vec!["ORPHAN-ROADMAP", "ORPHAN-ROADMAP", "ORPHAN-ROADMAP"],
+        "{report:?}"
+    );
+    let reasons: Vec<OrphanReason> = report
+        .findings
+        .iter()
+        .filter_map(|f| match f {
+            Finding::OrphanRoadmap { reason, .. } => Some(*reason),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        reasons,
+        vec![
+            OrphanReason::IssueClosed,
+            OrphanReason::IssueAbsent,
+            OrphanReason::IssueExcluded
+        ],
+        "{report:?}"
+    );
+    assert_eq!(report.tolerated, 0, "none of these is a freshness problem");
+}
+
+#[test]
+fn the_tolerated_count_includes_a_tolerated_orphan() {
+    // A fresh orphan on each side plus a field disagreement: the count the rule
+    // prints is every toleration, not only the field ones. A PASS that swallowed
+    // an orphan without counting it is the failure this rule exists to prevent.
+    let r = roadmap(vec![open("A", "alpha", None), open("B", "beta", Some(1))]);
+    let s = snapshot(vec![
+        issue(1, "beta (renamed)", IssueState::Open),
+        issue(5, "opened by hand", IssueState::Open),
+    ]);
+    let report = check(&r, &s, &later(30));
+    assert!(report.is_coherent(), "{report:?}");
+    assert_eq!(
+        report.tolerated, 3,
+        "one item with no issue, one orphan issue, one title drift: {report:?}"
+    );
+}
+
+#[test]
+fn a_tolerated_orphan_is_still_the_fixers_work() {
+    // The window moves the GATE's verdict, never the fixer's work list: `pmat
+    // work sync` must still mint the issue for an item added a minute ago, or
+    // no new item could ever be minted until it had aged an hour.
+    let r = roadmap(vec![open("A", "alpha", None)]);
+    let s = snapshot(vec![issue(5, "opened by hand", IssueState::Open)]);
+    let report = check(&r, &s, &later(30));
+    assert!(
+        report.is_coherent(),
+        "tolerated, so the gate passes: {report:?}"
+    );
+    let actions = plan(&r, &s, &report, Direction::Full);
+    assert_eq!(
+        actions,
+        vec![
+            Action::CreateIssue {
+                id: "A".to_string(),
+                title: "alpha".to_string(),
+            },
+            Action::CreateItem {
+                number: 5,
+                title: "opened by hand".to_string(),
+                release: None,
+            },
+        ],
+        "a tolerated orphan is still an orphan the fixer closes"
+    );
+}

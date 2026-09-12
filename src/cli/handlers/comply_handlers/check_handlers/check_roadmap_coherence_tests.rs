@@ -36,6 +36,13 @@ mod tests_roadmap_coherence {
         format!("  - id: {id}\n    title: {title}\n    status: {status}\n    github_issue: {issue}\n    updated: {updated}\n")
     }
 
+    /// An item that also carries a `created` timestamp — the field the ORPHAN
+    /// leg of the grace window measures from (§5.2, PMAT-1309).
+    fn item_created(id: &str, title: &str, issue: Option<u64>, created: &str) -> String {
+        let issue = issue.map_or("null".to_string(), |n| n.to_string());
+        format!("  - id: {id}\n    title: {title}\n    status: planned\n    github_issue: {issue}\n    created: {created}\n    updated: {created}\n")
+    }
+
     fn issue(number: u64, title: &str, state: &str, labels: &[&str], updated_at: &str) -> serde_json::Value {
         serde_json::json!({"number": number, "title": title, "state": state, "labels": labels, "updated_at": updated_at})
     }
@@ -296,6 +303,60 @@ mod tests_roadmap_coherence {
         })
         .expect("`comply check --github-snapshot FILE` must parse");
         assert!(parsed.contains("fixtures/x.json"), "the path must survive parsing: {parsed}");
+    }
+
+    #[test]
+    fn a_freshly_opened_orphan_issue_passes_and_the_message_names_it() {
+        // The case that reddened master at 5af9a0f0d 06:08Z on 2026-09-11: an
+        // issue opened by hand, seconds old, with no roadmap item yet. Inside
+        // the window it is tolerated — and the PASS must still NAME it, or the
+        // rule would be silently swallowing a real orphan (§5.2, PMAT-1309).
+        let dir = project(Some("paiml/fixture"), &item("PMAT-001", "planned work", "planned", Some(1), &days_ago(2)));
+        snapshot(
+            dir.path(),
+            vec![
+                issue(1, "planned work", "open", &[], &days_ago(2)),
+                issue(2, "stray", "open", &[], &minutes_ago(1)),
+            ],
+            None,
+        );
+        let c = run(dir.path());
+        assert_eq!(c.status, CheckStatus::Pass, "{}", c.message);
+        assert!(c.message.contains("tolerated 1"), "{}", c.message);
+        assert!(c.message.contains("#2"), "a tolerated orphan must be named, not swallowed: {}", c.message);
+    }
+
+    #[test]
+    fn an_item_added_a_minute_ago_with_no_issue_is_tolerated() {
+        // The mirror: the item is written before its issue is minted.
+        let items = format!(
+            "{}{}",
+            item("PMAT-001", "planned work", "planned", Some(1), &days_ago(2)),
+            item_created("PMAT-002", "brand new", None, &minutes_ago(1))
+        );
+        let dir = project(Some("paiml/fixture"), &items);
+        snapshot(dir.path(), vec![issue(1, "planned work", "open", &[], &days_ago(2))], None);
+        let c = run(dir.path());
+        assert_eq!(c.status, CheckStatus::Pass, "{}", c.message);
+        assert!(c.message.contains("tolerated 1"), "{}", c.message);
+        assert!(c.message.contains("PMAT-002"), "{}", c.message);
+    }
+
+    #[test]
+    fn the_same_item_past_the_window_is_a_finding() {
+        // The control for the two tests above: age is the only difference.
+        let items = format!(
+            "{}{}",
+            item("PMAT-001", "planned work", "planned", Some(1), &days_ago(2)),
+            item_created("PMAT-002", "not so new", None, &days_ago(2))
+        );
+        let dir = project(Some("paiml/fixture"), &items);
+        snapshot(dir.path(), vec![issue(1, "planned work", "open", &[], &days_ago(2))], None);
+        let c = run(dir.path());
+        assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
+        for needle in ["ORPHAN-ROADMAP", "PMAT-002", "no issue"] {
+            assert!(c.message.contains(needle), "message must name {needle}: {}", c.message);
+        }
     }
 
     #[test]
