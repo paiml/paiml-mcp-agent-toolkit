@@ -6455,11 +6455,11 @@ roadmap:
   github_issue: 1321
   item_type: bug
   title: '97 tests for the CLI''s central dispatch have not compiled since the file split: stale imports and a removed demo module, misfiled as ''broken syntax'' under pmat_broken_tests'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-11T12:35:00Z
-  updated: 2026-09-11T12:35:00Z
+  updated: 2026-09-12T01:11:45Z
   spec: null
   acceptance_criteria:
   - the hub compiles without pmat_broken_tests; tests that depend on the removed demo module are deleted with a one-line reason rather than kept quarantined
@@ -6516,11 +6516,11 @@ roadmap:
   github_issue: 1329
   item_type: bug
   title: 'cargo test --lib mutates a TRACKED file: the dispatcher tests append duplicate ✅ COMPLETED markers to docs/execution/roadmap.md on every run'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-09-11T18:20:00Z
-  updated: 2026-09-11T18:20:00Z
+  updated: 2026-09-12T01:11:45Z
   spec: null
   acceptance_criteria:
   - git status --porcelain is empty after cargo test --lib, proven by a check that runs the suite and asserts the tree is clean rather than by reading the tests
