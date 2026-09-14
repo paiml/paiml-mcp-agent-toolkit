@@ -1,0 +1,84 @@
+{
+  "ticket": "PMAT-1350",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 123 commit(s); judged against origin/master",
+  "head": "817f5defdb28a9624c483271c045992c983bcc57",
+  "diff_sha256": "d2d474d56524fd9f567e63b6be4771c3f07509e27b61238006373cf96f4af154",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 15299,
+  "author": {
+    "model": "Opus 5 (1M context)",
+    "family": "claude",
+    "source": "measured"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff successfully implements PMAT-1350. It replaces the ambiguous 'unknown' values in `pmat --version` with clear provenance details, supports reading `PMAT_BUILD_SHA` for baked commits in tarballs, keeps the version string as the first token, and correctly bumps the version to 3.40.1 to address the missing feature gap in the previously published artifact. Thorough tests have been provided for these assertions. No contradictory or unasked behaviors were found.",
+      "findings": [],
+      "raw_bytes": 2196,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Reviewed diff for ticket PMAT-1350 (Lane 2 of 3). The diff fulfills all 5 acceptance criteria for PMAT-1350 without weakening gates, inserting unasked changes, or making unbacked claims. All provenance fields in `pmat --version` (`commit`, `worktree`, `source`) now report descriptive statuses for git checkouts, baked archives, and standard source archives rather than returning `unknown`. Version 3.40.1 bump and new falsification test target in `tests/falsification_version_identifies_the_binary.rs` are properly declared and verified. Verdict: PASS.",
+      "findings": [],
+      "raw_bytes": 4703,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.6-flash-high",
+      "model_measured": "gemini-3.6-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Reviewed diff for ticket PMAT-1350 (Lane 3 of 3). The diff fully satisfies all acceptance criteria of PMAT-1350: it eliminates the ambiguous 'unknown' values in `pmat --version`, distinguishes git checkout from source archive builds, supports baking git commit SHA at publish time via `PMAT_BUILD_SHA`, preserves the first-token package version for `-V` parsers, bumps the package version to 3.40.1, and adds a dedicated falsification test suite targeting these guarantees. No gates were weakened, no receipt claims were unbacked, no tests contradicted the ticket, and no out-of-scope changes were introduced. Verdict: PASS.",
+      "findings": [],
+      "raw_bytes": 2526,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-medium",
+      "model_measured": "gemini-3.8-flash-medium",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=Opus 5 (1M context)/claude"
+  }
+}
