@@ -6634,3 +6634,25 @@ roadmap:
   labels:
   - kind:code
   notes: 'Introduced by #1327 (PMAT-1324): MEASUREMENT_TIMEOUT is one flat 300 s for every metric, sized from a ~40 s workstation figure. unwrap_calls_shipped_code is a cold cargo clippy of the whole crate into its own target dir, run inside cargo test --lib; on intel-clean-room-8 it took 203 s (green), on intel-clean-room-6 (suite 1287 s vs 694 s) it was killed at 300 s and three drive tests failed together, serialised on the build-directory lock. A cap that bounds a runaway must not bound a legitimate slow build: the metric declares its own budget.'
+- id: PMAT-1350
+  github_issue: 1350
+  item_type: task
+  title: 'pmat --version cannot identify the binary: commit unknown / worktree unknown is the state you most need it in'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-14T07:58:19Z
+  updated: 2026-09-14T07:58:19Z
+  spec: null
+  acceptance_criteria:
+  - 'the banner names the build source, always, so a registry build and a git build are distinguishable'
+  - 'no provenance field is the bare word unknown: an absence that is genuinely unknowable says which case it is'
+  - 'a publish can bake its own commit into the crate, because a .crate tarball carries no git metadata'
+  - 'the version stays the first token, so -V parsers and every contains(version) assertion keep working'
+  - '3.40.1 is published, which is the only thing that puts work add --github-issue on crates.io (#1349)'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Written by hand. pmat work add on PATH is built from the published 3.40.0, whose work add carries no --github-issue — which is #1349, the other half of this ticket. The id tail is the issue number all the same.'
