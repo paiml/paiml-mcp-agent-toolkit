@@ -1,11 +1,16 @@
 /// CB-2115: Roadmap Coherence (goal-mode.md §5.1, §5.2, §5.4; invariant D).
 ///
 /// The open roadmap items and the open, unlabelled GitHub issues are in
-/// bijection (§5.1, tolerance zero: COLLISION, ORPHAN-ROADMAP, ORPHAN-GITHUB)
-/// and no matched pair has disagreed past the grace window (§5.2, a bound in
-/// time: DRIFT). The judgement is the step-3 engine, `work_sync::check`; the
-/// inputs and their early verdicts are `roadmap_inputs`. `grace_minutes` is
-/// read from `.pmat.yaml` `comply.checks.cb-2115.options`.
+/// bijection (§5.1: COLLISION, ORPHAN-ROADMAP, ORPHAN-GITHUB) and no matched
+/// pair has disagreed past the grace window (§5.2, a bound in time: DRIFT).
+/// The judgement is the step-3 engine, `work_sync::check`; the inputs and their
+/// early verdicts are `roadmap_inputs`. `grace_minutes` is read from
+/// `.pmat.yaml` `comply.checks.cb-2115.options`.
+///
+/// The window covers the two freshness legs as well (PMAT-1309): an issue
+/// opened, or an item written, less than `grace_minutes` ago is tolerated, and
+/// the PASS NAMES every toleration. A pass that swallowed a real orphan in a
+/// bare count would be worse than the red build this tolerance replaces.
 pub(crate) fn check_roadmap_coherence(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
@@ -38,8 +43,16 @@ pub(crate) fn check_roadmap_coherence(
     let settings = crate::services::work_sync::Settings::new(chrono::Utc::now(), grace_minutes);
     let report = crate::services::work_sync::check(&inputs.roadmap, &inputs.snapshot, &settings);
     let n = report.findings.len();
+    let tolerated = if report.tolerated_notes.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " — {}",
+            first_eight(report.tolerated_notes.iter().cloned(), report.tolerated)
+        )
+    };
     let pass = format!(
-        "{} open item(s) and {} open issue(s) are in bijection: matched {}, tolerated {} inside the {}-minute grace window (goal-mode.md §5); snapshot: {} taken {}",
+        "{} open item(s) and {} open issue(s) are in bijection: matched {}, tolerated {} inside the {}-minute grace window (goal-mode.md §5){tolerated}; snapshot: {} taken {}",
         report.open_items, report.open_issues, report.matched, report.tolerated, grace_minutes, inputs.source, inputs.taken_at
     );
     let fail = format!(

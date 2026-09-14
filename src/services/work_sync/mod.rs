@@ -23,6 +23,24 @@
 //! issue.updated_at)` exceeds the grace window. A bound in time, not a count —
 //! "up to 3 may disagree" means three items may be wrong forever.
 //!
+//! **That window covers the two freshness legs of §5.1 as well** (PMAT-1309):
+//! an issue opened less than the window ago that no item names, and an open
+//! item written less than the window ago that names no issue, are TOLERATED —
+//! counted, reported by name, and not findings. Neither is evidence that the
+//! two sides disagree; both are evidence that the sync which would join them
+//! has not run yet, and a rule that reds the default branch the instant anyone
+//! opens an issue (`5af9a0f0d`, 06:08Z, 2026-09-11 — five issues, no diff to
+//! blame) is a rule someone disables. The other three `ORPHAN-ROADMAP` reasons
+//! are NOT freshness problems and are never behind the window: a closed issue
+//! does not become un-closed by being recent.
+//!
+//! The window is still `now − max(item.updated, issue.updated_at)` for a field
+//! disagreement, and `now − created` (falling back to the update stamp) for the
+//! two freshness legs. No first-seen state is written anywhere: a gate whose
+//! verdict depends on a state file cannot be judged from a clean clone (§5.2,
+//! quorum 4 of 5). The cost is a window that any timestamp bump restarts, and
+//! that cost is recorded and accepted, not hidden.
+//!
 //! "Open" here is every non-terminal status — `planned`, `inprogress`, `blocked`
 //! and `review` — because a `blocked` item with no issue is exactly as invisible
 //! to GitHub as a `planned` one. The specification names the first two; the enum
@@ -73,6 +91,13 @@ pub struct IssueSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub milestone: Option<String>,
     pub updated_at: DateTime<Utc>,
+    /// When the issue was opened. `None` on a snapshot written before the field
+    /// existed, and then the freshness leg falls back to `updated_at` —
+    /// measured, never assumed: `updated_at` answers "was this opened a minute
+    /// ago?" only by coincidence, and stops answering it the moment anyone
+    /// comments on the issue.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<DateTime<Utc>>,
     /// How many sub-issues the issue has — GitHub's native relation, the only
     /// epic membership goal-mode.md §4.3 accepts. The live reader measures it
     /// for issues labelled `epic`; `None` is "not measured", never zero
@@ -85,6 +110,13 @@ impl IssueSnapshot {
     /// Member of **G** (§5.1): open and not labelled `no-roadmap`.
     pub fn in_universe(&self) -> bool {
         self.state == IssueState::Open && !self.labels.iter().any(|l| l == NO_ROADMAP_LABEL)
+    }
+
+    /// How many minutes ago the issue was opened, by [`IssueSnapshot::created_at`]
+    /// when the snapshot carries one and by `updated_at` when it does not
+    /// (§5.2, PMAT-1309).
+    pub fn age_minutes(&self, now: DateTime<Utc>) -> i64 {
+        (now - self.created_at.unwrap_or(self.updated_at)).num_minutes()
     }
 
     /// Labelled `epic` (§4.3) — open or closed; the epic leg judges the state.
@@ -300,8 +332,22 @@ pub struct SyncReport {
     pub open_issues: usize,
     /// Pairs (open item, open issue) with exactly one owner.
     pub matched: usize,
-    /// Field disagreements inside the grace window: counted, not findings.
+    /// Everything the grace window tolerated — field disagreements AND the two
+    /// freshness legs (§5.2, PMAT-1309): counted, not findings.
     pub tolerated: usize,
+    /// One line per toleration, in the same order, so a PASS can NAME what it
+    /// tolerated. A single count cannot tell "a field drifted" from "an orphan
+    /// issue is young", and a pass that silently swallowed a real orphan is the
+    /// failure this rule exists to prevent. `tolerated == tolerated_notes.len()`
+    /// always.
+    #[serde(default)]
+    pub tolerated_notes: Vec<String>,
+    /// The orphans the window tolerated, as findings. Not part of the verdict —
+    /// they are still the FIXER's work, so `plan` reads them: the window moves
+    /// what the gate says, never what `pmat work sync` does, or no item added
+    /// in the last hour could ever be minted.
+    #[serde(default)]
+    pub tolerated_orphans: Vec<Finding>,
     pub findings: Vec<Finding>,
 }
 
@@ -320,6 +366,46 @@ impl SyncReport {
 /// Member of **R** (§5.1): every non-terminal status.
 pub fn is_open(item: &RoadmapItem) -> bool {
     !matches!(item.status, ItemStatus::Completed | ItemStatus::Cancelled)
+}
+
+/// How many minutes ago the item was written, from `created` and falling back
+/// to `updated` when `created` does not parse (§5.2, PMAT-1309).
+///
+/// `i64::MAX` when neither parses: a timestamp the engine cannot read must never
+/// buy an item a grace window it did not earn (the same rule the DRIFT leg
+/// applies, and `an_unparseable_item_timestamp_never_hides_drift` pins).
+fn item_age_minutes(item: &RoadmapItem, now: DateTime<Utc>) -> i64 {
+    let parse = |s: &str| {
+        DateTime::parse_from_rfc3339(s)
+            .ok()
+            .map(|d| d.with_timezone(&Utc))
+    };
+    match parse(&item.created).or_else(|| parse(&item.updated)) {
+        Some(dt) => (now - dt).num_minutes(),
+        None => i64::MAX,
+    }
+}
+
+/// The line a tolerated finding contributes to the report's `tolerated_notes`.
+fn tolerated_note(finding: &Finding, age_minutes: i64, grace_minutes: i64) -> String {
+    format!(
+        "{} ({age_minutes} min old, inside the {grace_minutes}-minute grace window)",
+        finding.render()
+    )
+}
+
+/// Count one toleration, note it by name, and keep it on the fixer's list.
+fn record_toleration(
+    report: &mut SyncReport,
+    finding: Finding,
+    age_minutes: i64,
+    grace_minutes: i64,
+) {
+    report.tolerated += 1;
+    report
+        .tolerated_notes
+        .push(tolerated_note(&finding, age_minutes, grace_minutes));
+    report.tolerated_orphans.push(finding);
 }
 
 /// Judge the roadmap against the snapshot. Pure; deterministic order.
@@ -368,7 +454,10 @@ pub fn check(roadmap: &Roadmap, snapshot: &GithubSnapshot, settings: &Settings) 
     });
     report.findings.extend(collisions);
 
-    let mut orphan_roadmap = Vec::new();
+    let grace_minutes = settings.grace.num_minutes();
+    // (finding, Some(age) when the window tolerates it). Only `NoIssue` can be
+    // tolerated: the other three reasons are not freshness problems.
+    let mut orphan_roadmap: Vec<(Finding, Option<i64>)> = Vec::new();
     let mut matched_pairs = Vec::new(); // (item, issue)
 
     for item in &open_items {
@@ -377,66 +466,93 @@ pub fn check(roadmap: &Roadmap, snapshot: &GithubSnapshot, settings: &Settings) 
         }
         match item.github_issue {
             None => {
-                orphan_roadmap.push(Finding::OrphanRoadmap {
-                    id: item.id.clone(),
-                    title: item.title.clone(),
-                    github_issue: None,
-                    reason: OrphanReason::NoIssue,
-                });
+                let age = item_age_minutes(item, settings.now);
+                orphan_roadmap.push((
+                    Finding::OrphanRoadmap {
+                        id: item.id.clone(),
+                        title: item.title.clone(),
+                        github_issue: None,
+                        reason: OrphanReason::NoIssue,
+                    },
+                    (age < grace_minutes).then_some(age),
+                ));
             }
             Some(n) => {
                 if let Some(issue) = snapshot.issue(n) {
                     if issue.state == IssueState::Closed {
-                        orphan_roadmap.push(Finding::OrphanRoadmap {
-                            id: item.id.clone(),
-                            title: item.title.clone(),
-                            github_issue: Some(n),
-                            reason: OrphanReason::IssueClosed,
-                        });
+                        orphan_roadmap.push((
+                            Finding::OrphanRoadmap {
+                                id: item.id.clone(),
+                                title: item.title.clone(),
+                                github_issue: Some(n),
+                                reason: OrphanReason::IssueClosed,
+                            },
+                            None,
+                        ));
                     } else if !issue.in_universe() {
-                        orphan_roadmap.push(Finding::OrphanRoadmap {
-                            id: item.id.clone(),
-                            title: item.title.clone(),
-                            github_issue: Some(n),
-                            reason: OrphanReason::IssueExcluded,
-                        });
+                        orphan_roadmap.push((
+                            Finding::OrphanRoadmap {
+                                id: item.id.clone(),
+                                title: item.title.clone(),
+                                github_issue: Some(n),
+                                reason: OrphanReason::IssueExcluded,
+                            },
+                            None,
+                        ));
                     } else {
                         matched_pairs.push((item, issue));
                     }
                 } else {
-                    orphan_roadmap.push(Finding::OrphanRoadmap {
-                        id: item.id.clone(),
-                        title: item.title.clone(),
-                        github_issue: Some(n),
-                        reason: OrphanReason::IssueAbsent,
-                    });
+                    orphan_roadmap.push((
+                        Finding::OrphanRoadmap {
+                            id: item.id.clone(),
+                            title: item.title.clone(),
+                            github_issue: Some(n),
+                            reason: OrphanReason::IssueAbsent,
+                        },
+                        None,
+                    ));
                 }
             }
         }
     }
-    orphan_roadmap.sort_by_key(|f| match f {
+    orphan_roadmap.sort_by_key(|(f, _)| match f {
         Finding::OrphanRoadmap { id, .. } => id.clone(),
         _ => String::new(),
     });
-    report.findings.extend(orphan_roadmap);
+    for (finding, tolerated) in orphan_roadmap {
+        match tolerated {
+            Some(age) => record_toleration(&mut report, finding, age, grace_minutes),
+            None => report.findings.push(finding),
+        }
+    }
 
     report.matched = matched_pairs.len();
 
-    let mut orphan_github = Vec::new();
+    let mut orphan_github: Vec<(Finding, Option<i64>)> = Vec::new();
     for issue in &g_issues {
         if !named_issues.contains_key(&issue.number) {
-            orphan_github.push(Finding::OrphanGithub {
-                number: issue.number,
-                title: issue.title.clone(),
-                milestone: issue.milestone.clone(),
-            });
+            let age = issue.age_minutes(settings.now);
+            orphan_github.push((
+                Finding::OrphanGithub {
+                    number: issue.number,
+                    title: issue.title.clone(),
+                    milestone: issue.milestone.clone(),
+                },
+                (age < grace_minutes).then_some(age),
+            ));
         }
     }
-    orphan_github.sort_by_key(|f| match f {
+    orphan_github.sort_by_key(|(f, _)| match f {
         Finding::OrphanGithub { number, .. } => *number,
         _ => 0,
     });
-    report.findings.extend(orphan_github);
+    for (finding, tolerated) in orphan_github {
+        match tolerated {
+            Some(age) => record_toleration(&mut report, finding, age, grace_minutes),
+            None => report.findings.push(finding),
+        }
+    }
 
     let mut drift_findings = Vec::new();
     for (item, issue) in matched_pairs {
@@ -458,12 +574,36 @@ pub fn check(roadmap: &Roadmap, snapshot: &GithubSnapshot, settings: &Settings) 
                 Err(_) => i64::MAX,
             };
 
-            if age_minutes < settings.grace.num_minutes() {
+            if age_minutes < grace_minutes {
                 if title_differs {
                     report.tolerated += 1;
+                    report.tolerated_notes.push(tolerated_note(
+                        &Finding::Drift {
+                            id: item.id.clone(),
+                            number: issue.number,
+                            field: DriftField::Title,
+                            roadmap: item.title.clone(),
+                            github: issue.title.clone(),
+                            age_minutes,
+                        },
+                        age_minutes,
+                        grace_minutes,
+                    ));
                 }
                 if release_differs {
                     report.tolerated += 1;
+                    report.tolerated_notes.push(tolerated_note(
+                        &Finding::Drift {
+                            id: item.id.clone(),
+                            number: issue.number,
+                            field: DriftField::Release,
+                            roadmap: item.release.clone().unwrap_or_default(),
+                            github: issue.milestone.clone().unwrap_or_default(),
+                            age_minutes,
+                        },
+                        age_minutes,
+                        grace_minutes,
+                    ));
                 }
             } else {
                 if title_differs {
@@ -563,7 +703,15 @@ pub fn plan(
     direction: Direction,
 ) -> Vec<Action> {
     let mut actions = Vec::new();
-    for finding in &report.findings {
+    // The tolerated orphans are the fixer's work as much as the findings are
+    // (PMAT-1309): the grace window is a tolerance in the VERDICT, and an item
+    // written a minute ago is exactly the item `--direction yaml-to-github` is
+    // run to mint.
+    for finding in report
+        .findings
+        .iter()
+        .chain(report.tolerated_orphans.iter())
+    {
         match finding {
             Finding::Collision { ids, number } => {
                 for id in ids {

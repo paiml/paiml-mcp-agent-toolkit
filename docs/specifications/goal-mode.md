@@ -368,8 +368,21 @@ same verdict a matched pair inside the window gets. It is emphatically not `not_
 which §3.3 maps to FAIL: the sync that would mint its item cannot have run yet, and a rule
 that turns master red the instant anyone opens an issue is a rule someone disables. The same holds for an item added without its
 issue. Past the window it is a finding, and `pmat work sync` is the fixer. (Decided by
-quorum 2026-09-11, 5 of 5 seats — one of the two unanimous decisions of the sixteen.) The code
-covers the field-disagreement leg only; extending it to ORPHAN and MISSING is PMAT-1309.
+quorum 2026-09-11, 5 of 5 seats — one of the two unanimous decisions of the sixteen.)
+
+The code does all three legs (PMAT-1309). `work_sync::check` tolerates an open item that
+names no issue and an open issue that no item names whenever that record's own age is inside
+the window: from the item's `created`, falling back to `updated`, and from the issue's
+`created_at`, falling back to `updated_at` — which is all a snapshot written before the field
+existed carries, and which answers "was this opened a minute ago?" only by coincidence. Each
+toleration is counted in `tolerated` AND named in the line the rule prints, because one count
+cannot tell a drifted field from a young orphan and a PASS that silently swallowed a real
+orphan would be worse than the red build this tolerance replaces. The window is a tolerance in
+the VERDICT only: `plan` still lists a tolerated orphan, so `pmat work sync` mints the issue
+for an item written a minute ago instead of refusing every item younger than an hour. The
+other three `ORPHAN-ROADMAP` reasons — the issue is closed, absent, or labelled `no-roadmap` —
+are never behind the window, because none of them is a freshness problem: a closed issue does
+not become un-closed by being recent.
 
 ### 5.3 `RR-COHERENCE` — which side wins
 
@@ -581,10 +594,9 @@ refuses `skipped` by design. The gate is right; the input cannot be used by any 
    measure **master**, not merely the PR — see §7. Setting it is a ruleset change on
    `13878864`; until it is made, CB-2113 measures the PR's commits only and says so in
    its output rather than pretending to cover master.
-5. **Four rules describe more than the code does today**, each with its ticket: CB-2113's
+5. **Three rules describe more than the code does today**, each with its ticket: CB-2113's
    master leg reports `not_applicable` there for now and its release leg is unwritten
-   (PMAT-1308), CB-2115's grace window covers the field-disagreement leg only and the rule
-   still runs on a master push (PMAT-1309), the fork carve-out above is not yet implemented
+   (PMAT-1308), the fork carve-out above is not yet implemented
    (PMAT-1310), and CB-2114 still binds every open item rather than the `inprogress` ones
    while CB-2110/2112/2114 still assert live state on a master push (PMAT-1312), and the
    cut's sweep-and-move of §10.3 is a description of `pmat goal`, which does not exist

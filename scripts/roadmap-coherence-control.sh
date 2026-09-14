@@ -22,12 +22,26 @@
 #   arm 9  N/M   the roadmap was committed and then deleted                   exit 1, Fail, not_measured: "committed and is now gone"
 #   arm 10 N/M   a snapshot path committed in .pmat.yaml (the bypass token)   exit 1, Fail, not_measured: names .pmat.yaml and --github-snapshot
 #   arm 11 RED   grace_minutes: 10 makes a 30-minute-old disagreement a DRIFT exit 1, Fail — then the same pair passes without the option
+#   arm 12 GREEN an orphan issue OPENED 5 minutes ago, grace 60               exit 0, Pass, tolerated 1, names #2
+#   arm 13 RED   the same orphan issue opened 6 hours ago                     exit 1, Fail, ORPHAN-GITHUB #2 — and again with updated_at bumped to now
+#   arm 14 GREEN an item with no github_issue, created 5 minutes ago          exit 0, Pass, tolerated 1, names PMAT-002
+#   arm 15 RED   the same item created 6 hours ago                           exit 1, Fail, ORPHAN-ROADMAP PMAT-002
+#   arm 16 GREEN the accepted cost: bumping `updated` restarts the window      exit 0, Pass — a DELIBERATE weakness, see the arm
+#   arm 17 CI    CB-2115 is unreachable on a push to master (.github/workflows/ci.yml)
+#   arm 18 CI    the scheduled lane OPENS A TICKET rather than failing the build
 #
 # Each arm asserts BOTH the process exit code and the CB-2115 entry in the JSON
 # report: the exit code is what CI acts on, the entry is what proves the verdict
 # came from this rule and not from another one. A missing entry is
 # under-discovery and fails the control (exit 2) — "we found no CB-2115 row"
 # must never render as "CB-2115 passed".
+#
+# Arms 12-15 are PMAT-1309: the window covers the two freshness legs of §5.1 as
+# well as the field disagreement. Each is a PAIR — the same fixture inside and
+# outside the window — so an implementation that tolerated everything, or
+# nothing, fails one half of every pair. Arm 13's second half proves the ORPHAN
+# leg measures `created_at`, not `updated_at`: an issue open for six hours and
+# relabelled a second ago is still an orphan.
 #
 # Arm 6 is the one that proves §5.2's tolerance is a bound in TIME: the same
 # disagreement as arm 5 passes only because one side moved inside the window.
@@ -64,6 +78,8 @@ report="$work/report.json"
 # inside and outside the window. Nothing built from them is an artifact.
 old="$(date -u -d '2 days ago' +%Y-%m-%dT%H:%M:%SZ)"   # bashrs disable-line=DET002
 now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"                   # bashrs disable-line=DET002
+fresh="$(date -u -d '5 minutes ago' +%Y-%m-%dT%H:%M:%SZ)" # bashrs disable-line=DET002
+sixh="$(date -u -d '6 hours ago' +%Y-%m-%dT%H:%M:%SZ)"    # bashrs disable-line=DET002
 
 # The fixture is a git repository with NO remote, so nothing here can fall back
 # to a live `gh` call: the rule reads the snapshot the `.pmat.yaml` names or
@@ -89,6 +105,16 @@ item() {
 issue() {
   jq -cn --argjson n "$1" --arg t "$2" --arg s "$3" --argjson l "$4" --arg u "$5" \
     '{number:$n, title:$t, state:$s, labels:$l, updated_at:$u}'
+}
+# item_created <id> <title> <status> <issue|null> <updated> <created>
+# `created` is the field the ORPHAN leg of the window measures from (§5.2).
+item_created() {
+  printf '  - id: %s\n    title: %s\n    status: %s\n    github_issue: %s\n    updated: %s\n    created: %s\n' "$1" "$2" "$3" "$4" "$5" "$6"
+}
+# issue_created <number> <title> <open|closed> <labels-json-array> <updated_at> <created_at>
+issue_created() {
+  jq -cn --argjson n "$1" --arg t "$2" --arg s "$3" --argjson l "$4" --arg u "$5" --arg c "$6" \
+    '{number:$n, title:$t, state:$s, labels:$l, updated_at:$u, created_at:$c}'
 }
 # write_snapshot <issue-json>...   (GRACE, if set, becomes the only .pmat.yaml option)
 write_snapshot() {
@@ -246,4 +272,198 @@ run_gate
 [ "$STATUS" = "Pass" ] || fail_arm 11 "CB-2115 must be Pass under the default grace"
 echo "roadmap-coherence-control: arm 11 RED  — grace_minutes: 10 refused the 30-minute DRIFT that the default tolerates (exit 1, then 0)"
 
-echo "roadmap-coherence-control: all 11 arms behaved — CB-2115 can fail, can pass, says why, and refuses its own bypasses"
+# ── arm 12: GREEN — an issue OPENED 5 minutes ago that no item names ───────────
+# The case that reddened master at 5af9a0f0d, 06:08Z, 2026-09-11: five issues
+# opened by hand, no roadmap item yet, no commit to blame. Inside the window it
+# is tolerated, and the PASS must still NAME it — a pass that silently swallows
+# an orphan is worse than the red build it replaces.
+write_roadmap "$(item PMAT-001 'planned work' planned 1 "$old")"
+write_snapshot "$(issue 1 'planned work' open '[]' "$old")" \
+               "$(issue_created 2 'opened by hand' open '[]' "$fresh" "$fresh")"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 12 "an issue opened 5 minutes ago is inside the grace window and must exit 0 (§5.2, PMAT-1309)"
+[ "$STATUS" = "Pass" ] || fail_arm 12 "CB-2115 must be Pass while the window is open"
+needs 12 "tolerated 1" "#2"
+echo "roadmap-coherence-control: arm 12 GREEN — ORPHAN-GITHUB #2, opened 5 minutes ago, tolerated AND named (exit 0)"
+
+# ── arm 13: RED — the same orphan issue, opened 6 hours ago ────────────────────
+write_snapshot "$(issue 1 'planned work' open '[]' "$old")" \
+               "$(issue_created 2 'opened by hand' open '[]' "$sixh" "$sixh")"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 13 "an orphan issue past the window must exit 1 — age is the only difference from arm 12"
+[ "$STATUS" = "Fail" ] || fail_arm 13 "CB-2115 must be Fail on an ORPHAN-GITHUB past the window"
+needs 13 "ORPHAN-GITHUB" "#2"
+# ...and a bump to `updated_at` does NOT restart it: the ORPHAN leg measures when
+# the issue was OPENED. An issue open for six hours and relabelled a second ago
+# is an orphan, not a new issue.
+write_snapshot "$(issue 1 'planned work' open '[]' "$old")" \
+               "$(issue_created 2 'opened by hand' open '[]' "$now" "$sixh")"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 13 "created_at, not updated_at: touching a 6-hour-old orphan must not buy it a new window"
+needs 13 "ORPHAN-GITHUB" "#2"
+echo "roadmap-coherence-control: arm 13 RED   — ORPHAN-GITHUB #2 opened 6 hours ago refused, and still refused after updated_at is bumped to now (exit 1, twice)"
+
+# ── arm 14: GREEN — an item written 5 minutes ago whose issue is not minted ────
+write_roadmap "$(item PMAT-001 'planned work' planned 1 "$old")" \
+              "$(item_created PMAT-002 'brand new' planned null "$fresh" "$fresh")"
+write_snapshot "$(issue 1 'planned work' open '[]' "$old")"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 14 "an item created 5 minutes ago has not had time to be minted (§5.2, PMAT-1309)"
+[ "$STATUS" = "Pass" ] || fail_arm 14 "CB-2115 must be Pass while the window is open"
+needs 14 "tolerated 1" "PMAT-002"
+echo "roadmap-coherence-control: arm 14 GREEN — PMAT-002, written 5 minutes ago with no issue, tolerated AND named (exit 0)"
+
+# ── arm 15: RED — the same item, written 6 hours ago ───────────────────────────
+write_roadmap "$(item PMAT-001 'planned work' planned 1 "$old")" \
+              "$(item_created PMAT-002 'not so new' planned null "$sixh" "$sixh")"
+write_snapshot "$(issue 1 'planned work' open '[]' "$old")"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 15 "an item with no issue past the window must exit 1 — age is the only difference from arm 14"
+[ "$STATUS" = "Fail" ] || fail_arm 15 "CB-2115 must be Fail on an ORPHAN-ROADMAP past the window"
+needs 15 "ORPHAN-ROADMAP" "PMAT-002" "no issue"
+echo "roadmap-coherence-control: arm 15 RED   — ORPHAN-ROADMAP PMAT-002, written 6 hours ago, refused (exit 1)"
+
+# ── arm 16: GREEN — THE ACCEPTED COST, encoded on purpose ─────────────────────
+# A two-day-old disagreement is a DRIFT (arm 5). Touch either side and the window
+# starts again, so the same disagreement passes. This arm asserts that it PASSES.
+#
+# THIS IS A DELIBERATE WEAKNESS, NOT A BUG TO FIX. goal-mode.md §5.2 records the
+# trade and the vote (quorum 2026-09-11, 4 of 5 seats): measuring from when a
+# sync FIRST SAW the disagreement needs a first-seen record that must be written,
+# committed, read back and kept honest across every clone and every CI runner,
+# and a gate whose verdict depends on a state file cannot be judged from a clean
+# clone. The cost taken is a window a touch can restart. If you are here because
+# this arm offends you, change the SPEC first — do not delete the arm.
+write_roadmap "$(item PMAT-001 'old title' planned 1 "$now")"
+write_snapshot "$(issue 1 'new title' open '[]' "$old")"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 16 "bumping the item's updated restarts the window — the accepted cost of having no first-seen state (§5.2)"
+[ "$STATUS" = "Pass" ] || fail_arm 16 "CB-2115 must be Pass once a side has been touched"
+needs 16 "tolerated 1"
+echo "roadmap-coherence-control: arm 16 GREEN — a timestamp bump restarts the window; DELIBERATE (§5.2's accepted cost, quorum 4 of 5) — do not 'fix' this arm"
+
+# ── arm 17: CB-2115 is unreachable on a push to master ────────────────────────
+# Criterion 2 of PMAT-1309: CB-2115 reads GitHub LIVE, so its verdict on master
+# changes while master does not — an issue opened by hand turns a green commit
+# red with no diff to blame. It runs on pull requests, where a human can fix what
+# the diff caused, and on a schedule, where a finding opens a ticket. This arm
+# reads the workflow, not the rule: every job in .github/workflows/ci.yml whose
+# steps run `pmat comply check` naming CB-2115 must be guarded so a push cannot
+# reach it. A job with no guard at all is reachable on a push to master and fails
+# here. If CB-2115 has left ci.yml entirely the arm says so and checks no
+# further — the pull-request and schedule legs then live in another workflow,
+# which this arm does not read.
+ci="$(cd "$(dirname "$0")/.." && pwd)/.github/workflows/ci.yml"
+if [ ! -f "$ci" ]; then
+  echo "roadmap-coherence-control: ARM 17 FAILED — no $ci to read" >&2
+  exit 1
+fi
+# One record per CB-2115 step: "<job>\t<every guard expression in that job and step>".
+cb2115_steps="$(awk '
+  function flush() {
+    if (job != "" && step ~ /comply[ \t]+check/ && step ~ /CB-2115/) {
+      printf "%s\t%s %s\n", job, jobif, stepif
+    }
+  }
+  /^jobs:[ \t]*$/ { injobs = 1; next }
+  injobs && /^[^ \t#]/ { flush(); injobs = 0 }
+  injobs != 1 { next }
+  # A comment is not a step. ci.yml DISCUSSES CB-2115 in prose — the withheld
+  # `#     run: ... --checks CB-2112,CB-2113,CB-2114,CB-2115` at the end of the
+  # traceability job, and the paragraph explaining why the live rule is guarded.
+  # Accumulated into the preceding step those words make an unrelated, unguarded
+  # step (the CB-2113 one) read as a CB-2115 step with no guard, which is a false
+  # RED — and the mirror case, a real step followed by a comment naming a guard,
+  # would be a false GREEN. Measured: without this rule the arm reported the
+  # traceability job twice, once FAILED and once GREEN, on the same file.
+  /^[ \t]*#/ { next }
+  /^  [A-Za-z0-9_.-]+:[ \t]*$/ { flush(); job = $1; sub(/:$/, "", job); jobif = ""; stepif = ""; step = ""; next }
+  /^      - / { flush(); step = ""; stepif = "" }
+  { step = step " " $0
+    if ($0 ~ /github\.event_name/) {
+      if ($0 ~ /^    if:/) { jobif = jobif " " $0 } else { stepif = stepif " " $0 }
+    }
+  }
+  END { flush() }
+' "$ci")"
+
+if [ -z "$cb2115_steps" ]; then
+  echo "roadmap-coherence-control: arm 17 N/A   — no step in ci.yml runs pmat comply check with CB-2115; the pull-request and schedule legs are elsewhere and this arm does not read them"
+else
+  arm17_bad=0
+  while IFS=$'\t' read -r job guard; do
+    [ -n "$job" ] || continue
+    ok=0
+    case "$guard" in
+      *"github.event_name == 'push'"*) ok=0 ;;
+      *"github.event_name != 'push'"*|*"github.event_name == 'pull_request'"*|*"github.event_name == 'schedule'"*) ok=1 ;;
+    esac
+    if [ "$ok" -eq 1 ]; then
+      echo "roadmap-coherence-control: arm 17       — job '$job' runs CB-2115 behind:$guard"
+    else
+      arm17_bad=1
+      echo "roadmap-coherence-control: ARM 17 FAILED — job '$job' in .github/workflows/ci.yml runs \`pmat comply check\` with CB-2115 and a push to master reaches it (guard found: '${guard# }')" >&2
+      echo "  CB-2115 reads GitHub live: on master its verdict changes with no diff to blame (5af9a0f0d, 06:08Z 2026-09-11). Guard the step or the job with github.event_name (goal-mode.md §3.3, §5.2; PMAT-1309 criterion 2)." >&2
+    fi
+  done <<EOF
+$cb2115_steps
+EOF
+  [ "$arm17_bad" -eq 0 ] || exit 1
+  echo "roadmap-coherence-control: arm 17 GREEN — no push to master can reach CB-2115 in ci.yml"
+fi
+
+
+# ── arm 18: the scheduled lane reports a finding as a TICKET, not a red build ──
+# Arm 17 takes CB-2115 off the master push. That closes a false red and opens a
+# real hole: an issue opened by hand between two pull requests is then seen by
+# nothing. Criterion 2 of PMAT-1309 fills it with a scheduled run "whose finding
+# OPENS A TICKET instead of failing the build", and this arm is what makes that
+# clause falsifiable rather than aspirational. Three things must all hold, and
+# each has its own way of rotting:
+#
+#   (a) SOME workflow runs `pmat comply check` naming CB-2115 under a `schedule:`
+#       trigger — else the hole is simply open.
+#   (b) that step carries `continue-on-error: true` — else the finding fails the
+#       build after all, which is the outcome the criterion rules out, and a
+#       permanently-red cron is a notification people turn off.
+#   (c) some later step runs `gh issue create` — else the finding reaches nobody
+#       and the run is a green tick over a real drift, the worst of the three.
+#
+# Falsified before it was believed: with (b) deleted the arm prints FAILED naming
+# continue-on-error; with (c)'s step deleted it prints FAILED naming gh issue
+# create; with the whole workflow deleted it prints FAILED naming the schedule.
+wfdir="$(cd "$(dirname "$0")/.." && pwd)/.github/workflows"
+arm18_file=""
+for f in "$wfdir"/*.yml "$wfdir"/*.yaml; do
+  [ -f "$f" ] || continue
+  grep -q 'schedule:' "$f" || continue
+  grep -q 'CB-2115' "$f" || continue
+  grep -qE 'comply[[:space:]]+check' "$f" || continue
+  arm18_file="$f"
+  break
+done
+
+if [ -z "$arm18_file" ]; then
+  echo "roadmap-coherence-control: ARM 18 FAILED — no workflow under .github/workflows runs \`pmat comply check\` with CB-2115 on a \`schedule:\`" >&2
+  echo "  Arm 17 takes CB-2115 off the master push; without a scheduled lane an issue opened between two pull requests is seen by nothing (PMAT-1309 criterion 2)." >&2
+  exit 1
+fi
+arm18_name="$(basename "$arm18_file")"
+
+# (b) the step that runs the check must not fail the build.
+if ! grep -qE '^[[:space:]]*continue-on-error:[[:space:]]*true' "$arm18_file"; then
+  echo "roadmap-coherence-control: ARM 18 FAILED — $arm18_name runs CB-2115 on a schedule but no step carries \`continue-on-error: true\`, so a finding FAILS THE BUILD" >&2
+  echo "  Criterion 2 requires the scheduled finding to open a ticket INSTEAD OF failing the build (goal-mode.md §3.3, §5.2)." >&2
+  exit 1
+fi
+
+# (c) and it must reach a human.
+if ! grep -q 'gh issue create' "$arm18_file"; then
+  echo "roadmap-coherence-control: ARM 18 FAILED — $arm18_name never runs \`gh issue create\`, so a scheduled finding reaches nobody" >&2
+  echo "  A green tick over a real drift is worse than the red build this lane replaced." >&2
+  exit 1
+fi
+
+echo "roadmap-coherence-control: arm 18 GREEN — $arm18_name asks CB-2115 on a schedule, does not fail the build on a finding, and opens a ticket"
+
+echo "roadmap-coherence-control: all 18 arms behaved — CB-2115 can fail, can pass, says why, tolerates only what is fresh, refuses its own bypasses, and reports out of band what it no longer reds master for"
