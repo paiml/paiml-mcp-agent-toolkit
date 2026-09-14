@@ -140,4 +140,39 @@ run_gate
 case "$MESSAGE" in "not_applicable:"*) ;; *) fail_arm 5 "the message must start with not_applicable and name the reason";; esac
 echo "traceability-control: arm 5 N/A   — default branch reported not_applicable (exit 0)"
 
-echo "traceability-control: all 5 arms behaved — CB-2113 can fail, and can pass"
+# ── arm 6: GREEN — a bot-authored commit with no trailer is exempt (PMAT-1356) ─
+# Measured on paiml-mcp-agent-toolkit#1347: CB-2113 refused
+# `deps(deps): Bump pollster from 0.4.0 to 1.0.1` for a trailer its author
+# cannot add, holding five dependabot PRs. A rule no member of a class can
+# pass is inoperative, not strict.
+BOT='dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>'
+fgit switch -q feature
+fgit commit -q --amend --allow-empty --author="$BOT" -m "deps(deps): Bump pollster from 0.4.0 to 1.0.1"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 6 "a bot-authored untrailered commit must exit 0"
+[ "$STATUS" = "Pass" ] || fail_arm 6 "CB-2113 must be Pass on a bot-authored commit"
+case "$MESSAGE" in *"1 authored by a GitHub app account, exempt"*) ;; *) fail_arm 6 "the exemption must be COUNTED in the message, never silent: $MESSAGE";; esac
+echo "traceability-control: arm 6 GREEN — bot-authored commit exempt, and the exemption named (exit 0)"
+
+# ── arm 7: RED — the exemption does not widen to the humans beside it ────────
+# The falsifier for arm 6. If the exemption ever becomes "skip a range that
+# contains a bot commit", arm 6 stays green while the gate stops judging.
+fgit commit -q --allow-empty -m "feat: mine, untrailered"
+human=$(fgit rev-parse --short=7 HEAD)
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 7 "a human untrailered commit beside a bot one must still exit 1"
+[ "$STATUS" = "Fail" ] || fail_arm 7 "CB-2113 must be Fail on the human commit"
+case "$MESSAGE" in *"$human"*"no Pmat-Ticket"*) ;; *) fail_arm 7 "the message must name the human commit $human";; esac
+case "$MESSAGE" in *"1 authored by a GitHub app account, exempt"*) ;; *) fail_arm 7 "the failure message must still carry the exemption count";; esac
+echo "traceability-control: arm 7 RED   — human commit beside an exempt bot one still refused (exit 1)"
+
+# ── arm 8: RED — an address a person can choose buys nothing ────────────────
+# The exemption is GitHub's app-account namespace, not the word "bot".
+fgit reset -q --hard HEAD~1
+fgit commit -q --amend --allow-empty --author='robot <robot@bot.example.invalid>' -m "deps: not actually a bot"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 8 "a self-chosen bot-looking address must not be exempt"
+case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm 8 "no exemption may be reported for a non-app address: $MESSAGE";; *) ;; esac
+echo "traceability-control: arm 8 RED   — robot@bot.example.invalid is not a GitHub app account (exit 1)"
+
+echo "traceability-control: all 8 arms behaved — CB-2113 can fail, can pass, and its bot exemption is counted and narrow"

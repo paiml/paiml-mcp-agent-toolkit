@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **CB-2113 refused every commit a bot could author, so no dependabot PR could
+  ever merge (#1356).** Measured on #1347 (`traceability`, run 34834456634):
+  `deps(deps): Bump pollster from 0.4.0 to 1.0.1` was refused for "no
+  Pmat-Ticket trailer", and the remedy the message printed — add a trailer
+  naming an open roadmap item — is not available to the author it was addressed
+  to. dependabot composes its own commit message and there is no roadmap item
+  to name, because the work was not planned here; it was published upstream.
+  Five PRs were held this way (#1345, #1346, #1347, #1348, #1353), some of them
+  security-relevant. A rule no member of a class can pass is not a strict gate,
+  it is an inoperative one, and it fails quietly: the PRs simply accumulate.
+
+  Commits authored by a GitHub app account are now exempt from the trailer
+  REQUIREMENT. The exemption is the account NAMESPACE, not the word "bot":
+  `<id>+<app>[bot]@users.noreply.github.com`, both halves required, because
+  either alone is an address a person can choose. It is **counted** and named
+  in every pull-request verdict — pass and fail alike — because an exemption
+  nobody can read is indistinguishable from a rule that stopped running.
+
+  Only the ABSENCE of a trailer is excused. A trailer that is present is judged
+  whoever wrote it: a bot commit naming a completed item is still a finding.
+
+  Falsifiers: three new arms in `scripts/traceability-control.sh` (the exemption
+  fires and is named; a human commit beside an exempt one is still refused; a
+  self-chosen `robot@bot.example.invalid` buys nothing) and five unit tests.
+  Proven to discriminate by reverting the predicate to `false` — arm 6 goes red
+  reproducing #1347's exact message, and the control exits 1.
+
+
 ## [3.40.1] - 2026-09-14
 
 ### Fixed

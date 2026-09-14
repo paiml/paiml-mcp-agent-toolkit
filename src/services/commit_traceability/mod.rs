@@ -38,6 +38,25 @@ pub const TRAILER_KEY: &str = "Pmat-Ticket";
 /// argument so tests never touch the process environment.
 pub const BASE_REF_ENV: &str = "GITHUB_BASE_REF";
 
+/// PMAT-1356 — is this author a GitHub app account?
+///
+/// GitHub mints `<numeric id>+<app name>[bot]@users.noreply.github.com` for
+/// app accounts and for nothing else: the `[bot]` suffix is reserved in the
+/// account namespace, and the host is GitHub's own noreply domain. Both halves
+/// are required here, because either alone is an address a person can choose.
+///
+/// This is not a signature check and is not offered as one — a commit claiming
+/// the address is still just a commit. It is why [`Measurement::bot_exempt`]
+/// is COUNTED and named in the verdict message: an exemption nobody can see is
+/// indistinguishable from a rule that stopped running (goal-mode.md doctrine 2).
+pub fn is_github_bot_account(author_email: &str) -> bool {
+    let email = author_email.trim().to_ascii_lowercase();
+    let Some(local) = email.strip_suffix("@users.noreply.github.com") else {
+        return false;
+    };
+    local.ends_with("[bot]")
+}
+
 /// Whether the two inputs exist at all. A project with neither a repository
 /// nor a roadmap has nothing for this rule to read, which is a structural
 /// absence (Skip), not a measurement failure.
@@ -105,6 +124,11 @@ pub struct Measurement {
     pub commits: usize,
     /// Of those, how many carry at least one `Pmat-Ticket:` trailer.
     pub trailered: usize,
+    /// Of those, how many were authored by a GitHub app account and so are not
+    /// required to carry a trailer (PMAT-1356). Counted, never silent: a bot
+    /// composes its own message and cannot name a roadmap item, so a rule that
+    /// demanded one of it was inoperative for that whole class, not strict.
+    pub bot_exempt: usize,
     pub findings: Vec<Finding>,
 }
 
@@ -272,12 +296,13 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
         &[
             "log",
             "--no-merges",
-            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)",
+            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)%x1f%ae",
             &range_arg,
         ],
     )?;
     let mut commits = 0;
     let mut trailered = 0;
+    let mut bot_exempt = 0;
     if !commits_out.is_empty() {
         for line in commits_out.split('\n') {
             if line.trim().is_empty() {
@@ -285,18 +310,16 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
             }
             commits += 1;
             let parts: Vec<&str> = line.split('\x1f').collect();
-            if parts.len() >= 3 {
+            let author = parts.get(3).map(|s| s.trim()).unwrap_or("");
+            let bot = is_github_bot_account(author);
+            let has_trailer = parts.len() >= 3 && {
                 let tr = parts[2].trim();
-                if !tr.is_empty() {
-                    let ids: Vec<&str> = tr
-                        .split(',')
-                        .map(|s| s.trim())
-                        .filter(|s| !s.is_empty())
-                        .collect();
-                    if !ids.is_empty() {
-                        trailered += 1;
-                    }
-                }
+                !tr.is_empty() && tr.split(',').any(|s| !s.trim().is_empty())
+            };
+            if has_trailer {
+                trailered += 1;
+            } else if bot {
+                bot_exempt += 1;
             }
         }
     }
@@ -305,6 +328,7 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
         range: Range::DefaultBranch { since },
         commits,
         trailered,
+        bot_exempt,
         findings: vec![],
     })
 }
@@ -317,7 +341,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         &[
             "log",
             "--no-merges",
-            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)",
+            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)%x1f%ae",
             &format!("{merge_base}..HEAD"),
         ],
     )?;
@@ -334,6 +358,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
 
     let mut commits = 0;
     let mut trailered = 0;
+    let mut bot_exempt = 0;
     let mut findings = vec![];
 
     if !commits_out.is_empty() {
@@ -360,11 +385,21 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
                 .filter(|s| !s.is_empty())
                 .collect();
             if ids.is_empty() {
-                findings.push(Finding {
-                    hash: hash.clone(),
-                    subject: subject.clone(),
-                    violation: Violation::NoTrailer,
-                });
+                // PMAT-1356: a GitHub app account composes its own message and
+                // has no roadmap item to name — the work was published
+                // upstream, not chosen here. Exempt from the REQUIREMENT, and
+                // counted so the exemption is visible in the verdict. Only the
+                // absence is excused: a trailer that is present is judged
+                // below whoever wrote it.
+                if is_github_bot_account(parts.get(3).map(|s| s.trim()).unwrap_or("")) {
+                    bot_exempt += 1;
+                } else {
+                    findings.push(Finding {
+                        hash: hash.clone(),
+                        subject: subject.clone(),
+                        violation: Violation::NoTrailer,
+                    });
+                }
             } else {
                 let mut commit_trailered = false;
                 for id in ids {
@@ -409,6 +444,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         },
         commits,
         trailered,
+        bot_exempt,
         findings,
     })
 }
