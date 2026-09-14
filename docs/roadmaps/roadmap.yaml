@@ -6637,7 +6637,7 @@ roadmap:
 - id: PMAT-1350
   github_issue: 1350
   item_type: task
-  title: 'pmat --version cannot identify the binary: commit unknown / worktree unknown is the state you most need it in'
+  title: 'pmat --version cannot identify the binary: ''commit: unknown / worktree: unknown'' is the state you most need it in'
   status: inprogress
   priority: high
   assigned_to: null
@@ -6656,3 +6656,38 @@ roadmap:
   labels:
   - kind:code
   notes: 'Written by hand. pmat work add on PATH is built from the published 3.40.0, whose work add carries no --github-issue — which is #1349, the other half of this ticket. The id tail is the issue number all the same.'
+- id: PMAT-1349
+  github_issue: 1349
+  item_type: task
+  title: '3.40.0 names two different CLIs: --github-issue merged 26h after the version bump and was never published'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-14T09:15:10Z
+  updated: 2026-09-14T09:15:10Z
+  spec: null
+  acceptance_criteria:
+  - a published version of pmat carries work add --github-issue, so cargo install stops reverting a fleet to the max(id)+1 allocator
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Closed by publishing. The code has been on master since bcf7be067 (2026-09-08 21:13), 26 hours after the 3.40.0 version bump at 07924d754 (2026-09-07 19:13), and there has been no bump since — so the crates.io 3.40.0 has never carried it. Same PR as PMAT-1350.
+- id: PMAT-1343
+  github_issue: 1343
+  item_type: task
+  title: VariantCoverage false-positives on payload-carrying enum variants constructed inside an array literal — blocks work complete on covered code
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-14T09:15:49Z
+  updated: 2026-09-14T09:15:49Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Row added by PMAT-1350 to clear CB-2115, not because that branch does this work. #1343 was filed 2026-09-12 with no roadmap row, so master itself fails  with ORPHAN-GITHUB #1343 — an inherited red the next PR to touch this repo was always going to have to pick up. The issue is untouched and unassigned.'
