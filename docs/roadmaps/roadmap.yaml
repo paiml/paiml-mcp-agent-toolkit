@@ -6728,3 +6728,22 @@ roadmap:
   labels:
   - kind:code
   notes: 'Filed by release-check against master, and it is right: Cargo.toml says 3.40.1 and crates.io does not have it. The publish is the close, and it is what #1349 was asking for all along.'
+- id: PMAT-1361
+  github_issue: 1361
+  item_type: task
+  title: 'ci/test flakes on every PR: a fixture crate under TMPDIR is swallowed by the enclosing workspace'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-14T20:37:57Z
+  updated: 2026-09-14T20:37:57Z
+  spec: null
+  acceptance_criteria:
+  - 'The dead-code fixture lives wherever TMPDIR points, and if TMPDIR falls inside a cargo workspace the fixture is swallowed by it: locally write_fixture_lockfile dies with ''current package believes it is in a workspace when it is not''; in ci/test it got further and the fixture was analysed as part of the enclosing workspace, so check_dead_code_outcome returned violations=[] not_measured=None — could-not-measure rendered as zero-violations by the check that exists to stop exactly that. Reproduced deterministically with TMPDIR=$PWD/anything. Fix: an empty [workspace] table in the fixture manifest, the remedy cargo names in its own error; a poka-yoke assert in write_fixture_lockfile so the next fixture cannot omit it; and the no-manifest test asserts its own premise, since it has no manifest to fix.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: 3.41.0

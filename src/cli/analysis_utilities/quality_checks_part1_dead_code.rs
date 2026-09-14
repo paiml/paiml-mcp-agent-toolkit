@@ -218,7 +218,7 @@ mod dead_code_outcome_tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(
             tmp.path().join("Cargo.toml"),
-            "[package]\nname = \"fx\"\nversion = \"0.0.0\"\nedition = \"2021\"\n\n[lib]\npath = \"src/lib.rs\"\n",
+            "[package]\nname = \"fx\"\nversion = \"0.0.0\"\nedition = \"2021\"\n\n[workspace]\n\n[lib]\npath = \"src/lib.rs\"\n",
         )
         .expect("manifest");
         std::fs::create_dir_all(tmp.path().join("src")).expect("src");
@@ -277,6 +277,20 @@ mod dead_code_outcome_tests {
     #[serial_test::serial(dead_code_env)]
     fn a_directory_without_a_manifest_is_not_applicable_not_unmeasured() {
         let tmp = tempfile::tempdir().expect("tempdir");
+        // This test's whole premise is "no Cargo.toml at or above". A tempdir
+        // gives no such guarantee — it lives wherever TMPDIR points, and if
+        // that is inside a cargo workspace then `enclosing_crate_root` walks UP
+        // and finds one (#1361). The sibling tests fix that with an empty
+        // `[workspace]` table in the fixture's own manifest; this one has no
+        // manifest to put it in, by construction. So it asserts its premise
+        // instead of assuming it: an unmeetable precondition is `not_measured`,
+        // and the right thing is to say so in words the reader can act on.
+        assert!(
+            crate::services::cargo_dead_code_analyzer::enclosing_crate_root(tmp.path()).is_none(),
+            "this test needs a directory with NO Cargo.toml at or above it, and TMPDIR \
+             ({}) is inside a cargo workspace — point TMPDIR outside one (#1361)",
+            tmp.path().display()
+        );
         std::fs::write(tmp.path().join("main.py"), "print(1)\n").expect("py");
         let rt = tokio::runtime::Runtime::new().expect("rt");
         let o = rt.block_on(check_dead_code_outcome(tmp.path(), 15.0)).expect("outcome");
