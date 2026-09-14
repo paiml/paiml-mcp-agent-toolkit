@@ -9,19 +9,16 @@ retries = 0
 slow-timeout = { period = "60s", terminate-after = 2 }
 fail-fast = false
 test-threads = "num-cpus"
-# PMAT-1314. These two tests PASS under `cargo test --lib` and HANG FOREVER under
-# nextest — measured at 300s with no progress, while the other two tests in the
-# same module pass in milliseconds. nextest gives each test its own process, so
-# whatever they depend on is supplied by another test in a shared process: an
-# order dependency, which is a defect in the tests and not in nextest.
-#
-# They are excluded HERE rather than left to time out, because a lane that ends
-# in `2 timed out` is a lane somebody disables. They are NOT excluded from
-# `cargo test`, which is what every push to master runs, so both are still
-# executed on every merge. scripts/pr-lane-control.sh asserts that this filter
-# names exactly these two, that both still exist in the tree, and that nothing
-# excludes them from the pre-release lane.
-default-filter = 'not (test(=mcp_pmcp::simple_unified_server::eof_drain_tests::eof_does_not_signal_while_a_request_is_in_flight) + test(=mcp_pmcp::simple_unified_server::eof_drain_tests::waits_for_every_outstanding_request))'
+# PMAT-1314. The default-filter that used to sit here excluded two tests
+# (`eof_does_not_signal_while_a_request_is_in_flight`,
+# `waits_for_every_outstanding_request`) that were believed to hang under
+# nextest only, from an order dependency on a shared process. That belief was
+# never verified: both tests hung under plain `cargo test --lib` too, and in
+# isolation — the real cause was `EofSignalingTransport`'s 300s drain backstop
+# being awaited to completion with nothing able to cancel it, which the tests
+# now avoid via a per-instance override. See
+# `src/mcp_pmcp/simple_unified_server.rs` (`drain_backstop` field and the two
+# tests' doc comments). The local fast lane runs everything again.
 
 [profile.coverage]
 # Optimized for coverage runs with instrumentation
