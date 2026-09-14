@@ -13,10 +13,15 @@
 //!
 //! These cases fail on the pre-#1350 binary: it emits no `source:` line at all.
 
-use std::process::Command;
+#[path = "support/pmat_cmd.rs"]
+mod pmat_cmd;
 
 fn version_output() -> String {
-    let out = Command::new(env!("CARGO_BIN_EXE_pmat"))
+    // pmat_cmd::pmat(), not Command::new: src/services/test_env_hygiene.rs refuses
+    // an unledgered raw spawn, because several ambient variables change what the
+    // binary DOES and a test that inherits them is measuring the shell it ran in.
+    // It caught this file on its first CI run.
+    let out = pmat_cmd::pmat()
         .arg("--version")
         .output()
         .expect("the built binary runs");
