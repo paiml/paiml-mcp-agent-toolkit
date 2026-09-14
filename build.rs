@@ -1709,7 +1709,7 @@ fn emit_build_provenance() {
         (None, Some(sha)) => (
             sha,
             "unavailable (source archive)".to_string(),
-            "source archive; commit supplied by the builder".to_string(),
+            "source archive; commit supplied by the builder (PMAT_BUILD_SHA)".to_string(),
         ),
         (None, None) => (
             "unavailable (source archive: a .crate tarball carries no git metadata)".to_string(),

@@ -6702,7 +6702,9 @@ roadmap:
   updated: 2026-09-14T11:17:28Z
   spec: null
   acceptance_criteria:
+  - the banner NAMES PMAT_BUILD_SHA, so a reader who sees the archive case knows what to set
   - the banner and the CHANGELOG say PMAT_BUILD_SHA is the builder's to set, because a publisher's environment cannot reach a consumer's build
+  - the bookkeeping #1351's merge created lands here: PMAT-1349 and PMAT-1350 go to completed and #1352 gets a row. CB-2113 refuses a commit naming its own completed ticket, so their own PR could not do it and the next one has to
   phases: []
   subtasks: []
   estimated_effort: null

@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   ```
   commit: <sha>          worktree: clean|dirty                  source: git checkout
-  commit: <sha>          worktree: unavailable (source archive) source: source archive; commit supplied by the builder
+  commit: <sha>          worktree: unavailable (source archive) source: source archive; commit supplied by the builder (PMAT_BUILD_SHA)
   commit: unavailable …  worktree: unavailable (source archive) source: source archive
   ```
 

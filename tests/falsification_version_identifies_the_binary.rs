@@ -43,7 +43,7 @@ fn the_banner_names_where_the_build_came_from() {
     assert!(
         source == "git checkout"
             || source == "source archive"
-            || source == "source archive; commit supplied by the builder",
+            || source == "source archive; commit supplied by the builder (PMAT_BUILD_SHA)",
         "unrecognised build source {source:?}; add the case here rather than widening the check"
     );
 }
