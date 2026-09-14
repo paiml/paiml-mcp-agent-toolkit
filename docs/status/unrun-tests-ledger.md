@@ -14,7 +14,7 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-24212 of 27339 lib tests are executed; 3127 are compiled by no leg.
+24213 of 27340 lib tests are executed; 3127 are compiled by no leg.
 
 ## `<unsatisfiable>` — 2098 test(s)
 
@@ -3280,7 +3280,7 @@ crate::cli::handlers::timeline_mode::coverage_tests::check_feature_availability_
 
 ## Residual — what this walk could not reach
 
-165 `#[ignore]`d test(s) are compiled by some leg and executed by none.
+164 `#[ignore]`d test(s) are compiled by some leg and executed by none.
 `cargo test` prints its own "N ignored" line, so they are declared, not
 hidden, and are not ledgered here.
 

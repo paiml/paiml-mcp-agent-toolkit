@@ -42,8 +42,8 @@
 //!
 //! | child exit | meaning |
 //! |---|---|
-//! | `1` | the gate called `std::process::exit(1)` — it gated |
-//! | [`GATE_RETURNED`] | the dispatcher returned normally — the gate did **not** gate |
+//! | `1` | the gate returned an `Err` that `main` maps to exit 1 — it gated (#1331: the handler used to call `std::process::exit(1)` directly; now it returns `Err` and this child mirrors `main`'s mapping) |
+//! | [`GATE_RETURNED`] | the dispatcher returned `Ok(())` — the gate did **not** gate |
 //! | anything else | the child never got that far (see [`ChildRun::explain`]) |
 //!
 //! `0` is deliberately not a sentinel: a `--exact` filter that matches no test
@@ -157,10 +157,15 @@ fn run_as_child(argv: Vec<String>) -> ! {
         })
     });
 
-    // Still here ⇒ the gate did not exit. Surface a dispatch error rather than
-    // reporting it as "the gate declined to gate".
-    outcome.expect("the quality gate must not error out");
-    std::process::exit(GATE_RETURNED);
+    // Mirror `src/bin/pmat.rs`: an `Err` is mapped through `cli_exit::code_for`
+    // to a process exit code (#1331 — the handler no longer calls
+    // `std::process::exit` itself, so the child must reproduce `main`'s
+    // mapping to observe the same code the shipped binary would produce).
+    // `Ok(())` means the gate did not gate.
+    match outcome {
+        Ok(()) => std::process::exit(GATE_RETURNED),
+        Err(e) => std::process::exit(i32::from(crate::cli_exit::code_for(&e))),
+    }
 }
 
 // ── the parent half ─────────────────────────────────────────────────────────

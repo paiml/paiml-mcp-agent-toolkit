@@ -152,12 +152,6 @@
     }
 
     #[tokio::test]
-    // This test is correct; the handler is what must change (#1331):
-    // `exit_on_violation=true` reaches `handle_quality_gate`'s real
-    // `std::process::exit(1)` path (an empty temp dir is reported as an
-    // "unmeasured gate" violation), so this call terminates the whole test
-    // binary rather than returning the `Result` this test wants to assert on.
-    #[ignore = "reaches handle_quality_gate's process::exit(1), which kills the test binary — see #1331"]
     async fn test_quality_gate_complexity_check() {
         use tempfile::TempDir;
         let temp_dir = TempDir::new().expect("internal error");
@@ -175,7 +169,8 @@
             false,
         )
         .await;
-        assert!(result.is_ok() || result.is_err());
+        let err = result.expect_err("an unmeasured gate with exit_on_violation is a failure");
+        assert!(err.to_string().contains("Quality gate FAILED"), "{err}");
     }
 
     #[tokio::test]

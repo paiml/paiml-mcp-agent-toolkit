@@ -61,7 +61,7 @@ async fn handle_single_file_quality_gate(
     output_single_file_results(&single_file, &results, &violations, format, output).await?;
 
     // Handle exit status
-    handle_quality_gate_exit_status(exit_on_violation, results.passed);
+    handle_quality_gate_exit_status(exit_on_violation, results.passed)?;
 
     Ok(())
 }
