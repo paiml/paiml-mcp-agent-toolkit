@@ -1542,7 +1542,7 @@ mod dead_code_include_tests_tests {
         // and the analysis this tool now shares with the CLI is rooted in one.
         std::fs::write(
             dir.path().join("Cargo.toml"),
-            "[package]\nname=\"mcp_include_tests\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+            "[package]\nname=\"mcp_include_tests\"\nversion=\"0.1.0\"\nedition=\"2021\"\n\n[workspace]\n",
         )
         .expect("write Cargo.toml");
         std::fs::write(
@@ -1695,7 +1695,7 @@ mod satd_surface_agreement_tests {
         std::fs::create_dir_all(d.path().join("tests")).expect("tests");
         std::fs::write(
             d.path().join("Cargo.toml"),
-            "[package]\nname=\"f\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+            "[package]\nname=\"f\"\nversion=\"0.1.0\"\nedition=\"2021\"\n\n[workspace]\n",
         )
         .expect("manifest");
         std::fs::write(
@@ -1764,7 +1764,7 @@ mod satd_surface_agreement_tests {
         std::fs::create_dir_all(d.path().join("tests")).expect("tests");
         std::fs::write(
             d.path().join("Cargo.toml"),
-            "[package]\nname=\"f\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+            "[package]\nname=\"f\"\nversion=\"0.1.0\"\nedition=\"2021\"\n\n[workspace]\n",
         )
         .expect("manifest");
         // 1 production marker + 1 INLINE test marker
@@ -2093,7 +2093,7 @@ mod satd_skip_accounting_tests {
         std::fs::create_dir_all(d.path().join("examples")).expect("examples");
         std::fs::write(
             d.path().join("Cargo.toml"),
-            "[package]\nname=\"f\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+            "[package]\nname=\"f\"\nversion=\"0.1.0\"\nedition=\"2021\"\n\n[workspace]\n",
         )
         .expect("manifest");
         std::fs::write(
@@ -2293,7 +2293,7 @@ mod transport_parity_1058_tests {
         std::fs::create_dir_all(d.path().join("src")).expect("src");
         std::fs::write(
             d.path().join("Cargo.toml"),
-            "[package]\nname=\"ef\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+            "[package]\nname=\"ef\"\nversion=\"0.1.0\"\nedition=\"2021\"\n\n[workspace]\n",
         )
         .expect("manifest");
         std::fs::write(
