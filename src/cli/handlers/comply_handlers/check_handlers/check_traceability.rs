@@ -64,6 +64,14 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                 },
                 Range::PullRequest { base, merge_base } => {
                     let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { &merge_base };
+                    // PMAT-1356: an exemption nobody can read is indistinguishable
+                    // from a rule that stopped running, so the count rides on
+                    // every PullRequest verdict — pass or fail.
+                    let exempt = if m.bot_exempt > 0 {
+                        format!("; {} authored by a GitHub app account, exempt from the trailer (PMAT-1356)", m.bot_exempt)
+                    } else {
+                        String::new()
+                    };
                     if m.commits == 0 {
                         ComplianceCheck {
                             name: literal.to_string(),
@@ -76,7 +84,7 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                             name: literal.to_string(),
                             status: CheckStatus::Pass,
                             severity: CheckSeverity::Info.into(),
-                            message: format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item", m.commits, mb7, base),
+                            message: format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item{}", m.commits, mb7, base, exempt),
                         }
                     } else {
                         let mut msgs = vec![];
@@ -102,7 +110,7 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                             name: literal.to_string(),
                             status: CheckStatus::Fail,
                             severity: CheckSeverity::Error.into(),
-                            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}", m.findings.len(), m.commits, mb7, base, joined, traceability_remedy(&m.findings)),
+                            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability{}: {} — {}", m.findings.len(), m.commits, mb7, base, exempt, joined, traceability_remedy(&m.findings)),
                         }
                     }
                 }

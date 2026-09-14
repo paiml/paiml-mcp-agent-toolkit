@@ -425,3 +425,137 @@ fn a_roadmap_that_was_committed_and_is_now_gone_is_not_an_absence() {
     std::fs::remove_file(dir2.path().join(ROADMAP_PATH)).expect("rm");
     assert_eq!(inputs(dir2.path()), Inputs::RoadmapDeleted);
 }
+
+// ── PMAT-1356: a bot cannot add a trailer, and a rule no member of a class
+//    can pass is inoperative, not strict ──────────────────────────────────────
+
+/// Commit as a GitHub app account. `--author` sets the AUTHOR; the committer
+/// stays `cb2113@example.invalid`, which is the real shape — dependabot is the
+/// author, GitHub is the committer.
+fn commit_as(dir: &Path, subject: &str, author: &str, body: Option<&str>) -> String {
+    let mut args = vec![
+        "commit",
+        "-q",
+        "--allow-empty",
+        "--author",
+        author,
+        "-m",
+        subject,
+    ];
+    if let Some(b) = body {
+        args.extend(["-m", b]);
+    }
+    git(dir, &args);
+    git(dir, &["rev-parse", "HEAD"])
+}
+
+const DEPENDABOT: &str = "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>";
+
+#[test]
+fn a_bot_authored_commit_with_no_trailer_is_exempt_and_the_exemption_is_counted() {
+    // Measured on paiml/paiml-mcp-agent-toolkit#1347 (run 34834456634): CB-2113
+    // refused `deps(deps): Bump pollster from 0.4.0 to 1.0.1` for "no
+    // Pmat-Ticket trailer" and printed a remedy its author cannot perform.
+    // Five dependabot PRs were held, some security-relevant.
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(
+        dir.path(),
+        "deps: Bump pollster from 0.4.0 to 1.0.1",
+        DEPENDABOT,
+        None,
+    );
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.commits, 1, "{m:?}");
+    assert_eq!(
+        m.bot_exempt, 1,
+        "the bot commit must be COUNTED, not invisible: {m:?}"
+    );
+    assert!(
+        m.findings.is_empty(),
+        "a bot commit is not a finding: {:?}",
+        m.findings
+    );
+    assert!(m.clean(), "{m:?}");
+}
+
+#[test]
+fn the_exemption_does_not_widen_to_the_humans_in_the_same_range() {
+    // The falsifier for the fix itself. If the exemption ever becomes "skip
+    // the range that contains a bot commit", this goes green while the gate
+    // stops judging anything.
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(dir.path(), "deps: Bump serde", DEPENDABOT, None);
+    let human = commit(dir.path(), "feat: mine, untrailered", None);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.commits, m.bot_exempt), (2, 1), "{m:?}");
+    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
+    assert_eq!(m.findings[0].hash, human);
+    assert_eq!(m.findings[0].violation, Violation::NoTrailer);
+    assert!(!m.clean(), "{m:?}");
+}
+
+#[test]
+fn a_human_whose_name_merely_ends_in_bot_is_still_judged() {
+    // The exemption is the GitHub app NAMESPACE, not the word "bot". An
+    // address a person can choose must not buy the exemption.
+    let dir = repo();
+    on_feature(dir.path());
+    for author in [
+        "Abbot <abbot@example.invalid>",
+        "robot <robot@bot.example.invalid>",
+        // The suffix, but not on GitHub's noreply host.
+        "fake <fake[bot]@example.invalid>",
+        // The host, but not the app-account local part.
+        "fake2 <fake2@users.noreply.github.com>",
+    ] {
+        let dir = repo();
+        on_feature(dir.path());
+        commit_as(dir.path(), "untrailered", author, None);
+        let m = measure_against(dir.path(), None).expect("measured");
+        assert_eq!(m.bot_exempt, 0, "{author} must not be exempt: {m:?}");
+        assert_eq!(m.findings.len(), 1, "{author}: {:?}", m.findings);
+    }
+    let _ = dir;
+}
+
+#[test]
+fn a_bot_commit_that_does_carry_a_trailer_is_still_read_as_trailered() {
+    // The exemption removes the REQUIREMENT, not the reading. A bot whose
+    // message names a real item should count toward `trailered`, so the
+    // numbers in the message stay honest.
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(
+        dir.path(),
+        "deps: bump x",
+        DEPENDABOT,
+        Some("Pmat-Ticket: PMAT-001"),
+    );
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.commits, m.trailered, m.bot_exempt), (1, 1, 0), "{m:?}");
+    assert!(m.findings.is_empty(), "{:?}", m.findings);
+}
+
+#[test]
+fn a_bot_trailer_naming_a_completed_item_is_still_a_finding() {
+    // Exemption applies to the ABSENCE of a trailer. A trailer that is present
+    // and wrong is a claim, and a claim is judged whoever made it.
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(
+        dir.path(),
+        "deps: bump x",
+        DEPENDABOT,
+        Some("Pmat-Ticket: PMAT-002"),
+    );
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.bot_exempt, 0, "{m:?}");
+    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
+    assert!(
+        matches!(&m.findings[0].violation, Violation::TerminalTicket { id, .. } if id == "PMAT-002"),
+        "{:?}",
+        m.findings[0].violation
+    );
+}
