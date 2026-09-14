@@ -33,14 +33,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   ```
   commit: <sha>          worktree: clean|dirty                  source: git checkout
-  commit: <sha>          worktree: unavailable (source archive) source: source archive; commit baked at publish time
+  commit: <sha>          worktree: unavailable (source archive) source: source archive; commit supplied by the builder
   commit: unavailable …  worktree: unavailable (source archive) source: source archive
   ```
 
-  The middle case is new capability, not wording: `PMAT_BUILD_SHA=$(git
-  rev-parse HEAD) cargo publish` bakes the revision into the published crate,
-  which otherwise can never name where it came from. The version stays the
-  first token, so `-V` parsers are unaffected.
+  The middle case is new capability, not wording: whoever BUILDS the archive
+  can set `PMAT_BUILD_SHA=<sha>` and the binary then names the revision it came
+  from. It is the BUILDER's to set, not the publisher's — `build.rs` runs at the
+  consumer's build and nothing it writes enters the `.crate`, so a variable set
+  during `cargo publish` reaches nobody. Making a PUBLISH bake its own commit
+  needs a committed marker file in the tarball and is #1354. The version stays
+  the first token, so `-V` parsers are unaffected.
 
   `tests/falsification_version_identifies_the_binary.rs` pins it, and it
   discriminates: reverted to the pre-fix `build.rs`,
