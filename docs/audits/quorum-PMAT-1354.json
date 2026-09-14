@@ -1,0 +1,85 @@
+{
+  "ticket": "PMAT-1354",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 124 commit(s); judged against origin/master",
+  "head": "f23e74adc302af248775c47cada576f8b95095fb",
+  "diff_sha256": "2d4610bee4f13cc38fbf9cc2f84d3bb0e4d0a16a2960b208aaf64c85ff961df9",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 7938,
+  "author": {
+    "model": "Opus 5 (1M context)",
+    "family": "claude",
+    "source": "measured"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff accurately and thoroughly implements all acceptance criteria for PMAT-1354. It modifies `build.rs` and `CHANGELOG.md` to clearly state that `PMAT_BUILD_SHA` is to be supplied by the builder, updating the banner output text to reference it explicitly. It also cleanly implements the roadmap updates, marking PMAT-1349 and PMAT-1350 as completed, and adding new tasks for PMAT-1354 and PMAT-1352 as requested. No contradicting changes or regressions were observed.",
+      "findings": [],
+      "raw_bytes": 2902,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff for PMAT-1354 accurately fulfills all acceptance criteria:\n1. The version banner in `build.rs` (line 1712) explicitly names `PMAT_BUILD_SHA` (`source archive; commit supplied by the builder (PMAT_BUILD_SHA)`).\n2. Both `build.rs` comments (lines 1659-1669) and `CHANGELOG.md` (lines 36, 40-44) clarify that `PMAT_BUILD_SHA` is for the builder to set, as `build.rs` runs at consumer build-time rather than publish-time.\n3. `docs/roadmaps/roadmap.yaml` updates PMAT-1349 and PMAT-1350 status to completed and adds the row for PMAT-1352 as required due to CB-2113 constraints.\n4. `tests/falsification_version_identifies_the_binary.rs` updates test assertions to match the updated source provenance string.\n\nNo gate weakening, unbacked receipt claims, or forbidden changes were found. Verdict is PASS.",
+      "findings": [],
+      "raw_bytes": 3921,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "model": "gemini-3.6-flash-high",
+      "model_measured": "gemini-3.6-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff for PMAT-1354 fulfills all ticket requirements and acceptance criteria without refutation:\n1. The version banner in `build.rs` (line 1712) explicitly names `PMAT_BUILD_SHA` (`\"source archive; commit supplied by the builder (PMAT_BUILD_SHA)\"`), satisfying criterion 1.\n2. Both `build.rs` comments (lines 1659-1669) and `CHANGELOG.md` (lines 34-44) explicitly state that `PMAT_BUILD_SHA` is for the builder to set because `build.rs` runs during the consumer's build rather than at publish time, satisfying criterion 2.\n3. `docs/roadmaps/roadmap.yaml` transitions PMAT-1349 and PMAT-1350 to completed and introduces PMAT-1352 and PMAT-1354, satisfying criterion 3.\n4. `tests/falsification_version_identifies_the_binary.rs` updates its assertion to verify the new banner string, passing all 4 tests in the suite (measured).\n\nNo quality gates are weakened, no tests assert contrary to the ticket, and all changes directly correspond to the ticket.",
+      "findings": [],
+      "raw_bytes": 5377,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-medium",
+      "model_measured": "gemini-3.8-flash-medium",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [
+    "lane 2: grounding NOT COMPARED — structured_output holds a verdict but no single verdict object could be read out of .response (3921 raw bytes), so agy's labels stand unchecked for this lane (PMAT-082)"
+  ],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=Opus 5 (1M context)/claude"
+  }
+}
