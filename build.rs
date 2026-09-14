@@ -1656,17 +1656,25 @@ fn make_contract_env_key(contract: &str, equation: &str) -> String {
 /// crates.io tarball build; verification tooling treats `unknown` as "cannot
 /// confirm" rather than as a pass.
 fn emit_build_provenance() {
-    let sha = std::process::Command::new("git")
+    // A PUBLISH CAN BAKE ITS OWN COMMIT. The `.crate` tarball carries no `.git`,
+    // so a registry build has nothing to read and — before #1350 — printed
+    // `unknown` twice. `PMAT_BUILD_SHA=$(git rev-parse HEAD) cargo publish` gives
+    // the published artifact the one fact it otherwise cannot have.
+    let baked = std::env::var("PMAT_BUILD_SHA")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    let git_sha = std::process::Command::new("git")
         .args(["rev-parse", "HEAD"])
         .output()
         .ok()
         .filter(|o| o.status.success())
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "unknown".to_string());
+        .filter(|s| !s.is_empty());
 
     // `--porcelain` prints one line per modified path; empty means clean.
-    let dirty = std::process::Command::new("git")
+    let git_dirty = std::process::Command::new("git")
         .args(["status", "--porcelain", "--untracked-files=no"])
         .output()
         .ok()
@@ -1677,11 +1685,36 @@ fn emit_build_provenance() {
             } else {
                 "dirty"
             }
-        })
-        .unwrap_or("unknown");
+        });
+
+    // THREE CASES, AND `unknown` IS NOT ONE OF THEM (#1350).
+    //
+    // `unknown` reads like a field that failed to populate, so a registry build
+    // and a broken git build were indistinguishable — and `pmat 3.40.0` names two
+    // different CLIs (#1349), which is exactly when the reader needs to tell them
+    // apart. Each case now states what is true.
+    let (sha, dirty, source) = match (git_sha, baked) {
+        (Some(sha), _) => (
+            sha,
+            git_dirty.unwrap_or("unavailable").to_string(),
+            "git checkout".to_string(),
+        ),
+        (None, Some(sha)) => (
+            sha,
+            "unavailable (source archive)".to_string(),
+            "source archive; commit baked at publish time".to_string(),
+        ),
+        (None, None) => (
+            "unavailable (source archive: a .crate tarball carries no git metadata)".to_string(),
+            "unavailable (source archive)".to_string(),
+            "source archive".to_string(),
+        ),
+    };
 
     println!("cargo:rustc-env=PMAT_GIT_SHA={sha}");
     println!("cargo:rustc-env=PMAT_GIT_DIRTY={dirty}");
+    println!("cargo:rustc-env=PMAT_BUILD_SOURCE={source}");
+    println!("cargo:rerun-if-env-changed=PMAT_BUILD_SHA");
     // Rebuild when the checked-out revision changes, so the embedded SHA cannot
     // go stale behind an otherwise-cached build. Resolved through git rather
     // than spelled `.git/HEAD`: in a worktree `.git` is a FILE pointing at

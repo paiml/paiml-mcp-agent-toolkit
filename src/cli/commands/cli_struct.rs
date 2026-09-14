@@ -27,6 +27,8 @@ use super::commands_enum::Commands;
         env!("PMAT_GIT_SHA"),
         "\nworktree: ",
         env!("PMAT_GIT_DIRTY"),
+        "\nsource: ",
+        env!("PMAT_BUILD_SOURCE"),
     ),
     long_about = None,
     after_help = "EXAMPLES:
