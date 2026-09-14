@@ -6750,7 +6750,7 @@ roadmap:
 - id: PMAT-1359
   github_issue: 1359
   item_type: task
-  title: 'master is red for every PR: RUSTSEC-2026-0285 in the lockfile, and three roadmap rows CB-2115''s bijection is missing'
+  title: 'master is red for every PR: RUSTSEC-2026-0285 in the lockfile, and the four roadmap rows CB-2115''s bijection is missing'
   status: planned
   priority: medium
   assigned_to: null
@@ -6758,7 +6758,7 @@ roadmap:
   updated: 2026-09-14T18:03:46Z
   spec: null
   acceptance_criteria:
-  - 'cargo deny check reports RUSTSEC-2026-0285 (rustls 0.23.41, TLS 1.3 handshake accepted across encryption level boundaries; fixed >=0.23.45) and a yanked chacha20 0.10.1, so pmat score is red on every PR. cargo update -p rustls alone reaches 0.23.43, still inside the advisory — --precise 0.23.45 is what clears it. Separately CB-2115 requires open roadmap items and open issues to be in bijection, so filing an issue is a roadmap edit here: PMAT-1354 and PMAT-1352 stayed open after their issues closed, and #1358 had no row. Split out of #1357 after two review lanes correctly flagged both as work that ticket did not ask for.'
+  - 'cargo deny check reports RUSTSEC-2026-0285 (rustls 0.23.41, TLS 1.3 handshake messages accepted across encryption level boundaries; fixed >=0.23.45) and a yanked chacha20 0.10.1, so pmat score is red on every PR. cargo update -p rustls alone reaches 0.23.43, still inside the advisory — --precise 0.23.45 is what clears it. Separately CB-2115 requires open roadmap items and open issues to be in bijection, so filing an issue is a roadmap edit in this repository. FOUR rows, not three: PMAT-1354 and PMAT-1352 stayed open after their issues closed; #1358 had no row; and PMAT-1356''s row is carried here too. The fourth is here because the count was written before it was measured — CB-2115 still reported ORPHAN-GITHUB #1356 after the first three, since #1356 is an open issue and the gate sees it from whichever branch is judged, while #1357 was being made code-only. Bijection is reached at four and not at three: 109 open item(s) and 109 open issue(s). All roadmap bookkeeping lives in this PR and all code in #1357, which is stacked on it. Split out of #1357 after two review lanes correctly flagged both halves as work that ticket did not ask for.'
   phases: []
   subtasks: []
   estimated_effort: null
