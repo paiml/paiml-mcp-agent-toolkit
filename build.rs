@@ -1656,10 +1656,17 @@ fn make_contract_env_key(contract: &str, equation: &str) -> String {
 /// crates.io tarball build; verification tooling treats `unknown` as "cannot
 /// confirm" rather than as a pass.
 fn emit_build_provenance() {
-    // A PUBLISH CAN BAKE ITS OWN COMMIT. The `.crate` tarball carries no `.git`,
+    // A BUILDER CAN SUPPLY THE COMMIT. The `.crate` tarball carries no `.git`,
     // so a registry build has nothing to read and — before #1350 — printed
-    // `unknown` twice. `PMAT_BUILD_SHA=$(git rev-parse HEAD) cargo publish` gives
-    // the published artifact the one fact it otherwise cannot have.
+    // `unknown` twice. `PMAT_BUILD_SHA=<sha>` lets whoever BUILDS the archive
+    // supply the one fact it otherwise cannot have.
+    //
+    // It is the BUILDER'S, not the publisher's, and an earlier version of this
+    // comment said otherwise: build.rs runs at the CONSUMER's build, and nothing
+    // build.rs writes ends up in the .crate, so a variable set during
+    // `cargo publish` reaches nobody. A CI job or a fleet install that builds
+    // from the archive CAN set it. Making a PUBLISH bake its own commit needs a
+    // committed marker file inside the tarball, which is #1354.
     let baked = std::env::var("PMAT_BUILD_SHA")
         .ok()
         .map(|s| s.trim().to_string())
@@ -1702,7 +1709,7 @@ fn emit_build_provenance() {
         (None, Some(sha)) => (
             sha,
             "unavailable (source archive)".to_string(),
-            "source archive; commit baked at publish time".to_string(),
+            "source archive; commit supplied by the builder (PMAT_BUILD_SHA)".to_string(),
         ),
         (None, None) => (
             "unavailable (source archive: a .crate tarball carries no git metadata)".to_string(),
