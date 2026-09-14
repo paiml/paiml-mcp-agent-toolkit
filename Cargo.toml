@@ -1,7 +1,7 @@
 [package]
 name = "pmat"
 default-run = "pmat"
-version = "3.40.0"
+version = "3.40.1"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
@@ -765,6 +765,13 @@ required-features = ["mcp-http"]
 [[test]]
 name = "init_workspace_t"
 path = "tests/init_workspace_t.rs"
+
+# #1350: `pmat --version` must identify the binary. Declared as its own
+# target because `autotests = false` — a test file nobody declares is a test
+# nobody runs, which is the shape this suite exists to refuse.
+[[test]]
+name = "falsification_version_identifies_the_binary"
+path = "tests/falsification_version_identifies_the_binary.rs"
 
 # Examples for deterministic MCP agents course
 [[example]]

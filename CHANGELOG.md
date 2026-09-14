@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.40.1] - 2026-09-14
+
+### Fixed
+
+- **`3.40.0` named two different CLIs, and this publish ends that (#1349).**
+  `--github-issue` merged to master on 2026-09-08 21:13, twenty-six hours AFTER
+  the `3.40.0` version bump on 2026-09-07 19:13, and there has been no bump
+  since. So the crates.io `3.40.0` has no `work add --github-issue` and master
+  does — measured in the published source under
+  `~/.cargo/registry/src/*/pmat-3.40.0/`, which defines `github: bool` and
+  nothing else. `cargo install pmat` therefore reverted a fleet to the
+  `max(id) + 1` allocator while reporting the same version, which is the
+  collision the flag exists to prevent: two agents on two branches read the
+  same roadmap, compute the same next id, and the merge deletes one of the two
+  tickets. Downstream, two roadmap rows (paiml/infra PMAT-576, paiml/aprender
+  PMAT-3223) were written by hand to preserve the id convention.
+
+- **`pmat --version` could not identify the binary it was printed by (#1350).**
+  It emitted `commit: unknown` and `worktree: unknown`, a shape that reads like
+  two fields which failed to populate rather than the fact that a `.crate`
+  tarball carries no git metadata — and it emitted exactly that in the one
+  situation where the version number is not enough. Three cases now state what
+  is true, and a new `source:` line names which one:
+
+  ```
+  commit: <sha>          worktree: clean|dirty                  source: git checkout
+  commit: <sha>          worktree: unavailable (source archive) source: source archive; commit baked at publish time
+  commit: unavailable …  worktree: unavailable (source archive) source: source archive
+  ```
+
+  The middle case is new capability, not wording: `PMAT_BUILD_SHA=$(git
+  rev-parse HEAD) cargo publish` bakes the revision into the published crate,
+  which otherwise can never name where it came from. The version stays the
+  first token, so `-V` parsers are unaffected.
+
+  `tests/falsification_version_identifies_the_binary.rs` pins it, and it
+  discriminates: reverted to the pre-fix `build.rs`,
+  `the_banner_names_where_the_build_came_from` fails while the other three
+  pass. Both archive cases were measured against a real `cargo package`
+  tarball built outside a git checkout, not reasoned about.
+
 ## [3.40.0] - 2026-09-07
 
 ### Added
