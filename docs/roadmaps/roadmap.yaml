@@ -6645,11 +6645,11 @@ roadmap:
   updated: 2026-09-14T07:58:19Z
   spec: null
   acceptance_criteria:
-  - 'the banner names the build source, always, so a registry build and a git build are distinguishable'
+  - the banner names the build source, always, so a registry build and a git build are distinguishable
   - 'no provenance field is the bare word unknown: an absence that is genuinely unknowable says which case it is'
-  - 'a publish can bake its own commit into the crate, because a .crate tarball carries no git metadata'
-  - 'the version stays the first token, so -V parsers and every contains(version) assertion keep working'
-  - '3.40.1 is published, which is the only thing that puts work add --github-issue on crates.io (#1349)'
+  - a publish can bake its own commit into the crate, because a .crate tarball carries no git metadata
+  - the version stays the first token, so -V parsers and every contains(version) assertion keep working
+  - 3.40.1 is published, which is the only thing that puts work add --github-issue on crates.io (#1349)
   phases: []
   subtasks: []
   estimated_effort: null
