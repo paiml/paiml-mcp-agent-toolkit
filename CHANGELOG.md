@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.40.2] - 2026-09-15
+
+### Fixed
+
+- **`pmat roadmap sync` refused nothing that `pmat work validate` refuses, and now refuses the same things (#1371, #1372).**
+  `read_work_store_rows` read `docs/roadmaps/roadmap.yaml` with a line-scan, and
+  `RoadmapSources::new` de-duplicated rows by id. Measured on paiml/infra's
+  280-row roadmap under 3.40.1: a file that was not YAML rendered as **0 items
+  with a valid `content_hash` and exit 0**; a duplicated id vanished from the
+  render; a missing `status:` rendered as `""`; `status: shipped` passed
+  through. `pmat work validate` refused every one of those, with a line number,
+  one command over. `sync` now reads through the strict model and
+  `check_roadmap_text`, the same path `work add` (PMAT-676) and `work edit`
+  (PMAT-679) already use. Every form above exits 1 with pmat's own error.
+- **Titles with a YAML `''` escape rendered it literally.** The line-scan
+  carried `dead-man''s` into 17 of infra's rendered titles. The strict parse
+  decodes it, so the `content_hash` of a roadmap with such a title changes
+  once in this release, for that reason only.
+
+### Unchanged on purpose
+
+- `pmat::roadmap::sync::parse_rows` remains public (it shipped in 3.40.1). It
+  is no longer the read path, performs no validation, and says so in its doc.
+
 ## [3.40.1] - 2026-09-14
 
 ### Fixed
