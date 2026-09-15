@@ -3,12 +3,12 @@
   "base": "origin/master",
   "base_resolved": "origin/master",
   "base_note": "no origin/origin/master exists; judged against the local ref",
-  "head": "7c2edbbeea69a0d3235e058f0478dc9f8b4b35b8",
-  "diff_sha256": "d4fd37d3fabf668bb5b3db6415d8e31a074ab294fc0569f7bb0b02e776fc927a",
+  "head": "a012224622ea9350d3ad4cc3d4b7e731346a7dd0",
+  "diff_sha256": "317643088400c9a2c7a458d256e209c4d510ef85fffa76324d40aba6c56c093c",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "inline",
-  "prompt_bytes": 7899,
+  "prompt_bytes": 5825,
   "author": {
     "model": "claude-opus-5",
     "family": "claude",
@@ -20,22 +20,23 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff appropriately updates the roadmap items PMAT-1359 and PMAT-1361 to 'completed', and adds the corresponding receipt. This aligns with the lifecycle ticket PMAT-1336's goal of completing tickets that cannot complete themselves. No criteria are violated.",
+      "summary": "The diff perfectly aligns with the PMAT-1336 ticket by correctly applying the 'completed' status and timestamp to PMAT-1371, which was left open after its PR merged. The receipt accurately describes the 4 changed lines in the roadmap.yaml file. There are no unrelated changes or weakened gates.",
       "findings": [
         {
-          "claim": "The roadmap.yaml modifications change the status of PMAT-1359 and PMAT-1361 to completed and update their timestamps, which aligns with the receipt.",
+          "claim": "The diff correctly completes PMAT-1371 by updating its status to 'completed' and bumping the 'updated' timestamp, executing the lifecycle requirement defined in PMAT-1336.",
           "file": "docs/roadmaps/roadmap.yaml",
           "grounding": "cited",
-          "line": 6773
+          "line": 6913
         },
         {
-          "claim": "The receipt correctly documents that PMAT-1359 and PMAT-1361 were left planned and are completed by this ticket because a ticket cannot complete itself.",
+          "claim": "The diff accurately records the receipt of PMAT-1371's completion, backing the claim that the roadmap YAML changed 4 lines for that row.",
           "file": "docs/audits/impl-PMAT-1336-receipt.md",
-          "grounding": "cited"
+          "grounding": "cited",
+          "line": 14
         }
       ],
-      "raw_bytes": 3419,
-      "err_bytes": 79,
+      "raw_bytes": 2849,
+      "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
       "grounding_check": "parity",
@@ -48,9 +49,9 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff accurately fulfills ticket PMAT-1336 by updating the status of PMAT-1359 and PMAT-1361 from planned to completed in docs/roadmaps/roadmap.yaml, along with their updated timestamps. These rows correspond to issues closed by PR #1360 that remained in planned state. The diff also adds the implementation receipt at docs/audits/impl-PMAT-1336-receipt.md. No gates are weakened, no tests are contradicted, receipt claims match the diff, and there are no out-of-scope modifications.",
+      "summary": "The diff strictly satisfies all requirements and acceptance criteria of ticket PMAT-1336:\n1. `docs/roadmaps/roadmap.yaml`: Successfully updates the status of PMAT-1371 (whose GitHub issue #1371 closed when PR #1372 merged at 2604c1e78) from `planned` to `completed` and updates the timestamp (4 changed lines).\n2. `docs/audits/impl-PMAT-1336-receipt.md`: Appends the implementation receipt documenting the closure of PMAT-1371, the dry-run plan, and verification.\n3. Acceptance criteria verification:\n   - `pmat work sync --check-only` reports a coherent bijection with zero findings against live GitHub (115 open items ↔ 115 open issues).\n   - Only `docs/roadmaps/roadmap.yaml` and `docs/audits/impl-PMAT-1336-receipt.md` are touched; no source files are modified.\n   - The merge commit (2604c1e78 / PR #1372) is explicitly named.\n   - `commit-enforcement-audit.sh` (CB-2113), `roadmap-coherence-control.sh` (CB-2115), and `work-sync-control.sh` all pass cleanly.\nNo gates were weakened, no tests contradicted, and no out-of-scope changes were made.",
       "findings": [],
-      "raw_bytes": 2287,
+      "raw_bytes": 3384,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -64,9 +65,22 @@
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff correctly completes PMAT-1359 and PMAT-1361, which were closed by PR #1360 but remained in `planned` state. This aligns perfectly with the intent of PMAT-1336, which is dedicated to completing rows that a ticket cannot complete itself. The receipt accurately records the operations, and the YAML edits update the `status` and `updated` fields as expected. No out-of-scope changes are present.",
-      "findings": [],
-      "raw_bytes": 2107,
+      "summary": "The diff correctly fulfills the PMAT-1336 ticket by completing PMAT-1371 (which could not complete itself upon merging) and documenting the action in the appropriate receipt file. There are no unrelated or forbidden changes.",
+      "findings": [
+        {
+          "claim": "The status of PMAT-1371 is updated from planned to completed, and the updated timestamp is bumped.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 6913
+        },
+        {
+          "claim": "Added a receipt section documenting the completion of PMAT-1371 after it was merged in PR #1372.",
+          "file": "docs/audits/impl-PMAT-1336-receipt.md",
+          "grounding": "cited",
+          "line": 14
+        }
+      ],
+      "raw_bytes": 2472,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -81,22 +95,26 @@
   "dedup": [
     {
       "file": "docs/audits/impl-PMAT-1336-receipt.md",
-      "line": null,
+      "line": 14,
       "lanes_agreeing": [
-        1
+        1,
+        3
       ],
       "claims": [
-        "The receipt correctly documents that PMAT-1359 and PMAT-1361 were left planned and are completed by this ticket because a ticket cannot complete itself."
+        "Added a receipt section documenting the completion of PMAT-1371 after it was merged in PR #1372.",
+        "The diff accurately records the receipt of PMAT-1371's completion, backing the claim that the roadmap YAML changed 4 lines for that row."
       ]
     },
     {
       "file": "docs/roadmaps/roadmap.yaml",
-      "line": 6773,
+      "line": 6913,
       "lanes_agreeing": [
-        1
+        1,
+        3
       ],
       "claims": [
-        "The roadmap.yaml modifications change the status of PMAT-1359 and PMAT-1361 to completed and update their timestamps, which aligns with the receipt."
+        "The diff correctly completes PMAT-1371 by updating its status to 'completed' and bumping the 'updated' timestamp, executing the lifecycle requirement defined in PMAT-1336.",
+        "The status of PMAT-1371 is updated from planned to completed, and the updated timestamp is bumped."
       ]
     }
   ],

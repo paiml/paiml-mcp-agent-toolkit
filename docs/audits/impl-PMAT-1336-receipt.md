@@ -11,3 +11,15 @@ Measured diff:
 - This receipt section.
 
 After it, `pmat work sync --check-only` reads coherent, and `pmat work validate --check-base origin/master` passes. Same shape as master's `1cdffdcca chore(PMAT-1336): PMAT-1339 is completed — its issue closed when #1340 merged`. Split out of #1372 (PMAT-1371), whose quorum judged it separate work.
+
+## 2026-09-15 — PMAT-1371, closed by #1372 and left open
+
+PR #1372 merged at 2604c1e78 and closed #1371, leaving the `PMAT-1371` row not completed. It is the same lifecycle gap as #1360's two rows above: a ticket cannot complete itself. CB-2115 then reported `ORPHAN-ROADMAP PMAT-1371`. Because `ci.yml`'s required `gate` needs `traceability`, that one row blocked every PR to master, including the 3.40.2 release (#1376).
+
+Fixed with `pmat work sync --direction github-to-yaml`. The dry-run planned exactly one action, `close-item PMAT-1371 #1371 → Completed`.
+
+Measured diff:
+- `docs/roadmaps/roadmap.yaml`: that row's `status` and `updated` lines, 4 changed lines.
+- This receipt section.
+
+After it, `pmat work sync --check-only` reads coherent.
