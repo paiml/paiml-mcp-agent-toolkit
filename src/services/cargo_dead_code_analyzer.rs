@@ -412,6 +412,30 @@ mod crate_root_tests;
 /// dependency-free, so the resolution needs no registry.
 #[cfg(test)]
 pub(crate) fn write_fixture_lockfile(crate_root: &Path) {
+    // POKA-YOKE (#1361). A fixture crate lives wherever TMPDIR points, and if
+    // TMPDIR falls inside a cargo workspace the fixture is SWALLOWED by it:
+    //   error: current package believes it's in a workspace when it's not
+    // Locally that dies here. In `ci / test` it got further and the fixture was
+    // analysed AS PART OF the enclosing workspace — which compiles — so
+    // `check_dead_code_outcome` returned `violations=[] not_measured=None`:
+    // could-not-measure rendered as zero-violations, by the check that exists to
+    // stop exactly that. Reproduced deterministically with
+    // `TMPDIR=$PWD/anything cargo test …`.
+    //
+    // An empty `[workspace]` table makes the fixture its own workspace root
+    // wherever TMPDIR points — the remedy cargo names in its own error text.
+    // Three files on master had already learned this one at a time
+    // (stack_sync_handler.rs and the two rust_tooling_scorer test files); this
+    // change teaches five more, eleven manifests, and the assert is what stops
+    // a sixth from having to.
+    let manifest =
+        std::fs::read_to_string(crate_root.join("Cargo.toml")).expect("fixture has a Cargo.toml");
+    assert!(
+        manifest.contains("[workspace]"),
+        "fixture manifest at {} declares no `[workspace]` table, so it is swallowed by any \
+         workspace enclosing TMPDIR (#1361). Add an empty `[workspace]` table to it.",
+        crate_root.display()
+    );
     let output = Command::new("cargo")
         .current_dir(crate_root)
         .args(["generate-lockfile", "--offline"])

@@ -1068,7 +1068,7 @@ mod coverage_tests {
         let temp_dir = TempDir::new()?;
         fs::write(
             temp_dir.path().join("Cargo.toml"),
-            "[package]\nname=\"t\"\nversion=\"0.1.0\"\n",
+            "[package]\nname=\"t\"\nversion=\"0.1.0\"\n\n[workspace]\n",
         )?;
         let src = temp_dir.path().join("src");
         fs::create_dir(&src)?;

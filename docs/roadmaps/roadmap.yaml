@@ -6695,11 +6695,11 @@ roadmap:
   github_issue: 1354
   item_type: task
   title: 'a PUBLISH cannot bake its own commit: build.rs runs at the consumer, so PMAT_BUILD_SHA is the builder''s to set'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-14T11:17:28Z
-  updated: 2026-09-14T11:17:28Z
+  updated: 2026-09-15T05:22:06Z
   spec: null
   acceptance_criteria:
   - the banner NAMES PMAT_BUILD_SHA, so a reader who sees the archive case knows what to set
@@ -6715,11 +6715,11 @@ roadmap:
   github_issue: 1352
   item_type: task
   title: 'release-check: 3.40.1 is declared in Cargo.toml but not fully released'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-14T11:20:13Z
-  updated: 2026-09-14T11:20:13Z
+  updated: 2026-09-15T05:22:06Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6728,3 +6728,215 @@ roadmap:
   labels:
   - kind:code
   notes: 'Filed by release-check against master, and it is right: Cargo.toml says 3.40.1 and crates.io does not have it. The publish is the close, and it is what #1349 was asking for all along.'
+- id: PMAT-1356
+  github_issue: 1356
+  item_type: task
+  title: CB-2113 refuses every bot-authored commit, so no dependabot PR can ever merge (5 held today)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-14T18:07:29Z
+  updated: 2026-09-14T18:07:29Z
+  spec: null
+  acceptance_criteria:
+  - 'CB-2113 requires a Pmat-Ticket trailer on every non-merge commit a PR adds, and a bot cannot add one: dependabot composes its own message and there is no roadmap item to name. Measured on #1347 (traceability, run 34834456634). Five PRs held: #1345 #1346 #1347 #1348 #1353. Exempt commits authored by a GitHub app account, count the exemption, and name the count in every PullRequest verdict; only the ABSENCE of a trailer is excused. Implemented in #1357; this row is carried here because CB-2115''s bijection needs it and #1357 is code-only.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: 3.41.0
+- id: PMAT-1358
+  github_issue: 1358
+  item_type: task
+  title: 'release.yml has not completed since v3.39.0: cpu-gates is timeout-killed at 30 min and reads as ''cancelled'', so no prerelease and no binaries for 3 releases'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-14T18:03:41Z
+  updated: 2026-09-14T18:03:41Z
+  spec: null
+  acceptance_criteria:
+  - 'Every release run since v3.39.0 is cancelled at gate / cpu-gates step 9 after ~30m39s — a timeout-minutes:30 kill, which reads as cancelled rather than failed. prerelease needs [create-release, gate, verify], so no prerelease event fires and binary-release.yml attaches no binaries. Measured on run 34860654284. Fixed upstream in paiml/.github#72: the job budget goes to 90 from a measurement (26.4 min of gates on an idle box) and the clean-room step gets 75, below the job''s, so a timeout FAILS the step by name instead of vanishing as cancelled.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: 3.41.0
+- id: PMAT-1359
+  github_issue: 1359
+  item_type: task
+  title: 'master is red for every PR: RUSTSEC-2026-0285, the four roadmap rows CB-2115 is missing, and a fixture crate swallowed by the enclosing workspace'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-14T18:03:46Z
+  updated: 2026-09-14T18:03:46Z
+  spec: null
+  acceptance_criteria:
+  - 'THREE conditions on master, each red for every PR and none of them any PR''s own diff. (1) cargo deny check reports RUSTSEC-2026-0285 (rustls 0.23.41, TLS 1.3 handshake messages accepted across encryption level boundaries; fixed >=0.23.45) and a yanked chacha20 0.10.1, so pmat score, ci/lint and ci/security are red; cargo update -p rustls alone reaches 0.23.43, still inside the advisory, and --precise 0.23.45 is what clears it. (2) CB-2115 requires open roadmap items and open issues to be in bijection, so filing an issue is a roadmap edit here. FIVE rows: PMAT-1354 and PMAT-1352 stayed open after their issues closed; #1358 had no row; PMAT-1356''s row moved here when #1357 became code-only; and PMAT-1361''s row is here because this PR closes #1361 — a PR that closes an issue carries that issue''s row, which is the same rule, not an exception to it. PLUS EIGHT rows (PMAT-1363, 1365, 1366, 1367, 1369, 1370, 1371, 1373) for issues opened on 2026-09-15 after this PR''s previous round: CB-2115 is a bijection over OPEN issues, so every issue the queue mints while master is red lands on the PR that unblocks master, and the count is written from the diff: FOURTEEN roadmap rows touched — this ticket''s own, the five, the eight. (3) ci/test is red on one test because a fixture crate under TMPDIR is swallowed by the enclosing cargo workspace, so could-not-measure renders as zero-violations. THREE parts, all required and all in this diff: an empty [workspace] table in every fixture manifest cargo is run on — ELEVEN insertions across five files, counted from the diff (analysis_tools.rs 5, dead_code_handlers_budget_tests.rs 3, and one each in tool_functions_tests.rs, quality_checks_part1_dead_code.rs, analysis_utilities_property_tests.rs; an earlier draft of this line said ten and nine-of-ten, written before the last file was fixed); an assert in write_fixture_lockfile that refuses a manifest without one, which is what found them — stripping the insertions from three of the five files makes eight tests fail on that assert alone; and, for a_directory_without_a_manifest_is_not_applicable_not_unmeasured, an assert of its own premise instead — that test has no manifest to fix, by construction, since its premise IS the absence of one. The three conditions are ONE ticket because none can go green without the others: a security-bump PR is still red on CB-2115 and ci/test, and a fixture PR is still red on cargo deny. Measured together: advisories ok; CB-2115 110 open items and 110 open issues in bijection; dead_code surface 403 passed 9 failed before the guard, 412 passed 0 failed after; work-sync-control arm 4 round-trips 6806 lines.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: 3.41.0
+- id: PMAT-1361
+  github_issue: 1361
+  item_type: task
+  title: 'ci/test flakes on every PR: a fixture crate under TMPDIR is swallowed by the enclosing workspace, and ''could not measure'' renders as ''zero violations'''
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-14T20:37:57Z
+  updated: 2026-09-14T20:37:57Z
+  spec: null
+  acceptance_criteria:
+  - 'The dead-code fixture lives wherever TMPDIR points, and if TMPDIR falls inside a cargo workspace the fixture is swallowed by it: locally write_fixture_lockfile dies with ''current package believes it is in a workspace when it is not''; in ci/test it got further and the fixture was analysed as part of the enclosing workspace, so check_dead_code_outcome returned violations=[] not_measured=None — could-not-measure rendered as zero-violations by the check that exists to stop exactly that. Reproduced deterministically with TMPDIR=$PWD/anything. Fix: an empty [workspace] table in the fixture manifest, the remedy cargo names in its own error; a poka-yoke assert in write_fixture_lockfile so the next fixture cannot omit it; and the no-manifest test asserts its own premise, since it has no manifest to fix.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: 3.41.0
+- id: PMAT-1363
+  github_issue: 1363
+  item_type: task
+  title: 'roadmap fragments: pmat writes roadmap.yaml in every consumer, making it a shared mutable file on the merge path'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:32Z
+  updated: 2026-09-15T16:00:32Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1363. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1365
+  github_issue: 1365
+  item_type: task
+  title: pmat has no declared gate_cmd — discovery falls back to a guess that is weaker than ci / gate
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:32Z
+  updated: 2026-09-15T16:00:32Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1365. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1366
+  github_issue: 1366
+  item_type: task
+  title: 'impl-estimates.jsonl is write-only: 16 rows written, 0 poolable — unit is not gated at write time'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:32Z
+  updated: 2026-09-15T16:00:32Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1366. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1367
+  github_issue: 1367
+  item_type: task
+  title: 'pmat comply check grades a stale index: after editing a file, CB-200 reported the OLD function (B-, cx 19) on a tree that no longer contained it'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:33Z
+  updated: 2026-09-15T16:00:33Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1367. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1369
+  github_issue: 1369
+  item_type: task
+  title: pv validate prints "0 errors" for a contract with 0 of 19 obligations bound — a verdict must state its denominator
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:34Z
+  updated: 2026-09-15T16:00:34Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1369. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1370
+  github_issue: 1370
+  item_type: task
+  title: pmat roadmap sync as the ONE writer of docs/roadmaps/roadmap.yaml from a tracked per-ticket store; work add writes only the fragment; sync --check for the parity gate
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:34Z
+  updated: 2026-09-15T16:00:34Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1370. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1371
+  github_issue: 1371
+  item_type: task
+  title: 'roadmap sync is fail-open: a non-YAML roadmap renders 0 items rc 0, a duplicate id is de-duplicated silently, a missing status renders as empty — while work validate refuses every one'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:35Z
+  updated: 2026-09-15T16:00:35Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1371. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1373
+  github_issue: 1373
+  item_type: task
+  title: 'release: pmat 3.40.2 — roadmap sync fails closed (PMAT-1371)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:35Z
+  updated: 2026-09-15T16:00:35Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1373. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

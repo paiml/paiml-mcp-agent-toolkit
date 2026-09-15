@@ -54,7 +54,7 @@ fn write_bin_crate(root: &std::path::Path, name: &str, main_rs: &str) {
     std::fs::create_dir_all(root.join("src")).expect("src dir");
     std::fs::write(
         root.join("Cargo.toml"),
-        format!("[package]\nname=\"{name}\"\nversion=\"0.1.0\"\nedition=\"2021\"\n"),
+        format!("[package]\nname=\"{name}\"\nversion=\"0.1.0\"\nedition=\"2021\"\n\n[workspace]\n"),
     )
     .expect("Cargo.toml");
     std::fs::write(root.join("src/main.rs"), main_rs).expect("main.rs");
@@ -97,7 +97,7 @@ fn write_crate(root: &std::path::Path, name: &str, lib_rs: &str, build_rs: Optio
     };
     std::fs::write(
         root.join("Cargo.toml"),
-        format!("[package]\nname=\"{name}\"\nversion=\"0.1.0\"\nedition=\"2021\"\n{build_line}"),
+        format!("[package]\nname=\"{name}\"\nversion=\"0.1.0\"\nedition=\"2021\"\n\n[workspace]\n{build_line}"),
     )
     .expect("Cargo.toml");
     std::fs::write(root.join("src/lib.rs"), lib_rs).expect("lib.rs");
@@ -213,7 +213,7 @@ fn write_lib_crate(root: &std::path::Path, name: &str, lib_rs: &str) {
     std::fs::create_dir_all(root.join("src")).expect("src dir");
     std::fs::write(
         root.join("Cargo.toml"),
-        format!("[package]\nname=\"{name}\"\nversion=\"0.1.0\"\nedition=\"2021\"\n"),
+        format!("[package]\nname=\"{name}\"\nversion=\"0.1.0\"\nedition=\"2021\"\n\n[workspace]\n"),
     )
     .expect("Cargo.toml");
     std::fs::write(root.join("src/lib.rs"), lib_rs).expect("lib.rs");
