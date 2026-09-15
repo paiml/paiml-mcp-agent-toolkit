@@ -424,8 +424,10 @@ pub(crate) fn write_fixture_lockfile(crate_root: &Path) {
     //
     // An empty `[workspace]` table makes the fixture its own workspace root
     // wherever TMPDIR points — the remedy cargo names in its own error text.
-    // Four fixture files had already learned this one at a time; this assert is
-    // what stops the fifth from having to.
+    // Three files on master had already learned this one at a time
+    // (stack_sync_handler.rs and the two rust_tooling_scorer test files); this
+    // change teaches five more, eleven manifests, and the assert is what stops
+    // a sixth from having to.
     let manifest =
         std::fs::read_to_string(crate_root.join("Cargo.toml")).expect("fixture has a Cargo.toml");
     assert!(
