@@ -157,3 +157,32 @@ pub fn aggregate(base: &str, fragments: &[(String, String)]) -> Result<String, S
     }
     Ok(out)
 }
+
+/// The fragment directory beside a roadmap, when the repo has opted in.
+///
+/// OPT-IN IS DELIBERATE. pmat ships to every consumer repo; one that has not
+/// created `docs/roadmaps/entries/` keeps the PMAT-679 append behaviour exactly.
+/// Flipping that on a version bump would stop their roadmap updating with nothing
+/// to read as an error — a silent behaviour change is worse than a loud one.
+#[must_use]
+pub fn entries_dir_for(roadmap_path: &Path) -> Option<std::path::PathBuf> {
+    let dir = roadmap_path.parent()?.join("entries");
+    dir.is_dir().then_some(dir)
+}
+
+/// Write one ticket's row as its own file. Returns the path written.
+///
+/// Refuses an id that cannot be a filename rather than sanitising it: a sanitised
+/// name is no longer the id, so trailer-to-filename parity would silently stop
+/// meaning anything.
+pub fn write_fragment(
+    entries_dir: &Path,
+    id: &str,
+    block: &str,
+) -> Result<std::path::PathBuf, String> {
+    let path = fragment_path(entries_dir, id)
+        .ok_or_else(|| format!("id {id:?} cannot be a filename, so it cannot be a fragment"))?;
+    std::fs::create_dir_all(entries_dir).map_err(|e| format!("create {entries_dir:?}: {e}"))?;
+    std::fs::write(&path, block).map_err(|e| format!("write {path:?}: {e}"))?;
+    Ok(path)
+}
