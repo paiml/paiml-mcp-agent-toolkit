@@ -177,6 +177,10 @@ fn status_spelling(status: crate::models::roadmap::ItemStatus) -> String {
 
 /// Parse `- id: / title: / status:` triples from a roadmap.yaml body.
 ///
+/// #1371: NOT the read path any more — [`read_work_store_rows`] parses
+/// strictly. Kept because it is public API of the published 3.40.x and a
+/// patch release does not remove public items; it performs no validation.
+///
 /// Only `- id:` list entries at the *item-list* indentation (that of the
 /// first such entry) start a new row; more-deeply-indented `- id:` inside a
 /// `subtasks:`/`phases:` block are ignored, so nested ids never masquerade as

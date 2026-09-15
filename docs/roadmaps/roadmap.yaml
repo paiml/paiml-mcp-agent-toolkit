@@ -6770,11 +6770,11 @@ roadmap:
   github_issue: 1359
   item_type: task
   title: 'master is red for every PR: RUSTSEC-2026-0285, the four roadmap rows CB-2115 is missing, and a fixture crate swallowed by the enclosing workspace'
-  status: completed
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-14T18:03:46Z
-  updated: 2026-09-15T17:24:42.166877553+00:00
+  updated: 2026-09-14T18:03:46Z
   spec: null
   acceptance_criteria:
   - 'THREE conditions on master, each red for every PR and none of them any PR''s own diff. (1) cargo deny check reports RUSTSEC-2026-0285 (rustls 0.23.41, TLS 1.3 handshake messages accepted across encryption level boundaries; fixed >=0.23.45) and a yanked chacha20 0.10.1, so pmat score, ci/lint and ci/security are red; cargo update -p rustls alone reaches 0.23.43, still inside the advisory, and --precise 0.23.45 is what clears it. (2) CB-2115 requires open roadmap items and open issues to be in bijection, so filing an issue is a roadmap edit here. FIVE rows: PMAT-1354 and PMAT-1352 stayed open after their issues closed; #1358 had no row; PMAT-1356''s row moved here when #1357 became code-only; and PMAT-1361''s row is here because this PR closes #1361 — a PR that closes an issue carries that issue''s row, which is the same rule, not an exception to it. PLUS EIGHT rows (PMAT-1363, 1365, 1366, 1367, 1369, 1370, 1371, 1373) for issues opened on 2026-09-15 after this PR''s previous round: CB-2115 is a bijection over OPEN issues, so every issue the queue mints while master is red lands on the PR that unblocks master, and the count is written from the diff: FOURTEEN roadmap rows touched — this ticket''s own, the five, the eight. (3) ci/test is red on one test because a fixture crate under TMPDIR is swallowed by the enclosing cargo workspace, so could-not-measure renders as zero-violations. THREE parts, all required and all in this diff: an empty [workspace] table in every fixture manifest cargo is run on — ELEVEN insertions across five files, counted from the diff (analysis_tools.rs 5, dead_code_handlers_budget_tests.rs 3, and one each in tool_functions_tests.rs, quality_checks_part1_dead_code.rs, analysis_utilities_property_tests.rs; an earlier draft of this line said ten and nine-of-ten, written before the last file was fixed); an assert in write_fixture_lockfile that refuses a manifest without one, which is what found them — stripping the insertions from three of the five files makes eight tests fail on that assert alone; and, for a_directory_without_a_manifest_is_not_applicable_not_unmeasured, an assert of its own premise instead — that test has no manifest to fix, by construction, since its premise IS the absence of one. The three conditions are ONE ticket because none can go green without the others: a security-bump PR is still red on CB-2115 and ci/test, and a fixture PR is still red on cargo deny. Measured together: advisories ok; CB-2115 110 open items and 110 open issues in bijection; dead_code surface 403 passed 9 failed before the guard, 412 passed 0 failed after; work-sync-control arm 4 round-trips 6806 lines.'
@@ -6789,11 +6789,11 @@ roadmap:
   github_issue: 1361
   item_type: task
   title: 'ci/test flakes on every PR: a fixture crate under TMPDIR is swallowed by the enclosing workspace, and ''could not measure'' renders as ''zero violations'''
-  status: completed
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-14T20:37:57Z
-  updated: 2026-09-15T17:24:42.166877553+00:00
+  updated: 2026-09-14T20:37:57Z
   spec: null
   acceptance_criteria:
   - 'The dead-code fixture lives wherever TMPDIR points, and if TMPDIR falls inside a cargo workspace the fixture is swallowed by it: locally write_fixture_lockfile dies with ''current package believes it is in a workspace when it is not''; in ci/test it got further and the fixture was analysed as part of the enclosing workspace, so check_dead_code_outcome returned violations=[] not_measured=None — could-not-measure rendered as zero-violations by the check that exists to stop exactly that. Reproduced deterministically with TMPDIR=$PWD/anything. Fix: an empty [workspace] table in the fixture manifest, the remedy cargo names in its own error; a poka-yoke assert in write_fixture_lockfile so the next fixture cannot omit it; and the no-manifest test asserts its own premise, since it has no manifest to fix.'
@@ -6917,8 +6917,8 @@ roadmap:
   updated: 2026-09-15T16:00:35Z
   spec: null
   acceptance_criteria:
-  - 'src/roadmap/sync.rs: read_work_store_rows goes through the strict serde model AND check_roadmap_text before projecting (the third read path after PMAT-676 add and PMAT-679 edit); rows come from the parsed items with the canonical lowercase status spelling; RoadmapSources::new no longer dedup_by(id). Nine tests, one per row of #1371''s table plus escape decoding: seven RED on 3.40.1, all GREEN. The real binary re-run on infra''s 280-row roadmap: every mutation rc 1 with pmat''s own error; the clean render byte-identical to 3.40.1''s apart from 17 titles whose YAML '''' escape the line-scan carried literally (content_hash changes once, for that reason). docs/status/unrun-tests-ledger.md re-rendered (+9); .unwrap() in src at the 20325 baseline.'
-  - 'Master merged in after #1360 unblocked it; docs/roadmaps/roadmap.yaml taken whole from master, which already carries this row with the identical title. That merge made CB-2115 red for two ORPHAN-ROADMAP rows #1360 closed without completing (PMAT-1359, PMAT-1361) and one DRIFT (this row''s title vs #1371''s). Fixed through pmat, the one writer: `pmat work sync --direction github-to-yaml` (dry-run planned exactly two close-item actions; the diff is those two rows'' status and updated lines), and the GitHub issue title set to this row''s immutable title. `pmat work sync --check-only`: coherent.'
+  - 'src/roadmap/sync.rs: read_work_store_rows goes through the strict serde model AND check_roadmap_text before projecting (the third read path after PMAT-676 add and PMAT-679 edit); rows come from the parsed items with the canonical lowercase status spelling; RoadmapSources::new no longer dedup_by(id). parse_rows stays: it is public API of the published 3.40.1 (pmat::roadmap::sync::parse_rows) and removing it in a patch release is a semver break, so its doc now says it is no longer the read path. Nine tests, one per row of #1371''s table plus escape decoding: seven RED on 3.40.1, all GREEN. The real binary re-run on infra''s 280-row roadmap: every mutation rc 1 with pmat''s own error; the clean render byte-identical to 3.40.1''s apart from 17 titles whose YAML '''' escape the line-scan carried literally (content_hash changes once, for that reason). docs/status/unrun-tests-ledger.md re-rendered in the fix commit: 24212 of 27339 lib tests executed -> 24221 of 27348 (a two-line hunk against master); .unwrap() in src at the 20325 baseline; both ratchet tests pass on HEAD.'
+  - 'Master merged in after #1360 unblocked it, roadmap taken whole from master (it already carries this row with the identical title). The GitHub title of #1371 was set to this row''s immutable title (CB-2115 DRIFT; no repo change). Not in this diff: the two rows #1360 closed without completing (PMAT-1359, PMAT-1361) are completed in their own PR, because completing them is separate work from this ticket.'
   phases: []
   subtasks: []
   estimated_effort: null
