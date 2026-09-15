@@ -50,6 +50,38 @@ COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examp
 all: format build
 
 # Validate everything passes across all projects
+# ── `make gate` — the DECLARED quality gate for this repository (PMAT-1365) ──
+#
+# paiml-implement's discovery probes `make -n gate` and, finding none, fell back
+# to `cargo test --workspace` with gate_cmd_fallback=true. That fallback is
+# strictly WEAKER than this repo's required checks — it runs none of
+# `feature-gate`, `pmat score`, `docs build (docs.rs environment)` or
+# `mutation-diff` — so anyone trusting it read green where CI reads red. pmat is
+# the tool that enforces gates in every consumer repo; having none of its own was
+# the producer-is-not-gated defect in its purest form (#1365, and the same shape
+# as #1363).
+#
+# WHAT THIS DOES NOT MEASURE, stated rather than implied. A gate that quietly
+# covers less than CI is worse than no gate, because its green is trusted:
+#
+#   mutation-diff   needs a PR diff to mutate; there is none locally
+#   docs build      needs the docs.rs environment, not this one
+#   feature-gate    needs the CI feature matrix
+#   pmat score      needs the comparand revision CI resolves
+#
+# Those four remain CI-only BY CONSTRUCTION. `make gate` is the local floor, not
+# a substitute, and it says so on every run.
+.PHONY: gate
+gate: validate quality-gate-full ## The declared quality gate (paiml-implement discovery reads this)
+	@echo ""
+	@echo "✅ make gate: validate (check + lint + test-fast) and quality-gate-full passed."
+	@echo "   NOT MEASURED HERE (CI-only, by construction):"
+	@echo "     mutation-diff  — needs a PR diff to mutate"
+	@echo "     docs build     — needs the docs.rs environment"
+	@echo "     feature-gate   — needs the CI feature matrix"
+	@echo "     pmat score     — needs the comparand revision CI resolves"
+	@echo "   A local green is a floor, never a substitute for ci / gate."
+
 validate: check lint test-fast
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check)"
