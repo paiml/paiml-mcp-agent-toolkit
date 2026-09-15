@@ -165,3 +165,133 @@ fn roadmap_fragments_round_trip_a_real_roadmap_byte_for_byte() {
         entries.len()
     );
 }
+
+// ---------------------------------------------------------------- the wiring
+//
+// The contract predicate for PMAT-1363, stated so it holds however many write
+// sites there turn out to be: after the command, `git diff --name-only` excludes
+// docs/roadmaps/roadmap.yaml. At this level that is "the file's bytes did not
+// change", which is the same claim without needing a git repo.
+
+use crate::services::roadmap_service::RoadmapService;
+
+fn fixture(with_entries: bool) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let docs = dir.path().join("docs/roadmaps");
+    std::fs::create_dir_all(&docs).expect("mkdir");
+    if with_entries {
+        std::fs::create_dir_all(docs.join("entries")).expect("mkdir entries");
+    }
+    let path = docs.join("roadmap.yaml");
+    std::fs::write(
+        &path,
+        "roadmap_version: '1.0'\ngithub_enabled: false\ngithub_repo: null\nroadmap:\n- id: PMAT-001\n  title: first\n  status: planned\n",
+    )
+    .expect("write");
+    (dir, path)
+}
+
+fn an_item(id: String) -> crate::models::roadmap::RoadmapItem {
+    // Built from YAML like the neighbouring suite does: RoadmapItem has no
+    // Default, and hand-filling it would drift from the real shape.
+    let block = format!("- id: {id}\n  title: wired\n  status: planned\n");
+    let mut items: Vec<crate::models::roadmap::RoadmapItem> =
+        serde_yaml_ng::from_str(&block).expect("the block must parse as one item");
+    items.pop().expect("exactly one item")
+}
+
+#[test]
+fn roadmap_fragments_work_add_writes_a_fragment_and_leaves_the_aggregate_untouched() {
+    let (_dir, path) = fixture(true);
+    let before = std::fs::read_to_string(&path).expect("read");
+
+    let svc = RoadmapService::new(&path);
+    let id = svc.add_item_with_next_id(an_item).expect("add");
+
+    let after = std::fs::read_to_string(&path).expect("read");
+    assert_eq!(
+        before, after,
+        "docs/roadmaps/roadmap.yaml must be byte-identical — it is a GENERATED aggregate"
+    );
+
+    let frag = path
+        .parent()
+        .expect("parent")
+        .join("entries")
+        .join(format!("{id}.yaml"));
+    assert!(frag.exists(), "expected a fragment at {}", frag.display());
+    let body = std::fs::read_to_string(&frag).expect("read fragment");
+    assert!(
+        body.contains(&format!("- id: {id}")),
+        "fragment must carry its own row: {body}"
+    );
+}
+
+#[test]
+fn roadmap_fragments_work_add_still_appends_when_the_repo_has_not_migrated() {
+    // OPT-IN ON entries/. pmat ships to every consumer repo; a repo that has not
+    // created docs/roadmaps/entries/ keeps the PMAT-679 append behaviour exactly.
+    // Changing that silently on a version bump would stop their roadmap updating
+    // with nothing to read as an error.
+    let (_dir, path) = fixture(false);
+    let before = std::fs::read_to_string(&path).expect("read");
+
+    let svc = RoadmapService::new(&path);
+    let id = svc.add_item_with_next_id(an_item).expect("add");
+
+    let after = std::fs::read_to_string(&path).expect("read");
+    assert_ne!(
+        before, after,
+        "an un-migrated repo still appends to roadmap.yaml"
+    );
+    assert!(after.contains(&format!("- id: {id}")));
+    assert!(
+        after.starts_with(&before),
+        "and the append must still preserve every prior byte (PMAT-679)"
+    );
+}
+
+#[test]
+fn roadmap_fragments_work_add_with_a_caller_supplied_id_also_writes_a_fragment() {
+    // `pmat work add --github-issue N` takes add_item_with_id, NOT the allocator
+    // path. Patching only the allocator would have made the migrated behaviour
+    // depend on which flag the caller used — green on one seam, silently
+    // appending on the other. This is the seam the ticket for this very change
+    // was filed through.
+    let (_dir, path) = fixture(true);
+    let before = std::fs::read_to_string(&path).expect("read");
+
+    let svc = RoadmapService::new(&path);
+    svc.add_item_with_id("PMAT-1363", an_item)
+        .expect("add with id");
+
+    assert_eq!(
+        before,
+        std::fs::read_to_string(&path).expect("read"),
+        "the caller-supplied-id path must leave the aggregate byte-identical too"
+    );
+    let frag = path
+        .parent()
+        .expect("parent")
+        .join("entries/PMAT-1363.yaml");
+    assert!(frag.exists(), "expected {}", frag.display());
+}
+
+#[test]
+fn roadmap_fragments_refuse_to_write_a_fragment_for_an_unfilenameable_id() {
+    // The refusal is not theoretical: it is what stops a sanitised name silently
+    // breaking trailer-to-filename parity.
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let err = crate::services::roadmap_fragments::write_fragment(
+        dir.path(),
+        "Push completed work to origin/main (5 commits)",
+        "- id: x\n",
+    )
+    .expect_err("an id with a path separator cannot be a fragment");
+    assert!(err.contains("cannot be a filename"), "{err}");
+    assert_eq!(
+        std::fs::read_dir(dir.path()).expect("readdir").count(),
+        0,
+        "a refused fragment must write nothing at all"
+    );
+}
