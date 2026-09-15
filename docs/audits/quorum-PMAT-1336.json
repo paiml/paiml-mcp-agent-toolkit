@@ -1,18 +1,18 @@
 {
   "ticket": "PMAT-1336",
-  "base": "master",
+  "base": "origin/master",
   "base_resolved": "origin/master",
-  "base_note": "local master differs from origin/master by 112 commit(s); judged against origin/master",
-  "head": "fe04f49855e3a304e5809b82cc1ff28d59d62fa7",
-  "diff_sha256": "49c40d49bdeed79aa038901d6cd9713dfda43cde7073a4aa5c1f3cad75e6b87c",
+  "base_note": "no origin/origin/master exists; judged against the local ref",
+  "head": "7c2edbbeea69a0d3235e058f0478dc9f8b4b35b8",
+  "diff_sha256": "d4fd37d3fabf668bb5b3db6415d8e31a074ab294fc0569f7bb0b02e776fc927a",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "inline",
-  "prompt_bytes": 5048,
+  "prompt_bytes": 7899,
   "author": {
-    "model": "Opus 5 (1M context)",
+    "model": "claude-opus-5",
     "family": "claude",
-    "source": "measured"
+    "source": "flag"
   },
   "agreed": true,
   "lanes": [
@@ -20,44 +20,86 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff perfectly executes the intent of PMAT-1336. By modifying only `docs/roadmaps/roadmap.yaml`, it marks previously merged tickets (PMAT-1329 and PMAT-1332) as `completed`, resolving the CB-2113 Catch-22 that prevents tickets from completing themselves. Adding PMAT-1336 to the roadmap as `inprogress` is necessary to satisfy the first acceptance criterion (maintaining a bijection between non-terminal roadmap items and open GitHub issues). There are no out-of-scope changes, weakened gates, or unbacked claims.",
-      "findings": [],
-      "raw_bytes": 2077,
-      "err_bytes": 0,
+      "summary": "The diff appropriately updates the roadmap items PMAT-1359 and PMAT-1361 to 'completed', and adds the corresponding receipt. This aligns with the lifecycle ticket PMAT-1336's goal of completing tickets that cannot complete themselves. No criteria are violated.",
+      "findings": [
+        {
+          "claim": "The roadmap.yaml modifications change the status of PMAT-1359 and PMAT-1361 to completed and update their timestamps, which aligns with the receipt.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 6773
+        },
+        {
+          "claim": "The receipt correctly documents that PMAT-1359 and PMAT-1361 were left planned and are completed by this ticket because a ticket cannot complete itself.",
+          "file": "docs/audits/impl-PMAT-1336-receipt.md",
+          "grounding": "cited"
+        }
+      ],
+      "raw_bytes": 3419,
+      "err_bytes": 79,
       "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
       "model": "gemini-3.1-pro-high",
       "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
       "family": "gemini"
     },
     {
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff correctly implements PMAT-1336 by creating the lifecycle ticket itself and using its authority to mark PMAT-1329 and PMAT-1332 as completed. This perfectly adheres to the ticket's stated purpose of providing a valid scope for cross-ticket completions, it respects the constraint to only modify roadmap.yaml, and it does not violate any acceptance criteria.",
+      "summary": "The diff accurately fulfills ticket PMAT-1336 by updating the status of PMAT-1359 and PMAT-1361 from planned to completed in docs/roadmaps/roadmap.yaml, along with their updated timestamps. These rows correspond to issues closed by PR #1360 that remained in planned state. The diff also adds the implementation receipt at docs/audits/impl-PMAT-1336-receipt.md. No gates are weakened, no tests are contradicted, receipt claims match the diff, and there are no out-of-scope modifications.",
       "findings": [],
-      "raw_bytes": 2866,
+      "raw_bytes": 2287,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
-      "model": "gemini-3.1-pro-high",
-      "model_measured": "gemini-3.1-pro-high",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
       "family": "gemini"
     },
     {
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff strictly conforms to the acceptance criteria of PMAT-1336. It limits its changes to the whitelisted 'docs/roadmaps/roadmap.yaml' file and successfully transitions PMAT-1329 and PMAT-1332 to a terminal 'completed' state, acting as the designated lifecycle ticket. There are no source changes or other forbidden modifications that refute the ticket's requirements.",
+      "summary": "The diff correctly completes PMAT-1359 and PMAT-1361, which were closed by PR #1360 but remained in `planned` state. This aligns perfectly with the intent of PMAT-1336, which is dedicated to completing rows that a ticket cannot complete itself. The receipt accurately records the operations, and the YAML edits update the `status` and `updated` fields as expected. No out-of-scope changes are present.",
       "findings": [],
-      "raw_bytes": 1773,
+      "raw_bytes": 2107,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
-      "model": "gemini-3.1-pro-high",
-      "model_measured": "gemini-3.1-pro-high",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-low",
+      "model_measured": "gemini-3.1-pro-low",
+      "model_source": "measured",
       "family": "gemini"
     }
   ],
   "dissent": [],
-  "dedup": [],
+  "dedup": [
+    {
+      "file": "docs/audits/impl-PMAT-1336-receipt.md",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The receipt correctly documents that PMAT-1359 and PMAT-1361 were left planned and are completed by this ticket because a ticket cannot complete itself."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 6773,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The roadmap.yaml modifications change the status of PMAT-1359 and PMAT-1361 to completed and update their timestamps, which aligns with the receipt."
+      ]
+    }
+  ],
   "uncovered": [],
   "coverage_source": "lanes",
   "partial": false,
@@ -67,5 +109,9 @@
     "was_armed": false,
     "disarmed": false,
     "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
   }
 }
