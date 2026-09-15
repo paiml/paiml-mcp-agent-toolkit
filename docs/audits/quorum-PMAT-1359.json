@@ -1,0 +1,85 @@
+{
+  "ticket": "PMAT-1359",
+  "base": "origin/master",
+  "base_resolved": "origin/master",
+  "base_note": "no origin/origin/master exists; judged against the local ref",
+  "head": "cf06247cc6d1153a8896bc1a259fb39f97fe205a",
+  "diff_sha256": "67276ea755b3ca05a6a5f3c2238638bf6902fa6077f157ab509fcb3e13a58d42",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 20154,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff accurately and comprehensively implements all requirements set out in the PMAT-1359 ticket:\n1. It updates `rustls` to 0.23.45 to address RUSTSEC-2026-0285 and updates `chacha20` to 0.10.2 to clear the yanked package, fixing the `cargo deny` failures. \n2. It closes the orphaned roadmap rows PMAT-1354 and PMAT-1352 by setting them to 'completed', and adds the 4 missing rows (PMAT-1356, PMAT-1358, PMAT-1359, PMAT-1361) to `roadmap.yaml`, restoring the open ticket bijection required by CB-2115.\n3. It fixes the `ci/test` flake across the codebase by adding an empty `[workspace]` table to 11 instances of fixture generation manifests in five separate files, adds the poka-yoke `assert!` to `write_fixture_lockfile` to prevent regressions, and adds the requisite premise check `assert!` to the `a_directory_without_a_manifest_is_not_applicable_not_unmeasured` test.\n\nI find no contradictions, missing criteria, or unauthorized additions.",
+      "findings": [],
+      "raw_bytes": 4189,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff precisely satisfies all requirements of ticket PMAT-1359:\n1. Security/Dependency Updates (Cargo.lock): Upgrades rustls to 0.23.45 (resolving RUSTSEC-2026-0285) and chacha20 to 0.10.2 (clearing yanked 0.10.1), along with transitive dependencies (aws-lc-rs, aws-lc-sys, rustls-webpki).\n2. Roadmap Bijection (docs/roadmaps/roadmap.yaml): Closes PMAT-1354 and PMAT-1352 by marking them completed, and adds the 4 missing roadmap items (PMAT-1356, PMAT-1358, PMAT-1359, PMAT-1361) to restore the open issue bijection required by CB-2115.\n3. Fixture Workspace Isolation: Adds empty `[workspace]` tables to all 11 fixture manifest insertions across 5 files, adds the poka-yoke `assert!` in `write_fixture_lockfile` verifying `[workspace]` presence, and adds the premise assertion in `a_directory_without_a_manifest_is_not_applicable_not_unmeasured`.\n\nNo extraneous changes, weakened gates, or contradictions found.",
+      "findings": [],
+      "raw_bytes": 3120,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff perfectly aligns with all three conditions specified in PMAT-1359. It updates `rustls` to 0.23.45 and `chacha20` to 0.10.2 to clear the advisories. It modifies the two roadmap rows (PMAT-1354, PMAT-1352) to `completed` and adds the 4 new items including itself and PMAT-1361. It also adds the 11 `[workspace]` insertions across 5 test files, adds the assertion in `write_fixture_lockfile`, and asserts the premise in `a_directory_without_a_manifest_is_not_applicable_not_unmeasured`. I found no evidence of any refutable claims.",
+      "findings": [],
+      "raw_bytes": 2929,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "model": "gemini-3.1-pro-low",
+      "model_measured": "gemini-3.1-pro-low",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [
+    "lane 1: grounding NOT COMPARED — structured_output holds a verdict but no single verdict object could be read out of .response (4189 raw bytes), so agy's labels stand unchecked for this lane (PMAT-082)",
+    "lane 3: grounding NOT COMPARED — structured_output holds a verdict but no single verdict object could be read out of .response (2929 raw bytes), so agy's labels stand unchecked for this lane (PMAT-082)"
+  ],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}
