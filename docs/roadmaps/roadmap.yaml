@@ -6699,7 +6699,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-14T11:17:28Z
-  updated: 2026-09-14T18:03:41Z
+  updated: 2026-09-15T05:22:06Z
   spec: null
   acceptance_criteria:
   - the banner NAMES PMAT_BUILD_SHA, so a reader who sees the archive case knows what to set
@@ -6719,7 +6719,7 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2026-09-14T11:20:13Z
-  updated: 2026-09-14T18:03:41Z
+  updated: 2026-09-15T05:22:06Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6728,6 +6728,25 @@ roadmap:
   labels:
   - kind:code
   notes: 'Filed by release-check against master, and it is right: Cargo.toml says 3.40.1 and crates.io does not have it. The publish is the close, and it is what #1349 was asking for all along.'
+- id: PMAT-1356
+  github_issue: 1356
+  item_type: task
+  title: CB-2113 refuses every bot-authored commit, so no dependabot PR can ever merge (5 held today)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-14T18:07:29Z
+  updated: 2026-09-14T18:07:29Z
+  spec: null
+  acceptance_criteria:
+  - 'CB-2113 requires a Pmat-Ticket trailer on every non-merge commit a PR adds, and a bot cannot add one: dependabot composes its own message and there is no roadmap item to name. Measured on #1347 (traceability, run 34834456634). Five PRs held: #1345 #1346 #1347 #1348 #1353. Exempt commits authored by a GitHub app account, count the exemption, and name the count in every PullRequest verdict; only the ABSENCE of a trailer is excused. Implemented in #1357; this row is carried here because CB-2115''s bijection needs it and #1357 is code-only.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: 3.41.0
 - id: PMAT-1358
   github_issue: 1358
   item_type: task
@@ -6750,7 +6769,7 @@ roadmap:
 - id: PMAT-1359
   github_issue: 1359
   item_type: task
-  title: 'master is red for every PR: RUSTSEC-2026-0285 in the lockfile, and the four roadmap rows CB-2115''s bijection is missing'
+  title: 'master is red for every PR: RUSTSEC-2026-0285, the four roadmap rows CB-2115 is missing, and a fixture crate swallowed by the enclosing workspace'
   status: planned
   priority: medium
   assigned_to: null
@@ -6758,7 +6777,7 @@ roadmap:
   updated: 2026-09-14T18:03:46Z
   spec: null
   acceptance_criteria:
-  - 'cargo deny check reports RUSTSEC-2026-0285 (rustls 0.23.41, TLS 1.3 handshake messages accepted across encryption level boundaries; fixed >=0.23.45) and a yanked chacha20 0.10.1, so pmat score is red on every PR. cargo update -p rustls alone reaches 0.23.43, still inside the advisory — --precise 0.23.45 is what clears it. Separately CB-2115 requires open roadmap items and open issues to be in bijection, so filing an issue is a roadmap edit in this repository. FOUR rows, not three: PMAT-1354 and PMAT-1352 stayed open after their issues closed; #1358 had no row; and PMAT-1356''s row is carried here too. The fourth is here because the count was written before it was measured — CB-2115 still reported ORPHAN-GITHUB #1356 after the first three, since #1356 is an open issue and the gate sees it from whichever branch is judged, while #1357 was being made code-only. Bijection is reached at four and not at three: 109 open item(s) and 109 open issue(s). All roadmap bookkeeping lives in this PR and all code in #1357, which is stacked on it. Split out of #1357 after two review lanes correctly flagged both halves as work that ticket did not ask for.'
+  - 'THREE conditions on master, each red for every PR and none of them any PR''s own diff. (1) cargo deny check reports RUSTSEC-2026-0285 (rustls 0.23.41, TLS 1.3 handshake messages accepted across encryption level boundaries; fixed >=0.23.45) and a yanked chacha20 0.10.1, so pmat score, ci/lint and ci/security are red; cargo update -p rustls alone reaches 0.23.43, still inside the advisory, and --precise 0.23.45 is what clears it. (2) CB-2115 requires open roadmap items and open issues to be in bijection, so filing an issue is a roadmap edit here; four rows were missing (PMAT-1354 and PMAT-1352 stayed open after their issues closed, #1358 had no row, and PMAT-1356''s row moved here when #1357 became code-only). (3) ci/test is red on one test because a fixture crate under TMPDIR is swallowed by the enclosing cargo workspace, so could-not-measure renders as zero-violations; fixed by an empty [workspace] table in every fixture manifest cargo is run on, plus an assert in write_fixture_lockfile that refuses one without it — which immediately found nine more. The three are ONE ticket because none of them can go green without the others: a security-bump PR is still red on CB-2115 and on ci/test, and a fixture PR is still red on cargo deny. Measured together: advisories ok; CB-2115 110 open items and 110 open issues in bijection; dead_code surface 403 passed 9 failed before the guard, 412 passed 0 failed after.'
   phases: []
   subtasks: []
   estimated_effort: null
@@ -6766,18 +6785,18 @@ roadmap:
   - kind:code
   notes: null
   release: 3.41.0
-- id: PMAT-1356
-  github_issue: 1356
+- id: PMAT-1361
+  github_issue: 1361
   item_type: task
-  title: CB-2113 refuses every bot-authored commit, so no dependabot PR can ever merge (5 held today)
+  title: 'ci/test flakes on every PR: a fixture crate under TMPDIR is swallowed by the enclosing workspace, and ''could not measure'' renders as ''zero violations'''
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-09-14T18:07:29Z
-  updated: 2026-09-14T18:07:29Z
+  created: 2026-09-14T20:37:57Z
+  updated: 2026-09-14T20:37:57Z
   spec: null
   acceptance_criteria:
-  - 'CB-2113 requires a Pmat-Ticket trailer on every non-merge commit a PR adds, and a bot cannot add one: dependabot composes its own message and there is no roadmap item to name. Measured on #1347 (traceability, run 34834456634). Five PRs held: #1345 #1346 #1347 #1348 #1353. Exempt commits authored by a GitHub app account, count the exemption, and name the count in every PullRequest verdict; only the ABSENCE of a trailer is excused. Implemented in #1357; this row is carried here because CB-2115''s bijection needs it and #1357 is code-only.'
+  - 'The dead-code fixture lives wherever TMPDIR points, and if TMPDIR falls inside a cargo workspace the fixture is swallowed by it: locally write_fixture_lockfile dies with ''current package believes it is in a workspace when it is not''; in ci/test it got further and the fixture was analysed as part of the enclosing workspace, so check_dead_code_outcome returned violations=[] not_measured=None — could-not-measure rendered as zero-violations by the check that exists to stop exactly that. Reproduced deterministically with TMPDIR=$PWD/anything. Fix: an empty [workspace] table in the fixture manifest, the remedy cargo names in its own error; a poka-yoke assert in write_fixture_lockfile so the next fixture cannot omit it; and the no-manifest test asserts its own premise, since it has no manifest to fix.'
   phases: []
   subtasks: []
   estimated_effort: null

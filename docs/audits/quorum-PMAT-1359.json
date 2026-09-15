@@ -1,0 +1,155 @@
+{
+  "ticket": "PMAT-1359",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 125 commit(s); judged against origin/master",
+  "head": "66cf76a0db7d87d7c64a55b8f5f2e77f9dfc9634",
+  "diff_sha256": "ec6294e2d05cf636cef733d2358adcc17c84ed6c1cceef8d1ac004295b415859",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 8112,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff exactly follows the acceptance criteria described in the ticket PMAT-1359. It updates `rustls` to 0.23.45 (which naturally pulls its `aws-lc` dependencies and `rustls-webpki` updates), bumps `chacha20` to 0.10.2, correctly marks the ghost roadmap rows PMAT-1354 and PMAT-1352 as completed, and introduces the required planned rows for PMAT-1358, PMAT-1356, and PMAT-1359 to successfully re-establish the CB-2115 issue/roadmap bijection. No unrequested changes or weakened gates were identified.",
+      "findings": [],
+      "raw_bytes": 2374,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff for PMAT-1359 strictly fulfills all acceptance criteria and does nothing forbidden:\n1. `Cargo.lock`: Upgrades rustls to 0.23.45 (clearing RUSTSEC-2026-0285) and chacha20 to 0.10.2 (clearing yanked crate). Transitive dependencies (aws-lc-rs, aws-lc-sys, rustls-webpki) are synchronized cleanly. Measured: `cargo deny check` passes with all advisories, bans, licenses, and sources ok.\n2. `docs/roadmaps/roadmap.yaml`: Restores exact bijection between open roadmap items and open issues for CB-2115 (109 open items, 109 open issues) by marking closed issues PMAT-1354 and PMAT-1352 as completed, and adding entries for open issues #1358, #1359, and #1356. Measured: 109 open items confirmed, and `scripts/work-sync-control.sh` passes all 4 arms with 6,787 lines round-tripped byte-for-byte.\n3. Gates & Scope: No gates were weakened, no code or test files were modified outside the ticket's scope, both branch commits carry valid `Pmat-Ticket: PMAT-1359` trailers, and `cargo check --workspace --all-targets` passes cleanly.",
+      "findings": [
+        {
+          "claim": "cargo deny check passes with zero advisories, verifying that upgrading rustls to 0.23.45 resolves RUSTSEC-2026-0285 and chacha20 to 0.10.2 resolves the yanked version.",
+          "file": "Cargo.lock",
+          "fix": "No fix needed",
+          "grounding": "measured",
+          "line": 5974
+        },
+        {
+          "claim": "docs/roadmaps/roadmap.yaml restores exact bijection between open roadmap items and open GitHub issues (109 open items out of 372 total items) by marking closed issues PMAT-1354 and PMAT-1352 as completed, and adding roadmap entries for open issues #1358, #1359, and #1356.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "No fix needed",
+          "grounding": "measured",
+          "line": 6750
+        },
+        {
+          "claim": "scripts/work-sync-control.sh passes all 4 arms (RED, GREEN, DRY, RT), verifying byte-for-byte round-tripping of 6,787 lines of docs/roadmaps/roadmap.yaml.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "No fix needed",
+          "grounding": "measured",
+          "line": 6750
+        }
+      ],
+      "raw_bytes": 5356,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff addresses and satisfies all acceptance criteria of PMAT-1359 without exceeding its scope:\n1. `Cargo.lock`: Upgrades `rustls` to `0.23.45` (clearing `RUSTSEC-2026-0285`), `chacha20` to `0.10.2` (clearing the yanked crate issue), and updates transitive dependencies (`aws-lc-rs`, `aws-lc-sys`, `rustls-webpki`). Verified by `cargo deny check` passing cleanly.\n2. `docs/roadmaps/roadmap.yaml`: Restores exact bijection between open roadmap items and open GitHub issues (109 items, 109 issues) by marking closed tickets `PMAT-1354` and `PMAT-1352` as `completed`, and adding roadmap entries for open issues `#1358`, `#1359`, and `#1356`. Verified by `pmat comply check --checks CB-2113,CB-2115` passing and `work-sync-control.sh` passing all 4 control arms with byte-for-byte round-tripping.\n3. No gates were weakened, no unrelated modifications were introduced, and all claims are fully grounded and verified.",
+      "findings": [
+        {
+          "claim": "cargo deny check passes with zero advisories, verifying rustls >= 0.23.45 resolves RUSTSEC-2026-0285 and chacha20 0.10.2 resolves the yanked version",
+          "file": "Cargo.lock",
+          "fix": "No fix needed",
+          "grounding": "measured",
+          "line": 5974
+        },
+        {
+          "claim": "CB-2115 roadmap coherence check passes with exact bijection (109 open items and 109 open issues), and CB-2113 commit traceability check passes for all commits on the branch",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "No fix needed",
+          "grounding": "measured",
+          "line": 6750
+        },
+        {
+          "claim": "work-sync-control.sh verifies all 4 arms (RED, GREEN, DRY, RT), confirming 6,787 lines of the real roadmap round-trip byte-for-byte",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "No fix needed",
+          "grounding": "measured",
+          "line": 6750
+        }
+      ],
+      "raw_bytes": 8207,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "Cargo.lock",
+      "line": 5974,
+      "lanes_agreeing": [
+        2,
+        3
+      ],
+      "claims": [
+        "cargo deny check passes with zero advisories, verifying rustls >= 0.23.45 resolves RUSTSEC-2026-0285 and chacha20 0.10.2 resolves the yanked version",
+        "cargo deny check passes with zero advisories, verifying that upgrading rustls to 0.23.45 resolves RUSTSEC-2026-0285 and chacha20 to 0.10.2 resolves the yanked version."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 6750,
+      "lanes_agreeing": [
+        2,
+        3
+      ],
+      "claims": [
+        "CB-2115 roadmap coherence check passes with exact bijection (109 open items and 109 open issues), and CB-2113 commit traceability check passes for all commits on the branch",
+        "docs/roadmaps/roadmap.yaml restores exact bijection between open roadmap items and open GitHub issues (109 open items out of 372 total items) by marking closed issues PMAT-1354 and PMAT-1352 as completed, and adding roadmap entries for open issues #1358, #1359, and #1356.",
+        "scripts/work-sync-control.sh passes all 4 arms (RED, GREEN, DRY, RT), verifying byte-for-byte round-tripping of 6,787 lines of docs/roadmaps/roadmap.yaml.",
+        "work-sync-control.sh verifies all 4 arms (RED, GREEN, DRY, RT), confirming 6,787 lines of the real roadmap round-trip byte-for-byte"
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}

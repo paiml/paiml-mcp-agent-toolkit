@@ -193,6 +193,8 @@ mod integration_tests {
 name = "test-dead-code"
 version = "0.1.0"
 edition = "2021"
+
+[workspace]
 "#,
         )
         .unwrap();
