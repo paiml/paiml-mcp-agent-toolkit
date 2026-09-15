@@ -1,0 +1,164 @@
+{
+  "ticket": "PMAT-1373",
+  "base": "origin/master",
+  "base_resolved": "origin/master",
+  "base_note": "no origin/origin/master exists; judged against the local ref",
+  "head": "c473d62b4880386a255e0d4f681057c0081d2394",
+  "diff_sha256": "01c3c7a910756701c452ba11d52c5bf9b02f2af756edf27d885707925e4bd9f1",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 4544,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff correctly implements all criteria from the ticket. The package version is bumped to 3.40.2 in Cargo.toml and Cargo.lock. CHANGELOG.md lists the changes with the correct version and date. The acceptance_criteria in docs/roadmaps/roadmap.yaml are replaced appropriately to reflect the release checklist. The YAML four-single-quotes escape inside a single-quoted string `''''` correctly parses as two single quotes `''`, which renders literally as two single quotes, exactly as described in the CHANGELOG. I found no unauthorized changes.",
+      "findings": [
+        {
+          "claim": "Cargo.toml version bumped from 3.40.1 to 3.40.2",
+          "file": "Cargo.toml",
+          "grounding": "cited"
+        },
+        {
+          "claim": "pmat entry in Cargo.lock bumped from 3.40.1 to 3.40.2",
+          "file": "Cargo.lock",
+          "grounding": "cited"
+        },
+        {
+          "claim": "CHANGELOG.md updated with 3.40.2 entry and description of #1372",
+          "file": "CHANGELOG.md",
+          "grounding": "cited"
+        },
+        {
+          "claim": "Nothing else changes (no other files modified, and roadmap updated field is unmodified)",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited"
+        }
+      ],
+      "raw_bytes": 4456,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff for PMAT-1373 (release 3.40.2) faithfully implements all ticket acceptance criteria and introduces no extraneous changes:\n\n1. **Version Bump in Manifest and Lockfile (Cited & Measured)**:\n   - `Cargo.toml`: `version` bumped from `3.40.1` to `3.40.2` ([Cargo.toml](file:///home/noah/src/paiml-mcp-agent-toolkit/Cargo.toml#L4)).\n   - `Cargo.lock`: `pmat` entry bumped from `3.40.1` to `3.40.2` ([Cargo.lock](file:///home/noah/src/paiml-mcp-agent-toolkit/Cargo.lock#L4989)).\n   - `cargo metadata --locked` executes cleanly with exit code 0.\n   - `pmat --version` reports `pmat 3.40.2`.\n\n2. **Changelog Entry (Cited)**:\n   - `CHANGELOG.md` adds section `## [3.40.2] - 2026-09-15` documenting the bugfix merged in #1372 (failing closed on invalid/duplicate roadmap rows and decoding YAML `''` escaped quotes in titles) and noting that `pmat::roadmap::sync::parse_rows` intentionally remains public.\n\n3. **Roadmap Acceptance Criteria Updated (Cited & Measured)**:\n   - `docs/roadmaps/roadmap.yaml`: Row for `PMAT-1373` updated from the temporary placeholder to the full release acceptance criteria.\n   - `pmat work validate` and `validate_roadmap_with_raw_yaml` pass with exit code 0.\n\n4. **Diff Scope and Lineage (Cited & Measured)**:\n   - Diff between `origin/master` and `HEAD` touches strictly the 4 expected files (`CHANGELOG.md`, `Cargo.lock`, `Cargo.toml`, `docs/roadmaps/roadmap.yaml`) with +28 / -3 lines.\n   - Branch is cut cleanly after parent commit `2604c1e78` (#1372).\n\nNo refuting findings or gate weaknesses detected. Verdict is PASS.",
+      "findings": [],
+      "raw_bytes": 5333,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff successfully fulfills PMAT-1373 by updating versions across Cargo.toml, Cargo.lock, and CHANGELOG.md, matching the acceptance criteria defined in the roadmap ticket exactly without making any forbidden changes.",
+      "findings": [
+        {
+          "claim": "The diff updates the acceptance criteria in the roadmap file to exactly match the version bumps and changelog modifications required for release 3.40.2 (PMAT-1373).",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "asserted",
+          "line": 6939
+        }
+      ],
+      "raw_bytes": 2305,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-low",
+      "model_measured": "gemini-3.1-pro-low",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "CHANGELOG.md",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "CHANGELOG.md updated with 3.40.2 entry and description of #1372"
+      ]
+    },
+    {
+      "file": "Cargo.lock",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "pmat entry in Cargo.lock bumped from 3.40.1 to 3.40.2"
+      ]
+    },
+    {
+      "file": "Cargo.toml",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Cargo.toml version bumped from 3.40.1 to 3.40.2"
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Nothing else changes (no other files modified, and roadmap updated field is unmodified)"
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 6939,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The diff updates the acceptance criteria in the roadmap file to exactly match the version bumps and changelog modifications required for release 3.40.2 (PMAT-1373)."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [
+    "lane 1: grounding NOT COMPARED — structured_output holds a verdict but no single verdict object could be read out of .response (4456 raw bytes), so agy's labels stand unchecked for this lane (PMAT-082)"
+  ],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}
