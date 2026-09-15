@@ -1,0 +1,84 @@
+{
+  "ticket": "PMAT-1359",
+  "base": "origin/master",
+  "base_resolved": "origin/master",
+  "base_note": "no origin/origin/master exists; judged against the local ref",
+  "head": "90aaf8c5b4f039ebaabf6589414ad0e5e2d670bd",
+  "diff_sha256": "1c289a9ef098446dd162d91c10f8226262e724421f95143decb8a958c45f6d4a",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 25956,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "I have reviewed the diff against the requirements specified in PMAT-1359.\n\n1. **Security updates (RUSTSEC-2026-0285 & chacha20):** `rustls` is updated to `0.23.45` and `chacha20` to `0.10.2` in `Cargo.lock`, resolving the security advisory and yanked crate issue. This also correctly cascades to `rustls-webpki`, `aws-lc-rs`, and `aws-lc-sys`.\n2. **Roadmap rows:** The diff updates exactly 14 roadmap rows in `roadmap.yaml`. It sets `PMAT-1352` and `PMAT-1354` to completed, and adds the other 12 new tasks exactly as outlined in the ticket description.\n3. **Fixture workspace issues:** The diff injects exactly eleven empty `[workspace]` tables into the five specified files (5 in `analysis_tools.rs`, 3 in `dead_code_handlers_budget_tests.rs`, and 1 each in `tool_functions_tests.rs`, `quality_checks_part1_dead_code.rs`, and `analysis_utilities_property_tests.rs`). It correctly implements the required `assert!` in `write_fixture_lockfile` and asserts the premise directly inside `a_directory_without_a_manifest_is_not_applicable_not_unmeasured`.\n\nNo discrepancies, omissions, or unrequested changes were found. The diff perfectly implements the ticket requirements.",
+      "findings": [],
+      "raw_bytes": 4568,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Diff fully verified against PMAT-1359. All 3 conditions specified in the ticket are accurately implemented:\n1. Security & Advisory Bumps: Cargo.lock updates rustls (0.23.41 -> 0.23.45) addressing RUSTSEC-2026-0285, chacha20 (0.10.1 -> 0.10.2), and related transitive dependencies (aws-lc-rs, aws-lc-sys, rustls-webpki).\n2. Roadmap Synchronization: Exactly 14 roadmap items are touched in docs/roadmaps/roadmap.yaml (closing PMAT-1354 and PMAT-1352; adding PMAT-1356, PMAT-1358, PMAT-1359, PMAT-1361, PMAT-1363, PMAT-1365, PMAT-1366, PMAT-1367, PMAT-1369, PMAT-1370, PMAT-1371, PMAT-1373), upholding the CB-2115 open issue/roadmap bijection.\n3. Fixture Isolation & Workspace Guard: Adds empty [workspace] tables across 11 test fixture manifests across 5 files, adds the poka-yoke assert in write_fixture_lockfile, and asserts the precondition in a_directory_without_a_manifest_is_not_applicable_not_unmeasured.\n\nNo gates were weakened, no contradictory test assertions were found, all receipt claims are backed by the diff, and no out-of-scope modifications exist.",
+      "findings": [],
+      "raw_bytes": 6116,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "I have reviewed the diff against the requirements specified in PMAT-1359.\n\n1. **Security updates (RUSTSEC-2026-0285 & chacha20):** `rustls` is updated to `0.23.45` and `chacha20` to `0.10.2` in `Cargo.lock`, resolving the security advisory and yanked crate issue. This also correctly cascades to `rustls-webpki`, `aws-lc-rs`, and `aws-lc-sys`.\n2. **Roadmap rows:** The diff updates exactly 14 roadmap rows in `roadmap.yaml`. It sets `PMAT-1352` and `PMAT-1354` to completed, and adds the other 12 new tasks exactly as outlined in the ticket description.\n3. **Fixture workspace issues:** The diff injects exactly eleven empty `[workspace]` tables into the five specified files (5 in `analysis_tools.rs`, 3 in `dead_code_handlers_budget_tests.rs`, and 1 each in `tool_functions_tests.rs`, `quality_checks_part1_dead_code.rs`, and `analysis_utilities_property_tests.rs`). It correctly implements the required `assert!` in `write_fixture_lockfile` and asserts the premise directly inside `a_directory_without_a_manifest_is_not_applicable_not_unmeasured`.\n\nNo discrepancies, omissions, or unrequested changes were found.",
+      "findings": [],
+      "raw_bytes": 3522,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-low",
+      "model_measured": "gemini-3.1-pro-low",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}
