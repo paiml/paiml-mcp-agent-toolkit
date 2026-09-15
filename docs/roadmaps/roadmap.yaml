@@ -6728,3 +6728,20 @@ roadmap:
   labels:
   - kind:code
   notes: 'Filed by release-check against master, and it is right: Cargo.toml says 3.40.1 and crates.io does not have it. The publish is the close, and it is what #1349 was asking for all along.'
+- id: PMAT-1365
+  github_issue: 1365
+  item_type: task
+  title: 'declare gate_cmd: pmat has no make gate target, so discovery guesses a weaker command'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T08:00:12Z
+  updated: 2026-09-15T08:00:12Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
