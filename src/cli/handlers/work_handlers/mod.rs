@@ -63,6 +63,12 @@ mod work_add_refuses_invalid_tests;
 #[cfg(test)]
 #[path = "../../../tests/work_add_append_only_tests.rs"]
 mod work_add_append_only_tests;
+
+// PMAT-1363: registered here for the same reason as the suite above — a file in
+// src/tests/ with no `mod` is never compiled, and its silence reads as a pass.
+#[cfg(test)]
+#[path = "../../../tests/roadmap_fragments_tests.rs"]
+mod roadmap_fragments_tests;
 // PMAT-680: `work add` must mint from ONE authority per repository — the git
 // common dir's lock plus every ref's roadmap — so two checkouts of the same
 // repository cannot mint the same id. Registered here for the same reason as

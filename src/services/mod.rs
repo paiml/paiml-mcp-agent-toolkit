@@ -313,6 +313,7 @@ pub mod gate_effect; // CB-2100: does a required status check actually reach the
 #[cfg(feature = "github-api")]
 pub mod github_client; // Issue #75: GitHub API integration (optional - 255 transitive deps)
 pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow
+pub mod roadmap_fragments; // PMAT-1363: roadmap.yaml as a generated aggregate of entries/<id>.yaml
 pub mod roadmap_id_authority; // PMAT-680: one id authority per repository, not per checkout
 pub mod roadmap_service;
 pub mod roadmap_text; // PMAT-676: the one raw-text id scanner and roadmap validator
