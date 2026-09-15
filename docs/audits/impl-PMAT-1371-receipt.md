@@ -17,7 +17,7 @@ ticket PMAT-1371 · issue paiml/paiml-mcp-agent-toolkit#1371 · PR #1372 · bran
 ## Claims a reviewer can check against the diff
 | claim | where it is in the diff |
 |---|---|
-| unrun-tests ledger re-rendered for the 9 new tests | `docs/status/unrun-tests-ledger.md`: `24212 of 27339` → `24221 of 27348` (two changed lines). `the_committed_ledger_matches_the_tree` passes on HEAD. |
+| the repo's ratchets still hold | `the_committed_ledger_matches_the_tree` and `the_committed_ratchet_holds_at_head` pass on HEAD. (The regenerated unrun-tests ledger itself is not shown to reviewers: quorum-review.sh builds the review diff with `:(exclude)docs/status/*`, because a regenerated ledger is derived from the change, not the change.) |
 | `.unwrap()` ratchet unchanged | the new tests use `expect`; `git grep -oF '.unwrap()' -- 'src/*.rs' \| wc -l` = 20325 = the baseline in `.pmat-ratchet.toml`; `the_committed_ratchet_holds_at_head` passes |
 | `parse_rows` kept deliberately | public API of the published 3.40.1 (`pub mod roadmap` → `pub mod sync` → `pub fn parse_rows`); removing it is a semver break a patch release must not make. Its doc says it is no longer the read path. Its two tests remain. |
 | roadmap | this row's acceptance criteria only; the rest of the file is master's copy |
