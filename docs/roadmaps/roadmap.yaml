@@ -6728,3 +6728,20 @@ roadmap:
   labels:
   - kind:code
   notes: 'Filed by release-check against master, and it is right: Cargo.toml says 3.40.1 and crates.io does not have it. The publish is the close, and it is what #1349 was asking for all along.'
+- id: PMAT-1371
+  github_issue: 1371
+  item_type: task
+  title: 'roadmap sync is fail-open: a non-YAML roadmap renders 0 items rc 0, a duplicate id is de-duplicated silently, a missing status renders as empty — while work validate refuses every one'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T14:39:10Z
+  updated: 2026-09-15T14:39:10Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1371. read_work_store_rows was a line-scan that bypassed the strict model and check_roadmap_text; it now goes through both (the third path after PMAT-676 add and PMAT-679 edit), projects rows from the parsed items, and RoadmapSources::new no longer dedup_by(id). Found and fixed for free: the line-scan carried YAML''s '''' escape literally in 17 of infra''s 280 titles. One test per row of the issue''s table.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
