@@ -6917,7 +6917,8 @@ roadmap:
   updated: 2026-09-15T16:00:35Z
   spec: null
   acceptance_criteria:
-  - 'See paiml/paiml-mcp-agent-toolkit#1371. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  - 'src/roadmap/sync.rs: read_work_store_rows goes through the strict serde model AND check_roadmap_text before projecting (the third read path after PMAT-676 add and PMAT-679 edit); rows come from the parsed items with the canonical lowercase status spelling; RoadmapSources::new no longer dedup_by(id). parse_rows stays: it is public API of the published 3.40.1 (pmat::roadmap::sync::parse_rows) and removing it in a patch release is a semver break, so its doc now says it is no longer the read path. Nine tests, one per row of #1371''s table plus escape decoding: seven RED on 3.40.1, all GREEN. The real binary re-run on infra''s 280-row roadmap: every mutation rc 1 with pmat''s own error; the clean render byte-identical to 3.40.1''s apart from 17 titles whose YAML '''' escape the line-scan carried literally (content_hash changes once, for that reason). The repo''s two ratchet tests (the_committed_ledger_matches_the_tree, the_committed_ratchet_holds_at_head) pass on HEAD; the new tests use expect, so .unwrap() in src stays at the 20325 baseline.'
+  - 'Master merged in after #1360 unblocked it, roadmap taken whole from master (it already carries this row with the identical title). The GitHub title of #1371 was set to this row''s immutable title (CB-2115 DRIFT; no repo change). Not in this diff: the two rows #1360 closed without completing (PMAT-1359, PMAT-1361) are completed in their own PR, because completing them is separate work from this ticket.'
   phases: []
   subtasks: []
   estimated_effort: null

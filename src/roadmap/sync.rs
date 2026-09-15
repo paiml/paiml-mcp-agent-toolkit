@@ -38,9 +38,14 @@ pub struct RoadmapSources {
 impl RoadmapSources {
     /// Build from raw rows, sorting by id. `gh_snapshot` is a pinned export
     /// id, never a live query.
+    ///
+    /// #1371: this used to `dedup_by` id, so a duplicated ticket vanished from
+    /// the render with nothing printed. Two rows with one id are two rows;
+    /// [`read_work_store_rows`] refuses them before they get here, and a
+    /// caller that builds them directly sees both — a defect made visible,
+    /// never one hidden by the tool that should report it.
     pub fn new(mut rows: Vec<RoadmapRow>, gh_snapshot: Option<String>) -> Self {
         rows.sort_by(|a, b| a.id.cmp(&b.id));
-        rows.dedup_by(|a, b| a.id == b.id);
         Self { rows, gh_snapshot }
     }
 
@@ -122,15 +127,59 @@ fn yaml_scalar(s: &str) -> String {
 }
 
 /// Read roadmap rows from the work store's `docs/roadmaps/roadmap.yaml`.
-/// Line-scan (no full parse dependency) — the source is stable YAML.
+///
+/// #1371. This was a line-scan ("no full parse dependency — the source is
+/// stable YAML") and it was FAIL-OPEN: a file that was not YAML rendered as
+/// 0 items with rc 0, a duplicated id was de-duplicated silently, a missing
+/// `status:` rendered as `""`, an unknown one was passed through — while
+/// `pmat work validate` refused every one of those with a line number.
+/// Measured on paiml/infra's 280-row roadmap, pmat 3.40.1, 2026-09-15.
+///
+/// So this is the third read path (after `work add`, PMAT-676, and `work
+/// edit`, PMAT-679) to go through the strict serde model AND
+/// [`check_roadmap_text`] — the one validator `validate` runs — before
+/// anything is projected. The rows come from the PARSED items, so a status
+/// is the typed enum (unknown → parse error; missing → `missing field`),
+/// spelled back in its canonical lowercase form. A roadmap `validate` would
+/// refuse cannot be rendered, and the render never claims a count it did not
+/// measure.
+///
+/// [`check_roadmap_text`]: crate::services::roadmap_text::check_roadmap_text
 pub fn read_work_store_rows(project_path: &Path) -> Result<Vec<RoadmapRow>> {
     let path = project_path.join("docs/roadmaps/roadmap.yaml");
     let text =
         std::fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
-    Ok(parse_rows(&text))
+    let roadmap: crate::models::roadmap::Roadmap = serde_yaml_ng::from_str(&text)
+        .map_err(|e| anyhow::anyhow!("{}: {e} — run `pmat work validate`", path.display()))?;
+    // A duplicated id survives the strict parse (two well-formed rows); only
+    // the raw text can see the collision, and only it can locate it.
+    crate::services::roadmap_text::check_roadmap_text(&text, &path)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(roadmap
+        .roadmap
+        .iter()
+        .map(|item| RoadmapRow {
+            id: item.id.clone(),
+            title: item.title.clone(),
+            status: status_spelling(item.status),
+        })
+        .collect())
+}
+
+/// The canonical lowercase spelling serde writes for a status (`inprogress`,
+/// not `InProgress`): what the file says and what the render must say.
+fn status_spelling(status: crate::models::roadmap::ItemStatus) -> String {
+    serde_yaml_ng::to_string(&status)
+        .unwrap_or_default()
+        .trim()
+        .to_string()
 }
 
 /// Parse `- id: / title: / status:` triples from a roadmap.yaml body.
+///
+/// #1371: NOT the read path any more — [`read_work_store_rows`] parses
+/// strictly. Kept because it is public API of the published 3.40.x and a
+/// patch release does not remove public items; it performs no validation.
 ///
 /// Only `- id:` list entries at the *item-list* indentation (that of the
 /// first such entry) start a new row; more-deeply-indented `- id:` inside a
@@ -334,6 +383,123 @@ mod tests {
         let ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(ids, vec!["MACS-016", "MACS-017"], "nested SUB-1 excluded");
         assert_eq!(rows[0].title, "capstone", "nested title did not overwrite");
+    }
+
+    // ── #1371: sync must refuse what `work validate` refuses ─────────────────
+    //
+    // Measured on pmat 3.40.1 against paiml/infra's 280-row roadmap: every
+    // mutation below rendered with rc 0 — a non-YAML file as 0 items, a
+    // duplicate id de-duplicated silently, a missing status as "" — while
+    // `pmat work validate` refused each one with a line number. One fixture
+    // per row of that table; each is a whole project dir, because the unit
+    // under test is the READ path, not the line-scan.
+
+    /// A minimal roadmap that `pmat work validate` accepts: the header keys the
+    /// strict model requires, then `rows` verbatim.
+    fn project_with(rows: &str) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let dr = dir.path().join("docs/roadmaps");
+        std::fs::create_dir_all(&dr).expect("mkdir");
+        let text = format!(
+            "roadmap_version: '1.0'\ngithub_enabled: true\ngithub_repo: paiml/fixture\nroadmap:\n{rows}"
+        );
+        std::fs::write(dr.join("roadmap.yaml"), text).expect("write");
+        dir
+    }
+
+    const ROW_ONE: &str = "- id: FX-001\n  title: 'one'\n  status: completed\n";
+    const ROW_TWO: &str = "- id: FX-002\n  title: 'two'\n  status: planned\n";
+
+    #[test]
+    fn read_rows_accepts_a_roadmap_validate_accepts() {
+        let dir = project_with(&format!("{ROW_ONE}{ROW_TWO}"));
+        let rows = read_work_store_rows(dir.path()).expect("a valid roadmap reads");
+        let got: Vec<(String, String)> = rows
+            .iter()
+            .map(|r| (r.id.clone(), r.status.clone()))
+            .collect();
+        assert_eq!(
+            got,
+            vec![
+                ("FX-001".to_string(), "completed".to_string()),
+                ("FX-002".to_string(), "planned".to_string())
+            ],
+            "the projection carries the status spelling the file uses"
+        );
+    }
+
+    #[test]
+    fn read_rows_decodes_yaml_escapes_in_titles() {
+        // Found while measuring the fix: the line-scan carried a single-quoted
+        // scalar's `''` escape LITERALLY, so 17 of infra's 280 titles rendered
+        // as `dead-man''s`. The strict parse decodes it, and the content_hash
+        // of such a roadmap changes exactly once, for that reason.
+        let dir = project_with("- id: FX-001\n  title: 'dead-man''s switch'\n  status: planned\n");
+        let rows = read_work_store_rows(dir.path()).expect("reads");
+        assert_eq!(rows[0].title, "dead-man's switch");
+    }
+
+    #[test]
+    fn read_rows_refuses_a_file_that_is_not_yaml() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let dr = dir.path().join("docs/roadmaps");
+        std::fs::create_dir_all(&dr).expect("mkdir");
+        std::fs::write(dr.join("roadmap.yaml"), "not: [yaml\n").expect("write");
+        let err = read_work_store_rows(dir.path()).unwrap_err().to_string();
+        assert!(
+            err.contains("roadmap.yaml"),
+            "the refusal names the file, never renders 0 items: {err}"
+        );
+    }
+
+    #[test]
+    fn read_rows_refuses_a_duplicate_id_instead_of_deduplicating() {
+        let dir = project_with(&format!("{ROW_ONE}{ROW_TWO}{ROW_TWO}"));
+        let err = read_work_store_rows(dir.path()).unwrap_err().to_string();
+        assert!(
+            err.contains("duplicate id FX-002"),
+            "a duplicate is an error with the id named, not a silent dedup: {err}"
+        );
+    }
+
+    #[test]
+    fn read_rows_refuses_an_unknown_status() {
+        let dir = project_with("- id: FX-001\n  title: 'one'\n  status: shipped\n");
+        let err = read_work_store_rows(dir.path()).unwrap_err().to_string();
+        assert!(err.contains("unknown status"), "{err}");
+    }
+
+    #[test]
+    fn read_rows_refuses_a_missing_status_instead_of_rendering_empty() {
+        let dir = project_with("- id: FX-001\n  title: 'one'\n");
+        let err = read_work_store_rows(dir.path()).unwrap_err().to_string();
+        assert!(err.contains("missing field"), "{err}");
+    }
+
+    #[test]
+    fn read_rows_refuses_a_tab_indented_key() {
+        let dir = project_with("- id: FX-001\n  title: 'one'\n\tstatus: completed\n");
+        assert!(read_work_store_rows(dir.path()).is_err());
+    }
+
+    #[test]
+    fn handle_sync_dry_run_fails_closed_on_a_refused_roadmap() {
+        // The CLI path: an Err here is what turns into a non-zero exit, so a
+        // refused roadmap must not reach `print!` with a 0-item render.
+        let dir = project_with(&format!("{ROW_ONE}{ROW_ONE}"));
+        let err = handle_roadmap_sync(dir.path(), None, true, "T").unwrap_err();
+        assert!(err.to_string().contains("duplicate id FX-001"), "{err}");
+    }
+
+    #[test]
+    fn sources_keep_a_duplicate_visible() {
+        // `new` used to dedup_by(id). Two rows with one id are two rows; the
+        // read path refuses them before they get here, and a caller that
+        // constructs them directly sees both in the render, not one.
+        let mut two = rows();
+        two.push(rows()[0].clone());
+        let s = RoadmapSources::new(two, None);
+        assert_eq!(s.rows.len(), 4, "no silent dedup");
     }
 
     #[test]
