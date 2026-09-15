@@ -1,0 +1,119 @@
+{
+  "ticket": "PMAT-1371",
+  "base": "origin/master",
+  "base_resolved": "origin/master",
+  "base_note": "no origin/origin/master exists; judged against the local ref",
+  "head": "c08b237cdcb140b373b5ec457e891db11f04c420",
+  "diff_sha256": "722a2968a592bc90a1fd2f4a9d9e844069320e498a610398bd67adf0e951c97b",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 17975,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff successfully implements the requirements for PMAT-1371. The previous fail-open behavior was completely replaced by routing the `roadmap sync` read operation through the strict serde model and `check_roadmap_text`. Duplicate IDs, missing fields, unknown statuses, and invalid YAML are properly refused and exposed as explicit errors instead of being swallowed. The API stability constraint is respected (`parse_rows` is kept), and all the acceptance criteria tests are present and correctly validate the fail-closed behavior. No ratchets were weakened and all claims are fully backed by the diff.",
+      "findings": [
+        {
+          "claim": "parse_rows is kept deliberately as it is public API, with its documentation updated to reflect it is no longer the read path.",
+          "file": "src/roadmap/sync.rs",
+          "grounding": "cited"
+        },
+        {
+          "claim": "RoadmapSources::new no longer de-duplicates rows silently.",
+          "file": "src/roadmap/sync.rs",
+          "grounding": "cited"
+        },
+        {
+          "claim": "The read_work_store_rows path now strictly parses the roadmap using serde_yaml_ng::from_str and validates using check_roadmap_text, rejecting invalid states (missing/unknown status, duplicate ids, invalid YAML) instead of silently rendering empty.",
+          "file": "src/roadmap/sync.rs",
+          "grounding": "cited"
+        },
+        {
+          "claim": "No new .unwrap() calls were added. The code strictly uses .unwrap_or_default(), .unwrap_err(), or .expect() instead, keeping the ratchet baseline stable.",
+          "file": "src/roadmap/sync.rs",
+          "grounding": "cited"
+        }
+      ],
+      "raw_bytes": 4173,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff for PMAT-1371 has been comprehensively reviewed and verified.\n\n1. **Ticket Requirements & Fail-Closed Behavior**:\n   - `read_work_store_rows` in [`src/roadmap/sync.rs`](file:///tmp/claude-1000/-home-noah-src-infra/ed26dd9a-d725-4592-a2fd-73f5dc1005fe/scratchpad/wt-pmat-1371/src/roadmap/sync.rs#L148-L167) now validates roadmap inputs strictly through `serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>` and `crate::services::roadmap_text::check_roadmap_text`, eliminating fail-open behavior on non-YAML files, duplicate IDs, missing fields, or unknown statuses.\n   - `RoadmapSources::new` no longer silently deduplicates rows via `dedup_by(id)`, ensuring multiple rows with duplicate IDs remain visible and errors are caught.\n   - `parse_rows` is preserved with updated documentation for semver/backwards-compatibility reasons as a public API in `pmat::roadmap::sync`.\n\n2. **Test Suite Verification**:\n   - All 15 tests in `roadmap::sync::tests` (including the 9 new unit tests verifying the exact mutation table cases) pass:\n     - `read_rows_accepts_a_roadmap_validate_accepts`\n     - `read_rows_decodes_yaml_escapes_in_titles`\n     - `read_rows_refuses_a_file_that_is_not_yaml`\n     - `read_rows_refuses_a_duplicate_id_instead_of_deduplicating`\n     - `read_rows_refuses_an_unknown_status`\n     - `read_rows_refuses_a_missing_status_instead_of_rendering_empty`\n     - `read_rows_refuses_a_tab_indented_key`\n     - `handle_sync_dry_run_fails_closed_on_a_refused_roadmap`\n     - `sources_keep_a_duplicate_visible`\n\n3. **Ratchets & Gates**:\n   - `git grep -oF '.unwrap()' -- 'src/*.rs' | wc -l` measured at 20325, perfectly matching the baseline in `.pmat-ratchet.toml`.\n   - `the_committed_ratchet_holds_at_head` passed cleanly.\n   - `the_committed_ledger_matches_the_tree` passed cleanly with the updated unrun-tests ledger (+9 tests).\n\nNo contradictory assertions, weakened gates, receipt discrepancies, or unrequested out-of-scope changes were found.",
+      "findings": [],
+      "raw_bytes": 5855,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff strictly implements what the ticket PMAT-1371 asks for. It ensures that `roadmap sync` fails closed by running the roadmap YAML text through the strict `serde_yaml_ng` model and `check_roadmap_text` before projecting, replacing the previous line-scan approach. Tests verify that errors (non-yaml, missing status, duplicate id, tabs) are now correctly reported and cause failures instead of silent misbehaviors or rc 0. `RoadmapSources::new` no longer silently deduplicates by id. The public `parse_rows` API is preserved for backwards compatibility as promised. No tests assert the opposite of the ticket, gates are not weakened, and all claims in the receipt are directly supported by the diff.",
+      "findings": [],
+      "raw_bytes": 2701,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-low",
+      "model_measured": "gemini-3.1-pro-low",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "src/roadmap/sync.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "No new .unwrap() calls were added. The code strictly uses .unwrap_or_default(), .unwrap_err(), or .expect() instead, keeping the ratchet baseline stable.",
+        "RoadmapSources::new no longer de-duplicates rows silently.",
+        "The read_work_store_rows path now strictly parses the roadmap using serde_yaml_ng::from_str and validates using check_roadmap_text, rejecting invalid states (missing/unknown status, duplicate ids, invalid YAML) instead of silently rendering empty.",
+        "parse_rows is kept deliberately as it is public API, with its documentation updated to reflect it is no longer the read path."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}
