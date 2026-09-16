@@ -39,7 +39,9 @@ fn repo_root() -> PathBuf {
 
 fn read(rel: &str) -> String {
     let p = repo_root().join(rel);
-    fs::read_to_string(&p).unwrap_or_else(|e| panic!("{} missing: {e}", p.display()))
+    let text = fs::read_to_string(&p);
+    assert!(text.is_ok(), "{} missing: {:?}", p.display(), text.err());
+    text.unwrap_or_default()
 }
 
 struct Row {
@@ -88,10 +90,12 @@ fn rows(script: &str) -> Vec<Row> {
 fn make_gate_is_declared_and_runs_the_table() {
     let makefile = read("Makefile");
     let lines: Vec<&str> = makefile.lines().collect();
-    let at = lines
-        .iter()
-        .position(|l| l.starts_with("gate:"))
-        .expect("the Makefile declares no `gate:` target, so discovery falls back to a guess");
+    let at = lines.iter().position(|l| l.starts_with("gate:"));
+    assert!(
+        at.is_some(),
+        "the Makefile declares no `gate:` target, so discovery falls back to a guess"
+    );
+    let at = at.unwrap_or_default();
     let recipe: Vec<&str> = lines[at + 1..]
         .iter()
         .take_while(|l| l.starts_with('\t'))
@@ -160,12 +164,18 @@ fn every_step_leg_names_one_runnable_step_in_its_workflow() {
             r.leg
         );
         let (wf, job, name) = (parts[0], parts[1], parts[2]);
-        let doc: Value = serde_yaml_ng::from_str(&read(wf))
-            .unwrap_or_else(|e| panic!("step `{}`: {wf} does not parse: {e}", r.leg));
-        let job_v = doc
-            .get("jobs")
-            .and_then(|j| j.get(job))
-            .unwrap_or_else(|| panic!("step `{}`: {wf} has no job `{job}`", r.leg));
+        let doc = serde_yaml_ng::from_str::<Value>(&read(wf));
+        assert!(
+            doc.is_ok(),
+            "step `{}`: {wf} does not parse: {:?}",
+            r.leg,
+            doc.as_ref().err()
+        );
+        let doc = doc.unwrap_or_default();
+        let job_v = doc.get("jobs").and_then(|j| j.get(job));
+        assert!(job_v.is_some(), "step `{}`: {wf} has no job `{job}`", r.leg);
+        let null = Value::Null;
+        let job_v = job_v.unwrap_or(&null);
         let hits: Vec<&Value> = job_v
             .get("steps")
             .and_then(Value::as_sequence)

@@ -671,5 +671,4 @@ mod dependency_policy_tests;
 // `standard-deps` because it reads the workflows with serde_yaml_ng.
 // `cargo test --lib -- make_gate_tests`.
 #[cfg(all(test, feature = "standard-deps"))]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod make_gate_tests;
