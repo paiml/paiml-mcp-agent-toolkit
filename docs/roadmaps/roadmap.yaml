@@ -6812,14 +6812,15 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:32Z
-  updated: 2026-09-15T16:00:32Z
+  updated: 2026-09-16T14:59:04Z
   spec: null
   acceptance_criteria:
   - 'See paiml/paiml-mcp-agent-toolkit#1363. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
 - id: PMAT-1365
   github_issue: 1365
