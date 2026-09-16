@@ -74,7 +74,7 @@ jobs:
       - name: fails
         run: exit 7
       - name: needs github
-        run: echo "${{ github.sha }}"
+        run: echo 'bash would run this happily, so only the expression check can fail it ${{ github.sha }}'
 YML
 
 # every required context accounted for, CI-only, with a reason

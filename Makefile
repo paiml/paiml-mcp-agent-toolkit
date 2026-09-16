@@ -49,39 +49,28 @@ COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examp
 # Default target: format and build all projects
 all: format build
 
-# Validate everything passes across all projects
 # ── `make gate` — the DECLARED quality gate for this repository (PMAT-1365) ──
 #
-# paiml-implement's discovery probes `make -n gate` and, finding none, fell back
-# to `cargo test --workspace` with gate_cmd_fallback=true. That fallback is
-# strictly WEAKER than this repo's required checks — it runs none of
-# `feature-gate`, `pmat score`, `docs build (docs.rs environment)` or
-# `mutation-diff` — so anyone trusting it read green where CI reads red. pmat is
-# the tool that enforces gates in every consumer repo; having none of its own was
-# the producer-is-not-gated defect in its purest form (#1365, and the same shape
-# as #1363).
+# paiml-implement's discovery probes `make -n gate`; without this target it fell
+# back to `cargo test --workspace` (gate_cmd_fallback=true), a guess that runs none
+# of the six status contexts master requires, and whose green was trusted.
 #
-# WHAT THIS DOES NOT MEASURE, stated rather than implied. A gate that quietly
-# covers less than CI is worse than no gate, because its green is trusted:
+# What the gate runs lives in ONE table, in scripts/gate.sh: every required context
+# maps to the legs this machine runs (workflow steps are read from the workflow at
+# run time, so they cannot drift from CI) and to CI-only rows that say why they are
+# not run here — platform, credential, cost, trigger. Those rows are printed by name
+# on every run, green or red. A local green is a floor, never a substitute for the
+# required checks. scripts/gate-control.sh proves each property can fail;
+# contracts/make-gate-v1.yaml states them.
 #
-#   mutation-diff   needs a PR diff to mutate; there is none locally
-#   docs build      needs the docs.rs environment, not this one
-#   feature-gate    needs the CI feature matrix
-#   pmat score      needs the comparand revision CI resolves
-#
-# Those four remain CI-only BY CONSTRUCTION. `make gate` is the local floor, not
-# a substitute, and it says so on every run.
+# EXTENSION POINT: sibling gates (D0 issue-closure contract, D2 roadmap-write query
+# gate) append their rows at the marked end of the table in scripts/gate.sh — not
+# as prerequisites here, so the CI-only printout and the verdict cover them too.
 .PHONY: gate
-gate: validate quality-gate-full ## The declared quality gate (paiml-implement discovery reads this)
-	@echo ""
-	@echo "✅ make gate: validate (check + lint + test-fast) and quality-gate-full passed."
-	@echo "   NOT MEASURED HERE (CI-only, by construction):"
-	@echo "     mutation-diff  — needs a PR diff to mutate"
-	@echo "     docs build     — needs the docs.rs environment"
-	@echo "     feature-gate   — needs the CI feature matrix"
-	@echo "     pmat score     — needs the comparand revision CI resolves"
-	@echo "   A local green is a floor, never a substitute for ci / gate."
+gate: ## The declared quality gate: runs every local leg of the required checks, names the CI-only ones
+	@bash scripts/gate.sh
 
+# Validate everything passes across all projects
 validate: check lint test-fast
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check)"
