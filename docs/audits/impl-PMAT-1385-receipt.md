@@ -21,7 +21,7 @@
 | 3 | fragment mode (`docs/roadmaps/entries/`): `roadmap.yaml` never written, no `.bak`; changed fragments rewritten; a changed base row gets a superseding fragment; everything checked before the first write; a base row carrying trailing text refused | DONE | `work_migrate_in_fragment_mode_*` (3 tests); mutations M2, M3, M5, M6 RED |
 | 4 | every raw write under `docs/roadmaps/` is a method of `RoadmapWriteLock`, a value that exists only while the exclusive flock is held | DONE | M1 RED (4 lock tests) |
 | 5 | the writer gate: a `--lib` taint analysis at the serialisation site, run by the required `ci / gate` | DONE | 11 → 1 → 0; renamed-binding mutant RED; M4, M7, M8, M9 RED; CI job 105200164445 ran all gate tests `ok` |
-| 6 | `make gate` row | NOT ADDED | PR #1368 had not merged; shipped as a `--lib` suite plus `scripts/roadmap-writer-gate.sh`, and the row is written out below |
+| 6 | `make gate` row | DONE | #1368 merged (`ef2a0b947`) while this PR waited on CI; rebased, and the `roadmap-writer-gate` row added at `scripts/gate.sh`'s extension point |
 
 Contract `contracts/roadmap-writer-lock-v1.yaml`:
 - `pv validate`: valid.
@@ -129,8 +129,7 @@ Lane 1 wrote 19 scratch files into its own review clone (a `syn` scratch crate a
 
 - `ci / test`, a job of the required `ci / gate`, runs sovereign-ci's `cargo test --lib`. If that fails and the retry `cargo test --lib -p paiml-mcp-agent-toolkit` fails too, the step prints `::error::Tests failed` and exits 1. Run 35220796603, job 105200164445, on `dbf8774ec`, printed every gate and migrate test as `ok`, including `roadmap_writer_gate_every_roadmap_write_in_the_tree_goes_through_the_lock_token`; the result was `21745 passed; 0 failed`.
 - `scripts/roadmap-writer-gate.sh` runs the 15 named tests. It refuses a vacuous filter, because `cargo test -- <filter>` exits 0 when nothing matches: each test must appear by name as `ok`. `--self-test` covers 5 arms: control, a filter that matched nothing, the tree test missing, a failed test, and no result line. Judged on the RED logs above: exit 1.
-- The row for `scripts/gate.sh`'s extension point, once #1368 merges:
-  `cmd | ci / gate | roadmap-writer-gate | sovereign-ci.yml test "Run tests" | runs only the 15 named tests, and refuses a filter that matched none | bash scripts/roadmap-writer-gate.sh`
+- `make gate`: the row `cmd | ci / gate | roadmap-writer-gate | sovereign-ci.yml test "Run tests" (roadmap_writer_gate_* and work_migrate_*) | … | bash scripts/roadmap-writer-gate.sh` sits below the extension marker in `scripts/gate.sh` (#1368). `scripts/gate.sh --list` accepts the table, and `src/make_gate_tests.rs` passes with it.
 
 ## Verification (claimed vs re-run)
 
@@ -156,7 +155,7 @@ Lane 1 wrote 19 scratch files into its own review clone (a `syn` scratch crate a
 
 ## Estimates
 
-`K̂=35`, `K=70`, `basis=docs/audits/impl-estimates.jsonl:L23-L32`. **Actual 166** (`k_measured` from the transcript at the first receipt commit, before review rounds 2 and 3, CI and merge), recorded as `docs/audits/impl-estimates.jsonl` L34 (L33 before the rebase onto #1388, which appended PMAT-1305's row) through `pmat work estimate record`. `0.8K` (56) was crossed; the andon did not fire because every commit past it was green (RED only in the deliberate RED commit). The estimate missed by 4.7×: the gate needed three precision rounds (350 → 287 → 11 raw writes) and the walk a fourth, none of which a first-run basis could price.
+`K̂=35`, `K=70`, `basis=docs/audits/impl-estimates.jsonl:L23-L32`. **Actual 166** (`k_measured` from the transcript at the first receipt commit, before review rounds 2 and 3, CI and merge), recorded as `docs/audits/impl-estimates.jsonl` L35 (L33 when written; rows other tickets appended on master moved it) through `pmat work estimate record`. `0.8K` (56) was crossed; the andon did not fire because every commit past it was green (RED only in the deliberate RED commit). The estimate missed by 4.7×: the gate needed three precision rounds (350 → 287 → 11 raw writes) and the walk a fourth, none of which a first-run basis could price.
 
 ## Corrections to the brief
 
@@ -166,7 +165,7 @@ Lane 1 wrote 19 scratch files into its own review clone (a `syn` scratch crate a
 4. After the fix, `pmat query --literal "fs::write(roadmap_path" --files-with-matches` is not 0. It still lists `roadmap_handler_parsing.rs` (the `ROADMAP.md` writer) and the gate's own test files, which quote the string. Only the gate is 0.
 5. `apply_roadmap_changes` is confirmed as the markdown writer. Its only caller is `pmat maintain roadmap --fix`, whose `--roadmap` defaults to `ROADMAP.md`.
 6. The `.bak` write one block above belongs to the same class: an unlocked write of content read before any lock. Fixed with the main write.
-7. `make gate` (#1368) did not merge during this work, so no row was added. The row is written out above.
+7. `make gate` (#1368) merged while this PR was waiting on CI. Strict branch protection required a rebase anyway, and the row went in at its extension point, followed by a fifth review round.
 8. "PMAT-1363's row is still `planned` on master": true at `8915fe3e6`. #1383 completed it before this PR, so it was not carried.
 9. The ticket row: this branch filed PMAT-1385 with `pmat work add --github-issue 1385`. #1383 then registered the same row on master from the open issue, with identical bytes apart from `created`/`updated`, so this branch's row commit was dropped on rebase.
 10. "Label `kind:code` the way #1366 is shaped": #1366 has no GitHub label. Its roadmap row carries `kind:code`. Both the issue and the row carry it here.
@@ -174,10 +173,9 @@ Lane 1 wrote 19 scratch files into its own review clone (a `syn` scratch crate a
 
 ## Gaps
 
-- The `make gate` row is not added (#1368 still open).
 - The delegate could not record the author model from a file; it was passed by flag.
 - `.claude/agent-memory/` appeared untracked in the clone during the session. It was not created by this branch's commands, and it is not committed.
 
 ## Verdict
 
-DONE on the code, the gate, the contract and review rounds 1 and 2's findings. Merge waits for review round 3 to return 3 PASS (`docs/audits/quorum-PMAT-1385.json`, `agreed=true`) on the head that merges, and for CI to go green.
+DONE on the code, the gate, the contract and review rounds 1 and 2's findings. Rounds 3 and 4 returned 3/3 PASS, on `bcda37008` and on its rebase `8d948e6b4`. Adding the `make gate` row changed the judged diff, so merge waits for a fifth round to return 3 PASS (`docs/audits/quorum-PMAT-1385.json`, `agreed=true`) on the head that merges, and for CI to go green.
