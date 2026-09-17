@@ -1057,4 +1057,24 @@ mod cap_disclosure_tests {
         assert!(value["score"]["breakdown"].is_object());
         assert!(value["grade_capped"].is_null());
     }
+
+    /// PMAT-636: pins the measured component table of the markdown renderer
+    /// byte-for-byte, so extracting it into a helper cannot change it.
+    #[test]
+    fn markdown_component_breakdown_is_pinned_for_a_measured_file() {
+        let score = file_at(80.0);
+        let md = format_tdg_score_markdown(&score, None, true, None).expect("render");
+        let table = "## Component Breakdown\n\n\
+                     | Component | Score | Max |\n\
+                     |-----------|-------|-----|\n\
+                     | Structural Complexity | 20.0 | 25 |\n\
+                     | Semantic Complexity | 16.0 | 20 |\n\
+                     | Duplication | 16.0 | 20 |\n\
+                     | Coupling | 12.0 | 15 |\n\
+                     | Documentation | 8.0 | 10 |\n\
+                     | Consistency | 8.0 | 10 |\n";
+        assert!(md.ends_with(table), "got:\n{md}");
+        let without = format_tdg_score_markdown(&score, None, false, None).expect("render");
+        assert_eq!(md, format!("{without}{table}"));
+    }
 }
