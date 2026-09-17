@@ -1,0 +1,107 @@
+{
+  "ticket": "PMAT-1385",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "judged against origin/master ce945d81ec5a712e9275caadd575a9de4104a9b0",
+  "head": "bcda3700879dc849934c446bfa2fb73b459e97ed",
+  "diff_sha256": "5b261bdeab2711a2fb6cd55705b241f5d74da6addc54a73436830a5799e55996",
+  "prompt_mode": "inline",
+  "prompt_bytes": 8577,
+  "prompt_sha256": "2687dbec4202166a51a09ed536a2929496f5bed8b5806f1a599548fab98e2719",
+  "rounds": [
+    {
+      "round": 1,
+      "head": "dbf8774ec",
+      "verdicts": "FAIL/PASS/PASS",
+      "conversations": [
+        "a68900f9-561c-4691-8d1d-da9bc6bdcb21",
+        "15a767d1-855a-46f0-b0b0-92f846475e01",
+        "3f0dc15d-e2d4-4f8f-a7f5-184ad3f14d96"
+      ]
+    },
+    {
+      "round": 2,
+      "head": "287746ab0",
+      "verdicts": "FAIL/PASS/PASS",
+      "conversations": [
+        "b180962a-f1b2-4af7-aa74-ee8c3b87c3ce",
+        "43046cca-dbdf-408d-a786-55a19556647a",
+        "3c2cb5d2-e522-49f5-8c37-f0001f6a36f2"
+      ]
+    },
+    {
+      "round": 3,
+      "head": "bcda3700879dc849934c446bfa2fb73b459e97ed",
+      "verdicts": "PASS/PASS/PASS",
+      "conversations": [
+        "67d834d2-ec24-4876-b67e-8124208c2986",
+        "ac50ad60-6a8c-457c-942a-c899cc3e3e51",
+        "8c273191-dcaa-4d4e-9efb-51e055be09a2"
+      ]
+    }
+  ],
+  "width": 3,
+  "executor": "agy",
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The PR is mergeable as-is. All BLOCKING defects from Round 2 have been fixed correctly, and no new regressions or unprotected writes were introduced.\n\nI thoroughly audited the codebase against the claims:\n1. `text_after_row` correctly stops at the first non-blank line with `depth <= indent`, which perfectly accommodates block scalars with blank lines (which don't trigger the depth check until the next non-blank line) and inner comments.\n2. `create_dir_all` is now correctly tracked as a sink. The allowance for `IdAuthority::in_git` is justified because the path it creates (`<git common dir>/pmat`) is for the lock itself, not roadmap content, and the gate checks paths statically.\n3. The allowed list now correctly matches on `sink.kind`, preventing primitive substitution bypasses.\n4. `#[path]` and `include!` resolution logic strictly adheres to Rust module semantics. An ownerless `include!` target cannot escape the token check because its `file` path will be reported as the path of the included file (or relative to the including file), which will not match the exact paths allowed in `ALLOWED`.\n5. I verified `aggregate` uses `RoadmapWriteLock::replace` atomically without double-locking.\n6. `migrate_text` correctly returns early or yields an empty write plan when `dry_run` is true or no changes are made, preserving the exact origin/master behavior.\n\nR2-1: RESOLVED: text_after_row correctly stops at the first non-blank line with depth <= indent, correctly keeping blank lines inside block scalars and inner comments.\nR2-2: RESOLVED: create_dir_all is added to sink_kind in roadmap_writer_gate.rs and correctly mapped to fs::create_dir_all. The exception for IdAuthority::in_git is explicitly allowed because the created directory is <git common dir>/pmat which is for the lock itself.\nR2-3: RESOLVED: allowed(sink) now matches on both function name and sink.kind correctly.\nR2-4: RESOLVED: #[path] resolution inside inline modules correctly uses the file's own children path (when len > 1), and ownerless include! targets correctly inherit their file paths from where they are included, resolving relative to the file containing the include! macro.",
+      "findings": [],
+      "raw_bytes": 5968,
+      "err_bytes": 449,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "### Pre-Merge Review Round 3: PR #1389 (Ticket PMAT-1385)\n\n#### 1. Scope and Architecture Verification\n- **`RoadmapWriteLock` Token Verification**: Verified at [roadmap_write_lock.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/src/services/roadmap_write_lock.rs#L24-L102) that `RoadmapWriteLock` wraps `std::fs::File`, has no public constructor except `RoadmapWriteLock::acquire`, cannot be cloned, and releases the flock when dropped. Its methods (`write`, `replace`, `create_dir_all`, `remove`) are the sole entry points for filesystem modifications to roadmap files.\n- **`pmat work migrate` Migration Flow**: Verified at [ticket_validate_migrate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/src/cli/handlers/work_handlers/ticket_validate_migrate.rs#L332-L368) and [roadmap_service_migrate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/src/services/roadmap_service_migrate.rs#L54-L101) that `migrate_text` operates under a single repository lock (`lock_exclusive` for active migrations, `lock_shared` for `--dry-run`). In fragment mode, `roadmap.yaml` is never opened for write, no `.bak` is written, and base rows that change generate superseding fragments checked by `check_fragment` before any write occurs.\n- **Service Operations Gating**: Verified at [roadmap_service_operations.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/src/services/roadmap_service_operations.rs#L23-L358), [roadmap_service_io.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/src/services/roadmap_service_io.rs#L55-L270), and [aggregate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/src/roadmap/aggregate.rs#L78-L175) that all mutation paths (`save`, `upsert_item_checked`, `persist_new_row`, `replace_item_raw`, `write_roadmap_unlocked`, `remove_item`, `write_aggregate`) require `&RoadmapWriteLock`.\n- **Writer Gate & Taint Analysis**: Verified at [roadmap_writer_gate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/src/tests/roadmap_writer_gate.rs#L73-L91) and [roadmap_writer_gate_tests.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/src/tests/roadmap_writer_gate_tests.rs#L26-L620). Module walk starts from `src/lib.rs`, `src/bin/pmat.rs`, `src/bin/pmat-agent.rs`, resolving nested modules, inline modules with `#[path]`, and `OUT_DIR` includes, validating 3037 source files.\n- **Gate Shell Script**: Verified [scripts/roadmap-writer-gate.sh](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/scripts/roadmap-writer-gate.sh#L1-L127) passes `bash -n`, includes `--self-test` testing 5 failure/control arms, and requires all 15 tests to pass by name with anti-vacuity checks.\n- **Contract & Ratchets**: Contract [contracts/roadmap-writer-lock-v1.yaml](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702746/contracts/roadmap-writer-lock-v1.yaml#L1-L135) correctly lists all 7 obligations and 18 covering test names. Non-test production code introduces zero new `unwrap()` or `panic!()` calls.\n\n#### 2. Resolution of Round 2 Issues\nR2-1: RESOLVED: `text_after_row` in `src/services/roadmap_service_migrate.rs` measures a row's own lines as its first line and every subsequent non-blank line with indentation deeper than the row's column, preserving block scalars with `#` lines, blank lines, and inner comments, while refusing trailing section comments/keys; tested by the control arm in `src/tests/work_migrate_lock_tests.rs:249-270`.\nR2-2: RESOLVED: `fs::create_dir` and `fs::create_dir_all` are registered sinks (`src/tests/roadmap_writer_gate.rs:1043-1044`), gated behind `RoadmapWriteLock::create_dir_all` (`src/services/roadmap_write_lock.rs:86-88`); `IdAuthority::in_git` creates `<git common dir>/pmat` inside `.git` before locks exist, and is restricted in `ALLOWED` solely to `fs::create_dir_all`.\nR2-3: RESOLVED: `ALLOWED` entries are tuples of `(file, function, kinds, reason)` (`src/tests/roadmap_writer_gate_tests.rs:26-66`), `allowed(sink)` matches on `sink.kind`, and `roadmap_writer_gate_every_allowed_writer_is_still_reached` enforces liveness per `(function, kind)`.\nR2-4: RESOLVED: `#[path]` attributes inside inline modules resolve relative to the inline module's directory (`Scan::visit_item_mod` in `src/tests/roadmap_writer_gate_tests.rs:440-445`), verified by `roadmap_writer_gate_walk_reaches_nested_modules_and_includes`; included methods parsed standalone lack owner prefixes and therefore cannot match owner-qualified `ALLOWED` entries, so any illicit write is flagged as a violation rather than escaping.",
+      "findings": [],
+      "raw_bytes": 15389,
+      "err_bytes": 449,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "## Review Round 3 Summary for PMAT-1385 (PR #1389)\n\n### Verification of Scope, Implementation, and Hunt Areas\n\n1. **Lock Token Enforcement (RWL-OB-001 - RWL-OB-004)**:\n   - [`RoadmapWriteLock`](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702761/src/services/roadmap_write_lock.rs#L23-L102) wraps an exclusively held `fs2` file lock and provides the sole raw filesystem write/replace/remove/create_dir_all operations for paths under `docs/roadmaps/`.\n   - Verified that all production write sites in [`src/services/roadmap_service_io.rs`](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702761/src/services/roadmap_service_io.rs#L166-L340), [`src/services/roadmap_service_operations.rs`](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702761/src/services/roadmap_service_operations.rs#L130-L360), [`src/services/roadmap_fragments.rs`](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702761/src/services/roadmap_fragments.rs#L551-L590), and [`src/roadmap/aggregate.rs`](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702761/src/roadmap/aggregate.rs#L71-L242) require passing `&RoadmapWriteLock`.\n   - `handle_work_migrate` in [`src/cli/handlers/work_handlers/ticket_validate_migrate.rs`](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702761/src/cli/handlers/work_handlers/ticket_validate_migrate.rs#L309-L368) routes all reads, transformations, and writes atomically through `RoadmapService::migrate_text`.\n\n2. **Taint Gate Engine and Test Anti-Vacuity (RWL-F-001 - RWL-F-003)**:\n   - [`src/tests/roadmap_writer_gate.rs`](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702761/src/tests/roadmap_writer_gate.rs) implements full interprocedural taint propagation tracking path sources across functions, assignments, pattern matches, struct fields, and clap defaults.\n   - [`production_sources`](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702761/src/tests/roadmap_writer_gate_tests.rs#L268-L280) walks compilation units from all 3 target roots (`src/lib.rs`, `src/bin/pmat.rs`, `src/bin/pmat-agent.rs`), resolves `OUT_DIR` includes, and enforces anti-vacuity `assert!(files > 1000)` (3037 files read).\n   - All 18 named test functions in `contracts/roadmap-writer-lock-v1.yaml` exist, are registered under `#[cfg(test)]` in [`src/cli/handlers/work_handlers/mod.rs`](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-bcda37008-3702761/src/cli/handlers/work_handlers/mod.rs#L78-L98), and pass validation.\n\n3. **No Lock Order Conflicts or Deadlocks**:\n   - Every entry point acquires exactly one flock handle (`acquire_read_lock` or `acquire_write_lock`), operating directly on in-memory models and helper functions without recursively invoking locking methods.\n\n4. **No Behavioral Regressions**:\n   - `pmat work migrate` preserves output formatting, reporting list structure, dry-run semantics, and backup creation across both whole-file and fragment-mode repositories.\n\nR2-1: RESOLVED: `text_after_row` in `src/services/roadmap_service_migrate.rs:254-269` measures row extent by including all deeper indented lines (`depth > indent`), preserving block scalars (including `#` lines and blank lines) and inner comments while safely refusing trailing section comments and footer keys; verified by `src/tests/work_migrate_lock_tests.rs:249-270`.\nR2-2: RESOLVED: `fs::create_dir` and `fs::create_dir_all` are gated sinks (`src/tests/roadmap_writer_gate.rs:1043-1044`), `RoadmapWriteLock::create_dir_all` (`src/services/roadmap_write_lock.rs:86-88`) protects roadmap directories, and `IdAuthority::in_git` (`src/services/roadmap_id_authority.rs:94-96`) is allowed strictly for `fs::create_dir_all` on `<git-common-dir>/pmat` inside `.git`, which cannot land under `docs/roadmaps/`.\nR2-3: RESOLVED: `ALLOWED` in `src/tests/roadmap_writer_gate_tests.rs:26-66` is keyed by `(file, function, kinds, reason)`, `allowed(sink)` validates exact sink kind matching, and `roadmap_writer_gate_every_allowed_writer_is_still_reached` enforces per-kind reachability; unapproved primitives turn the gate RED.\nR2-4: RESOLVED: `Scan::visit_item_mod` (`src/tests/roadmap_writer_gate_tests.rs:426-462`) resolves nested `#[path]` attributes relative to the inline module directory per Rust specifications; owner-less included methods fail closed and cannot match `ALLOWED` entries or escape taint detection.",
+      "findings": [],
+      "raw_bytes": 14301,
+      "err_bytes": 449,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "agreed": true,
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  }
+}
