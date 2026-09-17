@@ -365,3 +365,11 @@ Raw:
 - Removed finished sessions' isolated target dirs (pmat-D0-B, pmat-D0-C, pmat-1365: ~60 GB).
 
 Decision: the orchestrator did the cascade rather than a session (no code judgment involved; the resolution rule was written down before the conflict existed). Slots 2/3: D2, D6.
+
+## 2026-09-17T18:38Z — D2 MERGED (#1389, b58addab8); lifecycle PR #1397 armed
+
+tree: run-log rebased, behind=0 against origin/master b58addab8.
+
+Raw (D2 session receipt, DONE, 92 turns, quorum round 6 = 3/3 on 77bdbf388): `pmat work migrate` now writes through `src/services/roadmap_write_lock.rs` under the repository lock; 0 occurrences of `fs::write(roadmap_path` left in `ticket_validate_migrate.rs`; `roadmap-writer-gate` row in `scripts/gate.sh` (15 required tests) green; `make gate` 28/29 local legs (the one red was master's CB-2115 orphans); ci/test 21760 passed / 0 failed; all five required contexts SUCCESS. (My own rerun of the D2 gate on master is owed — next entry.)
+- Lifecycle-7: master b58addab8 → "open items 114 · open issues 113 · ORPHAN-ROADMAP PMAT-1385"; sanctioned sync → 113/113; PR #1397. Quorum round 1: PASS / NO-VERDICT / PASS (gemini-3.8-flash-high returned nothing — a lane failure, not a judgment; NOT counted as agreement); round 2: 3/3 PASS; armed via `pmat-merge`.
+- D0 PR #1391 stays armed and red on that orphan until #1397 lands; it will then need master again, and both D0 and D2 add a row at `scripts/gate.sh`'s extension point — a likely conflict I resolve by keeping both rows, followed by another quorum round.
