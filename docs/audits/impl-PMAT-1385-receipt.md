@@ -156,7 +156,7 @@ Lane 1 wrote 19 scratch files into its own review clone (a `syn` scratch crate a
 
 ## Estimates
 
-`K̂=35`, `K=70`, `basis=docs/audits/impl-estimates.jsonl:L23-L32`. **Actual 166** (`k_measured` from the transcript at the first receipt commit, before review rounds 2 and 3, CI and merge), recorded as `docs/audits/impl-estimates.jsonl` L33 through `pmat work estimate record`. `0.8K` (56) was crossed; the andon did not fire because every commit past it was green (RED only in the deliberate RED commit). The estimate missed by 4.7×: the gate needed three precision rounds (350 → 287 → 11 raw writes) and the walk a fourth, none of which a first-run basis could price.
+`K̂=35`, `K=70`, `basis=docs/audits/impl-estimates.jsonl:L23-L32`. **Actual 166** (`k_measured` from the transcript at the first receipt commit, before review rounds 2 and 3, CI and merge), recorded as `docs/audits/impl-estimates.jsonl` L34 (L33 before the rebase onto #1388, which appended PMAT-1305's row) through `pmat work estimate record`. `0.8K` (56) was crossed; the andon did not fire because every commit past it was green (RED only in the deliberate RED commit). The estimate missed by 4.7×: the gate needed three precision rounds (350 → 287 → 11 raw writes) and the walk a fourth, none of which a first-run basis could price.
 
 ## Corrections to the brief
 
