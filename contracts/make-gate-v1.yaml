@@ -69,12 +69,14 @@ equations:
     preconditions: []
 
   ci_only_reasons_are_measured:
-    formula: "for all r with kind(r) = ci-only and category(r) = cost: not runs_only_pmat(job(source(r))), where runs_only_pmat means every step of the CI job is a setup action, `cargo build ... --bin pmat`, or `cargo run ... --bin pmat -- ...`"
+    formula: "for all r with kind(r) = ci-only: (category(r) = cost => not runs_only_pmat(job(source(r)))) and (category(r) = credential => not reads_github_with_a_token(job(source(r)))), where runs_only_pmat means every step of the CI job is a setup action, `cargo build ... --bin pmat`, or `cargo run ... --bin pmat -- ...`, and reads_github_with_a_token means the job or a step sets GH_TOKEN or GITHUB_TOKEN"
     domain: "ci-only rows of the table in scripts/gate.sh whose source job is in this tree"
     codomain: bool
     invariants:
       - "a check that only runs pmat is a leg here: make gate already builds pmat (build-pmat), so a release build is not a cost this gate would pay"
       - "the source of every ci-only cost row resolves to a job, else the reading is broken and the test fails rather than passing vacuously"
+      - "a GitHub token is not a credential this gate lacks: a leg that needs one takes $GH_TOKEN, else `gh auth token`, and fails without either, never skips"
+      - "the credential detector is controlled both ways (ci.yml traceability holds a token, windows-check does not), so it cannot pass vacuously when no credential row is left"
     preconditions: []
 
 proof_obligations:
@@ -99,8 +101,8 @@ proof_obligations:
     formal: "∃r: runs(r) ∧ rc(r) ≠ 0 ⇒ exit = 1 ∧ ∀r' > r: attempted(r')"
     applies_to: gate_can_fail
   - type: invariant
-    property: "no CI-only row blames cost for a check that only runs pmat"
-    formal: "∀r: kind(r) = ci-only ∧ category(r) = cost ⇒ ¬runs_only_pmat(job(source(r)))"
+    property: "no CI-only row blames cost for a check that only runs pmat, or a credential that is a GitHub token"
+    formal: "∀r: kind(r) = ci-only ⇒ (category(r) = cost ⇒ ¬runs_only_pmat(job(source(r)))) ∧ (category(r) = credential ⇒ ¬reads_github_with_a_token(job(source(r))))"
     applies_to: ci_only_reasons_are_measured
 
 falsification_tests:
@@ -130,8 +132,8 @@ falsification_tests:
     test: "bash scripts/gate-control.sh"
     if_fails: "the gate is theater: its green carries no information"
   - id: ci_only_reasons_are_measured
-    rule: "a ci-only cost row whose CI job only builds and runs pmat is refused"
-    prediction: "make_gate_tests::no_ci_only_cost_row_hides_a_check_that_only_runs_pmat; RED on 22e4cd1fe naming unrun-tests and reachability-ledger"
+    rule: "a ci-only cost row whose CI job only builds and runs pmat, or a ci-only credential row whose CI job holds a GitHub token, is refused"
+    prediction: "make_gate_tests::no_ci_only_cost_row_hides_a_check_that_only_runs_pmat, RED on 22e4cd1fe naming unrun-tests and reachability-ledger; make_gate_tests::no_ci_only_credential_row_blames_a_github_token_gh_already_holds, RED on 143db4aca naming dependabot-alerts-live, and naming cb-2115 too against the gate.sh of ae9914c2f"
     test: "cargo test --lib make_gate_tests"
     if_fails: "a check the gate could run in seconds stays CI-only on an unmeasured reason, and its red reaches CI after a local green (feature-gate on PR #1368, 1d8c64f40)"
 

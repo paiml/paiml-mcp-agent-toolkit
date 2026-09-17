@@ -96,13 +96,14 @@ ci-only | docs build (docs.rs environment) | docs-rs-build | .github/workflows/d
 # ── feature-gate — feature-matrix.yml job feature-gate requires every leg below
 step    | feature-gate | orphan-ledger | .github/workflows/feature-matrix.yml#orphan-ledger#every orphan feature is tested or explained | - | -
 step    | feature-gate | dependabot-self-test | .github/workflows/feature-matrix.yml#dependabot-alerts#the gate proves it can fail | - | -
+# dependabot-alerts-live was CI-only on "credential: the DEPENDABOT_TOKEN secret"; with the gh token it runs in <1s.
+cmd     | feature-gate | dependabot-alerts-live | feature-matrix.yml dependabot-alerts "no open Dependabot alerts at or above medium" | CI reads DEPENDABOT_TOKEN and SKIPS this arm when that secret is unset; this uses $GH_TOKEN, else `gh auth token`, and fails without either or on a 403 | token="${GH_TOKEN:-$(gh auth token)}"; [ -n "$token" ]; GH_TOKEN="$token" ./scripts/dependabot-alerts-gate.sh
 # unrun-tests and reachability-ledger: each CI job only builds pmat and runs one subcommand. They were CI-only
 # on "cost: a release build" until reachability-ledger went red in CI on this branch's own new file while
 # `make gate` read green; on the debug build build-pmat already made they take ~14s and ~2s. `cargo run`, never
 # a ./target path, for the reason feature-matrix.yml gives: a redirected target dir measures a stale binary.
 cmd     | feature-gate | unrun-tests | feature-matrix.yml unrun-tests "every test is executed by some leg, or the ledger says why" | CI runs the release build; this runs the debug build | cargo run --locked --quiet --bin pmat -- analyze unrun-tests --executed '' --check-ledger
 cmd     | feature-gate | reachability-ledger | feature-matrix.yml reachability-ledger "the committed orphan-files ledger matches the tree" | CI runs the release build; this runs the debug build | cargo run --locked --quiet --bin pmat -- analyze reachability --check-ledger
-ci-only | feature-gate | dependabot-alerts-live | feature-matrix.yml dependabot-alerts | credential: the live arm reads Dependabot alerts with the DEPENDABOT_TOKEN secret | -
 ci-only | feature-gate | bundles | feature-matrix.yml bundles | cost: cargo check --lib --tests and --bin once per feature bundle | -
 ci-only | feature-gate | individual | feature-matrix.yml individual | cost: cargo check of every feature in Cargo.toml, one at a time, in 6 shards | -
 ci-only | feature-gate | feature-tests | feature-matrix.yml feature-tests | cost: clippy and the whole lib suite rebuilt once per feature set | -
