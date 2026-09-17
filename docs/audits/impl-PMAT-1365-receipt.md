@@ -1,7 +1,12 @@
-# impl-PMAT-1365 — receipt (fourth session)
+# impl-PMAT-1365 — receipt (fifth session)
 
-Verdict: **PARTIAL(andon)**. Turn budget: `k_measured` = 104 ≥ 0.8K = 96, and the gate is not PASS.
-PR #1368 is open, not merged, and auto-merge is not armed.
+Verdict at the judged head: **PARTIAL(blocker)**. `make gate` is declared, and discovery now finds it.
+The branch is rebased onto master. Two things block the merge, and neither comes from this branch:
+
+1. The required `traceability` job fails on CB-2115 `ORPHAN-ROADMAP PMAT-1366`. #1382 closed #1366 but left its row `planned`. The fix is in its own housekeeping PR, **#1384** (`chore(PMAT-1336)`), and is kept out of this diff (see Scope).
+2. `make gate` is red locally on the CB-200 lib test (#1266), exactly as on clean master. It is not waived and not re-baselined.
+
+PR #1368 is armed only when the quorum artifact on top of this commit is 3/3 PASS, #1384 has merged, and CI is green.
 
 ## Identity
 
@@ -9,87 +14,81 @@ PR #1368 is open, not merged, and auto-merge is not armed.
 |---|---|
 | ticket | PMAT-1365 (`kind:code`, #1365) |
 | branch | `PMAT-1365-declare-gate-land`, pushed as `PMAT-1365-declare-gate` (PR #1368) |
-| judged head | `08eebd2e5` (this receipt's own commit follows it) |
-| base | `origin/master` `441d198e7`, behind = 0 all session |
+| base | `origin/master` `e89a827f7` (#1382 merged), behind = 0 |
 | model-gate | `opus-5`, class opus, admit, basis=transcript |
-| discover.json sha256 (Phase 0, head `3425e9ed3`) | `25bc183ab1eb0b62ed41185c53570d394fef7d629073a6ed67a053f0ce707c5b` |
-| discover on `441d198e7` (clean clone) | `gate_cmd=cargo test --workspace`, `gate_cmd_fallback=true` — the RED |
-| discover on `08eebd2e5` | `gate_cmd=make gate`, `gate_cmd_fallback=false` — the GREEN (sha256 `6996a2cfde380ebfc1d8bba1734bca45b349aae108b32a316ac260166659ad48`) |
+| discover.json on the rebased head `bfe4e7acd` | `gate_cmd=make gate`, `gate_cmd_fallback=false`, sha256 `4a969e3bf1a4ceab0d234a7ee1e2c565e4be95bc4c4ca5fdb68837ba945b2ad9` — the GREEN |
+| discover on master `441d198e7` (fourth session, clean clone) | `gate_cmd=cargo test --workspace`, `gate_cmd_fallback=true` — the RED |
 | required contexts (branch protection) | `ci / gate`, `feature-gate`, `docs build (docs.rs environment)`, `pmat score`, `provable ladder`; the org ruleset adds `gate` |
 
-## Plan and routing
+## The rebase (fifth session)
 
-| phase | what | mode | route line | acceptance command |
-|---|---|---|---|---|
-| 1 | RED: CI-only cost rows that only run pmat | direct | `route=agy-goal w=1.00 basis=absent` — **not followed**: done directly, see Gaps | `cargo nextest run --lib --profile gate make_gate_tests` → 1 failed |
-| 2 | GREEN: unrun-tests and reachability-ledger become cmd legs; contract obligation | direct | same | the same command passes; both legs exit 1 |
-| 3 | re-render both ledgers | direct | same | both `--check-ledger` → exit 0 |
-| 4 | RED→GREEN: CB-2115 leg on the gh token; #1381 roadmap row | direct | same | the leg exits 1, then 0 |
-| 5 | pre-merge quorum; the credential test and the Dependabot leg; full `make gate` | quorum:agy via delegate ×2, then quorum-review.sh | `route=agy-quorum w=1.00 basis=absent` | 3/3 PASS ×2 (delegate); **NOT agreed** (quorum-review.sh) |
-| — | orchestration | self | `route=self w=0.00 basis=absent` | — |
-
-## Dispatch ledger
-
-| dispatch | agent | lanes | agy conversations | result |
-|---|---|---|---|---|
-| ph5.delegate (review of `48cd21d03`) | paiml-agy-delegate, opus | quorum ×3, writes=false | `fdb9fc52-4724-4f73-a580-47e2f58148ba`, `02c4b390-60f2-4633-8cd7-f769bbbab67d`, `1cb2cf24-075a-4996-b2e3-843bba17594f` | **maxTurns hit (30), no receipt, not resumed.** Its `lane-reduce.json` was complete: 3/3 PASS, agreed, not partial. Read directly. |
-| ph5.delegate2 (review of `08eebd2e5`) | paiml-agy-delegate, opus | quorum ×3, writes=false | `4e5c9376-65ad-4764-a01e-a9dac27993ee`, `d447f0c8-4646-4f08-a225-956462071ecc`, `0b85f6a7-9597-440b-8d83-26cdf7ab855c` | 3/3 PASS, no dissent. Lane 1 was writes=false but wrote `list.txt` into its own clone (KEPT); the shared checkout is clean. |
-| quorum-review.sh `--ticket PMAT-1365 --pr 1368` on `08eebd2e5` | script (agy) | ×3 | see `docs/audits/quorum-PMAT-1365.json` | **NOT agreed**: lane 1 (gemini-3.1-pro-high) FAIL; lanes 2 and 3 PASS |
-
-Lane models, all rounds: gemini-3.1-pro-high, gemini-3.8-flash-high, gemini-3.7-flash-high (measured).
-Author: claude-opus-5. The lanes are independent of the author's family, but all three are one family.
-
-Slots: `attempted=2 denied=0 stalled=0 running_peak=1 slots=3` (transcript-gate.sh PASS).
-
-## Verification — claimed vs re-run (every row re-run by the orchestrator)
-
-| claim | source | re-run |
+| step | what happened | how it was resolved |
 |---|---|---|
-| unrun-tests / reachability-ledger reasons were "cost: a release build" | gate.sh at `3425e9ed3` | debug build: 13.8 s exit 0 / 1.5 s **exit 1** (drifted) |
-| CB-2115 needs a CI-only credential | gate.sh at `3425e9ed3` | `gh auth token`: 7.3 s, **exit 1** (ORPHAN-GITHUB #1381), as CI |
-| "every remaining CI-only reason is true" | quorum round 1, one lane graded it `asserted` | **refuted**: dependabot-alerts-live runs in 0.65 s with the gh token, exit 0 |
-| the credential test also catches the old cb-2115 row | commit 143db4aca | run against `git show ae9914c2f:scripts/gate.sh` → names cb-2115 and dependabot-alerts-live |
-| trigger / platform / not-gating reasons | gate.sh | ci.yml: tests-dont-write `if: github.event_name == 'push'`; windows-check on windows-latest; quality-gate.yml comply-ladder `continue-on-error: true`; mutation-diff not in branch protection; `docs/roadmaps/entries` absent |
-| contract | contracts/make-gate-v1.yaml | `pv validate` valid; `pv status` 6 equations, 6 obligations, 6 falsification tests; `pv-obligation-gate.py` 0 problems / 36 contracts |
-| controls | scripts/gate-control.sh | exit 0, GREEN |
-| `make gate` at `48cd21d03` | — | 770 s: 26 PASS, 1 FAIL (lib-tests: CB-200 only) |
-| `make gate` at `08eebd2e5` | — | 584 s: **27 PASS, 1 FAIL** (lib-tests 21663/21664: CB-200 only); 16 CI-only printed |
-| CB-200 red is master's, not this branch's | 3425e9ed3 message | clean clone of `441d198e7`: `pmat comply check --checks CB-200` → **1742 below A, 54 over 1688**, the same count as the branch |
-| CI on `08eebd2e5` | gh pr checks | 42 pass, 0 fail, 2 pending (cli-doc-sync, individual shard 1) when the andon fired |
+| `48cd21d03` (the #1381 row) | conflicted with master's PMAT-1381 row from #1382; the bytes differ (master's row has acceptance_criteria and `labels: []`) | master's bytes taken; the commit became empty and was dropped. **The #1381 row is no longer in this diff.** |
+| four ledger re-render commits | conflicted on the ledger summary lines | master's bytes taken, then both ledgers re-rendered once on the rebased tree, in two commits |
+| receipt commit, `impl-estimates.jsonl` | `.gitattributes` gives the ledger `merge=union` (PMAT-1366), so the rebase re-added 31 rows that #1382 had rewritten | master's bytes restored; this ticket's row re-appended with `pmat work estimate record` |
+
+Re-render evidence: `pmat analyze reachability --check-ledger` → 0; `pmat analyze unrun-tests --executed '' --check-ledger` → 0.
+
+## How a sibling gate adds a row (D0 issue-closure contract, D2 roadmap-write query gate)
+
+Append **one line** to the `legs_table` heredoc in `scripts/gate.sh`, below the line `# ── EXTENSION POINT ──…`, before `LEGS`. Make no other edit: the runner, the CI-ONLY printout and the verdict pick the row up.
+
+```
+kind    | contexts | leg | source | note | command
+cmd     | gate | issue-closure | ci.yml <job> "<step>" | - | <command run from the repo root>
+step    | gate | roadmap-write-query | .github/workflows/<file>.yml#<job id>#<step name> | - | -
+ci-only | gate | <leg> | <where CI runs it> | <platform|credential|cost|trigger|not-gating|not-required>: <reason> | -
+```
+
+- `step` runs a workflow step's `run:` text, read at run time. Use it when the step is plain bash with no `${{ }}`, `if:` or `env:`.
+- `cmd` runs the command you give it. `<note>` says how that differs from CI.
+- `ci-only` runs nothing, but its reason is printed on every exit. A credential reason that is really a GitHub token `gh` already holds is refused (`src/make_gate_tests.rs`).
+- `<contexts>` is `;`-separated and must name a required context.
+- Keep the marker line. `scripts/gate-control.sh` and `src/make_gate_tests.rs` assert that it exists.
+- Check the table with `bash scripts/gate.sh --list`. It runs nothing.
+
+## Verification — re-run by the orchestrator on the rebased head `bfe4e7acd`
+
+| claim | re-run |
+|---|---|
+| discovery finds the gate | `discover.sh` → `gate_cmd=make gate`, `gate_cmd_fallback=false` |
+| `make gate` | 605 s, **26 PASS, 2 FAIL**: `lib-tests` (21690/21691 — only `tdg_baseline::tests::the_committed_baseline_is_the_measured_count`, CB-200 #1266) and `cb-2113-cb-2115` (CB-2113 ✓ 13 commits; CB-2115 ✗ `ORPHAN-ROADMAP PMAT-1366: #1366 is closed`). The CI-only rows are printed by name. |
+| CB-2115 red is master's | master e89a827f7 carries `PMAT-1366 status: planned`; `gh issue view 1366` → CLOSED 2026-09-17T08:55:11Z. On #1384's tree: `pmat comply check --checks CB-2115` → ✓ 114/114, `pmat work sync --check-only` coherent |
+| CI on `bfe4e7acd` (first read) | 22 pass, 1 fail (`traceability`, the same CB-2115 finding), 19 pending |
+| the CB-200 red is master's (fourth session) | clean clone of `441d198e7`: 1742 below A against a baseline of 1688, the same as the branch |
+| contract | `contracts/make-gate-v1.yaml`: `pv-obligations` leg PASS inside `make gate` |
+| controls | `gate-control` leg PASS (`scripts/gate-control.sh`) |
+
+## Scope
+
+- **#1381 row: gone from this diff.** It was the fourth session's one blocking quorum FAIL. Master now carries it (#1382).
+- **PMAT-1366 completion: not in this diff.** The fourth session's rule was: a foreign roadmap row that draws a scope FAIL comes out and must reach master on its own. #1380 (PMAT-1373) set the precedent for exactly this lifecycle gap. So the fix is #1384 (`pmat work sync --direction github-to-yaml`, one close-item), opened from this session because #1368 cannot pass `traceability` without it.
+- Still in this diff: `PMAT-1365`'s own row gains `kind:code` (the label `kind-gate.sh` reads).
 
 ## Jidoka
 
 | defect | owner | five whys → mechanism | disposition |
 |---|---|---|---|
-| feature-gate red on 1d8c64f40 (orphan-files ledger drift) | scripts/gate.sh | new .rs file → the ledger header count moved → no lib test covers that ledger → gate.sh marked the leg CI-only → the "cost" reason was never measured, and a ci-only reason is accepted as asserted | fixed: 22e4cd1fe RED, dd1dd95d3 GREEN, 3090e823c |
-| gate red on 1d8c64f40 (CB-2115 ORPHAN-GITHUB #1381) | scripts/gate.sh + roadmap | #1381 opened after master's last green → CB-2115 is a bijection over open issues → every PR is red until a row lands → `make gate` could not see it: the "credential" reason was false (gh holds the token) | fixed: c7ca2177a RED, 48cd21d03 GREEN (row byte-identical to origin/PMAT-1381-row 242755717) |
-| dependabot-alerts-live false credential reason | scripts/gate.sh | same mechanism as the row above, found by measuring a quorum claim graded `asserted` | fixed: 143db4aca RED, 9870a0c9a GREEN |
-| lib-tests red locally: CB-200, 1742 vs 1688 | src/services/tdg_baseline.rs (PMAT-636, #1266) | debt below grade A was added on master → the lib test measures only where `.pmat/context.db` exists → CI checkouts have no index, so `ci / gate` passes it unmeasured (#1008 made that trade to keep the suite fast) | **not fixed, not waived**: already filed as #1266 (drift was 21, now 54) |
+| feature-gate red on 1d8c64f40 (orphan-files ledger drift) | scripts/gate.sh | a new .rs file moved the ledger header count → no lib test covers that ledger → gate.sh marked the leg CI-only → the "cost" reason was never measured | fixed (fourth session): RED `d52bd0f82`, GREEN `01a67b512` |
+| CB-2115 ORPHAN-GITHUB #1381 | roadmap lifecycle | an issue opened after master's last green has no row → CB-2115 is a bijection over open issues → every PR goes red | fixed on master by #1382; this branch's copy was dropped in the rebase |
+| dependabot-alerts-live false credential reason | scripts/gate.sh | a CI-only reason is accepted as asserted, and `gh` already holds the token | fixed (fourth session): RED `d30834a1e`, GREEN `5161561f3` |
+| CB-2115 ORPHAN-ROADMAP PMAT-1366 | roadmap lifecycle (PMAT-1336) | a merged PR closes its issue → a ticket cannot complete its own row in the PR that closes it → the row stays `planned` → CB-2115 reds every PR. The fifth instance of this gap in two days | **not fixed here**: #1384 |
+| lib-tests red locally: CB-200, 1742 vs 1688 | src/services/tdg_baseline.rs (#1266) | debt below grade A was added on master → the lib test measures only where `.pmat/context.db` exists → CI checkouts have no index, so `ci / gate` passes it unmeasured | **not fixed, not waived**: #1266 |
 
-## Scope decision under review: the #1381 roadmap row
+## Dispatch ledger (fifth session)
 
-quorum-review.sh lane 1 (gemini-3.1-pro-high), FAIL, `cited`:
-
-> docs/roadmaps/roadmap.yaml:6946 — The diff adds a new, unrelated ticket PMAT-1381 to the roadmap.
-
-What it said is true: the row is **not** part of PMAT-1365's feature. It rides on this PR because:
-
-- the required context `gate` needs `traceability`, and CB-2115 fails every PR bound for master while open issue #1381 has no row (measured: exit 1 on 1d8c64f40 in CI, and locally);
-- precedent: PMAT-1365's own row was added on PMAT-1359 for the same reason (its acceptance_criteria say so);
-- the row is byte-identical to `origin/PMAT-1381-row` (242755717, pushed with no PR), so that branch still merges cleanly. It registers PMAT-1381 as `planned` and neither starts nor lands it.
-
-That round ran **without this receipt**. The rail's lane prompt includes `docs/audits/impl-<ticket>-receipt.md` when present, and it was absent. The next round sees this section. **If any lane still FAILs on scope, the row comes out of #1368.** The row then has to reach master on its own first, because #1368 cannot pass `gate` without it. Record that as a blocker, and do not re-run the round again.
+No subagents were dispatched. transcript-gate.sh: `PASS attempted=0 denied=0 stalled=0 running_peak=0 slots=3`, which is vacuous. The pre-merge review is `quorum-review.sh` (three agy lanes), run on this commit. Its artifact is `docs/audits/quorum-PMAT-1365.json`, committed on top.
 
 ## Estimates
 
-K̂ = 60, declared `first-run[U]`. **That declaration was wrong**: `estimate.sh paiml-mcp-agent-toolkit 5`
-exited 2 (ENV: "16 measured rows … none enters a total"), and an exit 2 is never `first-run[U]`. The
-ledger's own repo key is `pmat`, not the directory name. K = 120. k_measured at the andon = 104.
+- `estimate.sh paiml-mcp-agent-toolkit 5` → `K_HAT=35 BASIS=docs/audits/impl-estimates.jsonl:L22-L31`, 14 pooled rows.
+- The fourth session declared K̂=60 as `first-run[U]`. That was wrong: estimate.sh exited 2.
+- `k_measured`: fourth session 104; fifth session 37 at the last measurement before this receipt was written. Sessions 1–3 were not measured.
+- The row is therefore recorded with `unit: session` and is never pooled.
 
 ## Gaps
 
-- **Routing R-4 not followed.** route.sh printed `agy-goal` for the implementation phases; they were done directly. The edits were small and driven by measurements already taken, but that reason is not the rule's.
-- The first delegate hit maxTurns and returned no receipt. Its verdicts come from its `lane-reduce.json`, read directly.
-- No lane, in any round, measured the 16 CI-only rows one by one. The orchestrator checked the factual ones (trigger, platform, not-gating, not-required) and the two GitHub-token credentials. The cost rows were judged by reading, not timed.
-- `make gate` is RED at the judged head on CB-200 (#1266), master's defect.
-- Not merged. Next session: re-run `quorum-review.sh --base master --ticket PMAT-1365 --pr 1368` on the head carrying this receipt. If agreed, run `pmat-merge 1368 --auto --merge` once CI is green. If not, apply the scope rule above.
+- Routing R-4 was not followed in any session: the implementation phases were done directly.
+- CI green and the merge are not proven by this receipt. They wait on #1384 and on the rest of the checks.
+- The fourth session never timed the `cost:` CI-only rows one by one. The fifth did not either.
