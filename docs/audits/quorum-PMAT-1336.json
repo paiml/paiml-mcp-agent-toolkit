@@ -3,14 +3,14 @@
   "base": "master",
   "base_resolved": "origin/master",
   "base_note": "local master and origin/master agree",
-  "head": "80066b08a5f31dea31a92506f57b407166294d73",
-  "diff_sha256": "08e5421b479fdf1006d9670f80945d3ca97528d9a68be489c8e55043c8359dc3",
+  "head": "6d4132666e4fc4773dd34a9f9f20b6fac5286864",
+  "diff_sha256": "e86228043d1b28b17142357dd199a0ecb8c8e8316ce2c76153a754ed5bec7483",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "inline",
-  "prompt_bytes": 17192,
+  "prompt_bytes": 15695,
   "author": {
-    "model": "claude-opus-5",
+    "model": "claude-fable-5-1",
     "family": "claude",
     "source": "flag"
   },
@@ -20,10 +20,29 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff correctly implements the ticket PMAT-1336 by updating the status of orphaned roadmap rows (PMAT-708 and PMAT-1305) to `completed`. The receipt claims are fully backed by the diff and the state of `docs/roadmaps/roadmap.yaml`, including the retention of the `deferred:3.41.0` label on PMAT-708. No conflicting test assertions, weakened gates, or unauthorized changes were found.",
-      "findings": [],
-      "raw_bytes": 3471,
-      "err_bytes": 79,
+      "summary": "The diff updates the roadmap status of PMAT-1365 to `completed` and appends a corresponding receipt log, successfully resolving the lifecycle gap described in PMAT-1336. The changes strictly adhere to the ticket's goals without violating any known constraints. The receipt claims are fully supported by the diff.",
+      "findings": [
+        {
+          "claim": "the diff is that row's `status` and `updated` lines.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 6834
+        },
+        {
+          "claim": "This section was written by the release-3.41.0 orchestrator session itself, not a ticket session: all three session slots were occupied and the change is the writer's own two-line output.",
+          "file": "docs/audits/impl-PMAT-1336-receipt.md",
+          "grounding": "cited",
+          "line": 101
+        },
+        {
+          "claim": "At `HEAD=ef2a0b947 origin/master=ef2a0b947 behind=0`, `pmat work sync --check-only` read open items 113 against open issues 112 with one finding, `ORPHAN-ROADMAP PMAT-1365: #1365 is closed`.",
+          "file": "docs/audits/impl-PMAT-1336-receipt.md",
+          "grounding": "asserted",
+          "line": 97
+        }
+      ],
+      "raw_bytes": 3313,
+      "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
       "grounding_check": "parity",
@@ -36,9 +55,9 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff for PMAT-1336 updates `docs/roadmaps/roadmap.yaml` and `docs/audits/impl-PMAT-1336-receipt.md` to mark PMAT-1305 and PMAT-708 as completed following the merge of PR #1388 (merge commit ce945d81e) and manual closing of duplicate issue #1284. The branch touches only `docs/roadmaps/roadmap.yaml` and `docs/audits/**`, satisfying criterion 2. Each completion commit explicitly names merge commit ce945d81e in its commit message, satisfying criterion 3. CB-2113 passes verifying commit traceability and Pmat-Ticket trailers, and `pmat work validate --check-base origin/master` passes. All receipt claims are backed by the measured diff and git history, no gates are weakened, and no out-of-scope files or changes are included. Verdict: PASS.",
+      "summary": "The diff for ticket PMAT-1336 updates `docs/roadmaps/roadmap.yaml` to set the status of PMAT-1365 (github_issue 1365) to `completed` with an updated timestamp, and records this update in `docs/audits/impl-PMAT-1336-receipt.md`. This resolves the lifecycle gap after PR #1368 (merge commit ef2a0b947) closed issue #1365. Acceptance criteria verification: (1) PMAT-1365's roadmap status is marked completed in sync with its closed GitHub issue; (2) the diff touches exclusively `docs/roadmaps/roadmap.yaml` and `docs/audits/impl-PMAT-1336-receipt.md`, with zero source code modifications; (3) commit 6d4132666 explicitly names merge commit ef2a0b947. Validation check `pmat work validate --check-base origin/master` passes (exit 0) and CB-2113 commit traceability check passes (exit 0). No tests assert the opposite, no gates are weakened, and all receipt claims are backed by the diff. Verdict: PASS.",
       "findings": [],
-      "raw_bytes": 2822,
+      "raw_bytes": 3115,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -52,9 +71,9 @@
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "Reviewed diff origin/master..HEAD for ticket PMAT-1336. Verified that all acceptance criteria are satisfied: (1) roadmap rows PMAT-1305 and PMAT-708 are marked completed matching their closed GitHub issues (#1305, #1284), (2) the diff modifies only docs/roadmaps/roadmap.yaml and docs/audits/impl-PMAT-1336-receipt.md with no source code changes, and (3) each completion commit (da02fb505 and ebbd9033e) explicitly references the merge commit (ce945d81e) that landed the work. `pmat work validate --check-base origin/master` passes with exit code 0, and CB-2113 traceability is satisfied across all branch commits. No refutations found.",
+      "summary": "The diff completes roadmap item PMAT-1365 (github_issue 1365) in docs/roadmaps/roadmap.yaml following the merge of PR #1368 (ef2a0b947) into master, and records the change in docs/audits/impl-PMAT-1336-receipt.md. The change strictly addresses the lifecycle gap under ticket PMAT-1336 without modifying any source files or weakening any gates. Roadmap validation passes. Verdict: PASS.",
       "findings": [],
-      "raw_bytes": 2557,
+      "raw_bytes": 2085,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -66,7 +85,38 @@
     }
   ],
   "dissent": [],
-  "dedup": [],
+  "dedup": [
+    {
+      "file": "docs/audits/impl-PMAT-1336-receipt.md",
+      "line": 97,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "At `HEAD=ef2a0b947 origin/master=ef2a0b947 behind=0`, `pmat work sync --check-only` read open items 113 against open issues 112 with one finding, `ORPHAN-ROADMAP PMAT-1365: #1365 is closed`."
+      ]
+    },
+    {
+      "file": "docs/audits/impl-PMAT-1336-receipt.md",
+      "line": 101,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "This section was written by the release-3.41.0 orchestrator session itself, not a ticket session: all three session slots were occupied and the change is the writer's own two-line output."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 6834,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "the diff is that row's `status` and `updated` lines."
+      ]
+    }
+  ],
   "uncovered": [],
   "coverage_source": "lanes",
   "partial": false,
@@ -79,6 +129,6 @@
   },
   "lint": {
     "ok": true,
-    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-fable-5-1/claude"
   }
 }

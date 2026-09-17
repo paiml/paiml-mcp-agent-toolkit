@@ -89,3 +89,13 @@ Corrections to the brief:
 - `.quorum/` does not exist in this repository. As for #1383 and #1387, the quorum artifact is `docs/audits/quorum-PMAT-1336.json`.
 
 Gates of the skill itself: `kind-gate.sh PMAT-1336` and `model-gate.sh PMAT-1336` both still exit 2 on `kind:lifecycle`, as recorded for PMAT-1386. The branch keeps to `docs/roadmaps/roadmap.yaml` and `docs/audits/**`.
+
+## 2026-09-17 — PMAT-1365, closed by #1368 and left `planned`
+
+#1368 (PMAT-1365, `make gate`) merged as ef2a0b947 at 2026-09-17T14:57:09Z and its closing line closed issue #1365. A ticket cannot complete itself under CB-2113, so the `PMAT-1365` row stayed `planned`.
+
+At `HEAD=ef2a0b947 origin/master=ef2a0b947 behind=0`, `pmat work sync --check-only` read open items 113 against open issues 112 with one finding, `ORPHAN-ROADMAP PMAT-1365: #1365 is closed`. The required `gate` needs `traceability`, so that finding reds every open PR (#1389 is in CI; two more tickets are being implemented).
+
+Fixed with `pmat work sync --direction github-to-yaml`. Its dry-run planned exactly one action, `close-item PMAT-1365 #1365 → Completed`; the diff is that row's `status` and `updated` lines. After it, `pmat work sync --check-only` reads 112/112 coherent.
+
+This section was written by the release-3.41.0 orchestrator session itself, not a ticket session: all three session slots were occupied and the change is the writer's own two-line output.
