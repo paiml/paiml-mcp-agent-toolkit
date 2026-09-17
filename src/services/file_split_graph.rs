@@ -92,24 +92,36 @@ fn connected_components(graph: &UndirectedGraph) -> Vec<usize> {
         if assignments[idx] != usize::MAX {
             continue;
         }
-        // BFS
-        let mut queue = vec![nid];
         assignments[idx] = current_community;
-        while let Some(current) = queue.pop() {
-            for neighbor in graph.neighbors(current) {
-                // Find index of neighbor in node_ids
-                if let Some(neighbor_idx) = node_ids.iter().position(|&n| n == neighbor) {
-                    if assignments[neighbor_idx] == usize::MAX {
-                        assignments[neighbor_idx] = current_community;
-                        queue.push(neighbor);
-                    }
-                }
-            }
-        }
+        label_component(graph, &node_ids, &mut assignments, nid, current_community);
         current_community += 1;
     }
 
     assignments
+}
+
+/// Search outward from `start` (already labelled `community` by the caller),
+/// giving every still-unlabelled node it reaches the same label.
+fn label_component(
+    graph: &UndirectedGraph,
+    node_ids: &[crate::graph::types::NodeId],
+    assignments: &mut [usize],
+    start: crate::graph::types::NodeId,
+    community: usize,
+) {
+    // BFS
+    let mut queue = vec![start];
+    while let Some(current) = queue.pop() {
+        for neighbor in graph.neighbors(current) {
+            // Find index of neighbor in node_ids
+            if let Some(neighbor_idx) = node_ids.iter().position(|&n| n == neighbor) {
+                if assignments[neighbor_idx] == usize::MAX {
+                    assignments[neighbor_idx] = community;
+                    queue.push(neighbor);
+                }
+            }
+        }
+    }
 }
 
 fn make_cluster_item(
