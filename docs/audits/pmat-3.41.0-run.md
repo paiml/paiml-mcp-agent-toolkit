@@ -455,3 +455,8 @@ tree: run-log behind=0 against origin/master b3df4a402. Host up 5 hours, 53 minu
 tree: run-log behind=3 against origin/master 03f893a4a. Host up 6 hours, 22 minutes, load 1.61, 2.79, 5.15.
 - Lifecycle-9 #1398 merged; master's bijection is coherent with PMAT-636 and PMAT-900001 terminal.
 - REL-3.41.0: branch head ad214bd98 (the cut commit); it has run `make validate-book`, read the clean-room Makefile's `_copy-source`/`_run-gates`, built a detached source tree and started the local clean room (~35 min expected). The orchestrator runs nothing heavy meanwhile.
+
+## 2026-09-17T22:32Z — release PR #1400 open; local clean room done; quorum round 1 running
+
+tree: run-log behind=3 against origin/master 03f893a4a. Host up 7 hours.
+- REL-3.41.0 opened PR #1400 from `release/3.41.0` (head ad214bd98) after its local clean room finished (its receipt carries the gate-by-gate result; I re-read it when the session reports) and started quorum round 1. Checks:      26 pass      19 pending       4 skipping .
