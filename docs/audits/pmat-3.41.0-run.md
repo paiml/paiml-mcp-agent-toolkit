@@ -172,3 +172,17 @@ tree: run-log behind=0 against origin/master 8915fe3e6.
 - D2 filed its own ticket: PMAT-1385 (branch `PMAT-1385-roadmap-unlocked-write-bypass`), LIVE, no PR yet. D4 rebased onto the D1 merge (HEAD be34454e7). PMAT-1336 HEAD 7f46ba209.
 - Drafted the D6 brief (`.run/briefs/PMAT-636.tmpl`, CB-200 / #1266): re-measure with one binary on both trees and publish the set difference before fixing; never raise the baseline; make a required CI job able to see the count. Queue after the next free slot: D0, then D6.
 - Correction: the previous entry's heading said 10:12Z; its commit landed at ~10:11Z — headings are now generated with `date -u`, not typed.
+
+## 2026-09-17T11:07Z — D4 reviewed and ready but blocked by the lifecycle cascade; the #1305 flake hit the lifecycle PR; D7 launched
+
+tree: run-log behind=0 against origin/master 8915fe3e6.
+
+Raw:
+- D4 PMAT-1365 fifth session: `PARTIAL(blocker)`, PR #1368 open, not draft, NOT armed. Quorum 3/3 PASS twice (judged heads 1f6207559, f6f0aea1d; artifact eba9388cd). `make gate` on be34454e7: 27/28 legs pass; the one red is `cb-2113-cb-2115` — ORPHAN-ROADMAP PMAT-1363 (#1363 closed 09:51:56Z by the D1 merge, row still `planned`) and ORPHAN-GITHUB #1385 (D2's new issue, opened 09:57:46Z, no row on master). Both are master's state, not the branch's. CI on eba9388cd: 30 pass, `traceability` fail. Extension point for D0/D2: ONE row in the `legs_table` heredoc of `scripts/gate.sh` below `# ── EXTENSION POINT`, format `kind | contexts | leg | source | note | command`.
+- Notable: at be34454e7 the CB-200 lib test PASSED inside `make gate` (it was the one red at bfe4e7acd). The session did not investigate. That is the index-freshness flip #1266 describes — the same tree reads red or green — and is part of D6's brief.
+- Lifecycle PR #1383 (now "register PMAT-1385 and complete PMAT-1363") went red on required `ci / test`, run 35209474539 job 105168799345, 10:49:42Z, on a ROADMAP-ONLY diff: `a_crate_that_does_not_compile_is_reported_as_not_measured … FAILED — not_measured must be set for an uncompilable crate; outcome was: violations=[] not_applicable=None` (21731 passed, 1 failed). That is the known flake #1305 / #1284. The PMAT-1336 session re-ran the job (pending at 11:07Z).
+- Corrections D4 made to my resume note (findings): "red on CB-200 only" was wrong at both heads it measured; "#1382 resolved it upstream" was half true — #1382 landed the #1381 row and in the same merge orphaned PMAT-1366's row; the installed `pmat` on PATH (3.40.2) has no `work estimate` — only a tree-built binary does; `merge=union` on the estimates ledger re-added 31 rows on rebase (second session to be bitten; goes to D3's follow-up paiml-implement#216 context and to the release notes as a known hazard until fixed).
+
+Decisions:
+- The cascade is now the critical path: D4 cannot go green until #1383 merges, #1383 needs a re-run of a flaky required check, and a PR that fixes the flake would itself need `traceability` green — so the re-run is the only non-circular way forward and is NOT treated as a bypass (the check still has to pass on its own). But a flake is red until root-caused: 11:06Z launched D7 PMAT-1305 (clone `.wt/PMAT-1305`, pid 2608636) to fix the analyzer at the cause. Basis: three recorded occurrences, the latest on a diff that touches no Rust.
+- Queue: when the PMAT-1336 session ends → a short D4 finishing session (merge master, re-quorum if the diff changed, arm). Then D6 (CB-200) and D0 as slots free. Slots 3/3: D2 (PMAT-1385), PMAT-1336, PMAT-1305.
