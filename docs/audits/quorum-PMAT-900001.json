@@ -1,14 +1,14 @@
 {
   "ticket": "PMAT-900001",
-  "base": "origin/master",
+  "base": "master",
   "base_resolved": "origin/master",
-  "base_note": "no origin/origin/master exists; judged against the local ref",
-  "head": "14bae65e9ca41bf8d7b81e38626323fab277f004",
-  "diff_sha256": "97cc81cbc1f8b506b4519a0f702d6d82ab5ecac66849c9398c8116dccbb744d9",
+  "base_note": "local master and origin/master agree",
+  "head": "4111549f7b9e8a58d65c7c1f72fc61b27529ccbe",
+  "diff_sha256": "f386f503bf1b2ed6a7f03c264c49c4b3bb97f6b19df4d769b4391910fb351928",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "file",
-  "prompt_bytes": 135151,
+  "prompt_bytes": 142763,
   "author": {
     "model": "claude-opus-5",
     "family": "claude",
@@ -20,13 +20,12 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff rigorously implements PMAT-900001 exactly as specified without weakening any gates or contradicting the receipt. The `contracts/pmat-issue-closure-v1.yaml` contract is present and enforces the 'no closing keyword except Closes #N' rule. The call-site gate is correctly installed in `ci.yml` and `scripts/gate.sh`. The shared closing keyword lint snippet is successfully integrated into all three commit-msg hooks and the PR-body lint. The 6 commit builders and 4 issue builders correctly use the `neutralise` function. The `pmat work edit --notes` capability has been added with tests, and the PMAT-1369 cross-reference was correctly placed in its `notes` field. No test or receipt claim is contradicted by the diff.",
+      "summary": "The diff comprehensively implements PMAT-900001 without introducing anything forbidden by the ticket. All deliverables including the issue-closure contract (`contracts/pmat-issue-closure-v1.yaml`), call-site gate, emitter neutralisation, commit/PR-body lint, and the `pmat work edit --notes` capability are present and match the receipt claims. The `roadmap.yaml` changes correctly include the PMAT-1369 cross-reference as explicitly required by the ticket criteria. No tests contradict the ticket, and gates have been strengthened.",
       "findings": [],
-      "raw_bytes": 2823,
+      "raw_bytes": 22747,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
-      "grounding_check": "parity",
       "model": "gemini-3.1-pro-high",
       "model_measured": "gemini-3.1-pro-high",
       "model_source": "measured",
@@ -36,10 +35,10 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "Diff PMAT-900001 fully satisfies all requirements of the ticket, receipt, and contract without refutation:\n1. Issue-closure contract: `contracts/pmat-issue-closure-v1.yaml` is valid under `pv validate` (0 errors, 0 warnings; 8 equations, 8 proof obligations, 8 falsification tests), and verified clean by `pv-obligation-gate.py`.\n2. Call-site gate: `scripts/issue-closure-gate.sh` passes its `--self-test` across all 6 planted defect arms (rust-call, gh-args, script, rust-const, definition-renamed, vacuous) and passes clean over this repository (4493 .rs files scanned, 4/4 definitions found, 0 call sites, 0 text hits). It is wired into `ci.yml` traceability job and `scripts/gate.sh` (row `issue-closure`), passing `scripts/gate-control.sh`.\n3. Closing-keyword lint & emitter neutralisation: Single ERE pattern defined in `src/services/closing_keywords.rs` and verbatim in `src/services/closing_keywords_lint.sh`, verified identical by differential test. All three commit-msg hook writers (`hooks_command.rs`, `hook_manager.rs`, `git_hooks_install.rs`) splice the lint and refuse closing references. All commit and issue emitters neutralise interpolated text. `prompts/github-ticket.yaml` teaches only `Closes #N` and replaces manual `gh issue close` instructions. `scripts/pr-body-closing-lint.sh` passes `--self-test` across all fixtures and is wired into CI pull request jobs.\n4. Cross-reference & work edit notes: `pmat work edit --notes` added RED->GREEN, updating `notes:` without displacing acceptance criteria, with unit tests passing. Ticket row PMAT-900001 and cross-reference PMAT-1369 properly updated in `roadmap.yaml`.\nNo gates weakened, no receipt claims unbacked, no unauthorized scope changes found. Verdict: PASS.",
+      "summary": "Diff PMAT-900001 completely and correctly satisfies all requirements of the ticket, receipt, and contract without refutation:\n\n1. Issue-closure contract: `contracts/pmat-issue-closure-v1.yaml` validates cleanly under `pv validate` with 0 errors and 0 warnings, establishing that no pmat code path closes an issue unasked and formalising the 8 equations and proof obligations.\n2. Call-site gate: `scripts/issue-closure-gate.sh` passes its `--self-test` across all 6 planted defect arms (rust-call, gh-args, script, rust-const, definition-renamed, vacuous). Running against the repository passes clean (4493 Rust files and 5137 text files scanned, 4/4 definitions found, 0 call sites, 0 illegal text hits). It is properly wired into `ci.yml` (traceability job) and `scripts/gate.sh` (row `issue-closure`), and verified by `scripts/gate-control.sh` (arm 12 FRESH-BINARY passes).\n3. Closing-keyword lint & emitter neutralisation: Single regex pattern shared byte-for-byte between `src/services/closing_keywords.rs` and `src/services/closing_keywords_lint.sh`. All three commit-msg hook writers (`hooks_command.rs`, `hook_manager.rs`, `git_hooks_install.rs`) splice the shared shell snippet and reject closing references outside the sanctioned `Closes #N` prefix. All 6 commit builders and 4 issue builders route free text through `closing_keywords::neutralise`. `prompts/github-ticket.yaml` teaches only `Closes #NNN` and eliminates manual `gh issue close` advice. `scripts/pr-body-closing-lint.sh` passes `--self-test` across all fixtures and is integrated into CI.\n4. Work edit notes & roadmap cross-references: `pmat work edit --notes` capability is implemented with tests preserving acceptance criteria. Ticket row PMAT-900001 is bound to issue #1395, and PMAT-1369 carries the upstream aprender#3397-3399 cross-reference in `notes`. `pmat work validate` and both status ledgers (`orphan-files-ledger.md`, `unrun-tests-ledger.md`) pass verification cleanly.\n\nNo gates are weakened, no tests contradict the ticket, and all receipt claims are backed by the diff. Verdict: PASS.",
       "findings": [],
-      "raw_bytes": 5087,
-      "err_bytes": 79,
+      "raw_bytes": 5586,
+      "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
       "grounding_check": "parity",
@@ -52,41 +51,47 @@
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "Diff review for PMAT-900001: Verified that all deliverables required by the ticket are fully and correctly implemented without unrequested changes or weakened gates. The issue-closure contract contracts/pmat-issue-closure-v1.yaml validates cleanly (8 equations, 8 proof obligations, 8 falsification tests). The call-site gate scripts/issue-closure-gate.sh and its self-test pass with full anti-vacuity protection. The PR body closing lint scripts/pr-body-closing-lint.sh passes self-test against the full fixture table. Emitters across pmat (work complete, bug report, kaizen, refactor, split auto, test discovery, automation git) are neutralised with closing_keywords::neutralise. All three commit-msg hook writers share the common closing-keyword lint snippet and pass differential verification tests. Roadmap row PMAT-900001 is planned and bound to issue #1395, and PMAT-1369 cross-references upstream issues via the newly supported pmat work edit --notes. Verdict is PASS.",
+      "summary": "Independent review (Lane 3 of 3) for PMAT-900001: The diff satisfies all ticket requirements, matches the receipt and contract, and contains no refuting evidence. All deliverables (issue-closure contract, call-site gate with anti-vacuous self-test, shared closing-keyword lint in hooks and CI, emitter neutralisation, and work edit --notes cross-referencing) are verified and pass testing cleanly.",
       "findings": [
         {
           "claim": "The issue-closure gate self-test verifies that all planted defects (rust-call, gh-args, script, rust-const, definition-renamed, vacuous) trigger exit 1 and the clean tree exits 0.",
           "file": "scripts/issue-closure-gate.sh",
           "grounding": "measured",
-          "line": 1062
+          "line": 1212
         },
         {
           "claim": "Running issue-closure-gate.sh against target/debug/pmat scanned 4493 Rust files and 5137 text files, finding 4/4 definitions, 0 call sites, and 0 illegal text hits, exiting 0 PASS.",
           "file": "scripts/issue-closure-gate.sh",
           "grounding": "measured",
-          "line": 954
+          "line": 1104
         },
         {
           "claim": "The PR body closing lint self-test verifies that all 4 RED fixtures exit 1 and all 4 GREEN fixtures exit 0, and an unreadable PR exits 2.",
           "file": "scripts/pr-body-closing-lint.sh",
           "grounding": "measured",
-          "line": 1142
+          "line": 1292
         },
         {
-          "claim": "All unit and differential tests for closing keywords and hook templates pass (12 passed, 0 failed).",
+          "claim": "All unit and differential tests for closing keywords, hook templates, and prompt/emitter neutralisation pass (12 passed, 0 failed).",
           "file": "src/services/closing_keywords.rs",
           "grounding": "measured",
-          "line": 1814
+          "line": 1964
         },
         {
-          "claim": "pv validate confirms 0 errors and 0 warnings on contracts/pmat-issue-closure-v1.yaml, and pv status confirms 8 equations, 8 proof obligations, and 8 falsification tests.",
+          "claim": "pv validate confirms 0 errors and 0 warnings on contracts/pmat-issue-closure-v1.yaml, pv status confirms 8 equations, 8 proof obligations, and 8 falsification tests, and pv-obligation-gate reports 0 problems.",
           "file": "contracts/pmat-issue-closure-v1.yaml",
           "grounding": "measured",
           "line": 1
+        },
+        {
+          "claim": "The pmat work edit --notes implementation correctly updates notes without replacing acceptance criteria, verified by work_add_append_only_edit_notes_sets_notes_and_keeps_the_criteria.",
+          "file": "src/tests/work_add_append_only_tests.rs",
+          "grounding": "measured",
+          "line": 2330
         }
       ],
-      "raw_bytes": 6005,
-      "err_bytes": 0,
+      "raw_bytes": 5983,
+      "err_bytes": 79,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
       "grounding_check": "parity",
@@ -105,12 +110,12 @@
         3
       ],
       "claims": [
-        "pv validate confirms 0 errors and 0 warnings on contracts/pmat-issue-closure-v1.yaml, and pv status confirms 8 equations, 8 proof obligations, and 8 falsification tests."
+        "pv validate confirms 0 errors and 0 warnings on contracts/pmat-issue-closure-v1.yaml, pv status confirms 8 equations, 8 proof obligations, and 8 falsification tests, and pv-obligation-gate reports 0 problems."
       ]
     },
     {
       "file": "scripts/issue-closure-gate.sh",
-      "line": 954,
+      "line": 1104,
       "lanes_agreeing": [
         3
       ],
@@ -120,7 +125,7 @@
     },
     {
       "file": "scripts/issue-closure-gate.sh",
-      "line": 1062,
+      "line": 1212,
       "lanes_agreeing": [
         3
       ],
@@ -130,7 +135,7 @@
     },
     {
       "file": "scripts/pr-body-closing-lint.sh",
-      "line": 1142,
+      "line": 1292,
       "lanes_agreeing": [
         3
       ],
@@ -140,19 +145,31 @@
     },
     {
       "file": "src/services/closing_keywords.rs",
-      "line": 1814,
+      "line": 1964,
       "lanes_agreeing": [
         3
       ],
       "claims": [
-        "All unit and differential tests for closing keywords and hook templates pass (12 passed, 0 failed)."
+        "All unit and differential tests for closing keywords, hook templates, and prompt/emitter neutralisation pass (12 passed, 0 failed)."
+      ]
+    },
+    {
+      "file": "src/tests/work_add_append_only_tests.rs",
+      "line": 2330,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The pmat work edit --notes implementation correctly updates notes without replacing acceptance criteria, verified by work_add_append_only_edit_notes_sets_notes_and_keeps_the_criteria."
       ]
     }
   ],
   "uncovered": [],
   "coverage_source": "lanes",
   "partial": false,
-  "partial_reasons": [],
+  "partial_reasons": [
+    "lane 1: grounding NOT COMPARED — structured_output holds a verdict but no single verdict object could be read out of .response (22747 raw bytes), so agy's labels stand unchecked for this lane (PMAT-082)"
+  ],
   "auto_merge": {
     "checked": true,
     "was_armed": false,
