@@ -83,8 +83,10 @@ step    | gate | spec-epic-control | .github/workflows/ci.yml#traceability#contr
 step    | gate | spec-review-control | .github/workflows/ci.yml#traceability#control — an active spec with no current review must be refused (CB-2111, exit 1) | - | -
 step    | gate | pr-lane-control | .github/workflows/ci.yml#traceability#PR lane control | - | -
 step    | gate | tests-dont-write-self-test | .github/workflows/ci.yml#traceability#the tree-cleanliness checker can still detect a write | - | -
-cmd     | gate | cb-2113 | ci.yml traceability "the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)" | CI runs CB-2113 and CB-2115 together with GH_TOKEN; this runs CB-2113, the offline half | ./target/debug/pmat comply check --checks CB-2113
-ci-only | gate | cb-2115 | ci.yml traceability (same step) | credential: CB-2115 reads GitHub issues with the workflow's GH_TOKEN | -
+# CB-2115 reads open GitHub issues. It was CI-only on "credential: the workflow's GH_TOKEN" until traceability went
+# red on PR #1368 (an issue opened with no roadmap row) while `make gate` read green; any clone that can push has a
+# gh token, and the check takes ~7s. No token is a FAIL here, never a skip: an unread GitHub is not an agreeing one.
+cmd     | gate | cb-2113-cb-2115 | ci.yml traceability "the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)" | CI sets GH_TOKEN to the workflow token; this uses $GH_TOKEN, else `gh auth token`, and fails without either | token="${GH_TOKEN:-$(gh auth token)}"; [ -n "$token" ]; GH_TOKEN="$token" ./target/debug/pmat comply check --checks CB-2113,CB-2115
 ci-only | gate | tests-dont-write | ci.yml traceability "the test suite does not write to the repository (pre-release lane)" | trigger: runs on push to master only (the pre-release lane), never on a pull request | -
 ci-only | gate | windows-check | ci.yml windows-check | platform: cargo check --bin pmat on windows-latest | -
 
