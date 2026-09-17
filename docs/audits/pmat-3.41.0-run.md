@@ -387,3 +387,8 @@ Decision: rendered ledgers must be re-rendered by a binary built from the merged
 
 tree: run-log behind=0 against origin/master b58addab8. Host up 3 hours, 35 minutes.
 - PR #1397 (lifecycle-7): 43 pass / 1 pending, armed. PR #1391 (D0): merged master, both ledgers re-rendered (f2333da18, 5ab1d1606), head f97d1f296 in CI, quorum round pending. D6 PMAT-636: LIVE, HEAD 253028f18, no PR yet. Slots 2/3.
+
+## 2026-09-17T19:35Z — #1397 MERGED; D0 re-armed and in CI
+
+tree: run-log behind=3 against origin/master eb5f79919. Host up 4 hours, 3 minutes.
+- Lifecycle-7 #1397 merged ~19:1xZ. D0 PR #1391 head 13915b557 armed (finishing session), 31 pass / 12 pending / 0 fail. D6 PMAT-636 LIVE at 51ed4d34f, still no PR. Slots 2/3.
