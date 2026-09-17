@@ -6,7 +6,7 @@ impl RoadmapService {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn upsert_item(&self, item: RoadmapItem) -> Result<()> {
         // Acquire exclusive lock for entire read-modify-write operation
-        let _lock = self.acquire_write_lock()?;
+        let lock = self.acquire_write_lock()?;
 
         // Load roadmap (no lock needed - we already have exclusive lock).
         // PMAT-1363: the view — base ⊕ entries/ in an opted-in repository.
@@ -19,7 +19,7 @@ impl RoadmapService {
         roadmap.upsert_item(item);
 
         // Save (no lock needed - we already have exclusive lock)
-        self.write_roadmap_unlocked(&roadmap)
+        self.write_roadmap_unlocked(&lock, &roadmap)
         // Lock released automatically
     }
 
@@ -38,7 +38,7 @@ impl RoadmapService {
     /// <path>:<line>, …`. In both cases the roadmap is untouched.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn upsert_item_checked(&self, item: RoadmapItem) -> Result<()> {
-        let _lock = self.acquire_write_lock()?;
+        let lock = self.acquire_write_lock()?;
 
         // PMAT-1363: judged on the view, so a duplicate a fragment introduces is
         // refused exactly as one in the base is.
@@ -51,7 +51,7 @@ impl RoadmapService {
         crate::services::roadmap_text::check_roadmap_text(&raw, &self.roadmap_path)?;
 
         roadmap.upsert_item(item);
-        self.write_roadmap_unlocked(&roadmap)
+        self.write_roadmap_unlocked(&lock, &roadmap)
         // Lock released automatically
     }
 
@@ -133,7 +133,7 @@ impl RoadmapService {
         // dir), so the three terms together are the whole repository's opinion.
         let next = crate::services::roadmap_text::next_id_number(
             &raw,
-            roadmap_id_authority::high_water_mark(&mut lock),
+            roadmap_id_authority::high_water_mark(lock.file_mut()),
         )
         .max(
             authority
@@ -152,15 +152,15 @@ impl RoadmapService {
         let item = build(id.clone());
         match parsed {
             Some(_) => {
-                self.persist_new_row(&raw, &item)?;
+                self.persist_new_row(&lock, &raw, &item)?;
             }
             None => {
                 let mut roadmap = Roadmap::default();
                 roadmap.roadmap.push(item);
-                self.write_roadmap_unlocked(&roadmap)?;
+                self.write_roadmap_unlocked(&lock, &roadmap)?;
             }
         }
-        roadmap_id_authority::write_high_water_mark(&mut lock, next)?;
+        roadmap_id_authority::write_high_water_mark(lock.file_mut(), next)?;
 
         Ok(id)
         // Lock released automatically
@@ -217,13 +217,14 @@ impl RoadmapService {
         }
         // PMAT-1363: the same seam as the allocator path — this is the path
         // `pmat work add --github-issue` takes.
-        self.persist_new_row(&raw, &build(id.to_string()))?;
+        self.persist_new_row(&lock, &raw, &build(id.to_string()))?;
         // Keep the shared high-water mark ahead of a caller-supplied id, so the
         // allocator cannot later hand out an id this call already spent.
         if let Some(number) = id.rsplit('-').next().and_then(|n| n.parse::<u32>().ok()) {
             let ahead = number.saturating_add(1);
-            if roadmap_id_authority::high_water_mark(&mut lock).is_none_or(|mark| mark < ahead) {
-                roadmap_id_authority::write_high_water_mark(&mut lock, ahead)?;
+            if roadmap_id_authority::high_water_mark(lock.file_mut()).is_none_or(|mark| mark < ahead)
+            {
+                roadmap_id_authority::write_high_water_mark(lock.file_mut(), ahead)?;
             }
         }
         Ok(id.to_string())
@@ -236,18 +237,18 @@ impl RoadmapService {
     /// roadmap — an append still has both branches writing one file's tail. Both
     /// `work add` paths (allocated id and caller-supplied id) come through here,
     /// so the behaviour cannot depend on which flag the caller used.
-    fn persist_new_row(&self, raw: &str, item: &RoadmapItem) -> Result<()> {
+    fn persist_new_row(&self, lock: &RoadmapWriteLock, raw: &str, item: &RoadmapItem) -> Result<()> {
         let block = crate::services::roadmap_text::render_item_block(
             item,
             crate::services::roadmap_text::row_indent(raw),
         );
         if let Some(entries) = self.fragment_dir()? {
-            crate::services::roadmap_fragments::write_fragment(&entries, &item.id, &block)
+            crate::services::roadmap_fragments::write_fragment(lock, &entries, &item.id, &block)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
             return Ok(());
         }
         let appended = crate::services::roadmap_text::append_item(raw, &block);
-        fs::write(&self.roadmap_path, appended)
+        lock.write(&self.roadmap_path, appended)
             .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))
     }
 
@@ -271,7 +272,7 @@ impl RoadmapService {
     /// untouched.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn replace_item_raw(&self, id: &str, item: &RoadmapItem) -> Result<()> {
-        let _lock = self.acquire_write_lock()?;
+        let lock = self.acquire_write_lock()?;
 
         // PMAT-1363: the view — base ⊕ entries/ in an opted-in repository — so a
         // ticket that exists only as a fragment can be edited too.
@@ -302,16 +303,16 @@ impl RoadmapService {
                     item.id
                 );
             }
-            return crate::services::roadmap_fragments::write_fragment(&entries, id, &block)
+            return crate::services::roadmap_fragments::write_fragment(&lock, &entries, id, &block)
                 .map(|_| ())
                 .map_err(|e| anyhow::anyhow!("{e}"));
         }
-        fs::write(&self.roadmap_path, updated)
+        lock.write(&self.roadmap_path, updated)
             .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))
         // Lock released automatically
     }
 
-    /// Serialise and write the roadmap. The caller must already hold the lock.
+    /// Serialise and write the roadmap, under the lock `lock` proves is held.
     ///
     /// PMAT-1363: the ONE model-level writer — `save`, `upsert_item`,
     /// `upsert_item_checked`, `remove_item` and the empty-roadmap arm of
@@ -319,9 +320,12 @@ impl RoadmapService {
     /// opted in to `entries/` it writes fragments and never opens `roadmap.yaml`
     /// ([`Self::write_roadmap_as_fragments`]); otherwise it writes the whole file,
     /// exactly as before.
-    fn write_roadmap_unlocked(&self, roadmap: &Roadmap) -> Result<()> {
+    ///
+    /// PMAT-1385: "unlocked" means this does not TAKE the lock; the token it is
+    /// handed means the caller has.
+    fn write_roadmap_unlocked(&self, lock: &RoadmapWriteLock, roadmap: &Roadmap) -> Result<()> {
         if let Some(entries) = self.fragment_dir()? {
-            return self.write_roadmap_as_fragments(&entries, roadmap);
+            return self.write_roadmap_as_fragments(lock, &entries, roadmap);
         }
         if let Some(parent) = self.roadmap_path.parent() {
             fs::create_dir_all(parent)
@@ -329,7 +333,7 @@ impl RoadmapService {
         }
         let yaml = serde_yaml_ng::to_string(roadmap)
             .with_context(|| "Failed to serialize roadmap to YAML")?;
-        fs::write(&self.roadmap_path, yaml)
+        lock.write(&self.roadmap_path, yaml)
             .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))
     }
 
@@ -337,7 +341,7 @@ impl RoadmapService {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remove_item(&self, id: &str) -> Result<Option<RoadmapItem>> {
         // Acquire exclusive lock for entire read-modify-write operation
-        let _lock = self.acquire_write_lock()?;
+        let lock = self.acquire_write_lock()?;
 
         // Load roadmap (no lock needed - we already have exclusive lock).
         // PMAT-1363: the view — base ⊕ entries/ in an opted-in repository.
@@ -350,7 +354,7 @@ impl RoadmapService {
         let removed = roadmap.remove_item(id);
 
         // Save (no lock needed - we already have exclusive lock)
-        self.write_roadmap_unlocked(&roadmap)?;
+        self.write_roadmap_unlocked(&lock, &roadmap)?;
 
         Ok(removed)
         // Lock released automatically

@@ -22,22 +22,6 @@ impl RoadmapService {
         self.id_authority().lock_path
     }
 
-    /// Open (creating) the lock file, with its directory.
-    fn open_lock_file(lock_path: &Path) -> Result<File> {
-        if let Some(parent) = lock_path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create lock directory: {:?}", parent))?;
-        }
-
-        OpenOptions::new()
-            .create(true)
-            .read(true)
-            .write(true) // Need write permission to create the file
-            .truncate(false) // Never truncate: the file carries the high-water mark
-            .open(lock_path)
-            .with_context(|| format!("Failed to open lock file: {:?}", lock_path))
-    }
-
     /// Acquire exclusive lock for writing
     ///
     /// PMAT-673: opened `read(true)` and `truncate(false)`. It used to be
@@ -46,7 +30,11 @@ impl RoadmapService {
     /// id high-water mark that [`RoadmapService::add_item_with_next_id`] reads
     /// and advances, and truncating on open would have destroyed that before
     /// the first read.
-    fn acquire_write_lock(&self) -> Result<File> {
+    ///
+    /// PMAT-1385: returns the lock TOKEN, not the file. Every write under
+    /// `docs/roadmaps/` is a method of [`RoadmapWriteLock`], so this is the only way
+    /// to write one.
+    fn acquire_write_lock(&self) -> Result<RoadmapWriteLock> {
         Self::acquire_write_lock_at(&self.lock_file_path())
     }
 
@@ -55,14 +43,8 @@ impl RoadmapService {
     /// PMAT-680: [`RoadmapService::add_item_with_next_id`] needs the authority
     /// itself (it reads every ref through it), and resolving it twice would
     /// run `git rev-parse` twice for one mint.
-    fn acquire_write_lock_at(lock_path: &Path) -> Result<File> {
-        let lock_file = Self::open_lock_file(lock_path)?;
-
-        lock_file
-            .lock_exclusive()
-            .with_context(|| format!("Failed to acquire exclusive lock: {:?}", lock_path))?;
-
-        Ok(lock_file)
+    fn acquire_write_lock_at(lock_path: &Path) -> Result<RoadmapWriteLock> {
+        RoadmapWriteLock::acquire(lock_path)
     }
 
     /// Run `f` holding this roadmap's EXCLUSIVE lock — the same repository-wide
@@ -73,12 +55,15 @@ impl RoadmapService {
     /// git common dir), not on `roadmap.yaml`'s path, so it serialises writes to
     /// `entries/` and to the aggregate alike.
     ///
+    /// PMAT-1385: `f` receives the lock token, which is how it writes — and the
+    /// borrow cannot outlive the lock.
+    ///
     /// # Errors
     ///
     /// When the lock cannot be taken.
-    pub fn with_write_lock<T>(&self, f: impl FnOnce() -> T) -> Result<T> {
-        let _lock = self.acquire_write_lock()?;
-        Ok(f())
+    pub fn with_write_lock<T>(&self, f: impl FnOnce(&RoadmapWriteLock) -> T) -> Result<T> {
+        let lock = self.acquire_write_lock()?;
+        Ok(f(&lock))
     }
 
     /// Run `f` holding this roadmap's SHARED lock, so no writer is mid-write.
@@ -94,7 +79,7 @@ impl RoadmapService {
     /// Acquire shared lock for reading
     fn acquire_read_lock(&self) -> Result<File> {
         let lock_path = self.lock_file_path();
-        let lock_file = Self::open_lock_file(&lock_path)?;
+        let lock_file = roadmap_write_lock::open_lock_file(&lock_path)?;
 
         #[allow(clippy::incompatible_msrv)] // lock_shared() available in Rust 1.89.0
         lock_file
@@ -180,9 +165,9 @@ impl RoadmapService {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn save(&self, roadmap: &Roadmap) -> Result<()> {
         // Acquire exclusive lock (blocks all other readers and writers)
-        let _lock = self.acquire_write_lock()?;
+        let lock = self.acquire_write_lock()?;
 
-        self.write_roadmap_unlocked(roadmap)
+        self.write_roadmap_unlocked(&lock, roadmap)
         // Lock released automatically when _lock goes out of scope
     }
 
@@ -249,7 +234,12 @@ impl RoadmapService {
     /// `github_repo`), which exists only in the generated file; removing a row the
     /// base declares, which no fragment can express; a changed ticket whose id
     /// cannot be a filename; and a model that declares one id twice.
-    fn write_roadmap_as_fragments(&self, entries: &Path, roadmap: &Roadmap) -> Result<()> {
+    fn write_roadmap_as_fragments(
+        &self,
+        lock: &RoadmapWriteLock,
+        entries: &Path,
+        roadmap: &Roadmap,
+    ) -> Result<()> {
         use crate::services::roadmap_fragments as fragments;
 
         let base = fs::read_to_string(&self.roadmap_path)
@@ -268,11 +258,11 @@ impl RoadmapService {
         let indent = crate::services::roadmap_text::row_indent(&base);
         for item in changed {
             let block = crate::services::roadmap_text::render_item_block(item, indent);
-            fragments::write_fragment(entries, &item.id, &block)
+            fragments::write_fragment(lock, entries, &item.id, &block)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         for id in removed {
-            fragments::remove_fragment(entries, id).map_err(|e| anyhow::anyhow!("{e}"))?;
+            fragments::remove_fragment(lock, entries, id).map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         Ok(())
     }

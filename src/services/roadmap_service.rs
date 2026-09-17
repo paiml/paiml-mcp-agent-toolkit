@@ -8,9 +8,11 @@ use crate::models::roadmap::{Roadmap, RoadmapItem};
 // PMAT-680: WHICH lock file, and what every ref of the repository has already
 // spent. The mint is a fact about the repository, not about this checkout.
 use crate::services::roadmap_id_authority::{self, IdAuthority};
+// PMAT-1385: every write under docs/roadmaps/ is a method of the lock token.
+use crate::services::roadmap_write_lock::{self, RoadmapWriteLock};
 use anyhow::{Context, Result};
-use fs2::FileExt;
-use std::fs::{self, File, OpenOptions};
+use std::collections::BTreeSet;
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 /// Default roadmap file location
@@ -42,6 +44,9 @@ include!("roadmap_service_io.rs");
 
 // CRUD operations: upsert, remove, find, initialize
 include!("roadmap_service_operations.rs");
+
+// PMAT-1385: `pmat work migrate`'s text rewrite, under the lock, in both modes
+include!("roadmap_service_migrate.rs");
 
 // Unit tests, property-based tests, and edge case tests
 include!("roadmap_service_tests.rs");

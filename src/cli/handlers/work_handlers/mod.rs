@@ -82,6 +82,11 @@ mod roadmap_writer_gate;
 #[cfg(test)]
 #[path = "../../../tests/roadmap_writer_gate_tests.rs"]
 mod roadmap_writer_gate_tests;
+// PMAT-1385: `pmat work migrate` under the lock, in whole-file and fragment mode.
+// `cargo test --lib -- work_migrate_` runs them.
+#[cfg(test)]
+#[path = "../../../tests/work_migrate_lock_tests.rs"]
+mod work_migrate_lock_tests;
 // PMAT-680: `work add` must mint from ONE authority per repository — the git
 // common dir's lock plus every ref's roadmap — so two checkouts of the same
 // repository cannot mint the same id. Registered here for the same reason as

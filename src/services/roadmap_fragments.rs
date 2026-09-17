@@ -35,6 +35,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use crate::services::roadmap_text::{append_item, row_indent};
+use crate::services::roadmap_write_lock::RoadmapWriteLock;
 
 /// The longest id `FILENAME_SAFE` admits: `^[A-Za-z0-9][A-Za-z0-9._-]{0,110}$`.
 pub const MAX_ID_LEN: usize = 111;
@@ -542,10 +543,17 @@ fn parent_or_dot(path: &Path) -> PathBuf {
 /// fragment writes nothing at all, and it lands by rename, so a reader never sees
 /// half of one.
 ///
+/// PMAT-1385: `lock` is the proof the repository's exclusive roadmap lock is held.
+///
 /// # Errors
 ///
 /// What [`check_fragment`] refuses, or an I/O failure.
-pub fn write_fragment(entries_dir: &Path, id: &str, block: &str) -> Result<PathBuf, FragmentError> {
+pub fn write_fragment(
+    lock: &RoadmapWriteLock,
+    entries_dir: &Path,
+    id: &str,
+    block: &str,
+) -> Result<PathBuf, FragmentError> {
     let path = fragment_path(entries_dir, id)
         .ok_or_else(|| FragmentError::NotAFilename(id.to_string()))?;
     let indent = block.len() - block.trim_start_matches(' ').len();
@@ -556,8 +564,8 @@ pub fn write_fragment(entries_dir: &Path, id: &str, block: &str) -> Result<PathB
     };
     std::fs::create_dir_all(entries_dir).map_err(|e| io(entries_dir, e))?;
     let staging = entries_dir.join(format!(".{id}.yaml.tmp"));
-    std::fs::write(&staging, block).map_err(|e| io(&staging, e))?;
-    std::fs::rename(&staging, &path).map_err(|e| io(&path, e))?;
+    lock.replace(&staging, &path, block)
+        .map_err(|e| io(&path, e))?;
     Ok(path)
 }
 
@@ -566,15 +574,15 @@ pub fn write_fragment(entries_dir: &Path, id: &str, block: &str) -> Result<PathB
 /// # Errors
 ///
 /// An id that cannot be a filename, or an I/O failure other than absence.
-pub fn remove_fragment(entries_dir: &Path, id: &str) -> Result<bool, FragmentError> {
+pub fn remove_fragment(
+    lock: &RoadmapWriteLock,
+    entries_dir: &Path,
+    id: &str,
+) -> Result<bool, FragmentError> {
     let path = fragment_path(entries_dir, id)
         .ok_or_else(|| FragmentError::NotAFilename(id.to_string()))?;
-    match std::fs::remove_file(&path) {
-        Ok(()) => Ok(true),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
-        Err(e) => Err(FragmentError::Io {
-            path,
-            reason: e.to_string(),
-        }),
-    }
+    lock.remove(&path).map_err(|e| FragmentError::Io {
+        path,
+        reason: e.to_string(),
+    })
 }
