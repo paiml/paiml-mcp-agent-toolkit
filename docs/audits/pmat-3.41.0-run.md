@@ -261,3 +261,13 @@ tree: run-log behind=0 against origin/master ce945d81e.
 - PR #1368 (build(make): declare `gate` — pmat had no gate of its own, so discover… armed=true):       3 pass       3 pending       3 skipping 
 - PR #1389 (fix(PMAT-1385): pmat work migrate writes under the repository lock; ev… armed=false):       1 fail      27 pass      14 pending       4 skipping 
 - Lifecycle-4 PR #1390 armed; D4 PR #1368 armed (waits on #1390 for `traceability`); D2 opened PR #1389. Slots 3/3. Queue: D0, D6.
+
+## 2026-09-17T14:06Z — D4 armed on a 3/3 verdict; D6 launched
+
+tree: run-log behind=0 against origin/master ce945d81e.
+
+Raw (D4 session seven, 68 turns): PR #1368 armed via `pmat-merge` on head b13eb5dc6 with a committed 3/3 PASS verdict (three rounds, all 3/3, because master moved twice). Stale-binary fix RED 48737ee01 → GREEN e7812f9a9; the finding was WIDER than the session's own earlier report — 10 legs ran `./target/debug/pmat`, not 2. `scripts/gate.sh` now resolves `$PMAT_BIN` once from `cargo build --locked --bin pmat --message-format json`, and a leg FAILS if cargo reports no binary (no fallback to `./target`). `make gate` on e94b2c6cc: 27 PASS / 1 FAIL (`lib-tests`: #1305 — since fixed on master — and CB-200). Blocked only by `traceability`: ORPHAN-ROADMAP PMAT-1305 and PMAT-708, which lifecycle-4 (PR #1390, armed, 25 pass / 17 pending) completes.
+
+Decisions:
+- When #1390 merges, strict protection leaves #1368 one merge behind. Taking master into an armed branch is orchestration (a pure cascade: the reviewed diff is unchanged, which `pmat-merge` checks by hash), so I will do it myself with `gh pr update-branch 1368` rather than spend a session; if the helper disarms, a session re-runs the round.
+- 14:06Z launched D6 PMAT-636 / #1266 (clone `.wt/PMAT-636`, pid 1468871): same-binary cold-index measurement on both trees and the set difference first; never raise the baseline; make a required CI job able to see the count. Slots 3/3: D2 (PR #1389), lifecycle-4 (PR #1390), D6. Queue: D0 (needs #1368's extension point on master).
