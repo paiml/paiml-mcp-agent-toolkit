@@ -125,7 +125,7 @@ pub async fn dispatch_work_estimate(command: &WorkEstimateCommands) -> Result<()
         WorkEstimateCommands::Record {
             ticket,
             phase,
-            mode,
+            exec_mode,
             unit,
             est,
             actual,
@@ -139,7 +139,7 @@ pub async fn dispatch_work_estimate(command: &WorkEstimateCommands) -> Result<()
             handle_work_estimate_record(
                 ticket.clone(),
                 phase.clone(),
-                mode.clone(),
+                exec_mode.clone(),
                 unit.clone(),
                 *est,
                 *actual,

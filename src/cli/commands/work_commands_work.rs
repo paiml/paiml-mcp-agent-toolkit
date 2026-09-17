@@ -841,9 +841,11 @@ pub enum WorkEstimateCommands {
         #[arg(long, default_value = "all")]
         phase: String,
 
-        /// How the work was executed
-        #[arg(long)]
-        mode: String,
+        /// How the work was executed (the row's `mode` field). Not `--mode`:
+        /// that is pmat's global cli|mcp flag, and a second `mode` arg panics
+        /// at argument access
+        #[arg(long = "exec-mode")]
+        exec_mode: String,
 
         /// Unit of --est and --actual: turn or session (required; checked by the gate)
         #[arg(long)]

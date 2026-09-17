@@ -422,6 +422,42 @@ mod work_estimate_ledger_tests {
         assert!(err.contains("no origin remote: pass --repo"), "got: {err}");
     }
 
+    // ---- 7b. the CLI surface parses ------------------------------------------
+
+    fn parse_record(extra: &[&str]) -> String {
+        use clap::Parser;
+        let argv: Vec<String> = ["pmat", "work", "estimate", "record", "--ticket", "PMAT-1"]
+            .iter()
+            .chain(extra)
+            .map(|s| (*s).to_string())
+            .collect();
+        // The full `Cli` derive needs more than a test thread's 2 MiB default
+        // stack; inline it aborts the test binary where RUST_MIN_STACK is unset.
+        std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(move || {
+                let cli = crate::cli::commands::Cli::try_parse_from(&argv)
+                    .unwrap_or_else(|e| panic!("`pmat work estimate record` does not parse: {e}"));
+                format!("{cli:?}")
+            })
+            .unwrap()
+            .join()
+            .unwrap()
+    }
+
+    #[test]
+    fn estimate_ledger_record_parses_and_leaves_the_global_mode_flag_alone() {
+        let parsed = parse_record(&["--exec-mode", "direct", "--unit", "turn", "--actual", "3"]);
+        assert!(parsed.contains("exec_mode: \"direct\""), "got: {parsed}");
+        assert!(parsed.contains("mode: None"), "got: {parsed}");
+        let parsed = parse_record(&["--exec-mode", "direct", "--mode", "cli"]);
+        assert!(parsed.contains("mode: Some(Cli)"), "got: {parsed}");
+        assert!(
+            parsed.contains("unit: None"),
+            "an absent --unit must reach the gate, not clap: {parsed}"
+        );
+    }
+
     // ---- 8. the committed ledger --------------------------------------------
 
     #[test]
