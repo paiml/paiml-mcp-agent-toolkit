@@ -24,6 +24,8 @@
 #   arm 11 LIVE        the pinned REQUIRED_CONTEXTS equal master's branch protection plus the
 #                      org ruleset — measured through `gh api` when it can be reached, and
 #                      printed as NOT MEASURED when it cannot (never as a pass)
+#   arm 12 FRESH-BINARY every leg of the REAL table that runs pmat runs the executable cargo
+#                      reports building — a stale pmat planted at ./target/debug/pmat is never run
 #
 # Exit: 0 every arm behaved · 1 an arm did not (named on stderr) · 2 a prerequisite
 # (bash, make, python3 with PyYAML) is missing, so nothing was judged.
@@ -170,6 +172,74 @@ if command -v gh >/dev/null 2>&1 && [ -n "$repo" ] \
 else
   echo "gate-control: arm 11 LIVE       — NOT MEASURED: gh api could not read master's branch protection and rulesets here (no gh, no token, or no network); the pinned set was not compared"
 fi
+
+# ── arm 12: FRESH-BINARY — a leg that runs pmat runs the one cargo built from the tree ───────
+# A hand-written ./target/debug/pmat ignores CARGO_TARGET_DIR: under an isolated target dir it is
+# whatever an earlier build left there, and a leg that ran it judged that binary, not this tree
+# (PMAT-1365, sixth session). The fixture plants exactly that — a STALE pmat at ./target/debug/pmat —
+# and puts first on PATH a cargo whose every build writes a FRESH pmat into a different target dir
+# and reports it as cargo does. The REAL table's legs that run pmat are then run against it: each
+# must print FRESH and none may print STALE. Control scripts they call are stubs that exec $1.
+f12=$failed
+root12="$work/root12" bin12="$work/bin12"
+export FAKE_FRESH="$work/target12/debug/pmat"
+mkdir -p "$root12/target/debug" "$root12/scripts" "$root12/.github" "$bin12"
+cp -R "$here/.github/workflows" "$root12/.github/"
+printf '#!/usr/bin/env bash\necho "STALE-PMAT-RAN $*"\n' > "$root12/target/debug/pmat"
+cat > "$bin12/cargo" <<'SH'
+#!/usr/bin/env bash
+mkdir -p "${FAKE_FRESH%/*}"
+printf '#!/usr/bin/env bash\necho "FRESH-PMAT-RAN $*"\n' > "$FAKE_FRESH"
+chmod +x "$FAKE_FRESH"
+case "$1" in
+  build) case " $* " in *" --message-format json "*|*" --message-format=json "*)
+    printf '{"reason":"compiler-artifact","target":{"name":"pmat","kind":["bin"]},"executable":"%s"}\n' "$FAKE_FRESH" ;; esac ;;
+  run) while [ $# -gt 0 ] && [ "$1" != -- ]; do shift; done; shift; exec "$FAKE_FRESH" "$@" ;;
+esac
+SH
+chmod +x "$root12/target/debug/pmat" "$bin12/cargo"
+sel=$(python3 - "$gate" "$here" "$root12/scripts" <<'PY2'
+import os, re, sys, yaml
+gate, here, stubs = sys.argv[1:4]
+table = open(gate, encoding="utf-8").read().split("cat <<'LEGS'\n", 1)[1].split("\nLEGS\n", 1)[0]
+runs = re.compile(r"target/(debug|release)/pmat|\$\{?PMAT_BIN\b|cargo run\b[^|;&]*--bin pmat\b")
+for line in table.splitlines():
+    if not line.strip() or line.lstrip().startswith("#"):
+        continue
+    f = [x.strip() for x in line.split("|", 5)]
+    body = f[5] if f[0] == "cmd" else ""
+    if f[0] == "step":
+        wf, job, name = f[3].split("#", 2)
+        doc = yaml.safe_load(open(os.path.join(here, wf), encoding="utf-8")) or {}
+        hits = [s for s in ((doc.get("jobs") or {}).get(job) or {}).get("steps") or []
+                if isinstance(s, dict) and s.get("name") == name]
+        body = (hits[0].get("run") or "") if len(hits) == 1 else ""
+    if not runs.search(body):
+        continue
+    for sc in re.findall(r"\bscripts/[A-Za-z0-9_.-]+\.sh\b", body):
+        with open(os.path.join(stubs, os.path.basename(sc)), "w") as fh:
+            fh.write('#!/usr/bin/env bash\nexec "$1" stub\n')
+    print(line)
+PY2
+)
+names=$(printf '%s\n' "$sel" | awk -F'|' 'NF { gsub(/[[:space:]]/, "", $3); print $3 }')
+for must in cb-2113-cb-2115 pmat-score roadmap-validate traceability-control unrun-tests; do
+  printf '%s\n' "$names" | grep -qx -- "$must" \
+    || fail_arm 12 "the real table's pmat legs were not all found — '$must' is missing (found: $(echo $names))"
+done
+{ required_rows; printf '%s\n' "$sel"; } > "$work/fresh.legs"
+OUT=$(PATH="$bin12:$PATH" GH_TOKEN=fixture-token bash "$gate" --legs "$work/fresh.legs" --root "$root12" 2>&1); RC=$?
+logdir=$(printf '%s\n' "$OUT" | sed -n 's/^logs: //p')
+stale=() unrun=()
+for leg in $names; do
+  log=""; for l in "$logdir"/[0-9][0-9]-"$leg".log; do [ -f "$l" ] && log="$l"; done
+  if [ -n "$log" ] && grep -q STALE-PMAT-RAN "$log"; then stale+=("$leg"); fi
+  if [ -z "$log" ] || ! grep -q FRESH-PMAT-RAN "$log"; then unrun+=("$leg"); fi
+done
+[ "${#stale[@]}" -eq 0 ] || fail_arm 12 "legs ran the stale pmat planted at ./target/debug/pmat, not the one cargo built from the tree: ${stale[*]}"
+[ "${#unrun[@]}" -eq 0 ] || fail_arm 12 "legs never ran the pmat cargo built from the tree: ${unrun[*]}"
+[ -z "$logdir" ] || rm -rf "${logdir:?}"
+[ "$failed" != "$f12" ] || echo "gate-control: arm 12 FRESH-BINARY — $(echo $names | wc -w) real legs that run pmat ran the binary cargo built, never the stale ./target/debug/pmat"
 
 [ "$failed" = 0 ] || { echo "gate-control: RED" >&2; exit 1; }
 echo "gate-control: GREEN — make gate is declared, and every property it promises was seen to break"

@@ -17,7 +17,10 @@
 //!   3. every `step` row still names exactly one runnable step in its workflow;
 //!   4. no CI-only row blames cost for a check that runs nothing but the pmat binary,
 //!      which `make gate` already builds (its `build-pmat` leg);
-//!   5. no CI-only row blames a credential that is a GitHub token `gh auth token` supplies.
+//!   5. no CI-only row blames a credential that is a GitHub token `gh auth token` supplies;
+//!   6. no leg runs a hand-written `target/debug/pmat`: `cmd` rows run `$PMAT_BIN`, the
+//!      executable cargo reports building, and the one spelling `step` text may use is the
+//!      one `scripts/gate.sh` rewrites to it.
 //!
 //! Contract: `contracts/make-gate-v1.yaml`.
 
@@ -53,6 +56,7 @@ struct Row {
     leg: String,
     source: String,
     note: String,
+    command: String,
 }
 
 /// The `REQUIRED_CONTEXTS=( ... )` block of the script.
@@ -84,6 +88,7 @@ fn rows(script: &str) -> Vec<Row> {
                 leg: f[2].to_string(),
                 source: f[3].to_string(),
                 note: f[4].to_string(),
+                command: f[5].to_string(),
             }
         })
         .collect()
@@ -381,5 +386,89 @@ fn no_ci_only_credential_row_blames_a_github_token_gh_already_holds() {
         blaming.is_empty(),
         "CI-only rows blame a credential that is a GitHub token — run each as a cmd leg with \
          GH_TOKEN=\"${{GH_TOKEN:-$(gh auth token)}}\", failing without one: {blaming:?}"
+    );
+}
+
+/// Every hand-written spelling of the pmat binary a leg could run.
+const BINARY_PATHS: &[&str] = &["target/debug/pmat", "target/release/pmat"];
+/// The one spelling `scripts/gate.sh` rewrites, in a step's text, to `$PMAT_BIN`.
+const REWRITTEN: &str = "./target/debug/pmat";
+
+/// The `run:` text of a `<workflow>#<job>#<step>` source, or "" when it does not resolve
+/// (`every_step_leg_names_one_runnable_step_in_its_workflow` fails that case by name).
+fn step_run(source: &str) -> String {
+    let parts: Vec<&str> = source.splitn(3, '#').collect();
+    if parts.len() != 3 {
+        return String::new();
+    }
+    let doc = serde_yaml_ng::from_str::<Value>(&read(parts[0])).unwrap_or_default();
+    doc.get("jobs")
+        .and_then(|j| j.get(parts[1]))
+        .and_then(|j| j.get("steps"))
+        .and_then(Value::as_sequence)
+        .and_then(|s| {
+            s.iter()
+                .find(|st| st.get("name").and_then(Value::as_str) == Some(parts[2]))
+        })
+        .and_then(|st| st.get("run"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string()
+}
+
+/// `cb-2113-cb-2115` and `pmat-score` ran `./target/debug/pmat`, and eight `step` legs run the
+/// same path from ci.yml. `build-pmat` writes to `$CARGO_TARGET_DIR/debug/pmat`, so under an
+/// isolated target dir every one of them judged whatever binary an earlier build had left in
+/// `./target` — a PASS about some other tree (PMAT-1365, sixth session). A leg runs the
+/// executable cargo reports building: `cmd` rows name `$PMAT_BIN` (or `cargo run`), and `step`
+/// text, which is CI's and cannot change, may only spell the path the gate rewrites.
+/// The behaviour itself — a planted stale binary is never run — is arm 12 of gate-control.sh.
+#[test]
+fn no_leg_runs_a_hand_written_pmat_binary_path() {
+    let script = read(SCRIPT);
+    let all = rows(&script);
+    let hand_written: Vec<String> = all
+        .iter()
+        .filter(|r| r.kind == "cmd" && BINARY_PATHS.iter().any(|p| r.command.contains(p)))
+        .map(|r| r.leg.clone())
+        .collect();
+    assert!(
+        hand_written.is_empty(),
+        "cmd legs run a hand-written pmat path, which ignores CARGO_TARGET_DIR and judges a \
+         stale binary — run \"$PMAT_BIN\" instead: {hand_written:?}"
+    );
+    let steps: Vec<(String, String)> = all
+        .iter()
+        .filter(|r| r.kind == "step")
+        .map(|r| (r.leg.clone(), step_run(&r.source)))
+        .collect();
+    let runs_pmat: Vec<&String> = steps
+        .iter()
+        .filter(|(_, run)| run.contains(REWRITTEN))
+        .map(|(leg, _)| leg)
+        .collect();
+    assert!(
+        runs_pmat.iter().any(|l| l.as_str() == "roadmap-validate"),
+        "control: ci.yml roadmap-validate runs {REWRITTEN}, and the reading no longer sees it"
+    );
+    let unrewritten: Vec<&String> = steps
+        .iter()
+        .filter(|(_, run)| {
+            BINARY_PATHS
+                .iter()
+                .map(|p| run.matches(p).count())
+                .sum::<usize>()
+                != run.matches(REWRITTEN).count()
+        })
+        .map(|(leg, _)| leg)
+        .collect();
+    assert!(
+        unrewritten.is_empty(),
+        "step legs run pmat under a spelling scripts/gate.sh does not rewrite to $PMAT_BIN: \
+         {unrewritten:?}"
+    );
+    assert!(
+        script.contains(&format!("\"{REWRITTEN}\"")) && script.contains("--message-format json"),
+        "{SCRIPT} no longer rewrites {REWRITTEN} to the executable cargo reports building"
     );
 }
