@@ -2,13 +2,13 @@
   "ticket": "PMAT-1365",
   "base": "master",
   "base_resolved": "origin/master",
-  "base_note": "local master differs from origin/master by 39 commit(s); judged against origin/master",
-  "head": "7d02456fd73363f80b578b9803de72bcd2ebf51e",
-  "diff_sha256": "64c5f6f197c2b05920644374d35db6bf632153ff7f35b410196d6a416ae2be90",
+  "base_note": "local master differs from origin/master by 49 commit(s); judged against origin/master",
+  "head": "567bf44a848b13a8c9a5fbe8a5f3b136ee220823",
+  "diff_sha256": "4708c2cc0abcbebb5f6242ee675a35f49623f5c906bd4dc1da14fef4d2f17801",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "file",
-  "prompt_bytes": 147052,
+  "prompt_bytes": 150691,
   "author": {
     "model": "claude-opus-5",
     "family": "claude",
@@ -20,40 +20,34 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff correctly declares and implements the `make gate` quality gate command via `scripts/gate.sh`, successfully resolving PMAT-1365. The `scripts/gate.sh` script dynamically identifies workflow steps and ensures the gate faithfully mirrors CI checks, alongside a control script `scripts/gate-control.sh` for falsification and unit tests in `src/make_gate_tests.rs`. The stale binary finding was fixed by dynamically resolving `$PMAT_BIN` in `scripts/gate.sh`. The unrelated roadmap item `PMAT-1386`, which caused a previous scope FAIL, was correctly reverted and is absent from the diff, restoring strict compliance to the ticket's scope. All changes accurately fulfill the ticket's requirements without weakening existing gates or violating refutation constraints.",
+      "summary": "The diff fully satisfies the requirements of PMAT-1365 by declaring `make gate` and backing it with `scripts/gate.sh`. The gate correctly evaluates required status contexts and prevents execution of stale binaries by dynamically substituting `$PMAT_BIN` at runtime. Control scripts and unit tests are properly implemented. Furthermore, the previously rejected PMAT-1386 lifecycle row has been successfully reverted and is absent from the diff, confirming that this PR adheres to the scope constraints. No refuting evidence or gate weakening was found.",
       "findings": [
         {
-          "claim": "Makefile declares a .PHONY `gate` target executing `@bash scripts/gate.sh`, which prevents discovery fallback to `cargo test --workspace`.",
+          "claim": "`Makefile` declares a `.PHONY gate` target executing `@bash scripts/gate.sh`, which prevents discovery fallback to `cargo test --workspace`.",
           "file": "Makefile",
           "grounding": "cited",
           "line": 287
         },
         {
-          "claim": "`scripts/gate.sh` implements the quality gate, covering all required status contexts, dynamically extracting workflow scripts to avoid drift, and using the correct PMAT_BIN dynamically to resolve the stale binary issue.",
+          "claim": "`scripts/gate.sh` resolves `$PMAT_BIN` from `cargo build --message-format json` and rewrites step `./target/debug/pmat` paths dynamically at runtime, preventing stale binary execution under `CARGO_TARGET_DIR`.",
           "file": "scripts/gate.sh",
-          "grounding": "cited",
-          "line": 1332
+          "grounding": "measured",
+          "line": 1
         },
         {
           "claim": "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with the `kind:code` label. The previously rejected PMAT-1386 row has been successfully reverted and is no longer present in the diff.",
           "file": "docs/roadmaps/roadmap.yaml",
-          "grounding": "cited",
-          "line": 1060
+          "grounding": "measured",
+          "line": 6835
         },
         {
-          "claim": "`src/make_gate_tests.rs` includes tests validating the Makefile target declaration, required context coverage, workflow step parsing, and CI-only exemptions.",
-          "file": "src/make_gate_tests.rs",
+          "claim": "`contracts/make-gate-v1.yaml` formally specifies the properties and proof obligations for `make gate`.",
+          "file": "contracts/make-gate-v1.yaml",
           "grounding": "cited",
-          "line": 1754
-        },
-        {
-          "claim": "`scripts/gate-control.sh` implements 12 falsification arms verifying failure modes such as missing contexts, modified workflow steps, and stale binary executions are detected.",
-          "file": "scripts/gate-control.sh",
-          "grounding": "cited",
-          "line": 1069
+          "line": 1
         }
       ],
-      "raw_bytes": 5450,
+      "raw_bytes": 5577,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -67,37 +61,37 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff fully satisfies ticket PMAT-1365 without weakening any gate or violating repository invariants. It implements `make gate` backed by `scripts/gate.sh`, dynamically runs CI workflow steps directly from Actions definitions, reports all unmeasured CI-only rows on both green and red exits, resolves `$PMAT_BIN` dynamically to avoid stale binary reuse under `CARGO_TARGET_DIR`, validates falsification behavior across 12 arms in `scripts/gate-control.sh` (measured: exit 0), validates contract obligations with pv (measured: 0 errors, 0 warnings), and passes all 6 unit tests in `src/make_gate_tests.rs` (measured: ok 6/6). No foreign roadmap rows are added (PMAT-1386 was landed upstream on master). Both reachability and unrun-tests ledgers are current. No refuting evidence was found.",
+      "summary": "The diff fully satisfies ticket PMAT-1365 without weakening any gate or violating repository invariants. It implements `make gate` backed by `scripts/gate.sh`, dynamically runs CI workflow steps directly from GitHub Actions definitions, reports all unmeasured CI-only rows on both green and red exits, resolves `$PMAT_BIN` dynamically to avoid stale binary reuse under `CARGO_TARGET_DIR`, validates falsification behavior across 12 arms in `scripts/gate-control.sh` (measured: exit 0), validates contract obligations with pv (measured: 0 errors, 0 warnings), and passes all 6 unit tests in `src/make_gate_tests.rs` (measured: ok 6/6). No foreign roadmap rows are added (PMAT-1386 was landed upstream on master). Both reachability and unrun-tests ledgers are current. No refuting evidence was found.",
       "findings": [
         {
-          "claim": "Makefile declares a .PHONY `gate:` target running `@bash scripts/gate.sh`, establishing the declared quality gate and preventing discovery fallback to `cargo test --workspace`.",
+          "claim": "Makefile declares a .PHONY `gate` target executing `@bash scripts/gate.sh`, establishing the declared quality gate and preventing discovery fallback to `cargo test --workspace`.",
           "file": "Makefile",
           "grounding": "cited",
-          "line": 70
+          "line": 287
         },
         {
           "claim": "`scripts/gate.sh` maps and accounts for all 6 required CI status contexts (`gate`, `ci / gate`, `docs build (docs.rs environment)`, `feature-gate`, `pmat score`, `provable ladder`), refusing unaccounted contexts, reasonless CI-only rows, or vacuous tables with exit code 2.",
           "file": "scripts/gate.sh",
           "grounding": "cited",
-          "line": 49
+          "line": 1432
         },
         {
-          "claim": "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime using Python/PyYAML, preventing drift from CI definitions and rejecting actions-only syntax.",
+          "claim": "`scripts/gate.sh` resolves `$PMAT_BIN` dynamically from `cargo build --message-format json` and rewrites `./target/debug/pmat` in workflow step text at run time, ensuring all pmat legs run the freshly built binary under any `CARGO_TARGET_DIR`.",
           "file": "scripts/gate.sh",
           "grounding": "cited",
-          "line": 219
+          "line": 1666
         },
         {
-          "claim": "`scripts/gate-control.sh` executes 12 falsification arms verifying that failure modes (unaccounted contexts, missing workflow steps, GitHub Actions syntax dependencies, vacuous tables, stale binaries) are detected. Measured: all 12 arms passed (exit 0).",
+          "claim": "`scripts/gate-control.sh` executes 12 falsification arms asserting failure behavior on missing contexts, deleted/altered workflow steps, GitHub Actions syntax dependencies, vacuous tables, and stale binaries. Measured: exits 0 with all 12 arms verified.",
           "file": "scripts/gate-control.sh",
           "grounding": "measured",
           "line": 1
         },
         {
-          "claim": "`cargo test --lib make_gate_tests` passes all 6 tests independently validating the Makefile target, workflow step parsing, context coverage, prohibition of invalid CI-only exemptions, and no hand-written pmat paths. Measured: 6 passed, 0 failed.",
+          "claim": "`cargo test --lib make_gate_tests` passes all 6 unit tests independently validating the Makefile target declaration, workflow step parsing, context coverage, disallowance of invalid CI-only exemptions, and prohibition of hand-written binary paths. Measured: 6 passed, 0 failed.",
           "file": "src/make_gate_tests.rs",
           "grounding": "measured",
-          "line": 97
+          "line": 1806
         },
         {
           "claim": "`contracts/make-gate-v1.yaml` formally specifies the properties and proof obligations for `make gate`. Measured: `pv validate contracts/make-gate-v1.yaml` reported 0 errors and 0 warnings.",
@@ -109,11 +103,11 @@
           "claim": "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with label `kind:code` and carries no unrelated foreign lifecycle rows (PMAT-1386 was merged upstream on master in #1387).",
           "file": "docs/roadmaps/roadmap.yaml",
           "grounding": "cited",
-          "line": 6830
+          "line": 6835
         }
       ],
-      "raw_bytes": 7179,
-      "err_bytes": 79,
+      "raw_bytes": 7282,
+      "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
       "grounding_check": "parity",
@@ -129,49 +123,49 @@
       "summary": "The diff fully satisfies ticket PMAT-1365 without weakening quality gates or violating repository invariants. It implements `make gate` backed by `scripts/gate.sh`, dynamically executing CI workflow steps at runtime directly from GitHub Actions definitions, reporting all unmeasured CI-only rows on both green and red exits, dynamically resolving `$PMAT_BIN` to prevent stale binary execution under isolated target directories, validating falsification behavior across 12 control arms in `scripts/gate-control.sh` (measured: exit 0), validating contract obligations with pv (measured: 0 errors), and passing all 6 unit tests in `src/make_gate_tests.rs` (measured: 6/6 passed). No foreign lifecycle rows are introduced. No refuting evidence was found.",
       "findings": [
         {
-          "claim": "`Makefile` declares a .PHONY `gate:` target running `@bash scripts/gate.sh`, eliminating discovery fallback to `cargo test --workspace` for PMAT-1365.",
+          "claim": "Makefile declares a .PHONY `gate:` target running `@bash scripts/gate.sh`, establishing the declared quality gate and preventing discovery fallback to `cargo test --workspace`.",
           "file": "Makefile",
           "grounding": "cited",
           "line": 287
         },
         {
-          "claim": "`scripts/gate.sh` maps and accounts for all 6 required CI status contexts across 44 rows (28 runnable, 16 CI-only), enforcing exit code 2 on missing contexts, reasonless CI-only rows, or vacuous tables.",
+          "claim": "`scripts/gate.sh` maps and accounts for all 6 required CI status contexts (`gate`, `ci / gate`, `docs build (docs.rs environment)`, `feature-gate`, `pmat score`, `provable ladder`) across 44 rows (28 runnable, 16 CI-only), enforcing exit code 2 on missing contexts, reasonless CI-only rows, or vacuous tables.",
           "file": "scripts/gate.sh",
           "grounding": "cited",
-          "line": 1382
+          "line": 1432
         },
         {
-          "claim": "`scripts/gate.sh` resolves `$PMAT_BIN` from `cargo build --message-format json` and rewrites step `./target/debug/pmat` paths dynamically at runtime, preventing stale binary execution under `CARGO_TARGET_DIR`.",
+          "claim": "`scripts/gate.sh` resolves `$PMAT_BIN` from `cargo build --message-format json` and rewrites step `./target/debug/pmat` paths dynamically at runtime, preventing stale binary execution under isolated `CARGO_TARGET_DIR`.",
           "file": "scripts/gate.sh",
           "grounding": "cited",
-          "line": 1635
+          "line": 1664
         },
         {
-          "claim": "`scripts/gate-control.sh` executes 12 falsification arms asserting failure behavior on missing contexts, deleted/altered workflow steps, GitHub Actions syntax dependencies, vacuous tables, and stale binaries. Measured: exits 0 with all 12 arms verified.",
+          "claim": "`scripts/gate-control.sh` executes 12 falsification arms asserting failure behavior on missing contexts, deleted/altered workflow steps, GitHub Actions syntax dependencies, vacuous tables, and stale binaries. Measured: `bash scripts/gate-control.sh` exited 0 with all 12 arms verified.",
           "file": "scripts/gate-control.sh",
           "grounding": "measured",
-          "line": 1071
+          "line": 1168
         },
         {
           "claim": "`src/make_gate_tests.rs` defines 6 unit tests independently verifying Makefile target declaration, workflow step parsing, context coverage, disallowing invalid CI-only cost/credential exemptions, and prohibiting hand-written binary paths. Measured: `cargo test --lib make_gate_tests` passed 6/6.",
           "file": "src/make_gate_tests.rs",
           "grounding": "measured",
-          "line": 1756
+          "line": 1801
         },
         {
           "claim": "`contracts/make-gate-v1.yaml` formally specifies the properties and proof obligations for `make gate`. Measured: `pv validate contracts/make-gate-v1.yaml` reported 0 errors and 0 warnings.",
           "file": "contracts/make-gate-v1.yaml",
           "grounding": "measured",
-          "line": 1
+          "line": 294
         },
         {
-          "claim": "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with label `kind:code` and carries no foreign roadmap rows.",
+          "claim": "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with label `kind:code` and carries no unrelated foreign lifecycle rows.",
           "file": "docs/roadmaps/roadmap.yaml",
           "grounding": "cited",
           "line": 6835
         }
       ],
-      "raw_bytes": 6995,
+      "raw_bytes": 7452,
       "err_bytes": 79,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -186,31 +180,34 @@
   "dedup": [
     {
       "file": "Makefile",
-      "line": 70,
-      "lanes_agreeing": [
-        2
-      ],
-      "claims": [
-        "Makefile declares a .PHONY `gate:` target running `@bash scripts/gate.sh`, establishing the declared quality gate and preventing discovery fallback to `cargo test --workspace`."
-      ]
-    },
-    {
-      "file": "Makefile",
       "line": 287,
       "lanes_agreeing": [
         1,
+        2,
         3
       ],
       "claims": [
-        "Makefile declares a .PHONY `gate` target executing `@bash scripts/gate.sh`, which prevents discovery fallback to `cargo test --workspace`.",
-        "`Makefile` declares a .PHONY `gate:` target running `@bash scripts/gate.sh`, eliminating discovery fallback to `cargo test --workspace` for PMAT-1365."
+        "Makefile declares a .PHONY `gate:` target running `@bash scripts/gate.sh`, establishing the declared quality gate and preventing discovery fallback to `cargo test --workspace`.",
+        "Makefile declares a .PHONY `gate` target executing `@bash scripts/gate.sh`, establishing the declared quality gate and preventing discovery fallback to `cargo test --workspace`.",
+        "`Makefile` declares a `.PHONY gate` target executing `@bash scripts/gate.sh`, which prevents discovery fallback to `cargo test --workspace`."
       ]
     },
     {
       "file": "contracts/make-gate-v1.yaml",
       "line": 1,
       "lanes_agreeing": [
-        2,
+        1,
+        2
+      ],
+      "claims": [
+        "`contracts/make-gate-v1.yaml` formally specifies the properties and proof obligations for `make gate`.",
+        "`contracts/make-gate-v1.yaml` formally specifies the properties and proof obligations for `make gate`. Measured: `pv validate contracts/make-gate-v1.yaml` reported 0 errors and 0 warnings."
+      ]
+    },
+    {
+      "file": "contracts/make-gate-v1.yaml",
+      "line": 294,
+      "lanes_agreeing": [
         3
       ],
       "claims": [
@@ -219,32 +216,16 @@
     },
     {
       "file": "docs/roadmaps/roadmap.yaml",
-      "line": 1060,
-      "lanes_agreeing": [
-        1
-      ],
-      "claims": [
-        "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with the `kind:code` label. The previously rejected PMAT-1386 row has been successfully reverted and is no longer present in the diff."
-      ]
-    },
-    {
-      "file": "docs/roadmaps/roadmap.yaml",
-      "line": 6830,
-      "lanes_agreeing": [
-        2
-      ],
-      "claims": [
-        "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with label `kind:code` and carries no unrelated foreign lifecycle rows (PMAT-1386 was merged upstream on master in #1387)."
-      ]
-    },
-    {
-      "file": "docs/roadmaps/roadmap.yaml",
       "line": 6835,
       "lanes_agreeing": [
+        1,
+        2,
         3
       ],
       "claims": [
-        "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with label `kind:code` and carries no foreign roadmap rows."
+        "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with label `kind:code` and carries no unrelated foreign lifecycle rows (PMAT-1386 was merged upstream on master in #1387).",
+        "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with label `kind:code` and carries no unrelated foreign lifecycle rows.",
+        "`docs/roadmaps/roadmap.yaml` updates PMAT-1365 with the `kind:code` label. The previously rejected PMAT-1386 row has been successfully reverted and is no longer present in the diff."
       ]
     },
     {
@@ -254,107 +235,79 @@
         2
       ],
       "claims": [
-        "`scripts/gate-control.sh` executes 12 falsification arms verifying that failure modes (unaccounted contexts, missing workflow steps, GitHub Actions syntax dependencies, vacuous tables, stale binaries) are detected. Measured: all 12 arms passed (exit 0)."
-      ]
-    },
-    {
-      "file": "scripts/gate-control.sh",
-      "line": 1069,
-      "lanes_agreeing": [
-        1
-      ],
-      "claims": [
-        "`scripts/gate-control.sh` implements 12 falsification arms verifying failure modes such as missing contexts, modified workflow steps, and stale binary executions are detected."
-      ]
-    },
-    {
-      "file": "scripts/gate-control.sh",
-      "line": 1071,
-      "lanes_agreeing": [
-        3
-      ],
-      "claims": [
         "`scripts/gate-control.sh` executes 12 falsification arms asserting failure behavior on missing contexts, deleted/altered workflow steps, GitHub Actions syntax dependencies, vacuous tables, and stale binaries. Measured: exits 0 with all 12 arms verified."
       ]
     },
     {
-      "file": "scripts/gate.sh",
-      "line": 49,
+      "file": "scripts/gate-control.sh",
+      "line": 1168,
       "lanes_agreeing": [
-        2
+        3
       ],
       "claims": [
-        "`scripts/gate.sh` maps and accounts for all 6 required CI status contexts (`gate`, `ci / gate`, `docs build (docs.rs environment)`, `feature-gate`, `pmat score`, `provable ladder`), refusing unaccounted contexts, reasonless CI-only rows, or vacuous tables with exit code 2."
+        "`scripts/gate-control.sh` executes 12 falsification arms asserting failure behavior on missing contexts, deleted/altered workflow steps, GitHub Actions syntax dependencies, vacuous tables, and stale binaries. Measured: `bash scripts/gate-control.sh` exited 0 with all 12 arms verified."
       ]
     },
     {
       "file": "scripts/gate.sh",
-      "line": 219,
-      "lanes_agreeing": [
-        2
-      ],
-      "claims": [
-        "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime using Python/PyYAML, preventing drift from CI definitions and rejecting actions-only syntax."
-      ]
-    },
-    {
-      "file": "scripts/gate.sh",
-      "line": 1332,
+      "line": 1,
       "lanes_agreeing": [
         1
-      ],
-      "claims": [
-        "`scripts/gate.sh` implements the quality gate, covering all required status contexts, dynamically extracting workflow scripts to avoid drift, and using the correct PMAT_BIN dynamically to resolve the stale binary issue."
-      ]
-    },
-    {
-      "file": "scripts/gate.sh",
-      "line": 1382,
-      "lanes_agreeing": [
-        3
-      ],
-      "claims": [
-        "`scripts/gate.sh` maps and accounts for all 6 required CI status contexts across 44 rows (28 runnable, 16 CI-only), enforcing exit code 2 on missing contexts, reasonless CI-only rows, or vacuous tables."
-      ]
-    },
-    {
-      "file": "scripts/gate.sh",
-      "line": 1635,
-      "lanes_agreeing": [
-        3
       ],
       "claims": [
         "`scripts/gate.sh` resolves `$PMAT_BIN` from `cargo build --message-format json` and rewrites step `./target/debug/pmat` paths dynamically at runtime, preventing stale binary execution under `CARGO_TARGET_DIR`."
       ]
     },
     {
-      "file": "src/make_gate_tests.rs",
-      "line": 97,
+      "file": "scripts/gate.sh",
+      "line": 1432,
+      "lanes_agreeing": [
+        2,
+        3
+      ],
+      "claims": [
+        "`scripts/gate.sh` maps and accounts for all 6 required CI status contexts (`gate`, `ci / gate`, `docs build (docs.rs environment)`, `feature-gate`, `pmat score`, `provable ladder`) across 44 rows (28 runnable, 16 CI-only), enforcing exit code 2 on missing contexts, reasonless CI-only rows, or vacuous tables.",
+        "`scripts/gate.sh` maps and accounts for all 6 required CI status contexts (`gate`, `ci / gate`, `docs build (docs.rs environment)`, `feature-gate`, `pmat score`, `provable ladder`), refusing unaccounted contexts, reasonless CI-only rows, or vacuous tables with exit code 2."
+      ]
+    },
+    {
+      "file": "scripts/gate.sh",
+      "line": 1664,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "`scripts/gate.sh` resolves `$PMAT_BIN` from `cargo build --message-format json` and rewrites step `./target/debug/pmat` paths dynamically at runtime, preventing stale binary execution under isolated `CARGO_TARGET_DIR`."
+      ]
+    },
+    {
+      "file": "scripts/gate.sh",
+      "line": 1666,
       "lanes_agreeing": [
         2
       ],
       "claims": [
-        "`cargo test --lib make_gate_tests` passes all 6 tests independently validating the Makefile target, workflow step parsing, context coverage, prohibition of invalid CI-only exemptions, and no hand-written pmat paths. Measured: 6 passed, 0 failed."
+        "`scripts/gate.sh` resolves `$PMAT_BIN` dynamically from `cargo build --message-format json` and rewrites `./target/debug/pmat` in workflow step text at run time, ensuring all pmat legs run the freshly built binary under any `CARGO_TARGET_DIR`."
       ]
     },
     {
       "file": "src/make_gate_tests.rs",
-      "line": 1754,
-      "lanes_agreeing": [
-        1
-      ],
-      "claims": [
-        "`src/make_gate_tests.rs` includes tests validating the Makefile target declaration, required context coverage, workflow step parsing, and CI-only exemptions."
-      ]
-    },
-    {
-      "file": "src/make_gate_tests.rs",
-      "line": 1756,
+      "line": 1801,
       "lanes_agreeing": [
         3
       ],
       "claims": [
         "`src/make_gate_tests.rs` defines 6 unit tests independently verifying Makefile target declaration, workflow step parsing, context coverage, disallowing invalid CI-only cost/credential exemptions, and prohibiting hand-written binary paths. Measured: `cargo test --lib make_gate_tests` passed 6/6."
+      ]
+    },
+    {
+      "file": "src/make_gate_tests.rs",
+      "line": 1806,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "`cargo test --lib make_gate_tests` passes all 6 unit tests independently validating the Makefile target declaration, workflow step parsing, context coverage, disallowance of invalid CI-only exemptions, and prohibition of hand-written binary paths. Measured: 6 passed, 0 failed."
       ]
     }
   ],
