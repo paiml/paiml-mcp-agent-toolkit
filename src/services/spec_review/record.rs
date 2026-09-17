@@ -116,22 +116,10 @@ pub fn record(project: &Path, file: &Path) -> Result<Recorded, RecordRefusal> {
             reason: format!("{link} is a symlink; record never writes through one"),
         });
     }
-    let in_place = matches!(
-        (std::fs::canonicalize(file), std::fs::canonicalize(&dest)),
-        (Ok(a), Ok(b)) if a == b
-    );
-    if !in_place {
-        if let Some(parent) = dest.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| RecordRefusal::Unwritable {
-                artifact: artifact.clone(),
-                reason: e.to_string(),
-            })?;
-        }
-        write_by_rename(&dest, text.as_bytes()).map_err(|e| RecordRefusal::Unwritable {
-            artifact: artifact.clone(),
-            reason: e.to_string(),
-        })?;
-    }
+    place_review(file, &dest, text.as_bytes()).map_err(|e| RecordRefusal::Unwritable {
+        artifact: artifact.clone(),
+        reason: e.to_string(),
+    })?;
     stage(project, &artifact).map_err(|reason| RecordRefusal::NotStaged {
         artifact: artifact.clone(),
         reason,
@@ -141,6 +129,22 @@ pub fn record(project: &Path, file: &Path) -> Result<Recorded, RecordRefusal> {
         spec,
         spec_sha256: review.spec_sha256,
     })
+}
+
+/// Put the review's bytes at `dest`, creating its parent directory, unless
+/// `file` already IS `dest` (a review recorded in place is left untouched).
+fn place_review(file: &Path, dest: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let in_place = matches!(
+        (std::fs::canonicalize(file), std::fs::canonicalize(dest)),
+        (Ok(a), Ok(b)) if a == b
+    );
+    if in_place {
+        return Ok(());
+    }
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    write_by_rename(dest, bytes)
 }
 
 /// `docs/specifications/<rel>.md` with no empty, `.` or `..` segment: the
