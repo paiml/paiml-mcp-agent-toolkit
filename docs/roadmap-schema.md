@@ -13,6 +13,35 @@ pmat work migrate         # auto-fix common issues
 Source of truth: `src/models/roadmap_types.rs` (structs, `ItemType`, `Priority`) and
 `src/models/roadmap_status.rs` (`ItemStatus`).
 
+## Fragments: `docs/roadmaps/entries/<id>.yaml` (opt-in)
+
+A repository opts in by creating `docs/roadmaps/entries/` — the same predicate,
+`[ -d docs/roadmaps/entries ]`, that paiml/.github's `roadmap-fragment-parity` gate uses.
+Once it exists:
+
+- `roadmap.yaml` is a **generated aggregate**. `pmat work add`, `edit`, `start`,
+  `complete` and every other writer of the roadmap model write one
+  `entries/<id>.yaml` per added or changed ticket and never open `roadmap.yaml` for
+  write. A fragment is exactly one row, `- id: <id>` on its first line at the base's
+  row indent, ending in a newline.
+- `pmat work list`, `pmat work status` and every other reader see the base with every
+  fragment aggregated over it, so a ticket is visible the moment its fragment exists.
+- `pmat roadmap aggregate` prints the aggregate; `--write` writes it (run it on the
+  default branch after a merge, never in a pull request); `--check` exits 1 when the
+  committed file is not the aggregate, naming the first differing row. A fragment
+  supersedes the base row with its id and lands at its sorted slot. Exit: 0 ok, 1 a
+  violation, 2 an input that cannot be read.
+- Refused, with nothing written: a change to the header (`roadmap_version`,
+  `github_enabled`, `github_repo`), removing a row the base declares, and
+  `entries/` without a base `roadmap.yaml`.
+
+`pmat work add --id` refuses any id that is not filename-safe `PREFIX-N`
+(`^[A-Za-z][A-Za-z0-9_]*-[0-9]+$`, at most 111 characters), in every repository.
+`pmat work migrate` still rewrites `roadmap.yaml` directly and does not yet know about
+fragments (tracked on #1370).
+
+Without `entries/`, every writer keeps writing `roadmap.yaml` as before.
+
 ## The one asymmetry that catches people
 
 `status` is **lenient**: case-insensitive, hyphen/underscore-insensitive, and it accepts

@@ -1,0 +1,159 @@
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  created: "2026-09-17"
+  author: PAIML Engineering
+  references:
+    - "paiml/paiml-mcp-agent-toolkit#1363 — pmat writes roadmap.yaml in every consumer, making it a shared mutable file on the merge path"
+    - "paiml/aprender scripts/lib/roadmap_fragments.py — the reference aggregator this ports (aggregate, insertion_index, read_fragments, census; parse_id from roadmap_merge.py, split_entries from roadmap_diff.py)"
+    - "paiml/aprender contracts/apr-roadmap-fragments-v1.yaml — RMFR-OB-001..005, ported below as RF-OB-001..004 (RMFR-OB-003, split(), is not ported: pmat has no split command)"
+    - "paiml/.github .github/workflows/sovereign-ci.yml roadmap-fragment-parity — the opt-in predicate `[ -d docs/roadmaps/entries ]`"
+  registry: true
+  description: >
+    In a repository that has opted in to fragments — `docs/roadmaps/entries/`
+    exists, the same predicate paiml/.github's roadmap-fragment-parity gate
+    uses — a ticket is `docs/roadmaps/entries/<id>.yaml` and
+    `docs/roadmaps/roadmap.yaml` is a GENERATED aggregate. Every pmat writer of
+    the roadmap model writes fragments and never opens roadmap.yaml for write;
+    every reader sees base ⊕ fragments; `pmat roadmap aggregate` is the one
+    writer of the aggregate. A unique filename per ticket makes pull requests
+    pairwise disjoint on the roadmap, so the conflict rate is 0 by construction.
+    A repository without entries/ keeps the PMAT-679 append behaviour byte for
+    byte. The aggregator is a port, not a redesign: on every input the
+    reference accepts and this one does not refuse, the bytes are the same.
+  contract: roadmap-fragments
+  status: enforced
+
+equations:
+  aggregate_is_a_pure_function:
+    formula: |
+      aggregate(base, F) = preamble(base) ++ concat(place(rows(base) \ ids(F), F))
+      aggregate(aggregate(base, F), F) = aggregate(base, F)          [idempotent]
+      aggregate(base, F) = aggregate(base, permute(F))               [deterministic]
+      aggregate(base, ∅) = base                                      [lossless]
+    domain: "a roadmap text and a set of (id, block) fragments"
+    codomain: "a roadmap text"
+    invariants:
+      - "a fragment SUPERSEDES the base row of its id — entries/ is the only edit path for an existing ticket, which is what lets the parity gate forbid every PR write to roadmap.yaml"
+      - "two fragments claiming one id are refused"
+      - "fragment order on disk (readdir order) never reaches the output"
+    preconditions:
+      - "every fragment declares exactly one row, on its first line, at the base's row indent, whose id is its filename, and ends in a newline — a fragment that does not is REFUSED, because the reference accepts it and emits an aggregate its own re-aggregation changes"
+
+  placement_is_the_sorted_slot:
+    formula: |
+      index(e) = min { i | prefix(row_i) = prefix(e) ∧ numeral(row_i) > numeral(e) }, else |rows|
+      numerals compare as unbounded integers: PMAT-90 < PMAT-100
+    domain: "an id; PREFIX-N ids parse as ^([A-Za-z][A-Za-z0-9_]*)-([0-9]+)([^0-9A-Za-z_].*)?$, others are legacy and append"
+    codomain: "an insertion index"
+    invariants:
+      - "legacy ids and unseen prefixes append"
+
+  opted_in_writers_write_fragments:
+    formula: |
+      is_dir(dirname(roadmap) / entries) ⇒ ∀ op ∈ {save, upsert_item, upsert_item_checked, remove_item, replace_item_raw, add_item_with_id, add_item_with_next_id} :
+          bytes(roadmap.yaml) after op = bytes(roadmap.yaml) before op
+      ¬is_dir(dirname(roadmap) / entries) ⇒ op writes roadmap.yaml as before
+    domain: "RoadmapService over a roadmap path"
+    codomain: bool
+    invariants:
+      - "only changed or added tickets become fragments; an unchanged ticket's bytes are not touched"
+      - "a header change, removing a base row, or entries/ without a base is refused with nothing written"
+      - "load() and every read-modify-write path read aggregate(base, entries/)"
+
+  every_roadmap_write_holds_the_repository_lock:
+    formula: "∀ w ∈ {fragment write, fragment removal, aggregate --write} : w happens while holding the exclusive lock at IdAuthority::discover(roadmap).lock_path"
+    domain: "concurrent pmat processes on one repository"
+    codomain: bool
+    invariants:
+      - "the lock path is <git common dir>/pmat/roadmap-id.lock inside a repository (shared by every worktree), and a sibling of roadmap.yaml outside one — never keyed on the fragment path"
+
+  minted_ids_are_filenames:
+    formula: "work add --id X ∧ ¬(X ~ ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$ ∧ |X| ≤ 111) ⇒ exit ≠ 0 ∧ nothing written"
+    domain: "any caller-supplied ticket id"
+    codomain: bool
+    invariants:
+      - "unconditional, opted in or not: an id minted today is a filename after migration"
+
+proof_obligations:
+  - type: invariant
+    property: "RF-OB-001 aggregate is idempotent, deterministic and lossless, and a fragment supersedes the base row of its id (RMFR-OB-001, RMFR-OB-004)"
+    formal: "aggregate(aggregate(b,F),F) = aggregate(b,F) ∧ aggregate(b,F) = aggregate(b,π(F)) ∧ aggregate(b,∅) = b"
+    applies_to: aggregate_is_a_pure_function
+  - type: postcondition
+    property: "RF-OB-002 a fragment lands at the sorted slot, numerals compared numerically (RMFR-OB-002)"
+    formal: "index(e) = min{i | prefix_i = prefix_e ∧ n_i > n_e} else |rows|"
+    applies_to: insertion_index
+  - type: invariant
+    property: "RF-OB-003 byte parity with the reference: on every fragment set the reference accepts and check_fragment does not refuse, the Rust aggregate equals the Python aggregate byte for byte"
+    formal: "∀ (b,F) : check_fragment(F) ⇒ rust_aggregate(b,F) = py_aggregate(b,F)"
+    applies_to: aggregate
+  - type: invariant
+    property: "RF-OB-004 ids that cannot be filenames are accounted for and can never become fragments (RMFR-OB-005)"
+    formal: "census(r).total = |rows(r)| ∧ ∀ id ∋ '/' : ¬is_filename_safe(id)"
+    applies_to: is_filename_safe
+  - type: invariant
+    property: "RF-OB-005 in an opted-in repository no model writer opens roadmap.yaml for write; in any other repository the whole file is written as before"
+    formal: "is_dir(entries) ⇒ bytes(roadmap.yaml)' = bytes(roadmap.yaml)"
+    applies_to: write_roadmap_unlocked
+  - type: invariant
+    property: "RF-OB-006 readers see base ⊕ fragments: work list and work status show a ticket the moment its fragment exists"
+    formal: "load() = parse(aggregate(base, read_fragments(entries)))"
+    applies_to: read_view_unlocked
+  - type: invariant
+    property: "RF-OB-007 every fragment write and aggregate --write waits for the repository's exclusive lock"
+    formal: "held(lock) by another process ⇒ no write lands until release"
+    applies_to: every_roadmap_write_holds_the_repository_lock
+  - type: precondition
+    property: "RF-OB-008 work add refuses an id that is not filename-safe PREFIX-N before taking the lock"
+    formal: "¬is_ticket_id(X) ⇒ Err ∧ no fragment ∧ no roadmap write ∧ high-water mark unchanged"
+    applies_to: is_ticket_id
+
+falsification_tests:
+  - id: RF-F-001
+    rule: "aggregate is a pure function; supersession is the edit path (RF-OB-001)"
+    prediction: "reference selftest rows 1, 6, 6b, 6c, 6d ported as case_01, case_07, case_08, case_09, case_10 all pass"
+    test: "cargo test --lib -- roadmap_fragments_case_01 roadmap_fragments_case_07 roadmap_fragments_case_08 roadmap_fragments_case_09 roadmap_fragments_case_10"
+    if_fails: "the post-merge aggregation churns a commit on every merge, or a ticket edited through entries/ is silently duplicated or dropped"
+  - id: RF-F-002
+    rule: "placement is the sorted slot, and the placement row can fail (RF-OB-002)"
+    prediction: "case_02..case_06 and case_11 pass; case_12 runs the real aggregation with append-only placement injected and requires case_02's ordering to break"
+    test: "cargo test --lib -- roadmap_fragments_case_02 roadmap_fragments_case_03 roadmap_fragments_case_04 roadmap_fragments_case_05 roadmap_fragments_case_06 roadmap_fragments_case_11 roadmap_fragments_case_12"
+    if_fails: "the aggregate is unsorted on main — the aprender #3295 merge-queue shape, now produced by the generator"
+  - id: RF-F-003
+    rule: "byte parity with the reference on real data (RF-OB-003)"
+    prediction: >-
+      Measured 2026-09-17 against paiml/aprender origin/main 754c48225 (899 rows, 11 fragments):
+      three consecutive `pmat roadmap aggregate` runs are byte-identical to each other, to the
+      committed roadmap.yaml and to the Python reference (sha256 e1a984ee…); aggregating the
+      aggregate changes nothing; `--check` exits 0, and exits 1 naming PMAT-3296 after a hand
+      edit of that row's title. A 22-scenario differential (the real file; the real file with its
+      11 fragment rows removed; 20 seeded re-splits moving 60 rows into fragments, superseding 15
+      and adding 3 new ids) is byte-identical to the Python in 22/22, three runs each.
+    test: "cargo test --lib roadmap_fragments_three_consecutive_aggregations_of_real_data_are_byte_identical"
+    if_fails: "aprender cannot switch its post-merge aggregation from the Python to pmat without its roadmap.yaml changing, and the two generators fight on main"
+  - id: RF-F-004
+    rule: "filename safety is load-bearing (RF-OB-004)"
+    prediction: "case_13 accounts for every row of a real roadmap by id shape; case_14 finds a real id containing a path separator and the regex rejects it"
+    test: "cargo test --lib -- roadmap_fragments_case_13 roadmap_fragments_case_14 roadmap_fragments_filename_safety_is_the_reference_regex"
+    if_fails: "a ticket id with a slash writes outside entries/, or an id the gate cannot match is admitted"
+  - id: RF-F-005
+    rule: "opted-in writers write fragments, not the aggregate (RF-OB-005)"
+    prediction: "save/upsert/edit/remove leave roadmap.yaml byte-identical and write only the changed tickets; header changes, base-row removal and entries/ without a base are refused with nothing written; a repository without entries/ still appends. Mutation: deleting the fragment branch of write_roadmap_unlocked turns roadmap_fragments_save_writes_only_the_changed_tickets_as_fragments RED"
+    test: "cargo test --lib roadmap_fragments_save_writes_only_the_changed_tickets_as_fragments"
+    if_fails: "every `pmat work start|complete` in an opted-in repository edits roadmap.yaml and the parity gate refuses the pull request"
+  - id: RF-F-006
+    rule: "readers see base ⊕ fragments (RF-OB-006)"
+    prediction: "load() lists a fragment-only ticket and a fragment's title over the base row's; a malformed fragment fails the read by name. Mutation: returning the base alone from read_view_unlocked turns the test RED"
+    test: "cargo test --lib roadmap_fragments_work_list_and_status_read_base_plus_fragments"
+    if_fails: "a ticket added through a fragment is invisible to work list and work status until the next post-merge aggregation"
+  - id: RF-F-007
+    rule: "fragment writes and aggregate --write serialize on the repository lock (RF-OB-007)"
+    prediction: "with the lock held from outside the service — exclusively (a writer) and shared (a reader) — add_item_with_id, upsert_item and run_aggregate(Write) do not land for 500 ms and land after release. Mutations, measured 2026-09-17: removing lock_exclusive from acquire_write_lock_at, and weakening it to a shared lock, each turn the three waits_for_the_repository_lock tests RED; taking the read lock in aggregate --write turns its test RED. roadmap_fragments_concurrent_fragment_writers_lose_nothing is a no-loss check, NOT a lock detector: it stays green with no lock at all (measured), so it is not counted as evidence for this obligation"
+    test: "cargo test --lib -- roadmap_fragments_an_add_waits roadmap_fragments_a_save_waits roadmap_fragments_aggregate_write_waits"
+    if_fails: "two pmat processes interleave a view-diffing save and delete each other's fragments, or aggregate --write reads a half-landed fragment set"
+  - id: RF-F-008
+    rule: "work add refuses ids that are not filename-safe PREFIX-N (RF-OB-008)"
+    prediction: "pmat-12x, ../PMAT-9, 'PMAT-9 (notes)', PMAT-, 9-PMAT and PMAT-9.yaml each exit 1 and write nothing (measured through the binary on 2026-09-17). Mutation: skipping the is_ticket_id check turns the test RED"
+    test: "cargo test --lib roadmap_fragments_work_add_refuses_an_id_that_is_not_filename_safe_prefix_n"
+    if_fails: "an id that cannot be a filename is minted today and has no write path the day its repository opts in"
