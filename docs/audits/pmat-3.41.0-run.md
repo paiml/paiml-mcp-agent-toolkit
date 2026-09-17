@@ -323,3 +323,10 @@ tree: run-log rebased, behind=0 against origin/master f25d7f1cc.
 
 Raw: at 15:44:11Z `gh run rerun 35238657820 --failed` (the one re-run, for the runner-lost `ci / test` + `ci / coverage` jobs; `ci / gate` and `gate` were red only as their aggregates). Result 45 pass / 0 fail; auto-merge fired; master = f25d7f1cc. PMAT-1365's row is terminal; master's bijection was coherent at arm time.
 - D0 HEAD 7b1fc68f1 (pushing as it goes), D2 HEAD 77bdbf388, D6 HEAD 35da3cc6d — all LIVE, host up 40 min, load average ≤ 10 since the relaunch (48 cores).
+
+## 2026-09-17T16:37Z — sessions in flight
+
+tree: run-log behind=0 against origin/master f25d7f1cc. Host up 1 hour, 6 minutes, load 11.59, 9.17, 9.65.
+- PR #1389:       1 fail      23 pass      18 pending       4 skipping  draft=false armed=false
+- PR #1391:      24 pass      19 pending       4 skipping  draft=false armed=false
+- D0 HEAD b36d579dc, D2 HEAD dc5097a74, D6 HEAD 238cefa09 (PR: none yet). Slots 3/3.
