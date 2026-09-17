@@ -1,0 +1,104 @@
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  created: "2026-09-17"
+  author: PAIML Engineering
+  references:
+    - "paiml/paiml-mcp-agent-toolkit#1305 — a_crate_that_does_not_compile_is_reported_as_not_measured is flaky in ci / test (duplicate report: #1284)"
+    - "ci / test runs 34156890569 (PR 1222), 34562657315 (PR 1304) and 35209474539 (PR 1383): in all three, ci / coverage's dead-code tests were blocked on the lock of the shared per-PR /workspace/target until ci / test finished compiling, its compilable fx fixture was checked in the next second, and ci / test's uncompilable fx fixture failed within a second after that"
+    - "docs/audits/impl-PMAT-1305-receipt.md — reproduction counts, five whys, mutant evidence"
+    - "scripts/repro-pmat-1305-shared-target-race.sh — the CI interleaving outside CI"
+    - "docs/audits/mutants/PMAT-1305-inherited-target-dir.patch — the mutant that restores the inherited target directory"
+  registry: true
+  description: >
+    cargo fingerprints a workspace member by its path RELATIVE to the workspace
+    root and decides freshness by mtime. Two roots holding a package of the same
+    name and version therefore share one fingerprint in any target directory
+    they share, and a source older than the other root's last check is fresh:
+    cargo replays that root's diagnostics and exits 0 without compiling. The
+    dead-code analyzer inherited CARGO_TARGET_DIR / build.target-dir, so an
+    uncompilable crate was reported as a clean, full measurement whenever a
+    same-named crate had been checked more recently into the same place — in CI
+    the concurrent ci / coverage job, for a user every other worktree of the
+    same repository behind a shared CARGO_TARGET_DIR. The analyzer's cargo check
+    now builds into <resolved target dir>/pmat-dead-code/<name>-<fnv1a64 of the
+    canonical workspace root>, a directory only that root builds into.
+  contract: dead-code-target-isolation
+  status: enforced
+
+equations:
+  isolated_target_dir_is_keyed_on_the_workspace_root:
+    formula: |
+      dir(r) = T(r) / "pmat-dead-code" / (last_component(canon(r))[..32] ++ "-" ++ hex16(fnv1a64(bytes(canon(r)))))
+      T(r) = target_directory reported by `cargo metadata --no-deps` in r ; fallback r/target
+    domain: "any crate root the analyzer compiles"
+    codomain: "a directory path"
+    invariants:
+      - "canon(r1) != canon(r2) => dir(r1) != dir(r2), up to a 64-bit FNV-1a collision"
+      - "one directory reached through a symlink is one root: one key"
+      - "dir(r) lies directly under T(r)/pmat-dead-code — the user's target placement is kept, and cargo clean removes it"
+      - "the key is stable across toolchains: FNV-1a is specified here, DefaultHasher is not"
+    preconditions: []
+
+  an_uncompilable_crate_is_never_measured:
+    formula: "¬compiles(r) ⇒ check_dead_code_outcome(r).not_measured ≠ None, for every state of every target directory r does not own"
+    domain: "a crate that does not compile, and a same-named crate that does, checked more recently into a target directory both inherit"
+    codomain: bool
+    invariants:
+      - "the premise is measured in the same test: plain cargo check in the broken crate exits 0 there"
+      - "the compilable crate is still measured (not_measured = None) — isolation does not trade the false zero for a false disclosure"
+    preconditions: []
+
+proof_obligations:
+  - type: invariant
+    property: "DCTI-OB-001 distinct workspace roots never share an isolated target directory, including roots whose last path components are equal"
+    formal: "canon(r1) ≠ canon(r2) ⇒ isolated_target_dir_in(T, r1) ≠ isolated_target_dir_in(T, r2)"
+    applies_to: isolated_target_dir_in
+  - type: postcondition
+    property: "DCTI-OB-002 the isolated directory is inside the target directory cargo resolves for the crate (CARGO_TARGET_DIR, then build.target-dir)"
+    formal: "isolated_target_dir(r) = isolated_target_dir_in(cargo_metadata(r).target_directory, r)"
+    applies_to: isolated_target_dir
+  - type: invariant
+    property: "DCTI-OB-003 the cargo check the analyzer runs passes --target-dir isolated_target_dir(cargo_root)"
+    formal: "args(build_cargo_check_command()) ∋ (--target-dir, isolated_target_dir(cargo_root))"
+    applies_to: build_cargo_check_command
+  - type: invariant
+    property: "DCTI-OB-004 a crate that does not compile is NOT MEASURED even when a same-named crate was checked more recently into the target directory it inherits"
+    formal: "¬compiles(broken) ∧ name(broken) = name(fine) ∧ shares_target(broken, fine) ∧ mtime(src(broken)) < check_time(fine) ⇒ outcome(broken).not_measured ∋ \"could not compile\""
+    applies_to: check_dead_code_outcome
+  - type: invariant
+    property: "DCTI-OB-005 the workspace-root key is FNV-1a over the canonical path, pinned to a value computed outside Rust, and one root through a symlink is one key"
+    formal: "workspace_root_key(/nonexistent/pmat-1305/root) = root-132be0538c3d8309 ∧ key(link) = key(target(link))"
+    applies_to: workspace_root_key
+
+falsification_tests:
+  - id: DCTI-F-001
+    rule: "distinct roots, distinct directories (DCTI-OB-001)"
+    prediction: "two tempdirs under one target directory get two directories, both directly under <target>/pmat-dead-code; /nonexistent/one/repo and /nonexistent/two/repo get different keys with the same readable prefix"
+    test: "cargo test --lib -- target_isolation_tests::distinct_workspace_roots_never_share_an_isolated_target_dir target_isolation_tests::roots_with_the_same_last_component_are_still_distinct"
+    if_fails: "two worktrees, or two CI jobs, build one package name into one fingerprint again"
+  - id: DCTI-F-002
+    rule: "the user's target placement is honoured (DCTI-OB-002)"
+    prediction: "a crate under a .cargo/config.toml naming build.target-dir gets its isolated directory inside that directory, or inside an inherited CARGO_TARGET_DIR when one is set"
+    test: "cargo test --lib target_isolation_tests::the_isolated_dir_is_inside_the_target_dir_cargo_resolves"
+    if_fails: "the analyzer writes build output somewhere the user did not choose"
+  - id: DCTI-F-003
+    rule: "the command carries the directory (DCTI-OB-003)"
+    prediction: "--target-dir followed by isolated_target_dir(cargo_root) is in the argument list. Mutation, measured 2026-09-17: docs/audits/mutants/PMAT-1305-inherited-target-dir.patch (drop the two .arg calls) turns this test RED 3/3"
+    test: "cargo test --lib target_isolation_tests::the_cargo_check_command_names_the_isolated_target_dir"
+    if_fails: "the isolation exists as a function nothing calls"
+  - id: DCTI-F-004
+    rule: "an uncompilable crate is never measured through a shared target directory (DCTI-OB-004)"
+    prediction: "the planted test passes, its premise (plain cargo check in the broken crate exits 0) included. RED 3/3 on 8915fe3e6 before the fix with CARGO_TARGET_DIR unset and 1/1 with it set; RED 3/3 under the mutant patch"
+    test: "cargo test --lib dead_code_outcome_tests::a_broken_crate_sharing_a_target_dir_with_a_same_named_crate_is_not_measured"
+    if_fails: "the gate reports a clean, full dead-code measurement for a crate it could not compile"
+  - id: DCTI-F-005
+    rule: "the CI interleaving no longer reds the original test (DCTI-OB-004, observed rather than planted)"
+    prediction: "two processes of the lib test binary sharing one CARGO_TARGET_DIR, started under a held build lock, N=40 iterations: 17 red of 80 runs on 8915fe3e6, 0 of 80 on the fix; free-running 17/80 before, 0/80 after; one process 0/40 both"
+    test: "bash scripts/repro-pmat-1305-shared-target-race.sh <lib test binary> 40 aligned"
+    if_fails: "a concurrent same-named check still answers for an uncompilable fixture"
+  - id: DCTI-F-006
+    rule: "the key is pinned and symlink-stable (DCTI-OB-005)"
+    prediction: "workspace_root_key(/nonexistent/pmat-1305/root) = root-132be0538c3d8309 (python3 FNV-1a over the path bytes); a symlink and its target give one key"
+    test: "cargo test --lib -- target_isolation_tests::the_key_is_pinned_across_builds target_isolation_tests::one_root_reached_through_a_symlink_is_one_key"
+    if_fails: "a toolchain bump or a symlinked checkout orphans the isolated directory and every run is cold"
