@@ -6808,11 +6808,11 @@ roadmap:
   github_issue: 1363
   item_type: task
   title: 'roadmap fragments: pmat writes roadmap.yaml in every consumer, making it a shared mutable file on the merge path'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:32Z
-  updated: 2026-09-17T09:30:00Z
+  updated: 2026-09-17T10:05:26.400775326+00:00
   spec: null
   acceptance_criteria:
   - 'See paiml/paiml-mcp-agent-toolkit#1363. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
