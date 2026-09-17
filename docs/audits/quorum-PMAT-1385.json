@@ -1,13 +1,13 @@
 {
   "ticket": "PMAT-1385",
   "base": "master",
-  "base_resolved": "origin/master",
-  "base_note": "judged against origin/master 85b798e0dc71484afff3ea1ff7fe63bf0a826ebd",
-  "head": "8d948e6b49255fb556c2126d118eefd795b9f7a6",
-  "diff_sha256": "5b261bdeab2711a2fb6cd55705b241f5d74da6addc54a73436830a5799e55996",
+  "base_resolved": "master",
+  "base_note": "judged against master ef2a0b947180ff3f4359699afd5520e8ec39f7f1 (= origin/master, behind=0)",
+  "head": "77bdbf3881c1758672cb665b7473e58186f6eb63",
+  "diff_sha256": "8c7c10fb77a007f1929146d67a5bbd95ac2bcd74c243f38109a798aa1dc0ef42",
   "prompt_mode": "inline",
-  "prompt_bytes": 5938,
-  "prompt_sha256": "600fcbc12ec1728e284f9d757993d198480b8b8ebc0b5e89b1e6df369b1abf61",
+  "prompt_bytes": 5659,
+  "prompt_sha256": "a36241621cb42dfd3f2472179a49cb2111500b27b96c790a722fb762d42a2c57",
   "rounds": [
     {
       "round": 1,
@@ -49,6 +49,23 @@
         "973b0fa5-1635-4ea7-934e-e54b0d03d0b0",
         "d7d7cbfa-0463-4dd2-8fe1-a29f8fde4dce"
       ]
+    },
+    {
+      "round": 5,
+      "head": "94ef6b2fc",
+      "verdicts": "PASS/PASS/BLIND",
+      "note": "lane files lost with $XDG_RUNTIME_DIR in the 15:30:04Z host crash; outcome as recorded in the receipt before the crash",
+      "conversations": []
+    },
+    {
+      "round": 6,
+      "head": "77bdbf388",
+      "verdicts": "PASS/PASS/PASS",
+      "conversations": [
+        "bdb63998-1f12-44fe-8491-cbee869a09bd",
+        "0da74114-d3b7-4974-95a0-ac49b53a5699",
+        "de4eb930-1f4c-4bd3-8c5d-22cd442471e7"
+      ]
     }
   ],
   "width": 3,
@@ -58,9 +75,7 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The judged change is strictly unchanged since round 3 (hash 5b261bdeab2711a2fb6cd55705b241f5d74da6addc54a73436830a5799e55996 verified).\n\nThe rebase on master did not interact with this ticket's logic. The commits brought in from master touched `docs/roadmaps/roadmap.yaml` and audit docs, but the `roadmap_writer_gate` AST walk is explicitly scoped to `src/` files and ignores the generated roadmaps, so its outcome remains isolated and unaffected.\n\nI reviewed the locking behavior in `src/services/roadmap_service_migrate.rs` and `src/cli/handlers/work_handlers/ticket_validate_migrate.rs`. `RoadmapService::migrate_text` correctly takes a single exclusive or shared lock exactly once (via `self.acquire_write_lock()?` or `self.acquire_read_lock()?`), and `handle_work_migrate` instantiates the service without acquiring any prior lock. No nested locks are held within the same process on the same file, avoiding the `flock` deadlock failure mode.\n\nThe `scripts/roadmap-writer-gate.sh` script robustly handles its test validations. It expects explicit `... ok` lines for each required test in the gate suite, properly catching vacuous runs, build failures, or missing tests. The tree scanner correctly processes module resolution, including explicit `#[path]` directives inside out-of-line and inline modules following the standard rustc path logic, ensuring all production files are correctly checked for writes.\n\nDIFF: SAME\nSCOPE: CLEAN: src/services/mod.rs is a legitimate module registration",
-      "findings": [],
-      "raw_bytes": 4543,
+      "raw_bytes": 5953,
       "err_bytes": 449,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -74,9 +89,7 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "### Review Round 4: Final Pre-Merge Review for PR #1389 (PMAT-1385)\n\n#### 1. Diff Hash and Scope Verification (Task 1)\n- **Judged Diff Checksum**: Ran `git diff origin/master...HEAD~1 -- . ':(exclude)docs/audits/quorum-*.json' ':(exclude)docs/status/*' | grep -v '^index ' | sha256sum`.\n  Measured result: `5b261bdeab2711a2fb6cd55705b241f5d74da6addc54a73436830a5799e55996` (identical to Round 3 diff sha256 recorded in [docs/audits/quorum-PMAT-1385.json](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418802/docs/audits/quorum-PMAT-1385.json#L7)).\n- **Changed Files**: `git diff --name-only origin/master...HEAD` touches exactly 20 files:\n  - `contracts/roadmap-writer-lock-v1.yaml`\n  - `docs/audits/impl-PMAT-1385-receipt.md`\n  - `docs/audits/impl-estimates.jsonl`\n  - `docs/audits/quorum-PMAT-1385.json`\n  - `docs/status/orphan-files-ledger.md`\n  - `docs/status/unrun-tests-ledger.md`\n  - `scripts/roadmap-writer-gate.sh`\n  - `src/cli/handlers/work_handlers/mod.rs`\n  - `src/cli/handlers/work_handlers/ticket_validate_migrate.rs`\n  - `src/roadmap/aggregate.rs`\n  - `src/services/mod.rs` (legitimate module registration: `pub mod roadmap_write_lock;`)\n  - `src/services/roadmap_fragments.rs`\n  - `src/services/roadmap_service.rs`\n  - `src/services/roadmap_service_io.rs`\n  - `src/services/roadmap_service_migrate.rs`\n  - `src/services/roadmap_service_operations.rs`\n  - `src/services/roadmap_write_lock.rs`\n  - `src/tests/roadmap_writer_gate.rs`\n  - `src/tests/roadmap_writer_gate_tests.rs`\n  - `src/tests/work_migrate_lock_tests.rs`\n  All files are within ticket scope, with `src/services/mod.rs` being the standard module registration.\n- **Roadmap Invariance**: `git diff origin/master...HEAD -- docs/roadmaps` is empty. The branch modifies zero roadmap rows.\n\n#### 2. Rebase Independence and Safety (Task 2)\n- Rebase base in Round 3 was `ce945d81e`.\n- Commits gained on master (`git log --oneline --stat ce945d81e..origin/master`) are:\n  - `85b798e0d`: Merge PR #1390\n  - `7859fcea3`: `docs/audits/quorum-PMAT-1336.json`\n  - `80066b08a`: `docs/audits/impl-PMAT-1336-receipt.md`\n  - `ebbd9033e` & `da02fb505`: `docs/roadmaps/roadmap.yaml`\n- None of these commits touches any file within PMAT-1385's scope.\n- `production_sources` in [src/tests/roadmap_writer_gate_tests.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418802/src/tests/roadmap_writer_gate_tests.rs#L268-L284) traverses Rust modules starting strictly from `src/lib.rs`, `src/bin/pmat.rs`, and `src/bin/pmat-agent.rs`, completely ignoring `docs/`. Changes on master cannot affect the writer gate's execution or outcome.\n\n#### 3. Core Change Verification (Task 3)\n- **Lock Token Invariant**: Verified in [src/services/roadmap_write_lock.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418802/src/services/roadmap_write_lock.rs#L23-L102) that `RoadmapWriteLock` has a private `file: File`, no `Clone`, and no public constructor other than `acquire(lock_path)`, which takes an exclusive flock. Dropping the token automatically releases the flock. All raw filesystem writes (`write`, `replace`, `create_dir_all`, `remove`) are methods on `RoadmapWriteLock`. All callers across `roadmap_service_io.rs`, `roadmap_service_operations.rs`, `roadmap_fragments.rs`, and `aggregate.rs` pass `&RoadmapWriteLock`.\n- **Single Lock Acquisition**: In [src/cli/handlers/work_handlers/ticket_validate_migrate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418802/src/cli/handlers/work_handlers/ticket_validate_migrate.rs#L339-L340) and [src/services/roadmap_service_migrate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418802/src/services/roadmap_service_migrate.rs#L60-L75), `handle_work_migrate` takes no lock and delegates directly to `migrate_text`, which takes exactly one lock (`acquire_read_lock` if dry-run, `acquire_write_lock` otherwise) and passes `&lock` down to helper functions without re-locking. No self-deadlock is possible.\n- **Taint Analysis & Anti-Vacuity**: [src/tests/roadmap_writer_gate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418802/src/tests/roadmap_writer_gate.rs) traces taint interprocedurally across bindings, struct fields, and calls to a fixpoint. `ALLOWED` in [src/tests/roadmap_writer_gate_tests.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418802/src/tests/roadmap_writer_gate_tests.rs#L26-L66) is keyed by `(file, function, kinds, reason)` and validates `kinds.contains(&sink.kind)`. Per-kind liveness is enforced by `roadmap_writer_gate_every_allowed_writer_is_still_reached`.\n- **Gate Script Anti-Vacuity**: [scripts/roadmap-writer-gate.sh](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418802/scripts/roadmap-writer-gate.sh#L33-L74) contains an explicit `REQUIRED` array of 15 tests and asserts each passes by name. Its self-test covers 5 control/failure cases, asserting failure code 1 on 0-test matches.\n\nDIFF: SAME\nSCOPE: CLEAN",
-      "findings": [],
-      "raw_bytes": 18450,
+      "raw_bytes": 9519,
       "err_bytes": 449,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -90,9 +103,7 @@
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "# Pre-Merge Review Round 4: PR #1389 (Ticket PMAT-1385)\n\n## 1. Diff and Scope Verification\n- **Diff Checksum**: Measured `git diff origin/master...HEAD~1 -- . ':(exclude)docs/audits/quorum-*.json' ':(exclude)docs/status/*' | grep -v '^index ' | sha256sum` yielded `5b261bdeab2711a2fb6cd55705b241f5d74da6addc54a73436830a5799e55996`, identical to the Round 3 judged diff hash recorded in [docs/audits/quorum-PMAT-1385.json](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/docs/audits/quorum-PMAT-1385.json#L7).\n- **Scope Analysis**: `git diff --name-only origin/master...HEAD` shows 20 files. All 19 files from the prompt's scope list are accounted for. The one additional file, [src/services/mod.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/services/mod.rs#L320), contains only the legitimate module registration `pub mod roadmap_write_lock;`.\n- **Roadmap Integrity**: Measured `git diff origin/master...HEAD -- docs/roadmaps`, which returned empty; no roadmap rows are modified on this branch.\n\n## 2. Rebase Interaction Verification\n- Evaluated `git log --oneline --stat ce945d81e..origin/master` (the commits master gained since Round 3 base `ce945d81e`). Master added PR #1390 commits modifying only [docs/roadmaps/roadmap.yaml](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/docs/roadmaps/roadmap.yaml), [docs/audits/impl-PMAT-1336-receipt.md](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/docs/audits/impl-PMAT-1336-receipt.md), and [docs/audits/quorum-PMAT-1336.json](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/docs/audits/quorum-PMAT-1336.json). None intersect with files changed on PMAT-1385.\n- Verified in [src/tests/roadmap_writer_gate_tests.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/tests/roadmap_writer_gate_tests.rs#L268-L280) that `production_sources` walks compiled Rust files starting strictly from crate roots (`src/lib.rs`, `src/bin/pmat.rs`, `src/bin/pmat-agent.rs`), reading no files in `docs/roadmaps/`. Thus, master's roadmap changes cannot affect the gate's outcome.\n\n## 3. Core Architecture & Invariant Audits\n- **Lock Token Enforcement**: [src/services/roadmap_write_lock.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/services/roadmap_write_lock.rs#L24-L102) implements `RoadmapWriteLock` holding an exclusive `fs2` lock. All mutation methods (`write`, `replace`, `create_dir_all`, `remove`) are token methods. Mutation sites in [src/services/roadmap_service_io.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/services/roadmap_service_io.rs#L237-L268), [src/services/roadmap_service_operations.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/services/roadmap_service_operations.rs#L23-L360), [src/services/roadmap_fragments.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/services/roadmap_fragments.rs#L551-L590), and [src/roadmap/aggregate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/roadmap/aggregate.rs#L151-L243) explicitly require `&RoadmapWriteLock`.\n- **Single Lock Acquisition (No Deadlocks)**: Verified in [src/services/roadmap_service_migrate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/services/roadmap_service_migrate.rs#L54-L76) and [src/cli/handlers/work_handlers/ticket_validate_migrate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/cli/handlers/work_handlers/ticket_validate_migrate.rs#L335-L345) that `handle_work_migrate` delegates directly to `RoadmapService::migrate_text`, which acquires a single `acquire_read_lock` (on `--dry-run`) or `acquire_write_lock` (on active migration), eliminating recursive lock acquisition and avoiding flock deadlocks.\n- **Taint Gate Rigor**: [src/tests/roadmap_writer_gate.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/tests/roadmap_writer_gate.rs) and [src/tests/roadmap_writer_gate_tests.rs](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/src/tests/roadmap_writer_gate_tests.rs) track dataflow across patterns, fields, returns, and calls to fixpoint. `ALLOWED` entries are keyed by `(file, function, kinds, reason)` and verified by `roadmap_writer_gate_every_allowed_writer_is_still_reached` for per-kind reachability.\n- **Gate Shell Script**: [scripts/roadmap-writer-gate.sh](file:///home/noah/src/paiml-mcp-agent-toolkit.wt/D2/.claude/worktrees/lane-8d948e6b4-2418811/scripts/roadmap-writer-gate.sh) contains a 5-arm self-test proving failure detection and enforces all 15 required tests to run and pass by exact name match.\n\nDIFF: SAME\nSCOPE: CLEAN",
-      "findings": [],
-      "raw_bytes": 17230,
+      "raw_bytes": 6098,
       "err_bytes": 449,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
