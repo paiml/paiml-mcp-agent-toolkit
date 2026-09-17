@@ -7036,3 +7036,21 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1399
+  github_issue: 1399
+  item_type: task
+  title: 'release: pmat 3.41.0 — roadmap fragments, make gate, and pmat never closes an issue unasked'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-17T21:30:12Z
+  updated: 2026-09-17T21:30:12Z
+  spec: null
+  acceptance_criteria:
+  - 'Release commit for pmat 3.41.0: Cargo.toml version 3.40.2 -> 3.41.0; the pmat entry in Cargo.lock bumped to match; CHANGELOG.md gains [3.41.0] - 2026-09-17 describing #1364 (roadmap fragments + pmat roadmap aggregate), #1382 (pmat work estimate record|check), #1368 (make gate), #1388 (dead-code analyzer target-dir isolation, the #1305 flake), #1389 (pmat work migrate under the repository lock), #1391 (issue-closure contract, closing-keyword lint, pmat work edit --notes) and #1394 (CB-200 back under its baseline 1741 -> 1680, measured in a required CI job), plus the two known hazards (impl-estimates.jsonl merge=union duplicates rows on rebase when a side rewrote lines; roadmap aggregate/--check exit 2 on a read-only tree because they need the repository lock file). Nothing else changes: every fix merged before this branch was cut.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null

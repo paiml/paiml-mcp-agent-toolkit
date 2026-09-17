@@ -7,6 +7,107 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.41.0] - 2026-09-17
+
+### Added
+
+- **Roadmap fragments: `pmat work add` writes one file per ticket, so `roadmap.yaml`
+  leaves the merge path (#1364).** In a repository that has opted in — the predicate is
+  `[ -d docs/roadmaps/entries ]`, the same one paiml/.github's `roadmap-fragment-parity`
+  gate uses — a ticket is `docs/roadmaps/entries/<id>.yaml` and `roadmap.yaml` is a
+  generated aggregate. `RoadmapService::save`, `upsert_item`, `remove_item` and
+  `replace_item_raw` all write fragments under that predicate. The problem being solved is
+  Amdahl serial fraction 1: N pull requests contend on one file however disjoint their
+  code is. Measured in paiml/aprender on 2026-09-15, 146 PRs over 10 days against 88
+  merged, and of the last 25 `merge_group` runs **7 succeeded and 15 were cancelled**.
+  New command `pmat roadmap aggregate` renders the aggregate and `--check` verifies it
+  without writing. On aprender's 899-row roadmap three runs were byte-identical to each
+  other, to the committed file and to the Python aggregator it replaces; 22/22
+  differential scenarios byte-equal. **pmat's own repository has NOT opted in** — there is
+  no `docs/roadmaps/entries/` on master — so nothing here changes for pmat itself.
+- **`pmat work estimate record` and `pmat work estimate check` (#1382).**
+  `docs/audits/impl-estimates.jsonl` was written by hand and gated by nothing: all 16
+  correctly-keyed rows for this repository carried `unit: null`, so the reader
+  (`estimate.sh`) excluded every one of them and could produce no estimate at all. The
+  ledger now has exactly one writer, which refuses an unpoolable row at write time and
+  appends under `O_APPEND` in a single `write_all`, plus a `--lib` test that fails on any
+  committed row without `unit`. 18 legacy rows were backfilled from their own text or
+  receipts.
+- **`make gate` (#1368).** pmat had no declared gate, so paiml-implement's discovery fell
+  back to `cargo test --workspace`. `make gate` runs `scripts/gate.sh`: **one table**
+  mapping every required context (`gate`, `ci / gate`, `feature-gate`,
+  `docs build (docs.rs environment)`, `pmat score`, `provable ladder`) to the legs that
+  can run locally — 48 rows at this release, 32 of which run here. The 16 that cannot are
+  **printed by name on every exit** with a categorised reason rather than silently
+  skipped, and a required context with no row is refused with exit 2.
+- **`pmat work edit --notes` (#1391).** The only other writer, `-d`, replaces a row's
+  acceptance criteria, so there was no way to add a cross-reference to a ticket without
+  destroying its criteria.
+
+### Fixed
+
+- **A crate that does not compile could be reported as cleanly measured (#1305, #1388).**
+  The dead-code analyzer inherited `CARGO_TARGET_DIR`. Cargo fingerprints a workspace
+  member by its path *relative to the workspace root*, so two fixture crates with the same
+  package name sharing one target dir share a fingerprint; if the broken crate's source
+  was older than the other's fingerprint, cargo called it fresh, replayed the other
+  crate's empty diagnostics and exited 0 — the analyzer read that as
+  `violations=[] not_applicable=None`, a clean full measurement of a crate that cannot
+  compile. `ci / test` and `ci / coverage` mount the same per-PR target dir, which is how
+  the two jobs answered for each other. The analyzer now builds into a target directory
+  only its own workspace root uses. This was tracked for months as an intermittent test
+  flake; it was not a flake.
+- **`pmat work migrate` rewrote `roadmap.yaml` with no lock (#1389).** It used a bare
+  `std::fs::write` after an unlocked read, while every `RoadmapService` writer holds
+  `<git common dir>/pmat/roadmap-id.lock`; in a fragment-mode repository it also rewrote
+  the generated aggregate and migrated no fragment. `RoadmapWriteLock`
+  (`src/services/roadmap_write_lock.rs`) now exists only while the exclusive flock is
+  held, and its methods are the only raw writes to a roadmap path. A `--lib` taint
+  analysis over every file the crate compiles outside `cfg(test)` (3037 files, a full
+  `syn` walk of `mod` and `include!` at any depth) follows path literals to their
+  serialisation sites and refuses any that is not an allowed `(function, sink)` pair.
+- **CB-200 is back under its baseline and is measured where a merge is decided
+  (#1266, #1394).** Definitions below grade A had drifted from the banked 1688 to 1741.
+  Measured with the same binary against cold indexes and clean clones, the baseline tree
+  reproduces 1688 exactly — the identical multiset of (file, definition), so this was code
+  drift and not grader drift. This release measures **1680**: 61 definitions brought to
+  grade A, 0 newly below A. The baseline was not raised. The measurement now runs in a
+  required CI job, which is what had been missing: it was invisible to CI because CI
+  checkouts carry no index.
+
+### Changed
+
+- **pmat never closes a GitHub issue unasked (#1391).** GitHub's closing-keyword parser
+  matches any close/fix/resolve word, in any tense, with an optional colon, directly
+  before an issue reference — **with no word boundary required**. A line written to say an
+  issue must stay open (`no-close: #3091`) therefore closed it, and a PR body here closed
+  issue #1339 the same way. Before this release pmat interpolated roadmap titles into
+  commit subjects, printed `Next: gh issue close N` after `pmat work complete`, and taught
+  a parenthesised `fixes #N` subject in `pmat prompt github-ticket`. Now one predicate
+  (`src/services/closing_keywords.rs`) is shared by the library and by
+  `closing_keywords_lint.sh` — the same ERE byte for byte, with a differential test
+  running both over one fixture table; every commit and issue builder neutralises its
+  text; all three commit-msg hook writers splice the one snippet and refuse a closing
+  message; and `scripts/issue-closure-gate.sh` proves no pmat code path can close an
+  issue, failing if either of its legs scans zero files. Contract
+  `contracts/pmat-issue-closure-v1.yaml`: 8 obligations, 8 evaluated, 0 failed.
+  **Note for downstream repositories:** the new PR-body lint would have refused 15 of the
+  60 PRs merged before it landed. If your convention states a non-closure with a word
+  GitHub parses, it will now be refused — use a marker with no closing keyword in it.
+
+### Known hazards in this release
+
+- **`docs/audits/impl-estimates.jsonl` is `merge=union`** (`.gitattributes:3`). Union
+  merge is only safe when neither side rewrote an existing line. #1382 did rewrite lines
+  (the one sanctioned backfill), and a rebase across it duplicated every row. If you
+  rebase a branch over a commit that edited existing rows of this ledger, check the row
+  count and re-append with `pmat work estimate record` rather than trusting the merge.
+- **`pmat roadmap aggregate` and `--check` need a writable lock file.** Both take
+  `<git common dir>/pmat/roadmap-id.lock`. On a read-only checkout `--check` exits **2**
+  with `cannot take the roadmap lock … this box cannot judge` — measured. It fails
+  honestly rather than reporting a pass it could not make, but a read-only CI checkout
+  cannot run this check at all.
+
 ## [3.40.2] - 2026-09-15
 
 ### Fixed
