@@ -1,16 +1,19 @@
 # impl-PMAT-1365 — receipt (sixth session)
 
-Verdict at the judged head: **ready to merge once CI is green**. `make gate` is declared, and discovery finds it.
+Verdict: **PARTIAL(blocker)**. `make gate` is declared, and discovery finds it.
 The branch is up to date with master `7c2aa59b8` (#1383, which registered PMAT-1385 and completed PMAT-1363).
 
-The fifth session left one blocker: the required `traceability` job (CB-2115) was red on master's own state. #1383 fixed those two findings. By the time it merged, master was red on CB-2115 again, this time with `ORPHAN-GITHUB #1386`. That issue was opened at 10:50:15Z by a sibling session and has no roadmap row. This diff now carries that one row, in one separate commit. The reason is in the next section.
+The fifth session left one blocker: the required `traceability` job (CB-2115) was red on master's own state. #1383 fixed those two findings. By the time it merged, master was red on CB-2115 again, this time with `ORPHAN-GITHUB #1386`. That issue was opened at 10:50:15Z by a sibling session and has no roadmap row.
 
-**Next step, exactly:** commit the quorum artifact for this head, push, and wait for CI to go green. Then run `bash ~/.claude/skills/quorum-review/pmat-merge 1368 --auto --merge`.
+This session carried that row (`9dc60d624`) and explained it in the next section. The quorum round on `ea3edddc2` then went **NOT AGREED**: lane 1 (gemini-3.1-pro-high) FAILed the row as out of scope, and lanes 2 and 3 PASSed. The artifact is committed (`91f1b5a9b`). Under the session's rule, **the row was dropped** (`7fbce2a6d`, a revert) and the scope is not argued a third time. So `traceability` stays red on master's state until #1386 gets its row **on master**.
 
-## Lifecycle row carried in this diff: PMAT-1386 (scope — read this before judging scope)
+**Next step, exactly:** once master carries a PMAT-1386 row (or #1386 is closed and CB-2115 is green on master), run `git merge origin/master`. Re-render the two ledgers only if `--check-ledger` fails. Then run `quorum-review.sh --base master --ticket PMAT-1365 --pr 1368 --author-model claude-opus-5`, because this receipt changed after the last agreed round. Commit the artifact, push, wait for CI, and run `bash ~/.claude/skills/quorum-review/pmat-merge 1368 --auto --merge`. Before that, fix the gate.sh finding below, or record why not.
+
+## Lifecycle row PMAT-1386: carried in `9dc60d624`, FAILed on scope, DROPPED in `7fbce2a6d`
 
 | field | value |
 |---|---|
+| outcome | quorum on `ea3edddc2`: lane 1 FAIL ("adds an unrelated roadmap item (`PMAT-1386`)"), lanes 2–3 PASS → NOT AGREED; the row is reverted by `7fbce2a6d`, and the net diff no longer touches the PMAT-1386 row |
 | commit | `9dc60d624` `chore(PMAT-1365): register PMAT-1386 — issue #1386 is open with no roadmap row`. It changes one file, `docs/roadmaps/roadmap.yaml`, and adds 16 lines: one row and nothing else |
 | writer | `pmat work add --github-issue 1386 "<issue title>"`, a sanctioned writer. #1383 wrote PMAT-1385 with the same writer (`475abd957`). The row was not typed by hand |
 | label | none, because issue #1386 has no labels (`gh issue view 1386 --json labels` → `[]`) |
@@ -91,7 +94,7 @@ ci-only | gate | <leg> | <where CI runs it> | <platform|credential|cost|trigger|
 ## Scope
 
 - **#1381 row: gone from this diff.** It was the fourth session's one blocking quorum FAIL. Master now carries it (#1382).
-- **Foreign roadmap rows: one, PMAT-1386** (sixth session, `9dc60d624`). The reasons are in "Lifecycle row carried in this diff" above. The fourth session's rule still stands: a foreign row that draws a scope FAIL comes out and reaches master on its own. The sixth session's rule is stricter. If a lane FAILs this row on scope, the commit is dropped, the ticket stops at PARTIAL(blocker), and the scope is not argued a third time.
+- **Foreign roadmap rows: none in the net diff.** PMAT-1386 was carried in `9dc60d624`, FAILed on scope by quorum lane 1, and reverted in `7fbce2a6d`. The fourth session's rule still stands: a foreign row that draws a scope FAIL comes out and reaches master on its own. The sixth session's rule is stricter. If a lane FAILs this row on scope, the commit is dropped, the ticket stops at PARTIAL(blocker), and the scope is not argued a third time.
 - Fifth session: #1384 was opened for PMAT-1366, and master fixed that row itself in #1364, so #1384 was closed. PMAT-1363 and #1385 were fixed by #1383.
 - Still in this diff: `PMAT-1365`'s own row gains `kind:code` (the label `kind-gate.sh` reads).
 
@@ -104,12 +107,14 @@ ci-only | gate | <leg> | <where CI runs it> | <platform|credential|cost|trigger|
 | dependabot-alerts-live false credential reason | scripts/gate.sh | a CI-only reason is accepted as asserted, and `gh` already holds the token | fixed (fourth session): RED `d30834a1e`, GREEN `5161561f3` |
 | CB-2115 ORPHAN-ROADMAP PMAT-1366 | roadmap lifecycle (PMAT-1336) | a merged PR closes its issue → a ticket cannot complete its own row in the PR that closes it → the row stays `planned` → CB-2115 reds every PR. The fifth instance of this gap in two days | fixed on master by #1364 (`df6c351b2`); #1384 closed as redundant |
 | CB-2115 ORPHAN-ROADMAP PMAT-1363, ORPHAN-GITHUB #1385 | roadmap lifecycle (PMAT-1336) | the same gap, plus an issue opened after master's last change → every PR red again, minutes after the previous fix | fixed on master by #1383 (`7c2aa59b8`) |
-| CB-2115 ORPHAN-GITHUB #1386 | roadmap lifecycle (PMAT-1336) | a sibling session filed an issue at 10:50Z, before #1383 merged → no lifecycle PR can land before the next orphan → every open PR stays red | **fixed in this diff** (`9dc60d624`, sanctioned writer). The lifecycle gap itself stays open under PMAT-1336 |
+| CB-2115 ORPHAN-GITHUB #1386 | roadmap lifecycle (PMAT-1336) | a sibling session filed an issue at 10:50Z, before #1383 merged → no lifecycle PR can land before the next orphan → every open PR stays red | **not fixed here**. It was carried in `9dc60d624` and dropped in `7fbce2a6d` after a scope FAIL. Master has to land the row; the lifecycle gap stays open under PMAT-1336 |
+| `make gate` runs a stale pmat under `CARGO_TARGET_DIR` | scripts/gate.sh (this ticket) | the `cb-2113-cb-2115` and `pmat-score` rows call `./target/debug/pmat` → `build-pmat` writes to `$CARGO_TARGET_DIR/debug/pmat` → with an isolated target dir, the legs run whatever binary is left in `./target` (here, one built at 09:30Z by the fifth session) → no control arm sets `CARGO_TARGET_DIR` | **not fixed**. Found in the sixth session; blocks nothing on CI (CI does not set it). The fix is `${CARGO_TARGET_DIR:-target}/debug/pmat`, with a `gate-control.sh` arm |
+| lib-tests red locally: `a_crate_that_does_not_compile_is_reported_as_not_measured` | #1305 (a sibling session is root-causing it) | failed in 0.261 s under nextest on `9dc60d624`; 21734/21735 passed | **not fixed, not re-run, not waived**: #1305 |
 | lib-tests red locally: CB-200, 1742 vs 1688 | src/services/tdg_baseline.rs (#1266) | debt below grade A was added on master → the lib test measures only where `.pmat/context.db` exists → CI checkouts have no index, so `ci / gate` passes it unmeasured | **not fixed, not waived**: #1266. Passed in `make gate` on the merged head `be34454e7`; not investigated why |
 
 ## Dispatch ledger
 
-Sixth session: no Claude subagents. The pre-merge review is `quorum-review.sh`, three agy lanes, re-run on this head because the diff changed. `make gate` ran on `9dc60d624` in its own target directory, `/mnt/nvme-raid0/targets/pmat-1365`, while the quorum ran.
+Sixth session: no Claude subagents. One `quorum-review.sh` round ran (three agy lanes) on `ea3edddc2`: NOT AGREED, lane 1 FAIL on scope, artifact `91f1b5a9b`. No second round was run, because the row it FAILed was dropped and the session stopped. `make gate` ran on `9dc60d624` in `/mnt/nvme-raid0/targets/pmat-1365`, 869 s: **27 PASS, 1 FAIL** (`lib-tests`: #1305's test, above). `cb-2113-cb-2115` PASSed, but it measured with the stale `./target/debug/pmat` (see Jidoka).
 
 Fifth session: no subagents were dispatched. transcript-gate.sh: `PASS attempted=0 denied=0 stalled=0 running_peak=0 slots=3`, which is vacuous. The pre-merge review is `quorum-review.sh` (three agy lanes), run on this commit. Its artifact is `docs/audits/quorum-PMAT-1365.json`, committed on top.
 
@@ -123,6 +128,6 @@ Fifth session: no subagents were dispatched. transcript-gate.sh: `PASS attempted
 ## Gaps
 
 - Routing R-4 was not followed in any session: the implementation phases were done directly.
-- Not merged at this commit. The merge waits on CI for this head and on the quorum artifact.
-- `make gate` on this head (`9dc60d624`) ran at the same time as this receipt's quorum, so its result is not recorded here. It is in the session's final JSON receipt. The code it tests is byte-identical to `be34454e7`, where it gave 27 PASS and 1 FAIL. That one FAIL was CB-2115 on master's drift, which is now fixed.
+- Not merged. No agreed quorum artifact exists for this head, and `traceability` is red on master's #1386 orphan.
+- This receipt's final version has not been quorum-reviewed. The last round judged `ea3edddc2`.
 - The fourth session never timed the `cost:` CI-only rows one by one. The fifth did not either.
