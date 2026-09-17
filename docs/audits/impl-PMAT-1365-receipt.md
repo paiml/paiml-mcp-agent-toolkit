@@ -8,6 +8,12 @@ The seventh session did three things:
 2. It fixed the stale-binary finding, RED first. The finding was wider than recorded: **ten legs** ran a hand-written `./target/debug/pmat`, not two.
 3. It ran `make gate` on `e94b2c6cc` with `CARGO_TARGET_DIR=/mnt/nvme-raid0/targets/pmat-1365`: **27 PASS, 1 FAIL**. The one FAIL is `lib-tests`, on exactly the two known reds, #1305 and CB-200 (#1266). Neither is waived, and no baseline was raised.
 
+## Stop the line: `traceability` is red on master's state (seventh session)
+
+After merging master `ce945d81e` (#1388, the #1305 fix), the required `traceability` job failed on `46488157c` (run 35229346986, job 105229547052). CB-2113 ✓ (32 commits); CB-2115 ✗ with 2 findings: `ORPHAN-ROADMAP PMAT-1305: #1305 is closed` and `ORPHAN-ROADMAP PMAT-708: #1284 is closed`. Both are master's own state. `origin/master` `ce945d81e` carries both rows as `status: planned`, and `gh issue view` shows #1305 CLOSED at 13:27:54Z and #1284 CLOSED at 13:29:02Z. **Neither row is carried here**: the orchestrator runs the lifecycle PR. Once master carries them, merge `origin/master` and let the armed PR go.
+
+The merge brought no conflicts outside the two ledgers. Both were taken from master, then re-rendered on the merged tree with the binary built from it: `3fd46d56a` (orphan files 4491→4492) and `567bf44a8` (unrun tests →24305/27432). Both `--check-ledger` runs exit 0. Quorum round 2 on `567bf44a8`: 3/3 PASS.
+
 ## The merge (seventh session)
 
 | check | result |
