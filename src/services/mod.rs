@@ -318,6 +318,7 @@ pub mod roadmap_fragments; // PMAT-1363: roadmap.yaml as a generated aggregate o
 pub mod roadmap_id_authority; // PMAT-680: one id authority per repository, not per checkout
 pub mod roadmap_service;
 pub mod roadmap_text; // PMAT-676: the one raw-text id scanner and roadmap validator
+pub mod roadmap_write_lock; // PMAT-1385: the lock token every write under docs/roadmaps/ goes through
 pub mod spec_epic; // PMAT-728: goal-mode §4.3 — the spec ↔ epic edge (CB-2110), judged from front-matter and a snapshot
 pub mod spec_review; // PMAT-1299: goal-mode §6 — the spec review artifact (CB-2111), judged offline from a file
 pub mod telemetry_service;

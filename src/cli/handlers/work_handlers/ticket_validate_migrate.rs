@@ -332,21 +332,25 @@ pub async fn handle_work_migrate(
         );
     }
 
-    let content = std::fs::read_to_string(&roadmap_path)?;
-    let (new_content, changes) = normalize_status_values(&content);
-    let suggestions = collect_quoting_suggestions(&content);
+    // PMAT-1385: read, normalise and write under ONE repository lock, through the
+    // lock token — never a bare read here and a bare `std::fs::write` later. In a
+    // repository with docs/roadmaps/entries/ the service rewrites fragments and
+    // leaves the generated roadmap.yaml alone.
+    let service = crate::services::roadmap_service::RoadmapService::new(&roadmap_path);
+    let migration = service.migrate_text(normalize_status_values, dry_run, backup)?;
+    let suggestions = collect_quoting_suggestions(&migration.before);
 
     // Advisory suggestions are reported but MUST NOT gate the write. They were
     // previously concatenated into `changes`, so a roadmap needing no migration
     // at all was still rewritten (and backed up) and reported as "Updated",
     // purely because a title tripped the advisory heuristic.
-    print_migration_list("change(s) to apply:", &changes);
+    print_migration_list("change(s) to apply:", &migration.changes);
     print_migration_list(
         "suggestion(s) to review by hand (not applied automatically):",
         &suggestions,
     );
 
-    if changes.is_empty() {
+    if migration.changes.is_empty() {
         println!(
             "{}",
             c::pass("No automatic migrations needed - roadmap is already up to date")
@@ -359,7 +363,8 @@ pub async fn handle_work_migrate(
         return Ok(());
     }
 
-    write_migration(&roadmap_path, &content, &new_content, backup)
+    report_migration(&migration);
+    Ok(())
 }
 
 /// Print a titled bullet list, or nothing at all when the list is empty.
@@ -501,38 +506,26 @@ fn collect_quoting_suggestions(content: &str) -> Vec<String> {
         .collect()
 }
 
-/// Back up (optionally), write the migrated roadmap, and report whether the
-/// result still parses.
-fn write_migration(
-    roadmap_path: &std::path::Path,
-    original: &str,
-    new_content: &str,
-    backup: bool,
-) -> Result<()> {
+/// Report what a migration wrote, and whether the roadmap it leaves still parses.
+///
+/// PMAT-1385: the writes themselves happen in `RoadmapService::migrate_text`, under
+/// the repository lock; this only prints them.
+fn report_migration(migration: &crate::services::roadmap_service::TextMigration) {
     use crate::cli::colors as c;
 
-    if backup {
-        let backup_path = roadmap_path.with_extension("yaml.bak");
-        std::fs::write(&backup_path, original)?;
-        println!(
-            "{}",
-            c::pass(&format!(
-                "Created backup: {}",
-                c::path(&backup_path.display().to_string())
-            ))
-        );
+    for path in &migration.written {
+        let shown = c::path(&path.display().to_string());
+        let line = match path.extension().and_then(|e| e.to_str()) {
+            Some("bak") => format!("Created backup: {shown}"),
+            _ if path.parent().and_then(|p| p.file_name()) == Some("entries".as_ref()) => {
+                format!("Updated fragment: {shown}")
+            }
+            _ => format!("Updated roadmap: {shown}"),
+        };
+        println!("{}", c::pass(&line));
     }
 
-    std::fs::write(roadmap_path, new_content)?;
-    println!(
-        "{}",
-        c::pass(&format!(
-            "Updated roadmap: {}",
-            c::path(&roadmap_path.display().to_string())
-        ))
-    );
-
-    if serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>(new_content).is_ok() {
+    if serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>(&migration.after).is_ok() {
         println!("{}", c::pass("Verified: updated roadmap is valid"));
     } else {
         println!(
@@ -540,8 +533,6 @@ fn write_migration(
             c::warn("Warning: updated roadmap may have issues - check manually")
         );
     }
-
-    Ok(())
 }
 
 /// Handle work list-statuses command (Part B: UX Improvements)

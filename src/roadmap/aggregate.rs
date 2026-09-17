@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 
 use crate::services::roadmap_fragments::{self as fragments, FragmentError};
 use crate::services::roadmap_service::RoadmapService;
+use crate::services::roadmap_write_lock::RoadmapWriteLock;
 
 /// What `pmat roadmap aggregate` does with the aggregate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,10 +72,17 @@ pub fn run_aggregate(
 ) -> AggregateReport {
     let entries_dir = entries.map_or_else(|| default_entries_dir(roadmap), Path::to_path_buf);
     let service = RoadmapService::new(roadmap);
-    let run = || aggregate_locked(roadmap, &entries_dir, mode);
+    // PMAT-1385: the write arm is handed the lock token, so writing without the
+    // exclusive lock does not type-check.
     let locked = match mode {
-        AggregateMode::Write => service.with_write_lock(run),
-        AggregateMode::Print | AggregateMode::Check => service.with_read_lock(run),
+        AggregateMode::Write => service
+            .with_write_lock(|lock| aggregate_locked(roadmap, &entries_dir, Access::Write(lock))),
+        AggregateMode::Print => {
+            service.with_read_lock(|| aggregate_locked(roadmap, &entries_dir, Access::Print))
+        }
+        AggregateMode::Check => {
+            service.with_read_lock(|| aggregate_locked(roadmap, &entries_dir, Access::Check))
+        }
     };
     locked.unwrap_or_else(|e| {
         AggregateReport::new(
@@ -97,9 +105,16 @@ fn default_entries_dir(roadmap: &Path) -> PathBuf {
     }
 }
 
-fn aggregate_locked(roadmap: &Path, entries_dir: &Path, mode: AggregateMode) -> AggregateReport {
+/// What the locked section may do: only the write arm holds the write-lock token.
+enum Access<'l> {
+    Print,
+    Write(&'l RoadmapWriteLock),
+    Check,
+}
+
+fn aggregate_locked(roadmap: &Path, entries_dir: &Path, access: Access<'_>) -> AggregateReport {
     fragments::aggregate_paths(roadmap, entries_dir).map_or_else(refusal, |(base, out)| {
-        emit(roadmap, entries_dir, mode, &base, out)
+        emit(roadmap, entries_dir, access, &base, out)
     })
 }
 
@@ -119,21 +134,22 @@ fn refusal(e: FragmentError) -> AggregateReport {
 fn emit(
     roadmap: &Path,
     entries_dir: &Path,
-    mode: AggregateMode,
+    access: Access<'_>,
     base: &str,
     out: String,
 ) -> AggregateReport {
     // Re-read rather than threading the list through: aggregate_paths already
     // proved it readable, and the count is only for the message.
     let fragments = fragments::read_fragments(entries_dir).unwrap_or_default();
-    match mode {
-        AggregateMode::Print => AggregateReport::new(0, out, String::new()),
-        AggregateMode::Write => write_aggregate(roadmap, base, &out, fragments.len()),
-        AggregateMode::Check => check_aggregate(roadmap, entries_dir, base, &out, &fragments),
+    match access {
+        Access::Print => AggregateReport::new(0, out, String::new()),
+        Access::Write(lock) => write_aggregate(lock, roadmap, base, &out, fragments.len()),
+        Access::Check => check_aggregate(roadmap, entries_dir, base, &out, &fragments),
     }
 }
 
 fn write_aggregate(
+    lock: &RoadmapWriteLock,
     roadmap: &Path,
     base: &str,
     out: &str,
@@ -150,7 +166,7 @@ fn write_aggregate(
             ),
         );
     }
-    if let Err(e) = replace_atomically(roadmap, out) {
+    if let Err(e) = replace_atomically(lock, roadmap, out) {
         return AggregateReport::new(
             2,
             String::new(),
@@ -213,17 +229,17 @@ fn check_aggregate(
 /// editor, or the CI parity gate take no such lock: an in-place write would let
 /// them read a truncated aggregate, and a crash mid-write would leave one on disk.
 /// A rename within one directory is atomic, the same guarantee `write_fragment`
-/// gives each fragment.
-fn replace_atomically(path: &Path, contents: &str) -> std::io::Result<()> {
+/// gives each fragment. PMAT-1385: [`RoadmapWriteLock::replace`] does both steps.
+fn replace_atomically(lock: &RoadmapWriteLock, path: &Path, contents: &str) -> std::io::Result<()> {
     let name = path.file_name().map_or_else(
         || "roadmap.yaml".into(),
         |n| n.to_string_lossy().into_owned(),
     );
-    let staging = path.with_file_name(format!(".{name}.aggregate.tmp"));
-    std::fs::write(&staging, contents)?;
-    std::fs::rename(&staging, path).inspect_err(|_| {
-        let _ = std::fs::remove_file(&staging);
-    })
+    lock.replace(
+        &path.with_file_name(format!(".{name}.aggregate.tmp")),
+        path,
+        contents,
+    )
 }
 
 /// `pmat roadmap aggregate` as the CLI runs it: print both streams, and exit with

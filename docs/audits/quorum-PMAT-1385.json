@@ -1,0 +1,129 @@
+{
+  "ticket": "PMAT-1385",
+  "base": "master",
+  "base_resolved": "master",
+  "base_note": "judged against master ef2a0b947180ff3f4359699afd5520e8ec39f7f1 (= origin/master, behind=0)",
+  "head": "77bdbf3881c1758672cb665b7473e58186f6eb63",
+  "diff_sha256": "8c7c10fb77a007f1929146d67a5bbd95ac2bcd74c243f38109a798aa1dc0ef42",
+  "prompt_mode": "inline",
+  "prompt_bytes": 5659,
+  "prompt_sha256": "a36241621cb42dfd3f2472179a49cb2111500b27b96c790a722fb762d42a2c57",
+  "rounds": [
+    {
+      "round": 1,
+      "head": "dbf8774ec",
+      "verdicts": "FAIL/PASS/PASS",
+      "conversations": [
+        "a68900f9-561c-4691-8d1d-da9bc6bdcb21",
+        "15a767d1-855a-46f0-b0b0-92f846475e01",
+        "3f0dc15d-e2d4-4f8f-a7f5-184ad3f14d96"
+      ]
+    },
+    {
+      "round": 2,
+      "head": "287746ab0",
+      "verdicts": "FAIL/PASS/PASS",
+      "conversations": [
+        "b180962a-f1b2-4af7-aa74-ee8c3b87c3ce",
+        "43046cca-dbdf-408d-a786-55a19556647a",
+        "3c2cb5d2-e522-49f5-8c37-f0001f6a36f2"
+      ]
+    },
+    {
+      "round": 3,
+      "head": "bcda3700879dc849934c446bfa2fb73b459e97ed",
+      "verdicts": "PASS/PASS/PASS",
+      "conversations": [
+        "67d834d2-ec24-4876-b67e-8124208c2986",
+        "ac50ad60-6a8c-457c-942a-c899cc3e3e51",
+        "8c273191-dcaa-4d4e-9efb-51e055be09a2"
+      ]
+    },
+    {
+      "round": 4,
+      "head": "8d948e6b49255fb556c2126d118eefd795b9f7a6",
+      "verdicts": "PASS/PASS/PASS",
+      "note": "the head that merges: round 3 content rebased onto #1390 (roadmap and PMAT-1336 audit docs only); judged diff_sha256 unchanged",
+      "conversations": [
+        "b321d4bd-9b1d-4c96-8ce5-7fa00b333d0f",
+        "973b0fa5-1635-4ea7-934e-e54b0d03d0b0",
+        "d7d7cbfa-0463-4dd2-8fe1-a29f8fde4dce"
+      ]
+    },
+    {
+      "round": 5,
+      "head": "94ef6b2fc",
+      "verdicts": "PASS/PASS/BLIND",
+      "note": "lane files lost with $XDG_RUNTIME_DIR in the 15:30:04Z host crash; outcome as recorded in the receipt before the crash",
+      "conversations": []
+    },
+    {
+      "round": 6,
+      "head": "77bdbf388",
+      "verdicts": "PASS/PASS/PASS",
+      "conversations": [
+        "bdb63998-1f12-44fe-8491-cbee869a09bd",
+        "0da74114-d3b7-4974-95a0-ac49b53a5699",
+        "de4eb930-1f4c-4bd3-8c5d-22cd442471e7"
+      ]
+    }
+  ],
+  "width": 3,
+  "executor": "agy",
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "raw_bytes": 5953,
+      "err_bytes": 449,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "raw_bytes": 9519,
+      "err_bytes": 449,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "raw_bytes": 6098,
+      "err_bytes": 449,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "agreed": true,
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  }
+}

@@ -139,6 +139,13 @@ ci-only | mutation-diff (not required) | mutation-diff | .github/workflows/mutat
 #   D2 — roadmap-write query gate
 # A new row needs no other edit: the runner, the CI-ONLY printout and the verdict pick it up.
 # Keep this marker; scripts/gate-control.sh and src/make_gate_tests.rs assert it is here.
+
+# ── D2 — PMAT-1385: no raw write lands under docs/roadmaps/ without the repository lock. The gate is a
+#    --lib suite (a taint analysis of every compiled file, its planted mutants, and the migrate tests), so
+#    CI's `cargo test --lib` already runs it; this leg runs those 15 tests by name and refuses a filter
+#    that matched none, which the lib-tests leg above would not notice.
+cmd     | ci / gate | roadmap-writer-gate | sovereign-ci.yml test "Run tests" (roadmap_writer_gate_* and work_migrate_*) | CI runs these inside the whole lib suite; this runs only them, and fails when a required test did not run | bash scripts/roadmap-writer-gate.sh
+
 # D0 — PMAT-900001 (contracts/pmat-issue-closure-v1.yaml): the call-site gate, run as CI's own step.
 # Its PR-body sibling step needs `${{ }}` and a pull_request event, so it cannot be a leg here.
 step    | gate | issue-closure | .github/workflows/ci.yml#traceability#control — no pmat code path can close a GitHub issue (PMAT-900001) | - | -
