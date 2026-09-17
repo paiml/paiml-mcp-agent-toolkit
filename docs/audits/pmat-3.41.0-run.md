@@ -460,3 +460,8 @@ tree: run-log behind=3 against origin/master 03f893a4a. Host up 6 hours, 22 minu
 
 tree: run-log behind=3 against origin/master 03f893a4a. Host up 7 hours.
 - REL-3.41.0 opened PR #1400 from `release/3.41.0` (head ad214bd98) after its local clean room finished (its receipt carries the gate-by-gate result; I re-read it when the session reports) and started quorum round 1. Checks:      26 pass      19 pending       4 skipping .
+
+## 2026-09-17T23:11Z — release PR #1400 armed on 3/3, CI 36 pass / 9 pending
+
+tree: run-log behind=3 against origin/master 03f893a4a. Host up 7 hours, 39 minutes.
+- REL-3.41.0 LIVE, PR head ebb67a216 (quorum artifact on top of the cut), armed via `pmat-merge`; 0 failing checks so far.
