@@ -213,3 +213,12 @@ Correction to my own 11:28Z decision (finding): "each ticket PR carries master's
 New finding from the D4 session, in D4's own code (not yet fixed, goes into the next D4 session): `scripts/gate.sh` legs `cb-2113-cb-2115` and `pmat-score` call `./target/debug/pmat` and ignore `CARGO_TARGET_DIR`; under the build isolation my briefs mandate they ran a stale binary from 09:30Z, so those two legs' PASS was not evidence. A gate that runs whatever binary happens to be lying in `./target` is the "never hand-write a binary path" trap from memory; the fix is to take the path from `cargo build --message-format json`.
 
 11:50Z launched lifecycle session 3 (clone `.wt/PMAT-1336`, branch `PMAT-1336-lifecycle-3`, pid 1435689): register #1386 plus whatever else the bijection reports at arm time. Slots 3/3: D2, D7, PMAT-1336. D4 waits for it (needs: merge master, fix the gate.sh binary path RED→GREEN, one more quorum round, arm).
+
+## 2026-09-17T12:16Z — sessions in flight
+
+tree: run-log behind=0 against origin/master 7c2aa59b8.
+- PR #1387 (chore(PMAT-1336): register PMAT-1386 — master's one CB-2115 finding):      27 pass      15 pending       4 skipping 
+- PR #1388 (fix(PMAT-1305): dead-code analyzer builds into a target dir only its workspace root uses —):       2 fail      28 pass      13 pending       4 skipping 
+- PR #1368 (build(make): declare `gate` — pmat had no gate of its own, so discovery guessed a weaker o):       2 fail      41 pass       1 pending       5 skipping 
+- D7 PMAT-1305 opened #1388 after ~65 min: "dead-code analyzer builds into a target dir only its workspace r…" — i.e. the mechanism it found is a SHARED cargo target dir, the same class as the cross-clone hazard logged at 09:58Z. Receipt pending.
+- D2 PMAT-1385: LIVE, HEAD dbf8774ec, no PR yet. Lifecycle-3: PR #1387 open. Slots 3/3.
