@@ -317,6 +317,6 @@ fn no_ci_only_cost_row_hides_a_check_that_only_runs_pmat() {
     assert!(
         hiding.is_empty(),
         "CI-only rows blame cost for a CI job that only builds and runs pmat, which `make gate` \
-         already builds (leg build-pmat) — make each a cmd row on ./target/debug/pmat: {hiding:?}"
+         already builds (leg build-pmat) — make each a cmd row running `cargo run --locked --bin pmat --`: {hiding:?}"
     );
 }

@@ -68,6 +68,15 @@ equations:
       - "a leg that did not run is NOTRUN, which is not PASS"
     preconditions: []
 
+  ci_only_reasons_are_measured:
+    formula: "for all r with kind(r) = ci-only and category(r) = cost: not runs_only_pmat(job(source(r))), where runs_only_pmat means every step of the CI job is a setup action, `cargo build ... --bin pmat`, or `cargo run ... --bin pmat -- ...`"
+    domain: "ci-only rows of the table in scripts/gate.sh whose source job is in this tree"
+    codomain: bool
+    invariants:
+      - "a check that only runs pmat is a leg here: make gate already builds pmat (build-pmat), so a release build is not a cost this gate would pay"
+      - "the source of every ci-only cost row resolves to a job, else the reading is broken and the test fails rather than passing vacuously"
+    preconditions: []
+
 proof_obligations:
   - type: postcondition
     property: "the declared gate is make gate and it runs the table"
@@ -89,6 +98,10 @@ proof_obligations:
     property: "any red leg makes the gate red, and the run continues"
     formal: "∃r: runs(r) ∧ rc(r) ≠ 0 ⇒ exit = 1 ∧ ∀r' > r: attempted(r')"
     applies_to: gate_can_fail
+  - type: invariant
+    property: "no CI-only row blames cost for a check that only runs pmat"
+    formal: "∀r: kind(r) = ci-only ∧ category(r) = cost ⇒ ¬runs_only_pmat(job(source(r)))"
+    applies_to: ci_only_reasons_are_measured
 
 falsification_tests:
   - id: gate_is_declared
@@ -116,6 +129,11 @@ falsification_tests:
     prediction: "arm 4"
     test: "bash scripts/gate-control.sh"
     if_fails: "the gate is theater: its green carries no information"
+  - id: ci_only_reasons_are_measured
+    rule: "a ci-only cost row whose CI job only builds and runs pmat is refused"
+    prediction: "make_gate_tests::no_ci_only_cost_row_hides_a_check_that_only_runs_pmat; RED on 22e4cd1fe naming unrun-tests and reachability-ledger"
+    test: "cargo test --lib make_gate_tests"
+    if_fails: "a check the gate could run in seconds stays CI-only on an unmeasured reason, and its red reaches CI after a local green (feature-gate on PR #1368, 1d8c64f40)"
 
 kani_harnesses: []
 
