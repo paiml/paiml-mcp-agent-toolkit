@@ -197,16 +197,7 @@ struct EntropyGateConfig {
 /// Reads `enabled`, `max_violations`, `exclude` from `[entropy]` section.
 fn load_entropy_gate_config(project_path: &Path) -> EntropyGateConfig {
     // Start with pmat.toml [quality] max_entropy_violations as lowest priority (#227)
-    let mut max_violations_fallback: Option<usize> = None;
-    if let Ok(content) = std::fs::read_to_string(project_path.join("pmat.toml")) {
-        if let Ok(table) = content.parse::<toml::Table>() {
-            max_violations_fallback = table
-                .get("quality")
-                .and_then(|t| t.get("max_entropy_violations"))
-                .and_then(|v| v.as_integer())
-                .map(|v| v.max(0) as usize);
-        }
-    }
+    let max_violations_fallback = pmat_toml_max_entropy_violations(project_path);
 
     let path = project_path.join(".pmat-gates.toml");
     let content = match std::fs::read_to_string(&path) {
@@ -259,6 +250,22 @@ fn load_entropy_gate_config(project_path: &Path) -> EntropyGateConfig {
         max_violations,
         exclude,
     }
+}
+
+/// `[quality] max_entropy_violations` from `pmat.toml`, clamped at 0; `None`
+/// when the file is absent, unparsable, or does not set it.
+fn pmat_toml_max_entropy_violations(project_path: &Path) -> Option<usize> {
+    let mut max_violations: Option<usize> = None;
+    if let Ok(content) = std::fs::read_to_string(project_path.join("pmat.toml")) {
+        if let Ok(table) = content.parse::<toml::Table>() {
+            max_violations = table
+                .get("quality")
+                .and_then(|t| t.get("max_entropy_violations"))
+                .and_then(|v| v.as_integer())
+                .map(|v| v.max(0) as usize);
+        }
+    }
+    max_violations
 }
 
 /// Extract exclude paths from a parsed TOML table.
