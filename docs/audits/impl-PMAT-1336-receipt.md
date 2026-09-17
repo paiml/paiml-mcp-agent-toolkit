@@ -118,3 +118,11 @@ After both, `pmat work sync --check-only` reads 114/114 coherent. Written by the
 At `HEAD=b58addab8 origin/master=b58addab8 behind=0`, `pmat work sync --check-only` read open items 114 against open issues 113 with one finding, `ORPHAN-ROADMAP PMAT-1385: #1385 is closed`. It reds `traceability` on every open PR; #1391 is armed and waits on it.
 
 Fixed with `pmat work sync --direction github-to-yaml`: the dry-run planned exactly `close-item PMAT-1385 #1385 → Completed`; the diff is that row's `status` and `updated` lines. After it: 113/113 coherent. Written by the release-3.41.0 orchestrator session.
+
+## 2026-09-17 — PMAT-636 (closed by #1394) and PMAT-900001 (landed by #1391, issue closed here)
+
+At `HEAD=b3df4a402 origin/master=b3df4a402 behind=0`, `pmat work sync --check-only` read open items 113 against open issues 112 with one finding, `ORPHAN-ROADMAP PMAT-636: #1266 is closed` — #1394 (CB-200 back under its baseline) merged as b3df4a402 and closed issue 1266.
+
+PMAT-900001 is the second row. #1391 merged as 739d70269 without a closing line on purpose ("the row and the issue are completed together by a later lifecycle PR"), so issue 1395 stayed open and its row `planned`: coherent, but finished work. The issue was closed by the orchestrator through `mutate.sh close --issue 1395 --cite docs/audits/impl-PMAT-900001-receipt.md --quorum docs/audits/quorum-PMAT-900001.json` (agreed=true, 3/3 PASS; the close gate's two requirements), read back CLOSED.
+
+Then `pmat work sync --direction github-to-yaml`: the dry-run planned exactly `close-item PMAT-636 #1266 → Completed` and `close-item PMAT-900001 #1395 → Completed`; the diff is those two rows' `status` and `updated` lines. After it: 111/111 coherent. Written by the release-3.41.0 orchestrator session.

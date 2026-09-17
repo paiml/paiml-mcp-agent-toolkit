@@ -3727,11 +3727,11 @@ roadmap:
   github_issue: 1266
   item_type: task
   title: 'CB-200: the lib test the_committed_baseline_is_the_measured_count is Unmeasurable in CI (no .pmat/context.db there) and passes; locally, a cold index of master by the 3.35.0 binary reads 1709 below-A vs the 1688 banked 2026-08-22 — the ratchet drifted 21 with no leg able to see it'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-02T17:02:05Z
-  updated: 2026-09-17T17:06:15Z
+  updated: 2026-09-17T20:46:26.607112897+00:00
   spec: null
   acceptance_criteria:
   - 'Scope (release-3.41.0 brief): (1) re-measure CB-200 with ONE binary over cold indexes of the commit that banked 1688 (683d6994d) and of master, and publish the set difference of below-A definitions; (2) bring the measured count back to at most the banked 1688 by behaviour-preserving refactors of below-A definitions (pinning tests where a refactor had none), then bank the measured count — the baseline may only go down; (3) make the ratchet fail where it is enforced: a required CI job measures CB-200 and fails on anything but a measured count equal to the baseline, make gate runs the same steps, and a planted below-A definition turns that job red.'
@@ -7006,11 +7006,11 @@ roadmap:
   github_issue: 1395
   item_type: task
   title: 'pmat never changes GitHub issue state: issue-closure contract, call-site gate, and a closing-keyword lint for the commit and PR text pmat emits'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-17T14:56:20Z
-  updated: 2026-09-17T16:48:17.563328575+00:00
+  updated: 2026-09-17T20:46:26.607112897+00:00
   spec: null
   acceptance_criteria:
   - 'GitHub''s own closing-keyword parser closed aprender#3091 twice by reading ''no-close: #3091'' in a PR body as ''close: #3091''. Contract contracts/pmat-issue-closure-v1.yaml: pmat work complete never changes GitHub issue state; a pmat-query call-site gate (definitions counted apart from call sites) in CI and make gate; pmat''s commit and prompt emitters never write a closing keyword beside #N; one closing-keyword lint shared by every commit-msg hook pmat writes and by CI over the PR body. Id outside GitHub''s number range by quorum decision D1: the issue is created and bound by pmat work sync when the PR is otherwise green. Also in scope (operator brief, item 4): cross-reference PMAT-1369 to aprender#3397, aprender#3398 and aprender#3399. pmat work edit had no writer for notes:, and -d replaces the acceptance criteria, so the capability is added RED to GREEN as pmat work edit --notes and the cross-reference is written through it.'
