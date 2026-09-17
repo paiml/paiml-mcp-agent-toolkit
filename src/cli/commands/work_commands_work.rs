@@ -399,6 +399,14 @@ pub enum WorkCommands {
         command: WorkTriageCommands,
     },
 
+    /// Append to and check the estimate ledger docs/audits/impl-estimates.jsonl:
+    /// one gated, append-only writer (PMAT-1366)
+    Estimate {
+        /// Estimate subcommand
+        #[command(subcommand)]
+        command: WorkEstimateCommands,
+    },
+
     /// Show work status
     #[command(visible_aliases = &["st", "stat"])]
     Status {
@@ -808,6 +816,84 @@ pub enum WorkTriageCommands {
         /// Only records written by this agent
         #[arg(long)]
         agent: Option<String>,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
+        path: Option<PathBuf>,
+    },
+}
+
+/// Estimate-ledger subcommands (PMAT-1366): `pmat work estimate ...`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum WorkEstimateCommands {
+    /// Append one row. Refuses a row with no unit, an unpoolable unit, a range
+    /// phase, or an estimate without basis — and a refused row writes nothing.
+    Record {
+        /// Ticket id, e.g. PMAT-1366
+        #[arg(long)]
+        ticket: String,
+
+        /// `all` or a decimal phase number
+        #[arg(long, default_value = "all")]
+        phase: String,
+
+        /// How the work was executed (the row's `mode` field). Not `--mode`:
+        /// that is pmat's global cli|mcp flag, and a second `mode` arg panics
+        /// at argument access
+        #[arg(long = "exec-mode")]
+        exec_mode: String,
+
+        /// Unit of --est and --actual: turn or session (required; checked by the gate)
+        #[arg(long)]
+        unit: Option<String>,
+
+        /// Estimate
+        #[arg(long)]
+        est: Option<u64>,
+
+        /// Measured actual
+        #[arg(long)]
+        actual: Option<u64>,
+
+        /// Where the estimate came from (required with --est)
+        #[arg(long)]
+        basis: Option<String>,
+
+        /// Free-form note
+        #[arg(long)]
+        note: Option<String>,
+
+        /// Repository key (default: the origin remote's basename; must agree with it)
+        #[arg(long)]
+        repo: Option<String>,
+
+        /// Ledger file (default: <path>/docs/audits/impl-estimates.jsonl)
+        #[arg(long)]
+        ledger: Option<PathBuf>,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
+        path: Option<PathBuf>,
+    },
+
+    /// Check the ledger against the writer's rule. Fails on any schema
+    /// violation; a missing ledger is an error, not an empty pass.
+    Check {
+        /// Count only rows for this repository key (violations span every row)
+        #[arg(long)]
+        repo: Option<String>,
+
+        /// Ledger file (default: <path>/docs/audits/impl-estimates.jsonl)
+        #[arg(long)]
+        ledger: Option<PathBuf>,
 
         /// Output format
         #[arg(short = 'f', long = "format", value_enum, default_value = "text")]

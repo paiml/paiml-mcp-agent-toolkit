@@ -1,0 +1,3 @@
+# PMAT-1366: the estimate ledger is append-only (pmat work estimate record), one record per line,
+# so a union merge of two branches' appends is the merge.
+docs/audits/impl-estimates.jsonl merge=union

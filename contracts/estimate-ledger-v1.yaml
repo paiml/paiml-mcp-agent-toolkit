@@ -1,0 +1,179 @@
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  created: "2026-09-17"
+  author: PAIML Engineering
+  contract: estimate-ledger
+  status: enforced
+  description: >
+    PMAT-1366: docs/audits/impl-estimates.jsonl has ONE writer, and the writer
+    carries the reader's schema. Until this contract the ledger was produced by
+    prose — SKILL.md Phase 4 says "append the ticket's row" — and read by
+    estimate.sh in a different repository. Nothing in this tree wrote a row
+    (`pmat query --literal impl-estimates` matched zero indexed functions), so
+    nothing refused one: L1-L18 were appended between 2026-09-03 and
+    2026-09-08 without a `unit`, the reader's unit rule (paiml-implement
+    PMAT-066) merged on 2026-09-12, and no gate ever re-read the older rows.
+    The reader excluded all 10 measured rows keyed paiml-mcp-agent-toolkit as
+    reason=no-unit and exited 2, while 14 of this repository's rows sat under a
+    second key, `pmat` (the Cargo package name), where the same reader pooled
+    them. A schema enforced only at read time fails as silence; this contract
+    moves it to write time and into this repository's `cargo test --lib`.
+
+    `pmat work estimate record` refuses — non-zero exit, no byte written, no
+    file or directory created — a row whose unit is not turn|session, a range
+    phase, an estimate without basis, or a repo key that differs from the key
+    the ledger already carries. It appends with O_APPEND in one write_all and
+    never reads-modifies-writes, so a union merge of two branches' appends is
+    the merge (`.gitattributes`: merge=union). `pmat work estimate check`
+    applies the rule to the committed file and prints
+    `<N> rows, <M> poolable, <U> unmeasured`, with the reason strings
+    estimate.sh prints for every excluded row. `unknown` is the one unit the
+    check admits and the writer refuses: it marks a legacy row whose unit could
+    not be recovered from the row or its receipt, and it is never pooled.
+  references:
+    - src/cli/handlers/work_estimate_ledger.rs
+    - src/cli/handlers/work_estimate_ledger_tests.rs
+    - src/cli/handlers/work_agent_dispatch.rs
+    - src/cli/commands/work_commands_work.rs
+    - docs/audits/impl-estimates.jsonl
+    - .gitattributes
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1366"
+
+equations:
+  write_gate:
+    formula: "admit(L, r) <=> unit(r) ∈ {turn, session} ∧ phase(r) ∈ {all} ∪ ℕ ∧ (est(r) ≠ null ⇒ basis(r) ≠ blank) ∧ repo(r), ticket(r), mode(r) ≠ blank ∧ keys(L) ⊆ {repo(r)}"
+    domain: "L the ledger bytes before the write (possibly absent), r one candidate row"
+    codomain: "admit | refuse(defects), every defect named at once"
+    invariants:
+      - "INV-EST-W1: refuse(r) ⇒ bytes(L) after = bytes(L) before, and an absent ledger (and its directory) stays absent"
+      - "INV-EST-W2: a missing or blank unit, and the retirement marker unknown, are refused for a new row"
+      - "INV-EST-W3: a row keyed differently from the ledger's existing key is refused, so one repository's ledger has one key"
+    preconditions:
+      - "the repo key is --repo when given, else the basename of `git remote get-url origin`; never a Cargo package name or a directory name"
+
+  append:
+    formula: "admit(L, r) ⇒ bytes(L') = bytes(L) ++ [\\n if L is non-empty and does not end in \\n] ++ json(r) ++ \\n ∧ record(L', r) = count_newlines(bytes(L')[..offset_after_write])"
+    domain: "an admitted row and the ledger opened with O_APPEND"
+    codomain: "the 1-based line number of the written record"
+    invariants:
+      - "INV-EST-A1: the old bytes are an exact prefix of the new bytes — no truncation, no reordering, no rewrite of an existing line"
+      - "INV-EST-A2: exactly one record per line; an embedded newline in a field is escaped by serde_json, never written raw"
+      - "INV-EST-A3: the returned line number is read from the file offset the write left behind, so a concurrent appender cannot make it name another row"
+    preconditions: []
+
+  check:
+    formula: "violations(L) = { l | l not a JSON object } ∪ { l | unit(l) ∉ {turn, session, unknown} } ∪ { l | est(l), actual(l) ∉ null ∪ ℕ } ∪ { l | repo(l), ticket(l) not strings } ∪ { keys(L) | |keys(L)| > 1 }"
+    domain: "the committed ledger text, optionally filtered to one repo key for the pool counts"
+    codomain: "{rows, poolable, unmeasured, excluded[(line, ticket, reason)], violations, keys}"
+    invariants:
+      - "INV-EST-C1: every row carries a unit, measured or not, because the writer never emits a unit-less row"
+      - "INV-EST-C2: a schema-valid row with numeric actual is poolable iff unit = turn ∧ phase ∈ {all} ∪ ℕ; otherwise excluded with estimate.sh's reason string (unit-not-turn | range-phase); actual = null is unmeasured"
+      - "INV-EST-C3: the committed docs/audits/impl-estimates.jsonl has zero violations and exactly one key, paiml-mcp-agent-toolkit"
+    preconditions: []
+
+proof_obligations:
+  - type: safety
+    property: "a row the reader cannot pool is never written"
+    formal: "∀ L, r: gate_new_row(r) ≠ ∅ ∨ gate_repo_split(L, r) ≠ None ⇒ append_row(L, r) = Err ∧ bytes(L') = bytes(L)"
+    applies_to: gate_new_row
+  - type: invariant
+    property: "the writer only appends"
+    formal: "∀ L, r: append_row(L, r) = Ok(n) ⇒ prefix(bytes(L), bytes(L')) ∧ |lines(L')| = n ∧ lines(L')[n] = json(r)"
+    applies_to: append_row
+  - type: invariant
+    property: "one repository's ledger has one key"
+    formal: "∀ L, r: keys(L) ≠ ∅ ∧ keys(L) ≠ {repo(r)} ⇒ gate_repo_split(L, r) ≠ None"
+    applies_to: gate_repo_split
+  - type: postcondition
+    property: "the check names every unit-less row and every extra key, and the committed ledger passes it"
+    formal: "check_ledger_text(committed, None).violations = ∅ ∧ .keys = [paiml-mcp-agent-toolkit]"
+    applies_to: check_ledger_text
+  - type: postcondition
+    property: "the writer is reachable from the CLI without disturbing the global --mode flag"
+    formal: "parse(pmat work estimate record --exec-mode m …) = Record{exec_mode: m} ∧ Cli.mode = None unless --mode is given"
+    applies_to: dispatch_work_estimate
+  - type: postcondition
+    property: "the check's pool classification uses the reader's rule and reason strings"
+    formal: "classify_row(l) ∈ {Ok(poolable), Ok(unmeasured), Err(unit-not-turn), Err(range-phase)} as estimate.sh classifies l"
+    applies_to: classify_row
+
+falsification_tests:
+  - id: f_unit_missing
+    rule: "a row without unit is written, or its refusal creates the ledger or its directory"
+    prediction: "the named test fails when this condition holds (mutant M2 observed RED)"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_a_row_without_unit_is_refused_and_creates_nothing
+    if_fails: "P0 — the defect PMAT-1366 closed is open again"
+  - id: f_refused_byte_identical
+    rule: "a refused row changes an existing ledger's bytes"
+    prediction: "the named test fails when this condition holds"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_a_refused_row_leaves_an_existing_ledger_byte_identical
+    if_fails: "P0 — a refusal is not a no-op"
+  - id: f_unit_vocabulary
+    rule: "a unit outside turn|session is admitted by the writer"
+    prediction: "the named test fails when this condition holds (mutant M1 observed RED)"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_an_unrecognised_unit_is_refused
+    if_fails: "P0 — an unpoolable unit reaches the ledger"
+  - id: f_unit_unknown
+    rule: "the legacy retirement marker unknown is admitted for a new row"
+    prediction: "the named test fails when this condition holds"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_unit_unknown_is_refused_for_a_new_row
+    if_fails: "P1 — new rows can opt out of the pool"
+  - id: f_range_phase
+    rule: "a range phase such as 1-4 or P1-P3 is admitted"
+    prediction: "the named test fails when this condition holds"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_range_phases_are_refused
+    if_fails: "P1 — a row the reader excludes as range-phase is written"
+  - id: f_basis
+    rule: "an estimate without basis is admitted"
+    prediction: "the named test fails when this condition holds"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_an_estimate_without_basis_is_refused
+    if_fails: "P1 — an invented number reaches the ledger"
+  - id: f_append_only
+    rule: "an append truncates, reorders, or rewrites an existing line"
+    prediction: "the named test fails when this condition holds (mutant M3, truncate instead of append, observed RED)"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_appends_never_truncate_or_reorder
+    if_fails: "P0 — merge=union no longer holds by construction"
+  - id: f_mid_line
+    rule: "a record is glued onto a last line that has no trailing newline"
+    prediction: "the named test fails when this condition holds (mutant M5 observed RED)"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_missing_trailing_newline_starts_a_new_line
+    if_fails: "P0 — two records share a line and both become unreadable"
+  - id: f_one_record_per_line
+    rule: "a field containing a newline splits one record across lines, or est/actual are omitted instead of null"
+    prediction: "the named test fails when this condition holds"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_one_record_per_line_with_nulls_and_unit
+    if_fails: "P0 — one record per line is violated"
+  - id: f_key_split_write
+    rule: "a row keyed differently from the ledger is written"
+    prediction: "the named test fails when this condition holds (mutant M4 observed RED)"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_a_row_that_would_split_the_key_is_refused_byte_identical
+    if_fails: "P0 — the pmat / paiml-mcp-agent-toolkit split can recur"
+  - id: f_check_unit_less
+    rule: "the check passes a unit-less row, measured or not"
+    prediction: "the named test fails when this condition holds (mutant M6 observed RED)"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_check_flags_unit_less_rows_measured_or_not
+    if_fails: "P0 — a row written around the writer is not caught"
+  - id: f_check_keys
+    rule: "the check passes a ledger split across repo keys"
+    prediction: "the named test fails when this condition holds"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_check_flags_a_ledger_split_across_repo_keys
+    if_fails: "P1 — a key split is silent"
+  - id: f_check_pool
+    rule: "the check's poolable/excluded classification or its reason strings diverge from estimate.sh's rule"
+    prediction: "the named test fails when this condition holds"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_check_classifies_the_pool
+    if_fails: "P1 — two readers of one ledger disagree"
+  - id: f_cli_parse
+    rule: "`pmat work estimate record` does not parse, or its execution-mode arg shadows pmat's global --mode (every record call panicked with exit 101 before b994265b7)"
+    prediction: "the named test fails when this condition holds (mutant M7, id = mode, observed RED)"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_record_parses_and_leaves_the_global_mode_flag_alone
+    if_fails: "P0 — the one writer cannot be invoked"
+  - id: f_committed
+    rule: "the committed docs/audits/impl-estimates.jsonl carries a row the writer would refuse, or more than one key"
+    prediction: "the named test fails when this condition holds (observed RED at aef89f37d: 18 unit-less rows and 2 keys; GREEN at 4c10236c5)"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::the_committed_estimates_ledger_passes_the_write_time_gate
+    if_fails: "P0 — the ledger is write-only again"
+
+kani_harnesses: []
+# Not applicable: the subject is file I/O over a JSONL ledger; the falsification tests exercise the real writer against tempfiles and the committed file.

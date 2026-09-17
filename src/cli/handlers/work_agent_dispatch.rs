@@ -4,7 +4,7 @@
 // with the ledger it extends; the dispatcher only needs to know these two
 // entry points exist.
 
-use crate::cli::commands::{WorkClaimCommands, WorkTriageCommands};
+use crate::cli::commands::{WorkClaimCommands, WorkEstimateCommands, WorkTriageCommands};
 
 /// `--force` is an accountability lever, so it must carry its reason. Silent
 /// forcing is how a claim system stops meaning anything.
@@ -116,5 +116,50 @@ pub async fn dispatch_work_triage(command: &WorkTriageCommands) -> Result<()> {
         } => {
             handle_work_triage_verify(work_item.clone(), agent.clone(), *format, path.clone()).await
         }
+    }
+}
+
+/// Route `pmat work estimate <sub>` (PMAT-1366).
+pub async fn dispatch_work_estimate(command: &WorkEstimateCommands) -> Result<()> {
+    match command {
+        WorkEstimateCommands::Record {
+            ticket,
+            phase,
+            exec_mode,
+            unit,
+            est,
+            actual,
+            basis,
+            note,
+            repo,
+            ledger,
+            format,
+            path,
+        } => {
+            let row = EstimateRow {
+                repo: String::new(),
+                ticket: ticket.clone(),
+                phase: phase.clone(),
+                mode: exec_mode.clone(),
+                est: *est,
+                actual: *actual,
+                unit: unit.clone(),
+                basis: basis.clone(),
+                note: note.clone(),
+            };
+            let target = EstimateRecordTarget {
+                repo: repo.clone(),
+                ledger: ledger.clone(),
+                format: *format,
+                path: path.clone(),
+            };
+            handle_work_estimate_record(row, target).await
+        }
+        WorkEstimateCommands::Check {
+            repo,
+            ledger,
+            format,
+            path,
+        } => handle_work_estimate_check(repo.clone(), ledger.clone(), *format, path.clone()).await,
     }
 }

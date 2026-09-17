@@ -6846,14 +6846,15 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:32Z
-  updated: 2026-09-15T16:00:32Z
+  updated: 2026-09-17T06:34:59Z
   spec: null
   acceptance_criteria:
   - 'See paiml/paiml-mcp-agent-toolkit#1366. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
 - id: PMAT-1367
   github_issue: 1367
@@ -6937,6 +6938,23 @@ roadmap:
   acceptance_criteria:
   - 'Release commit for pmat 3.40.2: Cargo.toml version 3.40.1 -> 3.40.2; the pmat entry in Cargo.lock bumped to match (cargo metadata --locked passes); CHANGELOG.md gains [3.40.2] - 2026-09-15 describing #1372 (roadmap sync refuses what work validate refuses: non-YAML, duplicate id, unknown or missing status now exit 1; the YAML '''' title escape is decoded so a content_hash changes once; parse_rows stays public). Nothing else changes: the fix itself merged in #1372 (2604c1e78), which this branch is cut after.'
   - 'Done when, after merge: annotated tag v3.40.2 on the merge commit; release.yml gate and cargo package --locked green and the GitHub prerelease created; cargo publish --dry-run --locked then cargo publish --locked from a detached worktree of the tag (never --allow-dirty); the prerelease promoted; make release-check exits 0; cargo install pmat --version 3.40.2 --locked on the release workstation, and the installed binary refuses the #1371 non-YAML and duplicate-id fixtures with exit 1.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1381
+  github_issue: 1381
+  item_type: task
+  title: 'pmat work complete: ticket-scoped completion checks — repo-wide falsifications report, don''t block'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-16T14:42:59Z
+  updated: 2026-09-16T14:42:59Z
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1381. Row added on PMAT-1366 because CB-2115 is a bijection over OPEN issues: #1381 was opened after master''s last roadmap change and had no row on any branch bound for master, so pmat comply check --checks CB-2115 failed this PR''s traceability job with ORPHAN-GITHUB #1381.'
   phases: []
   subtasks: []
   estimated_effort: null
