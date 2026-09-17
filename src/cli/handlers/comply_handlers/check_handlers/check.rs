@@ -480,6 +480,9 @@ type CheckGroup<'a> = (
     Box<dyn Fn() -> Vec<ComplianceCheck> + Send + Sync + 'a>,
 );
 
+/// A group that was not run: its declaration index and its not-run rows.
+type NotRunGroup = (usize, Vec<ComplianceCheck>);
+
 fn build_all_compliance_checks(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
@@ -739,23 +742,7 @@ fn run_check_groups(groups: Vec<CheckGroup>, selected: &[String]) -> Vec<Complia
     use rayon::prelude::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    // PMAT-1296: a group that holds no selected rule is not run. Its rules are
-    // still reported, as Skip, so a deselected rule is never absent (PMAT-718).
-    let holds_a_selected_rule = |ids: &[&str]| {
-        selected.is_empty()
-            || ids
-                .iter()
-                .any(|id| selected.iter().any(|s| s.eq_ignore_ascii_case(id)))
-    };
-    let mut skipped: Vec<(usize, Vec<ComplianceCheck>)> = Vec::new();
-    let mut to_run: Vec<(usize, CheckGroup)> = Vec::new();
-    for (idx, group) in groups.into_iter().enumerate() {
-        if holds_a_selected_rule(group.1) {
-            to_run.push((idx, group));
-        } else {
-            skipped.push((idx, not_run_rows(group.0, group.1)));
-        }
-    }
+    let (to_run, skipped) = partition_by_selection(groups, selected);
     if !skipped.is_empty() {
         crate::status_eprintln!(
             "  comply: {} group(s) hold no selected rule and are not run (--checks)",
@@ -833,6 +820,33 @@ fn run_check_groups(groups: Vec<CheckGroup>, selected: &[String]) -> Vec<Complia
         overall.elapsed().as_secs_f64()
     );
     all
+}
+
+/// Split `groups` into the ones to run and, for the rest, their not-run rows,
+/// each tagged with its declaration index.
+///
+/// PMAT-1296: a group that holds no selected rule is not run. Its rules are
+/// still reported, as Skip, so a deselected rule is never absent (PMAT-718).
+fn partition_by_selection<'a>(
+    groups: Vec<CheckGroup<'a>>,
+    selected: &[String],
+) -> (Vec<(usize, CheckGroup<'a>)>, Vec<NotRunGroup>) {
+    let holds_a_selected_rule = |ids: &[&str]| {
+        selected.is_empty()
+            || ids
+                .iter()
+                .any(|id| selected.iter().any(|s| s.eq_ignore_ascii_case(id)))
+    };
+    let mut skipped: Vec<(usize, Vec<ComplianceCheck>)> = Vec::new();
+    let mut to_run: Vec<(usize, CheckGroup)> = Vec::new();
+    for (idx, group) in groups.into_iter().enumerate() {
+        if holds_a_selected_rule(group.1) {
+            to_run.push((idx, group));
+        } else {
+            skipped.push((idx, not_run_rows(group.0, group.1)));
+        }
+    }
+    (to_run, skipped)
 }
 
 /// One Skip row per rule of a group that was not run under `--checks` (PMAT-1296):
