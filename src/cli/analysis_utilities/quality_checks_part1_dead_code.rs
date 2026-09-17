@@ -336,13 +336,19 @@ mod dead_code_outcome_tests {
         let o = rt.block_on(check_dead_code_outcome(tmp.path(), 15.0)).expect("outcome");
         // The whole outcome is in the message so a red run names the path the
         // analyzer took. An assert carries it: the ratchet counts every literal
-        // panic-macro call site in src/, comments included.
+        // panic-macro call site in src/, comments included. The target dirs
+        // are there because this flaked in `ci / test` on the one input the
+        // message did not show: a `CARGO_TARGET_DIR` shared with a concurrent
+        // job (#1305).
         assert!(
             o.not_measured.is_some(),
             "not_measured must be set for an uncompilable crate; outcome was: \
-             violations={:?} not_applicable={:?}",
+             violations={:?} not_applicable={:?}; analyzer target dir={}; \
+             CARGO_TARGET_DIR={:?}",
             o.violations,
-            o.not_applicable
+            o.not_applicable,
+            crate::services::cargo_dead_code_analyzer::isolated_target_dir(tmp.path()).display(),
+            std::env::var_os("CARGO_TARGET_DIR")
         );
         let u = o.not_measured.expect("checked above");
         assert_eq!(u.check, "dead_code");
