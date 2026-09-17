@@ -753,4 +753,62 @@ mod unimplemented_flag_tests {
             assert!(err.contains(flag), "{flag} missing from: {err}");
         }
     }
+
+    /// PMAT-636: pins the "High Complexity" counts of the text report — a
+    /// nonzero count in yellow, a zero one as a plain number — in the summary
+    /// and in each top-file line.
+    #[test]
+    fn deep_context_text_highlights_only_nonzero_high_complexity_counts() {
+        use crate::cli::colors as c;
+        use crate::services::simple_deep_context::{
+            ComplexityMetrics, FileComplexityDetail, SimpleAnalysisReport,
+        };
+        let detail = |path: &str, high: usize, score: f64| FileComplexityDetail {
+            file_path: path.into(),
+            function_count: 4,
+            high_complexity_functions: high,
+            avg_complexity: 2.5,
+            complexity_score: score,
+            function_names: vec![],
+        };
+        let report = SimpleAnalysisReport {
+            file_count: 2,
+            analysis_duration: std::time::Duration::from_secs(1),
+            complexity_metrics: ComplexityMetrics {
+                total_functions: 8,
+                high_complexity_count: 3,
+                avg_complexity: 2.5,
+            },
+            recommendations: vec!["split it".to_string()],
+            file_complexity_details: vec![detail("src/a.rs", 3, 9.0), detail("src/b.rs", 0, 1.0)],
+        };
+        let out = format_deep_context_text(&report, 0);
+        let yellow_three = format!("{}{}{}", c::YELLOW, 3, c::RESET);
+        assert!(
+            out.contains(&format!("  High Complexity Funcs:  {yellow_three}\n")),
+            "{out}"
+        );
+        assert!(
+            out.contains(&format!("functions, {yellow_three} high complexity)")),
+            "{out}"
+        );
+        assert!(
+            out.contains(&format!("functions, {} high complexity)", c::number("0"))),
+            "{out}"
+        );
+
+        let calm = SimpleAnalysisReport {
+            complexity_metrics: ComplexityMetrics {
+                total_functions: 8,
+                high_complexity_count: 0,
+                avg_complexity: 2.5,
+            },
+            ..report
+        };
+        let out = format_deep_context_text(&calm, 0);
+        assert!(
+            out.contains(&format!("  High Complexity Funcs:  {}\n", c::number("0"))),
+            "{out}"
+        );
+    }
 }
