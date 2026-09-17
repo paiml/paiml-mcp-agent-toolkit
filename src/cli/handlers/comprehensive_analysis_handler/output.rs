@@ -443,23 +443,7 @@ pub(super) fn format_as_sarif(result: &ComprehensiveAnalysisResult) -> Result<St
     if let Some(complexity) = &result.complexity {
         for violation in &complexity.violations {
             if violation.complexity > 20 {
-                results.push(serde_json::json!({
-                    "ruleId": "high-complexity",
-                    "level": if violation.complexity > 30 { "error" } else { "warning" },
-                    "message": {
-                        "text": format!("Function {} has complexity {}", violation.function_name, violation.complexity)
-                    },
-                    "locations": [{
-                        "physicalLocation": {
-                            "artifactLocation": {
-                                "uri": violation.file_path.clone()
-                            },
-                            "region": {
-                                "startLine": violation.line_number
-                            }
-                        }
-                    }]
-                }));
+                results.push(high_complexity_sarif_result(violation));
             }
         }
     }
@@ -503,6 +487,30 @@ pub(super) fn format_as_sarif(result: &ComprehensiveAnalysisResult) -> Result<St
     });
 
     serde_json::to_string_pretty(&sarif).map_err(Into::into)
+}
+
+/// The SARIF result for one function over the complexity limit: `error` above
+/// 30, `warning` otherwise.
+fn high_complexity_sarif_result(
+    violation: &crate::services::facades::complexity_facade::ComplexityViolation,
+) -> serde_json::Value {
+    serde_json::json!({
+        "ruleId": "high-complexity",
+        "level": if violation.complexity > 30 { "error" } else { "warning" },
+        "message": {
+            "text": format!("Function {} has complexity {}", violation.function_name, violation.complexity)
+        },
+        "locations": [{
+            "physicalLocation": {
+                "artifactLocation": {
+                    "uri": violation.file_path.clone()
+                },
+                "region": {
+                    "startLine": violation.line_number
+                }
+            }
+        }]
+    })
 }
 
 #[cfg(test)]
