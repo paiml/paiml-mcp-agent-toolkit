@@ -6842,11 +6842,11 @@ roadmap:
   github_issue: 1366
   item_type: task
   title: 'impl-estimates.jsonl is write-only: 16 rows written, 0 poolable — unit is not gated at write time'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:32Z
-  updated: 2026-09-17T06:34:59Z
+  updated: 2026-09-17T09:17:57.648690662+00:00
   spec: null
   acceptance_criteria:
   - 'See paiml/paiml-mcp-agent-toolkit#1366. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'

@@ -33,3 +33,9 @@ Fixed with `pmat work sync --direction github-to-yaml`; the dry-run planned exac
 Also closed in the same sweep, without a roadmap row: **#1378**, filed by github-actions at 22:32Z ("3.40.2 is declared in Cargo.toml but not fully released") between #1376's merge and the tag. It was closed with the release evidence — `make release-check` on master now exits 0: 3.40.2 tagged, released and on crates.io.
 
 After both, `pmat work sync --check-only` reads coherent.
+
+## 2026-09-17 — PMAT-1366, closed by #1382
+
+#1382 merged at e89a827f7 and closed #1366, leaving the `PMAT-1366` row `planned` — the same lifecycle gap as the entries above. CB-2115 then reported `ORPHAN-ROADMAP PMAT-1366: #1366 is closed`, which fails the required `traceability` job on every pull request bound for master. Measured on #1368 (head `bfe4e7acd`): CI `traceability` fail, and `make gate`'s `cb-2113-cb-2115` leg exit 1 with that one finding.
+
+Fixed with `pmat work sync --direction github-to-yaml` (the binary built from e89a827f7). The dry-run planned exactly one action, `close-item PMAT-1366 #1366 → Completed`. Diff: that row's `status` and `updated` lines (4 changed lines), plus this receipt section.
