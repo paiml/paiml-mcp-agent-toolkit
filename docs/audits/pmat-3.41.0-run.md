@@ -105,3 +105,18 @@ tree: run-log behind=0 against origin/master 441d198e7.
 - D3 PMAT-1366: LIVE, HEAD 0cbff9129, behind=0; opened PR #1382 ("the estimate ledger gets one gated, append-only writer — `pmat work estimate record`").
 - D4 PMAT-1365: no session; PR #1368 draft, waits for the #1381 row.
 - Slots: 3/3.
+
+## 2026-09-17T09:02Z — D3 MERGED (#1382, e89a827f7); orchestrator re-verification; one process finding
+
+tree: run-log rebased, HEAD behind=0 against origin/master e89a827f7.
+
+Raw (orchestrator's own rerun on master e89a827f7):
+- `jq 'select(.repo=="paiml-mcp-agent-toolkit")|.unit' docs/audits/impl-estimates.jsonl | sort | uniq -c` → 26 `"turn"`, 5 `"unknown"`, 0 null.
+- `estimate.sh paiml-mcp-agent-toolkit 4` → exit 0, `K_HAT=35 BASIS=docs/audits/impl-estimates.jsonl:L22-L31 ROWS=14 MEDIAN=35 EXCLUDED=9 UNMEASURED=8` (was: exit 2 ENV). Each exclusion is printed with its reason (7 range-phase, 2 unit=unknown).
+- Session receipt: writer = `pmat work estimate record|check` (`src/cli/handlers/work_estimate_ledger.rs`), refuses a row without `unit` and writes nothing, `O_APPEND` single `write_all`, `.gitattributes merge=union`; contract `contracts/estimate-ledger-v1.yaml` 21 obligations / 21 evaluated / 0 failed; 7 mutants planted, 7 killed; required checks all SUCCESS; reader-side follow-up filed as paiml/paiml-implement#216.
+
+Corrections to the orchestrator's brief (findings): the ledger held 30 rows, 14 of them keyed `repo=pmat` for this same repository; 18 rows lacked `unit`, not 16; only 10 of the 16 correctly-keyed rows were measured; `estimate.sh` already pooled by unit (paiml-implement PMAT-066) — the missing piece was the writer and a check in this repo. The quorum widened the one sanctioned rewrite to re-key L17–L30.
+
+PROCESS FINDING: PR #1382 merged at 08:55:10Z with `docs/audits/quorum-PMAT-1366.json` `agreed=false` (FAIL/PASS/PASS). The dissent's only blocking claim — "no closing keyword" — was factually wrong (the PR body carried `Closes #1366`; the issue closed on merge), but the rule is three PASS, and a wrong FAIL is answered by another round, not by the author overruling it. Not reverted (the substance is verified above); every later brief now says: merge only through the quorum-gated helper, never around a non-agreed artifact.
+
+Side effect: #1382 also carried the PMAT-1381 row to master, which makes the PMAT-1336 lifecycle PR #1383 redundant for that row (its session is still live and will meet the conflict) and unblocks D4 at once. 08:57Z relaunched D4 PMAT-1365 (pid 614362) with a fifth-session resume note: rebase, mark ready, re-run quorum with the receipt, arm the merge. Slots 3/3: PMAT-1336, PMAT-1363, PMAT-1365.
