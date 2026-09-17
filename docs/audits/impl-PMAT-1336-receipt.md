@@ -59,3 +59,15 @@ Issue #1385 was opened at 2026-09-17T09:57:46Z with the label `kind:code`. Maste
 #1364 merged at 8915fe3e6 and closed issue #1363 at 2026-09-17T09:51:56Z. It completed PMAT-1366 but left the `PMAT-1363` row `planned`, so `pmat work sync --check-only` reported `ORPHAN-ROADMAP PMAT-1363`. Fixed in b5b664ae5 with `pmat work sync --direction github-to-yaml`: once PMAT-1385 was registered, its plan was exactly one `close-item PMAT-1363 #1363 → Completed`. The diff is that row's `status` and `updated` lines.
 
 After both, `pmat work sync --check-only` reads coherent.
+
+## 2026-09-17 — PMAT-1386, an open issue with no row
+
+Issue #1386 was opened at 2026-09-17T10:50:15Z with no labels. Master 7c2aa59b8 had no row for it. At `HEAD=7c2aa59b8 origin/master=7c2aa59b8 behind=0`, `pmat comply check --checks CB-2113,CB-2115` failed CB-2115 with exactly one finding, `ORPHAN-GITHUB #1386`, and `pmat work sync --check-only` read open items 114 against open issues 115. CB-2113 read `not_applicable` (HEAD is the default branch). Because the required `gate` needs `traceability`, that one finding made every open PR red. PR #1368 (PMAT-1365) does not carry the row: `gh pr diff 1368` adds no `PMAT-1386` or `github_issue: 1386` line, and neither do #1357, #1341 or #1224, the other open PRs that touch `docs/roadmaps/roadmap.yaml`.
+
+Fixed in 373ace156 with `pmat work add --github-issue 1386 "<issue title>"`, the writer used for PMAT-1381 and PMAT-1385 above. `-t` was not passed, because the issue carries no label, so the row has `labels: []`. The diff is a 16-line row, `PMAT-1386` bound to `github_issue: 1386`. As with the PMAT-1381 row, `created` and `updated` hold the writer's run time, not the issue's createdAt. The issue stays open (keeps-open #1386).
+
+After it, `pmat work sync --check-only` reads 115/115 coherent, and `pmat work validate --check-base origin/master` passes. It warns that PMAT-1385 and PMAT-1386 have no acceptance criteria, which does not fail validation.
+
+Two things the skill's own gates reported, recorded here rather than worked around:
+- `kind-gate.sh PMAT-1336` exits 2, `unknown kind 'lifecycle'`, and `model-gate.sh` exits 2 for the same reason. The rail knows only `code | triage | docs | measurement`. The branch keeps to the triage path allow-list (`docs/roadmaps/roadmap.yaml`, `docs/audits/**`), and no `src/` file changes.
+- The quorum artifact lives at `docs/audits/quorum-PMAT-1336.json`, as it did for #1383, not under `.quorum/`, which does not exist in this repository.

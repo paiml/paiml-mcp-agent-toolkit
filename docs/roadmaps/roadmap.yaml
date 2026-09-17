@@ -6984,3 +6984,19 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-1386
+  github_issue: 1386
+  item_type: task
+  title: 'pmat query --regex … --path <dir> --files-with-matches ignores --path: 47 files returned, 0 inside the directory'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-17T11:51:21Z
+  updated: 2026-09-17T11:51:21Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
