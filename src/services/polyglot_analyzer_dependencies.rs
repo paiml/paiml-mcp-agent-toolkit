@@ -288,9 +288,8 @@ impl PolyglotAnalyzer {
         extensions: &[String],
         count: &mut usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let entries = match std::fs::read_dir(dir_path) {
-            Ok(e) => e,
-            Err(_) => return Ok(()),
+        let Ok(entries) = std::fs::read_dir(dir_path) else {
+            return Ok(());
         };
         for entry in entries.flatten() {
             let path = entry.path();
