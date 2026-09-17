@@ -171,23 +171,9 @@ impl GitAnalysisService {
         let since = since_date.map(std::string::ToString::to_string);
         let scope = scope.map(Path::to_path_buf);
         std::thread::spawn(move || {
-            let mut command = Command::new("git");
-            command.arg("log");
-            // No --since at all means "all history", which is what a lookback
-            // reaching past the Unix epoch asks for. Naming an extreme date
-            // instead makes `git log --since` return erratic, sometimes empty,
-            // results -- see the monotonicity note above.
-            if let Some(ref since) = since {
-                command.arg("--since").arg(since);
-            }
-            command.arg("--pretty=format:%H|%an|%aI").arg("--numstat");
-            // #657: restrict the history to the requested subtree so a
-            // subdirectory query reports that subtree's churn, not the whole
-            // repository's.
-            if let Some(scope) = &scope {
-                command.arg("--").arg(scope);
-            }
-            let result = command.current_dir(&project_dir).output();
+            let result = Self::git_log_numstat_command(since.as_deref(), scope.as_deref())
+                .current_dir(&project_dir)
+                .output();
             let _ = tx.send(result);
         });
 
@@ -218,6 +204,28 @@ impl GitAnalysisService {
         Ok(Some(String::from_utf8_lossy(&output.stdout).into_owned()))
     }
 
+    /// The `git log --numstat` invocation, optionally bounded by `--since`
+    /// and restricted to the `scope` subtree.
+    fn git_log_numstat_command(since: Option<&str>, scope: Option<&Path>) -> Command {
+        let mut command = Command::new("git");
+        command.arg("log");
+        // No --since at all means "all history", which is what a lookback
+        // reaching past the Unix epoch asks for. Naming an extreme date
+        // instead makes `git log --since` return erratic, sometimes empty,
+        // results -- see the monotonicity note above.
+        if let Some(since) = since {
+            command.arg("--since").arg(since);
+        }
+        command.arg("--pretty=format:%H|%an|%aI").arg("--numstat");
+        // #657: restrict the history to the requested subtree so a
+        // subdirectory query reports that subtree's churn, not the whole
+        // repository's.
+        if let Some(scope) = scope {
+            command.arg("--").arg(scope);
+        }
+        command
+    }
+
     /// Parse `git log --pretty=format:%H|%an|%aI --numstat` output into
     /// per-file stats plus the set of distinct commit hashes seen.
     ///
@@ -240,33 +248,44 @@ impl GitAnalysisService {
                 commit_hashes.insert(hash.clone());
                 current_commit = Some(CommitInfo { hash, author, date });
             } else if let Some(ref commit) = current_commit {
-                if let Some((additions, deletions, file_path)) = Self::parse_numstat_line(line) {
-                    let path = PathBuf::from(&file_path);
-                    let stats = file_stats.entry(path.clone()).or_insert_with(|| FileStats {
-                        commits: Vec::new(),
-                        authors: HashSet::with_capacity(64),
-                        total_additions: 0,
-                        total_deletions: 0,
-                        first_seen: commit.date.clone(),
-                        last_modified: commit.date.clone(),
-                    });
-
-                    stats.commits.push(commit.hash.clone());
-                    stats.authors.insert(commit.author.clone());
-                    stats.total_additions += additions;
-                    stats.total_deletions += deletions;
-
-                    if commit.date > stats.last_modified {
-                        stats.last_modified = commit.date.clone();
-                    }
-                    if commit.date < stats.first_seen {
-                        stats.first_seen = commit.date.clone();
-                    }
+                if let Some(change) = Self::parse_numstat_line(line) {
+                    Self::record_file_change(&mut file_stats, commit, change);
                 }
             }
         }
 
         (file_stats, commit_hashes)
+    }
+
+    /// Credit one numstat line `(additions, deletions, path)` of `commit` to
+    /// that file's running stats, widening its first-seen/last-modified span.
+    fn record_file_change(
+        file_stats: &mut HashMap<PathBuf, FileStats>,
+        commit: &CommitInfo,
+        (additions, deletions, file_path): (usize, usize, String),
+    ) {
+        let stats = file_stats
+            .entry(PathBuf::from(&file_path))
+            .or_insert_with(|| FileStats {
+                commits: Vec::new(),
+                authors: HashSet::with_capacity(64),
+                total_additions: 0,
+                total_deletions: 0,
+                first_seen: commit.date.clone(),
+                last_modified: commit.date.clone(),
+            });
+
+        stats.commits.push(commit.hash.clone());
+        stats.authors.insert(commit.author.clone());
+        stats.total_additions += additions;
+        stats.total_deletions += deletions;
+
+        if commit.date > stats.last_modified {
+            stats.last_modified = commit.date.clone();
+        }
+        if commit.date < stats.first_seen {
+            stats.first_seen = commit.date.clone();
+        }
     }
 
     /// Turn per-file stats into ranked `FileChurnMetrics`, in the deterministic
