@@ -144,3 +144,22 @@ Session-reported hazards, acted on:
 - `merge=union` on the estimates ledger duplicated every row during D1's rebase onto #1382; the session restored master's copy and re-appended with `pmat work estimate record`. Logged for D3's follow-up: union merge is only safe when neither side rewrote existing lines, and #1382 did (the one sanctioned backfill).
 
 09:55Z launched D2 (clone `.wt/D2`, branch `fix/roadmap-unlocked-write-bypass` from 8915fe3e6, pid 3479979); the session files its own ticket (Phase 1). Its brief carries the D1 gap verbatim ("pmat work migrate still rewrites roadmap.yaml without the lock and without fragment support") and the merge rule from the D3 process finding. Slots 3/3: PMAT-1336, PMAT-1365, D2.
+
+## 2026-09-17T10:12Z — D1 re-verified by the orchestrator on master 8915fe3e6
+
+tree: pmat run-log HEAD behind=0 against origin/master 8915fe3e6; binary `/mnt/nvme-raid0/targets/pmat-orch/debug/pmat` (path taken from `cargo build --message-format json`, built from that tree); aprender origin/main a672677f4 exported with `git archive` (899 rows, 11 fragments).
+
+Raw:
+```
+run1 exit=0 sha=e1a984eeee7990df bytes=628259
+run2 exit=0 sha=e1a984eeee7990df bytes=628259
+run3 exit=0 sha=e1a984eeee7990df bytes=628259
+committed sha=e1a984eeee7990df
+aggregate(aggregate(x)) sha=e1a984eeee7990df
+--check: ok  docs/roadmaps/roadmap.yaml == aggregate(11 fragment(s)), idempotent   exit=0
+--check after editing fragment-backed row PMAT-3205 in roadmap.yaml: FAIL … first differing row: PMAT-3205   exit=1
+--check after editing a base-only row (no fragment): ok, exit=0
+```
+Decision: D1's contract holds by my own measurement (three runs byte-identical, equal to the committed file, idempotent; the control goes red). The last line is by design, not a hole: roadmap.yaml is its own base, so a row with no fragment has nothing to be compared against — same semantics as aprender's aggregator.
+
+Finding (not blocking, goes to #1370's follow-up): on a READ-ONLY copy every run exits 2 — `FAIL cannot take the roadmap lock … (Failed to open lock file: "docs/roadmaps/roadmap.yaml.lock") — this box cannot judge`. A print-only `aggregate` and `--check` need a writable lock file, and outside a git repository that file is created beside the roadmap (`roadmap.yaml.lock` was left in the tree). Honest (exit 2, not a false ok), but a read-only CI mount cannot run the parity check. My first three runs were on the read-only copy and measured exactly that; the numbers above are from a writable copy.
