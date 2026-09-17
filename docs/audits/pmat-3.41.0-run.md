@@ -426,3 +426,13 @@ Decision + basis: merged #72 from the CLI with a merge commit (6c260f660); verif
 
 tree: run-log behind=0 against origin/master 739d70269. Host up 5 hours, 4 minutes.
 - D6 PR #1394 head b77c55335, armed, 32 pass / 12 pending / 0 fail. Release brief drafted (`.run/briefs/RELEASE.tmpl`): clean-room named first; no publish without a green `cpu-gates` run id on the tag's sha; package-size check before tagging (#1281: 99.6% of crates.io's 10 MB); local clean room run with nothing else heavy because of today's host crash. Slots 1/3.
+
+## 2026-09-17T20:53Z — D6 MERGED (#1394, b3df4a402) and re-verified; every fix PR is on master; lifecycle-9 (#1398) in review
+
+tree: run-log rebased HEAD behind=0 against origin/master b3df4a402.
+
+Raw (my rerun, clean clone of b3df4a402 with NO `.pmat` index, tree-built binary): `bash scripts/cb200-ratchet-gate.sh $PMAT_BIN` → `PASS: 1680 definitions below grade A, exactly the recorded baseline of 1680 (CB-200 status Warn)`, exit 0. Was: 1741–1742 measured vs 1688 banked, invisible to CI. The baseline went DOWN (1688 → 1680) through real refactors (≈25 extraction commits on the branch), never up; `ci.yml` now has a `tdg-ratchet` job that measures it, and the session planted a below-A definition to watch that job go red (ed99987b5) before reverting it (9c8bea0f2).
+- Correction to my own first attempt at this check (finding): the verification clone's `origin/master` resolved to 3893ca5f2 — the primary repository's stale LOCAL master — and the script was not even present there. The tree line on line 1 is what caught it; re-run on an explicit fetch of b3df4a402.
+- Lifecycle-9: master read "113 items · 112 issues · ORPHAN-ROADMAP PMAT-636". D0's issue 1395 (left open by design) closed through `mutate.sh close` with its receipt + 3/3 quorum artifact, read back CLOSED; `pmat work sync --direction github-to-yaml` planned exactly two close-items → 111/111 coherent. PR #1398, quorum running.
+
+D0–D6 state: D0 #1391 MERGED · D1 #1364 MERGED · D2 #1389 MERGED · D3 #1382 MERGED · D4 #1368 MERGED · D5 upstream aprender#3397/#3398/#3399 (OPEN, pv's repo) · D6 #1394 MERGED · #1305 fix #1388 MERGED · paiml/.github#72 MERGED.
