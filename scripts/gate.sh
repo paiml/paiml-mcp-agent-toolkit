@@ -142,6 +142,12 @@ ci-only | mutation-diff (not required) | mutation-diff | .github/workflows/mutat
 # ── gate — ci.yml tdg-ratchet (PMAT-636): CB-200's `[tdg] baseline`, measured where a merge is decided.
 step    | gate | tdg-ratchet-control | .github/workflows/ci.yml#tdg-ratchet#control — every CB-200 verdict is reachable, and a planted below-A definition is refused | - | -
 step    | gate | tdg-ratchet | .github/workflows/ci.yml#tdg-ratchet#CB-200 is measured and equals the recorded baseline | CI measures a fresh checkout over pmat's own out-of-tree index; in a clone that holds .pmat/context.db CB-200 counts that index instead, and a stale one is a FAIL (STALE) | -
+
+# ── D2 — PMAT-1385: no raw write lands under docs/roadmaps/ without the repository lock. The gate is a
+#    --lib suite (a taint analysis of every compiled file, its planted mutants, and the migrate tests), so
+#    CI's `cargo test --lib` already runs it; this leg runs those 15 tests by name and refuses a filter
+#    that matched none, which the lib-tests leg above would not notice.
+cmd     | ci / gate | roadmap-writer-gate | sovereign-ci.yml test "Run tests" (roadmap_writer_gate_* and work_migrate_*) | CI runs these inside the whole lib suite; this runs only them, and fails when a required test did not run | bash scripts/roadmap-writer-gate.sh
 LEGS
 }
 
