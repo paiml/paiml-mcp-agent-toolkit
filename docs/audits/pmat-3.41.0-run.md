@@ -277,3 +277,11 @@ Decisions:
 tree: run-log rebased, behind=0 against origin/master 85b798e0d.
 
 Raw: #1390 merged 14:23:18Z (launch→merge 53 min). `gh pr update-branch 1368` → "PR branch updated", new head 85cac5210, `autoMergeRequest` still set (armed=true), mergeStateStatus BLOCKED while CI runs. The cascade adds only master's roadmap/audit changes; the reviewed diff is unchanged. If a rendered ledger drifts on this head, CI's non-required ledger checks will say so and a session re-renders.
+
+## 2026-09-17T14:32Z — D0 launched, with the ticket filed issue-last
+
+tree: run-log behind=0 against origin/master 85b798e0d.
+
+Raw: #1368 (head 85cac5210) `traceability` = pass at 14:31:20Z; still armed. 14:31Z launched D0 (clone `.wt/D0`, branch `feat/issue-closure-contract` from 85b798e0d, pid 2735158).
+
+Decision: I held the free slot for 6 minutes until #1368's `traceability` job had passed, because a new issue opened in that window would have red it again. D0's brief inverts the usual order for the same reason — roadmap row first, GitHub issue created only when the PR is otherwise green and reviewed, just before its final CI run — so the orphan window CB-2115 opens on the sibling PRs (#1389, D6) is one CI cycle instead of the whole implementation. Basis: three cascades measured today (#1381, #1385/#1386, #1305/#1284), each costing 45–55 min. Slots 3/3: D2 (PR #1389), D6 (PMAT-636), D0.
