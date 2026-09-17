@@ -299,9 +299,17 @@ impl CargoDeadCodeAnalyzer {
             // reduction in fidelity.
             //
             // Deliberately not "delete it afterwards": a killed run leaves the
-            // file behind and the cleanup is invisible either way. `target/`
-            // needs no equivalent -- cargo writes its own `target/.gitignore`.
-            .arg("--message-format=json");
+            // file behind and the cleanup is invisible either way.
+            .arg("--message-format=json")
+            // A target directory only this workspace root builds into (#1305).
+            // Inherited, it could be shared with a same-named crate elsewhere,
+            // whose newer fingerprint makes cargo exit 0 on a crate that does
+            // not compile. It sits inside the target directory cargo already
+            // uses — `<root>/target` by default — and cargo writes no
+            // `.gitignore` there (only `CACHEDIR.TAG`, measured on cargo 1.98),
+            // so it is as ignored, or not, as `target/` already was.
+            .arg("--target-dir")
+            .arg(isolated_target_dir(&self.cargo_root));
 
         // Don't modify RUSTFLAGS — changing flags forces full recompilation
         // of all deps (including cc, which fails with extra warnings).

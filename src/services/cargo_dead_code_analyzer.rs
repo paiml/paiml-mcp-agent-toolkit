@@ -385,8 +385,13 @@ pub async fn analyze_dead_code(project_path: impl AsRef<Path>) -> Result<Accurat
 include!("cargo_dead_code_analyzer/crate_root.rs");
 include!("cargo_dead_code_analyzer/cache_operations.rs");
 include!("cargo_dead_code_analyzer/analysis.rs");
+include!("cargo_dead_code_analyzer/target_isolation.rs");
 include!("cargo_dead_code_analyzer/parsing.rs");
 include!("cargo_dead_code_analyzer/tests.rs");
+
+#[cfg(test)]
+#[path = "cargo_dead_code_analyzer/target_isolation_tests.rs"]
+mod target_isolation_tests;
 
 #[cfg(test)]
 #[path = "cargo_dead_code_analyzer/dead_line_bound_tests.rs"]

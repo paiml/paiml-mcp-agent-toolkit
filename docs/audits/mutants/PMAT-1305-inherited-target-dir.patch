@@ -1,0 +1,14 @@
+diff --git a/src/services/cargo_dead_code_analyzer/analysis.rs b/src/services/cargo_dead_code_analyzer/analysis.rs
+index 26c55c87b..92aacaf0d 100644
+--- a/src/services/cargo_dead_code_analyzer/analysis.rs
++++ b/src/services/cargo_dead_code_analyzer/analysis.rs
+@@ -308,8 +308,7 @@ impl CargoDeadCodeAnalyzer {
+             // uses — `<root>/target` by default — and cargo writes no
+             // `.gitignore` there (only `CACHEDIR.TAG`, measured on cargo 1.98),
+             // so it is as ignored, or not, as `target/` already was.
+-            .arg("--target-dir")
+-            .arg(isolated_target_dir(&self.cargo_root));
++            ;
+ 
+         // Don't modify RUSTFLAGS — changing flags forces full recompilation
+         // of all deps (including cc, which fails with extra warnings).
