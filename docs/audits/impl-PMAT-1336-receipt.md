@@ -110,3 +110,11 @@ The two findings deadlock: #1391 is armed on a 3/3 verdict but its `traceability
 - PMAT-1393 (issue 1393): `pmat work add --github-issue 1393 "<issue title>"`, a 16-line row, `labels: []`. keeps-open #1393.
 
 After both, `pmat work sync --check-only` reads 114/114 coherent. Written by the release-3.41.0 orchestrator session; all three session slots were occupied.
+
+## 2026-09-17 — PMAT-1385, closed by #1389 and left `planned`
+
+#1389 (PMAT-1385, `pmat work migrate` under the repository lock) merged as b58addab8 at 2026-09-17T18:20:40Z and closed issue 1385. A ticket cannot complete itself under CB-2113, so its row stayed `planned`.
+
+At `HEAD=b58addab8 origin/master=b58addab8 behind=0`, `pmat work sync --check-only` read open items 114 against open issues 113 with one finding, `ORPHAN-ROADMAP PMAT-1385: #1385 is closed`. It reds `traceability` on every open PR; #1391 is armed and waits on it.
+
+Fixed with `pmat work sync --direction github-to-yaml`: the dry-run planned exactly `close-item PMAT-1385 #1385 → Completed`; the diff is that row's `status` and `updated` lines. After it: 113/113 coherent. Written by the release-3.41.0 orchestrator session.
