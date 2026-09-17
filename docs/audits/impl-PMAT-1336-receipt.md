@@ -99,3 +99,14 @@ At `HEAD=ef2a0b947 origin/master=ef2a0b947 behind=0`, `pmat work sync --check-on
 Fixed with `pmat work sync --direction github-to-yaml`. Its dry-run planned exactly one action, `close-item PMAT-1365 #1365 → Completed`; the diff is that row's `status` and `updated` lines. After it, `pmat work sync --check-only` reads 112/112 coherent.
 
 This section was written by the release-3.41.0 orchestrator session itself, not a ticket session: all three session slots were occupied and the change is the writer's own two-line output.
+
+## 2026-09-17 — PMAT-1393 and PMAT-900001: two open issues with no row, each blocking the other's PR
+
+At `HEAD=f25d7f1cc origin/master=f25d7f1cc behind=0`, `pmat work sync --check-only` read open items 112 against open issues 114 with two findings: `ORPHAN-GITHUB #1393` (opened 2026-09-17T15:27:32Z by a ticket session, no labels) and `ORPHAN-GITHUB #1395` (opened 16:48Z by the PMAT-900001 session, which binds its issue last; its row rides in PR #1391).
+
+The two findings deadlock: #1391 is armed on a 3/3 verdict but its `traceability` is red on #1393, and a PR registering only #1393 would be red on #1395. So this PR registers both.
+
+- PMAT-900001 (issue 1395): the row is PR #1391's own hunk — `git diff origin/master...origin/PMAT-900001-issue-closure-contract -- docs/roadmaps/roadmap.yaml`, last hunk only, applied with `git apply`. It was written on that branch by `pmat work add --id` and `pmat work sync --direction yaml-to-github`; it is transported here, not retyped, so #1391 ends up with ONE row for the issue, identical on both sides. Measured, and a correction to this section's first draft: a trial merge of this branch into #1391's head CONFLICTS in roadmap.yaml (both sides append at end of file: #1391 adds the PMAT-900001 row, this branch adds that row plus PMAT-1393; the reverse row order conflicts too). The resolution is mechanical — take master's side — and is #1391's to make when it takes master. That branch's other roadmap hunk, the `notes:` cross-reference on PMAT-1369, is NOT taken: it is PMAT-900001's work, not a registration.
+- PMAT-1393 (issue 1393): `pmat work add --github-issue 1393 "<issue title>"`, a 16-line row, `labels: []`. keeps-open #1393.
+
+After both, `pmat work sync --check-only` reads 114/114 coherent. Written by the release-3.41.0 orchestrator session; all three session slots were occupied.
