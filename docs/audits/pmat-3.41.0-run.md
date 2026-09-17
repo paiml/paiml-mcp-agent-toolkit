@@ -410,3 +410,14 @@ So the D0 contract's gate holds on master and each of its failure modes reds for
 - Bijection on 739d70269: 113/113 coherent, 0 planned actions. #1391 deliberately carries no `Closes` line ("Refs #1395 … completed together by a later lifecycle PR"), so issue 1395 is OPEN and row PMAT-900001 is `planned` — coherent, not red. Closing an issue is the orchestrator's alone and needs a quorum artifact (`mutate.sh close --quorum`); it is folded into the release-cut window rather than reddening master for a CI cycle now.
 
 State of the fix queue: D0 #1391 ✔, D1 #1364 ✔, D2 #1389 ✔, D3 #1382 ✔, D4 #1368 ✔, D7/#1305 #1388 ✔, lifecycle #1383 #1387 #1390 #1392 #1396 #1397 ✔; D5 ticketed upstream (aprender#3397–#3399). OPEN: D6 PMAT-636 / #1266 (CB-200) — the one remaining red leg of `make gate`; session LIVE at 20790317c, no PR yet.
+
+## 2026-09-17T20:08Z — release prerequisite found and cleared: the CI clean-room could not have finished (paiml/.github#72 merged)
+
+tree: run-log behind=0 against origin/master 739d70269.
+
+Raw:
+- pmat has NO `clean-room.yml` (correction to the operator's brief). The CI clean room is the `gate / cpu-gates` job of `paiml/.github`'s `unified-gate.yml@main`, called from pmat's `release.yml` on a `v*` tag. `gh run list --workflow release.yml`: v3.40.2 cancelled (35031817450), v3.40.1 cancelled, v3.40.0 cancelled, v3.39.0 cancelled — every one a 30-minute `timeout-minutes` kill that reads as "cancelled" (pmat #1358, #1283). Measured idle clean-room time for pmat is 26.4 min, so a 3.41.0 tag would have met stop-the-line condition 3 ("clean-room red on the release sha") by construction.
+- The fix already existed: paiml/.github#72 (operator-authored 2026-09-14, one file, checks `gate` + `validate` pass, CLEAN/MERGEABLE): job timeout 30→90, step timeout 75 so a timeout FAILS by name instead of reading as a cancel.
+
+Decision + basis: merged #72 from the CLI with a merge commit (6c260f660); verified `main` carries `timeout-minutes: 90` (line 339) and `75` (line 427). Basis: it is the operator's own stated fix for the release gate this brief makes mandatory; it only lengthens a budget (no gate is weakened — the step-level timeout makes the failure louder); one-click revertable. The three-lane quorum rail could NOT be applied: `quorum-review.sh` requires a pmat ticket readable through `pmat work status` and paiml/.github has no roadmap. That is a gap in the rail, recorded here rather than papered over; the merge rests on the measurements above, not on a verdict.
+- D6 PR #1394 ("CB-200 back under its baseline (1741 → 1680), measured in a required CI job") is armed on 3/3 and in CI.
