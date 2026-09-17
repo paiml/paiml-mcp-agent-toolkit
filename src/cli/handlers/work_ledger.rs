@@ -41,6 +41,9 @@ include!("work_agent_claims_render.rs");
 include!("work_agent_triage.rs");
 include!("work_agent_triage_handlers.rs");
 
+// --- PMAT-1366: gated append-only estimate ledger (docs/audits/impl-estimates.jsonl) ---
+include!("work_estimate_ledger.rs");
+
 // --- MACS-019: delegation handoff + provenance boundary (#985) ---
 include!("work_ledger_delegate.rs");
 
@@ -51,4 +54,5 @@ include!("work_agent_dispatch.rs");
 include!("work_ledger_tests.rs");
 include!("work_agent_claims_tests.rs");
 include!("work_agent_triage_tests.rs");
+include!("work_estimate_ledger_tests.rs");
 include!("work_ledger_delegate_tests.rs");

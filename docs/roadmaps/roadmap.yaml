@@ -6846,14 +6846,15 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:32Z
-  updated: 2026-09-15T16:00:32Z
+  updated: 2026-09-17T06:34:59Z
   spec: null
   acceptance_criteria:
   - 'See paiml/paiml-mcp-agent-toolkit#1366. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
 - id: PMAT-1367
   github_issue: 1367
@@ -6949,13 +6950,13 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-09-17T07:48:16Z
-  updated: 2026-09-17T07:48:16Z
+  created: 2026-09-16T14:42:59Z
+  updated: 2026-09-16T14:42:59Z
   spec: null
-  acceptance_criteria: []
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1381. Row added on PMAT-1366 because CB-2115 is a bijection over OPEN issues: #1381 was opened after master''s last roadmap change and had no row on any branch bound for master, so pmat comply check --checks CB-2115 failed this PR''s traceability job with ORPHAN-GITHUB #1381.'
   phases: []
   subtasks: []
   estimated_effort: null
-  labels:
-  - kind:code
+  labels: []
   notes: null
