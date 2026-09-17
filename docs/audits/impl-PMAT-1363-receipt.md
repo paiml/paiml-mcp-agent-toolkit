@@ -7,7 +7,7 @@
 | ticket | PMAT-1363 (#1363, `kind:code`; `kind-gate.sh` exit 0 `kind=code ticket=PMAT-1363` against `origin/master` — `--base master` exits 2 in this clone, which has no local `master` ref) |
 | PR | #1364 (`feat/roadmap-fragments`), kept as the PR of record; pushed with `--force-with-lease` from local branch `PMAT-1363-roadmap-fragments` |
 | session | fourth on this ticket; the second session's uncommitted tree (13 paths) was judged, kept, and committed as `223b973c7` |
-| base | `origin/master` `441d198e7`, behind=0 at every measurement |
+| base | `origin/master` `441d198e7` for every measurement in this receipt; rebased onto `e89a827f7` (#1382) after master moved 11 commits, and re-verified there |
 | HEAD out | `eef6881f8` (review fixes), then the commit carrying this receipt |
 | `discover.json` sha256 | `b947e12a6fa69f268b371eb5bc0de3c61224799bb11b401d86d80db0132dd259` |
 | `gate_cmd` | `cargo test --workspace` — **`gate_cmd_fallback=true`**; `pmat verify --format json` is the gate this repository's CLAUDE.md names, and is what was run |
@@ -71,7 +71,8 @@ Slots: never more than one Claude subagent live; denials 0.
 | touching `roadmap_text.rs` surfaced pre-existing `titles_by_id` cognitive 29 > 25 | master | split into `open_row` / `claim_title` |
 | CI `traceability` → `work-sync-control` arm 4: a hand-written acceptance line was quoted where the serializer emits a plain scalar | this branch | unquoted; all 4 arms green locally. `pmat verify` does not run the CI control scripts — green there is not green here |
 | andon threshold (0.8K = 96 turns, K=120) crossed while `pmat verify` was red, no draft/andon emitted | orchestrator | recorded; work continued to a green gate |
-| `estimate.sh` first called with key `paiml-mcp-agent-toolkit` (no rows) → K̂=60 `first-run[U]`; the ledger key is `pmat` (K̂=35, basis L21-L30) | orchestrator | corrected in the estimates row |
+| at Phase 0 the estimate ledger carried two repo keys: `estimate.sh paiml-mcp-agent-toolkit` pooled nothing ("none enters a total — the writer and the reader disagree"), so K̂=60 was declared `first-run[U]`; `pmat` pooled 12 rows to K̂=35 | the ledger (PMAT-1366, #1382, merged during this ticket, unified the key and added `pmat work estimate record`) | this ticket's row was recorded through `pmat work estimate record` after the rebase; `pmat work estimate check` exit 0 |
+| rebasing onto #1382 with `merge=union` on the estimates ledger kept both the old and the re-keyed copy of every row (62 lines, 19 violations) | `.gitattributes` `merge=union` meets a whole-file rewrite | master's ledger restored byte for byte, then the one row appended by the gated writer |
 
 ## Gaps
 
@@ -82,7 +83,7 @@ Slots: never more than one Claude subagent live; denials 0.
 
 ## Estimates
 
-K̂ 60 declared (`first-run[U]`, wrong ledger key) · K̂ 35 on the correct key · K 120 · actual 183 (`k_measured`).
+K̂ 60 declared (`first-run[U]`; the ledger's split keys pooled nothing) · K̂ 35 from the 12 rows under the other key · K 120 · actual 183 (`k_measured` at the receipt; the rebase onto `e89a827f7` and the CI waits came after).
 
 ## Verdict
 
