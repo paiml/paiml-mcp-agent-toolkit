@@ -115,6 +115,7 @@ async fn edit_title(project: &Path, id: &str, title: &str) -> anyhow::Result<()>
         Some(project.to_path_buf()),
         None,
         vec![],
+        None,
     )
     .await
 }
@@ -279,6 +280,61 @@ async fn work_add_append_only_edit_replaces_only_the_edited_block() {
     assert_eq!(reloaded.roadmap[0].title, "an edited title");
     assert_eq!(reloaded.roadmap[1].id, "PMAT-002", "order is preserved");
     assert_eq!(reloaded.roadmap[2].title, "third");
+}
+
+/// PMAT-900001: `pmat work edit --notes` writes the row's `notes:` — where a
+/// cross-reference belongs — without replacing its acceptance criteria, and,
+/// like every edit, rewrites no other row.
+#[tokio::test]
+async fn work_add_append_only_edit_notes_sets_notes_and_keeps_the_criteria() {
+    let project = project_with_roadmap(LOSSY_FIXTURE);
+    crate::cli::handlers::work_handlers::handle_work_edit(
+        "PMAT-001".to_string(),
+        None,
+        Some("the criterion".to_string()),
+        None,
+        None,
+        None,
+        Some(project.path().to_path_buf()),
+        None,
+        vec![],
+        None,
+    )
+    .await
+    .expect("a clean roadmap must accept an edit");
+    crate::cli::handlers::work_handlers::handle_work_edit(
+        "PMAT-001".to_string(),
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(project.path().to_path_buf()),
+        None,
+        vec![],
+        Some("Upstream: paiml/aprender 3397".to_string()),
+    )
+    .await
+    .expect("--notes alone is a change");
+
+    let new = roadmap_text(project.path());
+    let reloaded = parse_roadmap(&new);
+    assert_eq!(reloaded.roadmap.len(), 3, "no row gained or lost:\n{new}");
+    assert_eq!(
+        reloaded.roadmap[0].notes.as_deref(),
+        Some("Upstream: paiml/aprender 3397"),
+        "--notes must reach the row:\n{new}"
+    );
+    assert_eq!(
+        reloaded.roadmap[0].acceptance_criteria,
+        vec!["the criterion".to_string()],
+        "--notes must not touch the acceptance criteria:\n{new}"
+    );
+    assert!(
+        new.contains("- {id: PMAT-002, title: b, status: planned}")
+            && new.contains("    the reviewer wrote id: PMAT-900\n"),
+        "the other rows must be byte-identical:\n{new}"
+    );
 }
 
 // ── A4: the pure text operations ────────────────────────────────────────────

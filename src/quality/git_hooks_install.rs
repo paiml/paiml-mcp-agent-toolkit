@@ -101,6 +101,10 @@ echo "✅ All quality gates passed!"
 
 COMMIT_MSG_FILE=$1
 COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+# PMAT-900001: a closing keyword before #N closes that issue when this commit
+# reaches the default branch. Refused whatever the ticket checks below say.
+__PMAT_CLOSING_KEYWORD_LINT__
+pmat_closing_keyword_commit_msg_lint "$COMMIT_MSG_FILE" || exit 1
 
 # Check commit message format
 if ! echo "$COMMIT_MSG" | grep -qE "^(PMAT-[0-9]+:|feat:|fix:|docs:|style:|refactor:|test:|chore:)"; then
@@ -122,7 +126,11 @@ if [ ${#COMMIT_MSG} -lt 10 ]; then
 fi
 
 echo "✅ Commit message format valid"
-"#;
+"#
+        .replace(
+            crate::services::closing_keywords::LINT_PLACEHOLDER,
+            crate::services::closing_keywords::LINT_SH,
+        );
 
         let mut file = fs::File::create(&hook_path)?;
         file.write_all(hook_content.as_bytes())?;

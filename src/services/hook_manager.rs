@@ -14,6 +14,10 @@ const COMMIT_MSG_HOOK: &str = r#"#!/bin/bash
 
 COMMIT_MSG_FILE=$1
 COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+# PMAT-900001: a closing keyword before #N closes that issue when this commit
+# reaches the default branch. Refused whatever the ticket checks below say.
+__PMAT_CLOSING_KEYWORD_LINT__
+pmat_closing_keyword_commit_msg_lint "$COMMIT_MSG_FILE" || exit 1
 
 # Skip merge commits and revert commits
 if echo "$COMMIT_MSG" | grep -qE "^(Merge|Revert)"; then
@@ -48,6 +52,14 @@ fi
 exit 0
 "#;
 
+/// [`COMMIT_MSG_HOOK`] with the shared closing-keyword lint spliced in (PMAT-900001).
+fn commit_msg_hook() -> String {
+    COMMIT_MSG_HOOK.replace(
+        crate::services::closing_keywords::LINT_PLACEHOLDER,
+        crate::services::closing_keywords::LINT_SH,
+    )
+}
+
 /// Install commit-msg hook in git repository
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn install_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
@@ -64,10 +76,12 @@ pub fn install_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
     // Check if hook already exists
     if hook_path.exists() {
         let existing = fs::read_to_string(&hook_path)?;
-        if existing.contains("PMAT Workflow Commit Message Hook") {
-            // Already installed
+        if existing == commit_msg_hook() {
+            // Already installed, current
             return Ok(());
-        } else {
+        }
+        // Ours from an older pmat is rewritten in place, so it gains the current lint.
+        if !existing.contains("PMAT Workflow Commit Message Hook") {
             // Backup existing hook
             let backup_path = hooks_dir.join("commit-msg.backup");
             fs::copy(&hook_path, &backup_path)
@@ -77,7 +91,7 @@ pub fn install_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
     }
 
     // Write hook
-    fs::write(&hook_path, COMMIT_MSG_HOOK).context("Failed to write commit-msg hook")?;
+    fs::write(&hook_path, commit_msg_hook()).context("Failed to write commit-msg hook")?;
 
     // Make executable (Unix only)
     #[cfg(unix)]

@@ -127,6 +127,7 @@ async fn edit_title(project: &Path, id: &str, title: &str) -> anyhow::Result<()>
         Some(project.to_path_buf()),
         None,
         vec![],
+        None,
     )
     .await
 }

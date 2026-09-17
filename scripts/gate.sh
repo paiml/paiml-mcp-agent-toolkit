@@ -145,6 +145,10 @@ ci-only | mutation-diff (not required) | mutation-diff | .github/workflows/mutat
 #    CI's `cargo test --lib` already runs it; this leg runs those 15 tests by name and refuses a filter
 #    that matched none, which the lib-tests leg above would not notice.
 cmd     | ci / gate | roadmap-writer-gate | sovereign-ci.yml test "Run tests" (roadmap_writer_gate_* and work_migrate_*) | CI runs these inside the whole lib suite; this runs only them, and fails when a required test did not run | bash scripts/roadmap-writer-gate.sh
+
+# D0 — PMAT-900001 (contracts/pmat-issue-closure-v1.yaml): the call-site gate, run as CI's own step.
+# Its PR-body sibling step needs `${{ }}` and a pull_request event, so it cannot be a leg here.
+step    | gate | issue-closure | .github/workflows/ci.yml#traceability#control — no pmat code path can close a GitHub issue (PMAT-900001) | - | -
 LEGS
 }
 
