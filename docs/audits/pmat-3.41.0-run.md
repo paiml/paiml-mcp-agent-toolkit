@@ -421,3 +421,8 @@ Raw:
 
 Decision + basis: merged #72 from the CLI with a merge commit (6c260f660); verified `main` carries `timeout-minutes: 90` (line 339) and `75` (line 427). Basis: it is the operator's own stated fix for the release gate this brief makes mandatory; it only lengthens a budget (no gate is weakened — the step-level timeout makes the failure louder); one-click revertable. The three-lane quorum rail could NOT be applied: `quorum-review.sh` requires a pmat ticket readable through `pmat work status` and paiml/.github has no roadmap. That is a gap in the rail, recorded here rather than papered over; the merge rests on the measurements above, not on a verdict.
 - D6 PR #1394 ("CB-200 back under its baseline (1741 → 1680), measured in a required CI job") is armed on 3/3 and in CI.
+
+## 2026-09-17T20:36Z — waiting on D6
+
+tree: run-log behind=0 against origin/master 739d70269. Host up 5 hours, 4 minutes.
+- D6 PR #1394 head b77c55335, armed, 32 pass / 12 pending / 0 fail. Release brief drafted (`.run/briefs/RELEASE.tmpl`): clean-room named first; no publish without a green `cpu-gates` run id on the tag's sha; package-size check before tagging (#1281: 99.6% of crates.io's 10 MB); local clean room run with nothing else heavy because of today's host crash. Slots 1/3.
