@@ -34,28 +34,18 @@ Also closed in the same sweep, without a roadmap row: **#1378**, filed by github
 
 After both, `pmat work sync --check-only` reads coherent.
 
-## 2026-09-17 — PMAT-1381, an open issue with no row
+## 2026-09-17 — PMAT-1381, an open issue with no row (landed first by #1382)
 
-Issue #1381 was opened at 2026-09-16T14:42:59Z and is still OPEN, but master (441d198e7) has no row for it. This is the other half of the bijection: the entries above complete rows whose issues closed, and this one registers a row for an issue that opened. CB-2115 reported `ORPHAN-GITHUB #1381`, and `pmat work sync --check-only` exited 1 with that as its only finding (114 open items, 115 open issues). Because `ci.yml`'s required `gate` needs `traceability`, every PR to master was red. The PMAT-1365 session reports that it added the row to its own PR #1368 and a review lane failed it there as outside PMAT-1365's scope. So it lands here on its own.
+Issue #1381 was opened at 2026-09-16T14:42:59Z, but master at 441d198e7 had no row for it. CB-2115 reported `ORPHAN-GITHUB #1381`, and it was the only finding of `pmat work sync --check-only` (114 open items against 115 open issues). Registering it is in PMAT-1336's scope because the ticket's first acceptance criterion asks for the whole bijection: "every roadmap item whose issue is closed is terminal and every non-terminal item's issue is open — pmat work sync --check-only reports a bijection with zero findings against live GitHub".
 
-It is in PMAT-1336's scope by that ticket's first acceptance criterion, quoted from its row: "every roadmap item whose issue is closed is terminal and every non-terminal item's issue is open — pmat work sync --check-only reports a bijection with zero findings against live GitHub". An open issue with no row is an `ORPHAN-GITHUB` finding, so that criterion cannot hold until the row exists. The title says "complete", but the criterion asks for the whole bijection.
+On this branch, d22870740 wrote the row with `pmat work add --github-issue 1381 -t kind:code "<issue title>"`, which mints `PMAT-1381`. That was chosen over `pmat work sync --direction github-to-yaml`, whose dry-run would have minted `GH-1381` with `labels: []`. The row did not match the one on the operator's branch `PMAT-1381-row` (242755717) byte for byte: `created` and `updated` held the writer's run time, 2026-09-17T07:48:16Z, instead of the issue's createdAt. Review round 1 on d22870740 did not agree; lane 1 failed it on scope and on a forward reference to the verdict file. 035941407 answered both findings, and round 2 on it passed 3/3.
 
-Two writers were tried on scratch copies of the roadmap first:
+Before this PR could merge, #1382 (PMAT-1366) merged at e89a827f7 with a PMAT-1381 row of its own: the issue's createdAt, one acceptance_criteria line, and `labels: []`. This branch's row was then redundant and conflicted with master. The merge commit cf76edd3c resolved the conflict by taking master's `docs/roadmaps/roadmap.yaml` unchanged, so this PR adds no PMAT-1381 bytes. The row master now carries is #1382's, and it matches neither the operator's branch nor d22870740 (different `acceptance_criteria` and `labels`). #1381 stays open (keeps-open #1381).
 
-- `pmat work sync --direction github-to-yaml` planned one action, `create-item #1381 → GH-1381`. It writes id `GH-1381`, sets `created`/`updated` to the wall clock with nanoseconds, and leaves `labels: []`.
-- `pmat work add --github-issue 1381 -t kind:code "<issue title>"` mints `PMAT-1381` and binds `github_issue: 1381`. Its help calls this the collision-proof path and says to prefer it whenever an issue exists. The #1360 rows (PMAT-1356 … PMAT-1373) have the same `PMAT-<issue>` shape.
+`pmat verify --format json` on d22870740 returned `ok: false`. Format, satd and clippy passed; complexity was not measured. The tests stage failed on one lib test out of 21,661: `services::tdg_baseline::tests::the_committed_baseline_is_the_measured_count` counts 1742 definitions below grade A against a baseline of 1688. That test counts over the local `.pmat/context.db` index. It is open issue #1266, which records it as unmeasurable in CI, and this branch did not cause it: the branch changes no `src/` file.
 
-The second writer was used. Measured diff: `docs/roadmaps/roadmap.yaml` gains 17 lines, plus this receipt section.
+## 2026-09-17 — PMAT-1366, closed by #1382 and left `planned`
 
-It is not byte-identical to the row on the operator's unmerged branch `PMAT-1381-row` (242755717), which is the same row PMAT-1365's branch carries. Of the 17 lines, 15 match. The other two are `created` and `updated`: the writer stamps the time it ran, `2026-09-17T07:48:16Z`, while that row uses the issue's creation time, `2026-09-16T14:42:59Z`. Neither writer can produce the issue's time, and making the lines match by hand would be a hand edit. So when either branch merges after this one, those two lines will conflict, and the fix is to keep master's row. This deviation is for the review quorum to judge.
+#1382 merged at e89a827f7 and closed issue #1366 at 2026-09-17T08:55:11Z, leaving the `PMAT-1366` row `planned`. This is the same lifecycle gap as the entries above. `pmat work sync --check-only` on master's roadmap then reported `ORPHAN-ROADMAP PMAT-1366` as its only finding.
 
-Review round 1 judged d22870740 and did not agree: lane 1 (gemini-3.1-pro-high) FAIL, lanes 2 and 3 PASS. The artifact had sha256 `bdf8b88c…c9b9` and was not committed; the committed `docs/audits/quorum-PMAT-1336.json` is from the round that judges this branch's final head. Lane 1 made two findings, and this section now answers both:
-
-- The registration is outside PMAT-1336's scope. Answered by the acceptance criterion quoted above.
-- This section named a verdict file the diff did not contain. That sentence is removed: the review script writes the artifact only after the lanes have judged the diff.
-
-No lane's response mentioned the timestamp deviation.
-
-After the write, `pmat work sync --check-only` reads coherent (115 matched, 0 findings), CB-2115 passes, and `pmat work validate --check-base origin/master` passes, with one warning that PMAT-1381 has no acceptance criteria. The row is only registered: #1381 stays open (keeps-open #1381).
-
-`pmat verify --format json` on d22870740 returned `ok: false`. Format, satd and clippy passed; complexity was not measured. The tests stage failed on one lib test out of 21,661: `services::tdg_baseline::tests::the_committed_baseline_is_the_measured_count` counts 1742 definitions below grade A against a baseline of 1688. That test counts over the local `.pmat/context.db` index. It is open issue #1266, which records it as unmeasurable in CI, and it is not caused by this branch: `git diff 441d198e7 HEAD -- src` is empty.
+Fixed with `pmat work sync --direction github-to-yaml`. Its dry-run planned exactly one action, `close-item PMAT-1366 #1366 → Completed`. Diff: that row's `status` and `updated` lines (4 changed lines), plus this receipt section. After it, `pmat work sync --check-only` reads coherent.
