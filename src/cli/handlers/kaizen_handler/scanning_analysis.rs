@@ -62,18 +62,7 @@ fn comply_findings_from_json(json: &serde_json::Value) -> Vec<KaizenFinding> {
 
         // Report the severity comply itself assigned instead of calling
         // everything High.
-        let severity = match check
-            .get("severity")
-            .and_then(|s| s.as_str())
-            .unwrap_or("")
-            .to_ascii_lowercase()
-            .as_str()
-        {
-            "critical" => FindingSeverity::Critical,
-            "error" => FindingSeverity::High,
-            "info" => FindingSeverity::Low,
-            _ => FindingSeverity::Medium,
-        };
+        let severity = comply_check_severity(check);
 
         findings.push(KaizenFinding {
             source: FindingSource::Comply,
@@ -94,6 +83,22 @@ fn comply_findings_from_json(json: &serde_json::Value) -> Vec<KaizenFinding> {
     }
 
     findings
+}
+
+/// The kaizen severity for the severity comply itself assigned to `check`;
+/// an absent or unrecognised one is Medium.
+fn comply_check_severity(check: &serde_json::Value) -> FindingSeverity {
+    let assigned = check
+        .get("severity")
+        .and_then(|s| s.as_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    match assigned.as_str() {
+        "critical" => FindingSeverity::Critical,
+        "error" => FindingSeverity::High,
+        "info" => FindingSeverity::Low,
+        _ => FindingSeverity::Medium,
+    }
 }
 
 /// Scan for known defect patterns (batuta bug-hunt: unwrap, panic, unsafe, etc.)
