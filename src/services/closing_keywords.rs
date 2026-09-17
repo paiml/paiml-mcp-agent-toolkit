@@ -210,6 +210,109 @@ mod tests {
         assert_eq!(shell, rust);
     }
 
+    /// All three commit-msg hook writers splice the ONE snippet and refuse
+    /// exactly the fixtures that close. Each fixture sits in a body that
+    /// satisfies every writer's own ticket/format rule, so a verdict flip can
+    /// only come from the closing-keyword lint. A writer that drops the
+    /// placeholder turns its RED fixtures GREEN here.
+    #[test]
+    #[cfg(unix)]
+    fn every_commit_msg_hook_pmat_writes_refuses_exactly_the_closing_fixtures() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        let hooks = |name: &str| {
+            let d = root.join(name).join(".git").join("hooks");
+            std::fs::create_dir_all(&d).expect("mkdir hooks");
+            d
+        };
+        let writers = [
+            {
+                let d = hooks("hooks-install");
+                crate::cli::handlers::hooks_command_handlers::HooksCommand::new(
+                    d.clone(),
+                    root.join("pmat.toml"),
+                )
+                .install_commit_msg_hook(true)
+                .expect("pmat hooks install");
+                ("pmat hooks install", d)
+            },
+            {
+                let d = hooks("work-init");
+                crate::services::hook_manager::install_commit_msg_hook(
+                    &d.parent()
+                        .and_then(|g| g.parent())
+                        .expect("repo")
+                        .to_path_buf(),
+                )
+                .expect("pmat work init hook");
+                ("hook_manager", d)
+            },
+            {
+                let d = hooks("quality");
+                crate::quality::git_hooks::GitHookManager::new(
+                    d.parent().and_then(|g| g.parent()).expect("repo"),
+                )
+                .install_hooks()
+                .expect("quality hooks");
+                ("quality::git_hooks", d)
+            },
+        ];
+        let verdict = |hook_dir: &std::path::Path, body: &str| {
+            let msg = root.join("MSG");
+            std::fs::write(
+                &msg,
+                format!("feat: fixture commit\n\n{body}\n\nRefs PMAT-1\nPmat-Ticket: PMAT-1\n"),
+            )
+            .expect("write");
+            let hook = hook_dir.join("commit-msg");
+            let text = std::fs::read_to_string(&hook).expect("hook written");
+            assert!(
+                !text.contains(LINT_PLACEHOLDER),
+                "{hook:?} kept the placeholder"
+            );
+            std::process::Command::new("bash")
+                .current_dir(root)
+                .arg(&hook)
+                .arg(&msg)
+                .output()
+                .expect("run hook")
+                .status
+                .success()
+        };
+        for (writer, dir) in &writers {
+            assert!(
+                verdict(dir, "a plain body"),
+                "{writer}: GREEN control refused"
+            );
+            for (text, closes) in FIXTURES {
+                assert_eq!(!verdict(dir, text), *closes, "{writer}: {text:?}");
+            }
+        }
+    }
+
+    /// `pmat prompt github-ticket` (prompts/github-ticket.yaml, `include_str!`
+    /// in prompt_handlers.rs) taught `(fixes #N)` subjects, a `Fixes #N` PR body
+    /// and a hand `gh issue close`. Rendered with an issue number and with the
+    /// YAML block indentation removed, it may carry only sanctioned lines.
+    #[test]
+    fn the_github_ticket_prompt_teaches_only_the_sanctioned_close() {
+        let raw = include_str!("../../prompts/github-ticket.yaml");
+        let rendered: String = raw
+            .replace("${ISSUE_NUMBER}", "5")
+            .lines()
+            .map(|l| format!("{}\n", l.trim_start()))
+            .collect();
+        assert_eq!(find(&rendered), Vec::<Hit>::new());
+        assert!(
+            rendered.lines().any(|l| l.starts_with("Closes #5")),
+            "positive control: the prompt still teaches the one sanctioned close"
+        );
+        assert!(
+            !raw.contains("gh issue close"),
+            "the prompt hands out a hand close"
+        );
+    }
+
     /// The commit-msg entry point refuses a closing body, passes a clean one,
     /// and ignores git's comment lines and a `commit -v` diff.
     #[test]

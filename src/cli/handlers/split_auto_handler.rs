@@ -1056,6 +1056,8 @@ fn execute_split_plan(plan: &SplitPlan, targets: &[SplitTarget], commit: bool) -
             stem,
             targets.len()
         );
+        // PMAT-900001: never let a file stem mint a closing reference.
+        let msg = crate::services::closing_keywords::neutralise(&msg);
         let _ = std::process::Command::new("git")
             .args(["commit", "-m", &msg])
             .status();

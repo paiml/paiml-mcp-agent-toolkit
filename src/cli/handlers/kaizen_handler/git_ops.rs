@@ -17,8 +17,11 @@ pub(crate) fn commit_changes(path: &Path, message: &str) -> Result<Option<String
         return Ok(None);
     }
 
+    // PMAT-900001: kaizen messages interpolate finding text; a closing keyword
+    // before #N would close that issue once this commit reaches the default branch.
+    let message = crate::services::closing_keywords::neutralise(message);
     let output = Command::new("git")
-        .args(["commit", "-m", message])
+        .args(["commit", "-m", &message])
         .current_dir(path)
         .output()
         .context("Failed to run git commit")?;
@@ -90,7 +93,9 @@ pub(crate) fn create_github_issues(
             &format!("kaizen: {} - {}", finding.category, finding.message),
             70,
         );
-        let body = format_issue_body(finding);
+        // PMAT-900001: finding text is free text pmat did not write.
+        let title = crate::services::closing_keywords::neutralise(&title);
+        let body = crate::services::closing_keywords::neutralise(&format_issue_body(finding));
         let labels = severity_to_labels(finding.severity, finding.source);
 
         let mut args = vec![

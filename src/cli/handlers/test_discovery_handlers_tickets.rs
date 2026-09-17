@@ -129,6 +129,9 @@ async fn handle_create_tickets(
 /// Create a single GitHub issue using gh CLI
 async fn create_github_issue(repo: &str, ticket: &TestIssueTemplate) -> Result<String> {
     let labels_arg = ticket.labels.join(",");
+    // PMAT-900001: test names are free text; never let an issue carry a close.
+    let title = crate::services::closing_keywords::neutralise(&ticket.title);
+    let body = crate::services::closing_keywords::neutralise(&ticket.body);
 
     let output = Command::new("gh")
         .arg("issue")
@@ -136,9 +139,9 @@ async fn create_github_issue(repo: &str, ticket: &TestIssueTemplate) -> Result<S
         .arg("--repo")
         .arg(repo)
         .arg("--title")
-        .arg(&ticket.title)
+        .arg(&title)
         .arg("--body")
-        .arg(&ticket.body)
+        .arg(&body)
         .arg("--label")
         .arg(&labels_arg)
         .output()

@@ -104,7 +104,13 @@ pub(super) async fn create_github_issue_from_item(
         Some(item.labels.clone())
     };
 
-    let issue = client.create_issue(&item.title, &body, labels).await?;
+    // `item.title`/`body` are free text pmat did not write (a roadmap title,
+    // acceptance-criteria text) and are routinely copied verbatim into PR
+    // bodies and commits later. Neutralise here so an issue never carries a
+    // line that would close something once quoted downstream (PMAT-900001).
+    let title = crate::services::closing_keywords::neutralise(&item.title);
+    let body = crate::services::closing_keywords::neutralise(&body);
+    let issue = client.create_issue(&title, &body, labels).await?;
     Ok(GitHubIssueInfo {
         number: issue.number,
         title: issue.title,
@@ -137,13 +143,20 @@ pub(super) async fn create_github_issue_from_item(
         "*Created via `pmat work start --create-github`*".to_string()
     };
 
+    // `item.title`/`body` are free text pmat did not write (a roadmap title,
+    // acceptance-criteria text) and are routinely copied verbatim into PR
+    // bodies and commits later. Neutralise here so an issue never carries a
+    // line that would close something once quoted downstream (PMAT-900001).
+    let title = crate::services::closing_keywords::neutralise(&item.title);
+    let body = crate::services::closing_keywords::neutralise(&body);
+
     let mut args = vec![
         "issue".to_string(),
         "create".to_string(),
         "--repo".to_string(),
         repo.to_string(),
         "--title".to_string(),
-        item.title.clone(),
+        title.clone(),
         "--body".to_string(),
         body.clone(),
     ];
@@ -175,7 +188,7 @@ pub(super) async fn create_github_issue_from_item(
 
     Ok(GitHubIssueInfo {
         number: issue_num,
-        title: item.title.clone(),
+        title,
         body: Some(body),
         labels: item.labels.clone(),
     })
