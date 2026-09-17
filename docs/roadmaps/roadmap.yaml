@@ -6171,11 +6171,11 @@ roadmap:
   github_issue: 1305
   item_type: task
   title: 'a_crate_that_does_not_compile_is_reported_as_not_measured is flaky in ci / test: the dead-code analyzer intermittently reports a measured zero for a crate that cannot compile (run 34562657315; master passed identical Rust)'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-11T05:24:33Z
-  updated: 2026-09-11T05:24:33Z
+  updated: 2026-09-17T13:32:02.704262369+00:00
   spec: null
   acceptance_criteria:
   - the failing condition is reproduced, or the environment the analyzer's nested cargo check inherits in ci / test is pinned, with the command or run that shows it
