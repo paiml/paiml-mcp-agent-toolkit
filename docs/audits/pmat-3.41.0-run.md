@@ -39,3 +39,40 @@ D5 measured against aprender origin/main: `unlock.rs:7` already round-trips via 
 - aprender#3400 — the D0 root cause (`no-close: #N` is `close: #N` to GitHub), with the evidence above.
 - Commented on aprender#3351: its body carries `no-close: #3347`, which will close #3347 on merge.
 pmat's PMAT-1369 (issue #1369) is now tracked by those four; its lifecycle row goes into the D0 ticket's PR.
+
+## 2026-09-16T15:58Z — stop-the-line: shared-.git worktrees cannot pass lane isolation concurrently
+
+Raw measurement (D4 session, phase-1 grillme lane stderr):
+```
+agy-lane: LANE ISOLATION VIOLATED — a shared ref changed: a lane created or moved a branch or tag (refs/heads/PMAT-1363-roadmap-fragments,refs/heads/chore/3.41.0-run-log)
+```
+`agy-lane.sh` hashes every ref of the repository (`for-each-ref`, line 957) before and after a lane and exits 3 on any change other than the lane's own branch. `git worktree add` trees share one `.git`, so a commit by the D1 session and the orchestrator's run-log commit both landed inside the D4 lane's window. With three tickets live this is structural, not a race to wait out.
+
+Decision (basis: the assertion's own scope): each ticket tree is a standalone clone at the same path (`~/src/paiml-mcp-agent-toolkit.wt/<ticket>`, `git clone --branch <branch>`, origin re-pointed at GitHub, private refs), not a `git worktree`. The brief's "own worktree" intent — never the primary checkout, one tree per ticket — is kept; the mechanism changed because the mechanism was the defect. Both sessions killed and relaunched on the clones (D1 at 64042b343, D4 at b77f9d307, both behind=0). Two orchestrator mistakes on the way, both mine: a `kill` given both pids as one argument killed nothing, and `pkill -f` self-matched the orchestrator shell (exit 144) twice.
+
+## 2026-09-16T17:10Z — sessions in flight
+
+tree: run-log at 64fc628e7 (origin/master 441d198e7 + the log commit; behind=0).
+- D4 PMAT-1365: pushed 1d8c64f40 to `PMAT-1365-declare-gate` ("make gate runs one table that maps every required check, and prints what it cannot run"); `gh pr checks 1368`: pass=34 fail=7 pending=2 at 17:10Z; the session is reading `.pmat-ratchet.toml` to root-cause the reds.
+- D1 PMAT-1363: plan quorum passed; running `cargo test --lib roadmap_fragments` and the `roadmap`/`work_`/`ticket` filters; no new commit yet beyond 64042b343.
+- Orchestrator: no ref moves in either clone since the relaunch; briefs and the spec sections for D0/D2/D3 are written and wait for D1's merge.
+
+## 2026-09-16T18:25Z — stop-the-line: both sessions killed by the account session limit
+
+Raw: both `claude -p` sessions ended at 16:20Z/16:21Z with result "You've hit your session limit · resets 8:20pm (Europe/Madrid)"; the orchestrator itself paused until the reset. D1 left 13 uncommitted files and one deleted file (`src/cli/test_clap_checks.rs`) in its clone; D4 left a clean tree at an unpushed commit 3425e9ed3. Decision: relaunch both at 18:22Z with resume notes naming that exact state; the D1 session is told to judge the deletion before keeping it. ~2 h of wall clock lost; no work lost beyond the sessions' own context.
+
+## 2026-09-17T06:40Z — new orchestrator session; all three slots relaunched
+
+Orchestrator: Claude Fable 5.1, session `a0a8b4ba` (the operator re-issued the brief; session `4002dc6f` is gone).
+
+tree: run-log clone HEAD=64fc628e7 origin/master=441d198e7 behind=0. Primary checkout (d70a78f67, behind=6) still unused.
+
+Raw measurements:
+- `pgrep -af '^claude -p'` at 06:31Z: none. The third D1/D4 sessions' transcripts end at 2026-09-16T18:23:01Z and 18:22:48Z — ~90 s after launch, mid tool call; `uptime -s` = 2026-09-16 22:08:46 local (20:08Z). The reboot wiped `/tmp`, taking the previous launcher, its logs and the unlaunched D0/D2/D3 briefs with it. Why the sessions ended at 18:23Z is not recoverable from what is left; nothing was lost in the trees.
+- D1 clone: HEAD=64042b343 behind=0 ahead=3, 13 dirty paths (identical to the 18:25Z entry). D4 clone: HEAD=3425e9ed3 behind=0 ahead=4, clean, 3 unpushed.
+- D3: on 441d198e7 all 16 `repo=paiml-mcp-agent-toolkit` rows of `impl-estimates.jsonl` have `unit:null` (RED reproduced). Roadmap entry PMAT-1366 already exists (`labels: []`), so D3 needs no `pmat work add` and does not have to wait for fragment mode.
+- D2: `pmat query --literal "fs::write(roadmap_path"` → 2 files, not 1: `ticket_validate_migrate.rs:526` (roadmap.yaml, unlocked — the defect) and `roadmap_handler_parsing.rs:180` (`apply_roadmap_changes`, which writes `- [ ]` checkbox lines — a markdown roadmap, to be confirmed by the D2 session). The brief's gate "returns 0 outside roadmap_service_io.rs" therefore has to be scoped by serialisation site, as the brief's own rule says, or it is red forever on a file that never holds YAML.
+
+Decisions:
+- Launcher, briefs and session logs now live under `~/src/paiml-mcp-agent-toolkit.wt/.run/` (not a repo, not `/tmp`) — basis: the reboot loss above. The launcher refuses a 4th live session. First launch failed on my own guard: `pgrep | wc -l` under `pipefail` exits 1 when nothing matches (the trap already recorded in memory); fixed with `|| true`.
+- 06:32Z relaunched D1 PMAT-1363 (pid 2508652) and D4 PMAT-1365 (pid 2508663) with a fourth-session resume note; 06:34Z launched D3 PMAT-1366 (pid 2516703) in a new standalone clone on `PMAT-1366-estimate-ledger-unit` from 441d198e7. 3/3 slots live. D0 and D2 wait for a slot and for D1 (fragment mode) + D4 (`make gate` extension point).
