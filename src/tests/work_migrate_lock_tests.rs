@@ -213,3 +213,36 @@ fn work_migrate_in_fragment_mode_refuses_before_writing_anything() {
         "PMAT-001's fragment must not land when PMAT-002's is refused"
     );
 }
+
+#[test]
+fn work_migrate_in_fragment_mode_refuses_to_carry_text_after_the_last_row() {
+    // The last row's block runs to the end of the file, so a footer after it would
+    // travel into PMAT-002's fragment and out of place in the aggregate.
+    let footer = format!(
+        "{HEADER}roadmap:\n- id: PMAT-001\n  title: first\n  status: planned\n\
+         - id: PMAT-002\n  title: second\n  status: done\n# footer the aggregate must keep\nnotes: kept\n"
+    );
+    let (_dir, footer_project, roadmap) = project(&footer, true);
+    let entries = roadmap
+        .parent()
+        .expect("the roadmap has a directory")
+        .join("entries");
+
+    let err = migrate(&footer_project, false, true).expect_err("a footer after the row is refused");
+
+    assert!(err.to_string().contains("nothing was written"), "{err}");
+    assert!(err.to_string().contains("PMAT-002"), "{err}");
+    assert_eq!(read(&roadmap), footer);
+    assert_eq!(std::fs::read_dir(&entries).expect("entries").count(), 0);
+
+    // Control: blank lines after the row are not text, and the row migrates.
+    let blank = format!("{HEADER}roadmap:\n- id: PMAT-002\n  title: second\n  status: done\n\n\n");
+    let (_blank_dir, blank_project, blank_roadmap) = project(&blank, true);
+    let blank_entries = blank_roadmap
+        .parent()
+        .expect("the roadmap has a directory")
+        .join("entries");
+    migrate(&blank_project, false, true).expect("trailing blank lines do not block a migration");
+    assert!(read(&blank_entries.join("PMAT-002.yaml")).contains("status: completed"));
+    assert_eq!(read(&blank_roadmap), blank);
+}

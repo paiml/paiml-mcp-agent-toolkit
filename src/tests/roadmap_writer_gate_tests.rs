@@ -230,10 +230,15 @@ fn roadmap_writer_gate_source_predicate() {
 // ------------------------------------------------------------------ the tree
 
 /// Every file this crate compiles OUTSIDE `cfg(test)`, found the way rustc finds
-/// them: from the crate roots, through each `mod` declaration (honouring
-/// `#[path]`) and each item-level `include!`, skipping every `#[cfg(test)]` item
-/// and every file whose inner attributes say `#![cfg(test)]`. File names decide
-/// nothing — `work_tests_part1.rs` is test code because of how it is reached.
+/// them: from the crate roots, through each `mod` declaration (honouring `#[path]`)
+/// and each `include!` — at ANY depth, in an inline module, an impl or a function
+/// body, not only at a file's top level — skipping every `#[cfg(test)]` item and
+/// every file whose inner attributes say `#![cfg(test)]`. File names decide nothing:
+/// `work_tests_part1.rs` is test code because of how it is reached.
+///
+/// An `include!` of `concat!(env!("OUT_DIR"), "/x.rs")` is resolved to the build
+/// script's real output and read like any other file. Any other computed path fails
+/// the walk: a file the gate cannot locate is not a file it has checked.
 fn production_sources(root: &Path) -> Vec<(String, String)> {
     let mut walk = ModuleWalk::default();
     for crate_root in ["src/lib.rs", "src/bin/pmat.rs", "src/bin/pmat-agent.rs"] {
@@ -287,43 +292,115 @@ impl ModuleWalk {
         if test_only(&syntax.attrs) {
             return;
         }
-        self.sources.insert(file.to_path_buf(), (relative, text));
+        self.sources
+            .insert(file.to_path_buf(), (relative.clone(), text));
         let here = file
             .parent()
             .expect("a source file has a directory")
             .to_path_buf();
-        self.items(root, &syntax.items, &here, children);
-    }
-
-    fn items(&mut self, root: &Path, items: &[syn::Item], here: &Path, children: &Path) {
-        for item in items {
-            match item {
-                syn::Item::Mod(module) if !test_only(&module.attrs) => {
-                    self.module(root, module, here, children);
-                }
-                syn::Item::Macro(mac)
-                    if !test_only(&mac.attrs) && mac.mac.path.is_ident("include") =>
-                {
-                    if let Ok(name) = mac.mac.parse_body::<syn::LitStr>() {
-                        self.file(root, &here.join(name.value()), children);
-                    }
-                }
-                _ => {}
+        let mut scan = Scan {
+            here: &here,
+            children: vec![children.to_path_buf()],
+            found: Vec::new(),
+        };
+        syn::visit::Visit::visit_file(&mut scan, &syntax);
+        for found in scan.found {
+            match found {
+                Found::File { file, children } => self.file(root, &file, &children),
+                Found::Unresolved(what) => self
+                    .unreadable
+                    .push(format!("{relative}: include! of a computed path {what}")),
             }
         }
     }
+}
 
-    fn module(&mut self, root: &Path, module: &syn::ItemMod, here: &Path, children: &Path) {
+/// What one file declares: files to read next, and includes the walk cannot locate.
+enum Found {
+    File { file: PathBuf, children: PathBuf },
+    Unresolved(String),
+}
+
+/// A full visit of one file for `mod` and `include!`, `cfg(test)` pruned.
+struct Scan<'p> {
+    here: &'p Path,
+    /// The directory out-of-line children of the innermost module live in.
+    children: Vec<PathBuf>,
+    found: Vec<Found>,
+}
+
+impl Scan<'_> {
+    fn children(&self) -> &Path {
+        self.children
+            .last()
+            .expect("the file's own module is on the stack")
+    }
+
+    fn include(&mut self, mac: &syn::Macro) {
+        let children = self.children().to_path_buf();
+        let found = match include_target(mac) {
+            Some(Target::Relative(path)) => Found::File {
+                file: self.here.join(path),
+                children,
+            },
+            Some(Target::OutDir(name)) => Found::File {
+                file: Path::new(env!("OUT_DIR")).join(name.trim_start_matches('/')),
+                children,
+            },
+            None => Found::Unresolved(format!("{:?}", mac.tokens.to_string())),
+        };
+        self.found.push(found);
+    }
+}
+
+impl<'ast> syn::visit::Visit<'ast> for Scan<'_> {
+    fn visit_item(&mut self, item: &'ast syn::Item) {
+        let attrs: &[syn::Attribute] = match item {
+            syn::Item::Fn(i) => &i.attrs,
+            syn::Item::Mod(i) => &i.attrs,
+            syn::Item::Impl(i) => &i.attrs,
+            syn::Item::Macro(i) => &i.attrs,
+            syn::Item::Trait(i) => &i.attrs,
+            syn::Item::Const(i) => &i.attrs,
+            syn::Item::Static(i) => &i.attrs,
+            _ => &[],
+        };
+        if !test_only(attrs) {
+            syn::visit::visit_item(self, item);
+        }
+    }
+
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        if !test_only(&node.attrs) {
+            syn::visit::visit_impl_item_fn(self, node);
+        }
+    }
+
+    fn visit_impl_item_macro(&mut self, node: &'ast syn::ImplItemMacro) {
+        if !test_only(&node.attrs) {
+            syn::visit::visit_impl_item_macro(self, node);
+        }
+    }
+
+    fn visit_stmt_macro(&mut self, node: &'ast syn::StmtMacro) {
+        if !test_only(&node.attrs) {
+            syn::visit::visit_stmt_macro(self, node);
+        }
+    }
+
+    fn visit_item_mod(&mut self, module: &'ast syn::ItemMod) {
         let name = module.ident.to_string();
         let explicit = path_attribute(&module.attrs);
-        if let Some((_, items)) = &module.content {
-            // `include!` stays relative to the FILE; child modules nest under the name.
-            let inner = children.join(explicit.unwrap_or(name));
-            self.items(root, items, here, &inner);
+        if module.content.is_some() {
+            let inner = self.children().join(explicit.unwrap_or(name));
+            self.children.push(inner);
+            syn::visit::visit_item_mod(self, module);
+            self.children.pop();
             return;
         }
+        let children = self.children();
         let file = match explicit {
-            Some(path) => here.join(path),
+            Some(path) => self.here.join(path),
             None if children.join(format!("{name}.rs")).is_file() => {
                 children.join(format!("{name}.rs"))
             }
@@ -335,7 +412,51 @@ impl ModuleWalk {
         } else {
             file.with_extension("")
         };
-        self.file(root, &file, &grandchildren);
+        self.found.push(Found::File {
+            file,
+            children: grandchildren,
+        });
+    }
+
+    fn visit_macro(&mut self, mac: &'ast syn::Macro) {
+        if mac.path.is_ident("include") {
+            self.include(mac);
+        }
+    }
+}
+
+/// Where an `include!` points.
+enum Target {
+    /// `include!("file.rs")`, relative to the including file.
+    Relative(String),
+    /// `include!(concat!(env!("OUT_DIR"), "/file.rs"))`: the build script's output.
+    OutDir(String),
+}
+
+fn include_target(mac: &syn::Macro) -> Option<Target> {
+    if let Ok(name) = mac.parse_body::<syn::LitStr>() {
+        return Some(Target::Relative(name.value()));
+    }
+    let syn::Expr::Macro(concat) = mac.parse_body::<syn::Expr>().ok()? else {
+        return None;
+    };
+    if !concat.mac.path.is_ident("concat") {
+        return None;
+    }
+    let parts = concat
+        .mac
+        .parse_body_with(syn::punctuated::Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated)
+        .ok()?;
+    match parts.iter().collect::<Vec<_>>().as_slice() {
+        [syn::Expr::Macro(env), syn::Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Str(tail),
+            ..
+        })] if env.mac.path.is_ident("env")
+            && env.mac.parse_body::<syn::LitStr>().ok()?.value() == "OUT_DIR" =>
+        {
+            Some(Target::OutDir(tail.value()))
+        }
+        _ => None,
     }
 }
 

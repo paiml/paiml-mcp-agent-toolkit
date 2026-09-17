@@ -149,16 +149,15 @@ impl RoadmapService {
             );
         }
 
-        let (changes, rows) = changed_rows(&current, &base_rows, transform)
-            .map_err(|id| {
+        let indent = crate::services::roadmap_text::row_indent(&base);
+        let (changes, rows) =
+            changed_rows(&current, &base_rows, indent, transform).map_err(|reason| {
                 anyhow::anyhow!(
-                    "refusing to migrate {id}: {} declares it twice, and one fragment can \
-                     carry only one row (PMAT-1385)",
+                    "refusing to migrate, nothing was written: {reason} in {} (PMAT-1385)",
                     self.roadmap_path.display()
                 )
             })?;
 
-        let indent = crate::services::roadmap_text::row_indent(&base);
         for (id, block) in &rows {
             fragments::check_fragment(id, block, indent).map_err(|e| {
                 anyhow::anyhow!("refusing to migrate, nothing was written: {e} (PMAT-1385)")
@@ -186,24 +185,37 @@ impl RoadmapService {
 type ChangedRows = (Vec<String>, Vec<(String, String)>);
 
 /// Fragment mode: every row the transform changes, as `(changes, [(id, migrated
-/// block)])` — fragments first, then the base rows no fragment supersedes. `Err(id)`
-/// when one id would need two fragments.
+/// block)])` — fragments first, then the base rows no fragment supersedes. `Err` with
+/// the reason when a changed row cannot become a fragment: its id is declared twice,
+/// or it is a base row followed by text that is not part of it.
 fn changed_rows(
     current: &[(String, String)],
     base_rows: &[(String, String)],
+    indent: usize,
     transform: &impl Fn(&str) -> (String, Vec<String>),
 ) -> std::result::Result<ChangedRows, String> {
     let held: BTreeSet<&str> = current.iter().map(|(id, _)| id.as_str()).collect();
-    let unheld_base = base_rows.iter().filter(|(id, _)| !held.contains(id.as_str()));
+    let unheld_base = base_rows
+        .iter()
+        .filter(|(id, _)| !held.contains(id.as_str()))
+        .map(|row| (row, true));
     let mut changes: Vec<String> = Vec::new();
     let mut rows: Vec<(String, String)> = Vec::new();
-    for (id, block) in current.iter().chain(unheld_base) {
+    for ((id, block), is_base) in current.iter().map(|row| (row, false)).chain(unheld_base) {
         let (migrated, found) = transform(block);
         if migrated == *block {
             continue;
         }
         if rows.iter().any(|(seen, _)| seen == id) {
-            return Err(id.clone());
+            return Err(format!(
+                "{id} is declared twice, and one fragment carries one row"
+            ));
+        }
+        if let Some(line) = text_after_row(block, indent).filter(|_| is_base) {
+            return Err(format!(
+                "{id} is followed by `{line}`, which is not part of its row — a fragment \
+                 superseding {id} would carry it away from where it stands"
+            ));
         }
         for change in found {
             if !changes.contains(&change) {
@@ -227,4 +239,30 @@ fn write_fragment_migration(
                 .map_err(|e| anyhow::anyhow!("{e}"))
         })
         .collect()
+}
+
+/// The first non-blank line after a base row's own lines, if any.
+///
+/// `split_entries` runs a row's block up to the next row — and the LAST row's to the
+/// end of the file — so a trailing comment, or a top-level key after the list, is
+/// inside it. Written into a superseding fragment it would move to the fragment's
+/// sorted slot, and the aggregate would drop it from where it stood. A row's own
+/// lines are its first line and every later non-blank, non-comment line indented
+/// deeper than the row; blank and comment lines between two of those stay with it.
+fn text_after_row(block: &str, indent: usize) -> Option<String> {
+    let mut end = 0;
+    let mut offset = 0;
+    for (index, line) in block.split_inclusive('\n').enumerate() {
+        offset += line.len();
+        let content = line.trim();
+        let depth = line.len() - line.trim_start_matches(' ').len();
+        if index == 0 || (!content.is_empty() && !content.starts_with('#') && depth > indent) {
+            end = offset;
+        }
+    }
+    block[end..]
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .map(ToString::to_string)
 }

@@ -34,7 +34,7 @@ equations:
       ∀ s ∈ sinks(src) : fn(s) ∈ { RoadmapWriteLock::write, RoadmapWriteLock::replace,
                                    RoadmapWriteLock::remove, open_lock_file }
       ∀ a ∈ ALLOWED : ∃ s ∈ sinks(src) : fn(s) = a                     [the allow-list is live]
-    domain: "the syntax tree of every file reached from src/lib.rs and src/bin/*.rs through mod declarations and item-level include!, cfg(test) items skipped"
+    domain: "the syntax tree of every file reached from src/lib.rs and src/bin/*.rs through mod declarations and include! at any depth (inline module, impl, function body); include!(concat!(env!(OUT_DIR), ...)) resolved to the build script's output; any other computed include! fails the walk; cfg(test) items skipped. 3037 files, 4 of them generated, measured 2026-09-17"
     codomain: bool
     invariants:
       - "taint propagates through let and every pattern, owner-keyed struct fields, clap defaults, path-preserving methods and closures, and across calls to a fixpoint — never by an identifier's spelling"
@@ -61,6 +61,7 @@ equations:
     codomain: bool
     invariants:
       - "every planned fragment passes check_fragment before the first write, so a refusal writes nothing"
+      - "a changed BASE row followed by non-blank text that is not part of it (a footer comment, a top-level key after the list) is refused: split_entries runs the last row to the end of the file, and a superseding fragment would move that text"
       - "a change to the header is refused in fragment mode: it exists only in the generated roadmap.yaml"
 
 proof_obligations:
@@ -89,7 +90,7 @@ proof_obligations:
     formal: "is_dir(entries) ⇒ bytes(roadmap.yaml)' = bytes(roadmap.yaml)"
     applies_to: plan_fragment_migration
   - type: precondition
-    property: "RWL-OB-007 a fragment-mode migration that cannot write one of its rows writes none of them"
+    property: "RWL-OB-007 a fragment-mode migration that cannot write one of its rows writes none of them: an id that is not a filename, an id declared twice, or a base row followed by text that is not part of it (trailing blank lines are not text)"
     formal: "∃ r ∈ rows : ¬check_fragment(r) ⇒ Err ∧ entries' = entries"
     applies_to: plan_fragment_migration
 
@@ -112,7 +113,7 @@ falsification_tests:
   - id: RWL-F-004
     rule: "a write through the token waits for the lock (RWL-OB-004)"
     prediction: "with the lock held from outside, migrate (whole-file and fragment mode), work add, save and aggregate --write do not land for 500 ms and land after release. Mutation measured 2026-09-17: dropping lock_exclusive from RoadmapWriteLock::acquire turns all four RED; with the pre-fix handler restored the migrate test is RED (it wrote roadmap.yaml while the lock was held)"
-    test: "cargo test --lib -- work_migrate_waits_for_the_repository_lock roadmap_fragments_an_add_waits roadmap_fragments_a_save_waits roadmap_fragments_aggregate_write_waits"
+    test: "cargo test --lib -- work_migrate_waits_for_the_repository_lock roadmap_fragments_an_add_waits_for_the_repository_lock roadmap_fragments_a_save_waits_for_the_repository_lock roadmap_fragments_aggregate_write_waits_for_the_repository_lock"
     if_fails: "two pmat processes interleave a read-modify-write and one silently undoes the other"
   - id: RWL-F-005
     rule: "whole-file migrate keeps every byte it does not normalise (RWL-OB-005)"
@@ -126,6 +127,6 @@ falsification_tests:
     if_fails: "pmat work migrate edits the generated roadmap.yaml and the roadmap-fragment-parity gate refuses the pull request"
   - id: RWL-F-007
     rule: "a refused fragment-mode migration writes nothing (RWL-OB-007)"
-    prediction: "a base row whose id cannot be a filename refuses the migration and entries/ stays empty, although PMAT-001 before it was migratable. Mutation measured 2026-09-17: skipping the check-before-write loop turns it RED"
-    test: "cargo test --lib work_migrate_in_fragment_mode_refuses_before_writing_anything"
+    prediction: "a base row whose id cannot be a filename refuses the migration and entries/ stays empty, although PMAT-001 before it was migratable; a last row followed by a footer comment and a top-level key is refused with roadmap.yaml byte-identical and entries/ empty, while the same row followed only by blank lines migrates. Mutations measured 2026-09-17: skipping the check-before-write loop turns the first RED; disabling the text-after-row check turns the second RED"
+    test: "cargo test --lib -- work_migrate_in_fragment_mode_refuses_before_writing_anything work_migrate_in_fragment_mode_refuses_to_carry_text_after_the_last_row"
     if_fails: "a failed migration leaves half its fragments behind"

@@ -8,7 +8,7 @@
 #
 # The gate itself is a `--lib` suite, so the required `ci / gate` check (sovereign-ci's
 # `cargo test --lib`) runs it on every pull request; this script is how a human or
-# `make gate` runs the same tests without the other 21,000.
+# `make gate` runs the same 14 tests without the other 21,000.
 #
 # Why a script and not the bare cargo command: `cargo test -- <filter>` that matches
 # NOTHING exits 0 ("0 passed"). A renamed test, a module that stopped being compiled,
@@ -44,6 +44,7 @@ REQUIRED=(
   work_migrate_keeps_every_byte_it_does_not_normalise
   work_migrate_in_fragment_mode_never_opens_the_aggregate
   work_migrate_in_fragment_mode_refuses_before_writing_anything
+  work_migrate_in_fragment_mode_refuses_to_carry_text_after_the_last_row
 )
 
 # judge LOG — the verdict on one `cargo test` log.
