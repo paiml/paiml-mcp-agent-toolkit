@@ -186,3 +186,18 @@ Raw:
 Decisions:
 - The cascade is now the critical path: D4 cannot go green until #1383 merges, #1383 needs a re-run of a flaky required check, and a PR that fixes the flake would itself need `traceability` green — so the re-run is the only non-circular way forward and is NOT treated as a bypass (the check still has to pass on its own). But a flake is red until root-caused: 11:06Z launched D7 PMAT-1305 (clone `.wt/PMAT-1305`, pid 2608636) to fix the analyzer at the cause. Basis: three recorded occurrences, the latest on a diff that touches no Rust.
 - Queue: when the PMAT-1336 session ends → a short D4 finishing session (merge master, re-quorum if the diff changed, arm). Then D6 (CB-200) and D0 as slots free. Slots 3/3: D2 (PMAT-1385), PMAT-1336, PMAT-1305.
+
+## 2026-09-17T11:28Z — lifecycle PR #1383 MERGED (7c2aa59b8); master red again within the hour; D4 finishing session launched
+
+tree: run-log rebased, behind=0 against origin/master 7c2aa59b8.
+
+Raw:
+- #1383 merged 11:25:11Z after the flaky `ci / test` job was re-run by its session (45 pass, 0 fail). It ended up registering PMAT-1385 (D2's issue) and completing PMAT-1363 — not the #1381 row it was launched for, which #1382 had already landed with different bytes.
+- Orchestrator measurement on 7c2aa59b8: open issue #1386 (opened 10:50:15Z by a sibling session: "`pmat query --regex … --path <dir> --files-with-matches` ignores --path: 47 files returned, 0 inside the dir") has 0 roadmap rows → CB-2115 ORPHAN-GITHUB → `traceability` red on every open PR again.
+- Corrections from the PMAT-1336 session to my brief (findings): the operator's row uses block-style `labels:` (same content, different bytes than I wrote); NO sanctioned writer can reproduce a byte-identical row — `work sync` mints `GH-<n>` ids with wall-clock nanosecond timestamps and `work add --github-issue` stamps run time, not the issue's `createdAt` — so "byte-identical across PRs" was an unsatisfiable instruction and I have stopped giving it; locally, CB-2113 judges against the clone's `origin/HEAD`, which in clones of the primary checkout pointed at `feat/roadmap-fragments` (new clones now run `git remote set-head origin master`).
+
+Mechanism (why the run keeps stalling here): CB-2115 is a live bijection, so its verdict on a PR is a function of the world, not of the diff. Every issue a session files and every merge that closes an issue reds every open PR until a row lands on master, and landing a row costs one full CI cycle (~40 min) — longer than the interval between orphans with three sessions live. Open PR #1341 (PMAT-1309, stale since 2026-09-12, 2 failing checks) would tolerate YOUNG orphans inside a grace window, but by design never the closed-issue leg, which is the one each merge trips. It is not in D0–D5 and is not picked up here.
+
+Decisions:
+- No more stand-alone lifecycle sessions while three tickets are live. Each ticket PR carries master's current CB-2115 findings as ONE separate commit through a sanctioned writer, with the quorum asked to rule on scope and shown the precedent (#1364: SCOPE ACCEPT 3/3). Basis: measured cycle time above. Sessions are told not to file new issues in this repo unless the same PR carries the row.
+- 11:28Z launched the D4 finishing session (pid 2768639): merge master, carry the #1386 row, re-quorum, arm through `pmat-merge`; one named re-run allowed for the #1305 flake only. Slots 3/3: D2 (PMAT-1385), D7 (PMAT-1305), D4.
