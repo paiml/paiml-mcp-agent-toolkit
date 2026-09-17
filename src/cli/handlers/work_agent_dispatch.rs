@@ -136,21 +136,24 @@ pub async fn dispatch_work_estimate(command: &WorkEstimateCommands) -> Result<()
             format,
             path,
         } => {
-            handle_work_estimate_record(
-                ticket.clone(),
-                phase.clone(),
-                exec_mode.clone(),
-                unit.clone(),
-                *est,
-                *actual,
-                basis.clone(),
-                note.clone(),
-                repo.clone(),
-                ledger.clone(),
-                *format,
-                path.clone(),
-            )
-            .await
+            let row = EstimateRow {
+                repo: String::new(),
+                ticket: ticket.clone(),
+                phase: phase.clone(),
+                mode: exec_mode.clone(),
+                est: *est,
+                actual: *actual,
+                unit: unit.clone(),
+                basis: basis.clone(),
+                note: note.clone(),
+            };
+            let target = EstimateRecordTarget {
+                repo: repo.clone(),
+                ledger: ledger.clone(),
+                format: *format,
+                path: path.clone(),
+            };
+            handle_work_estimate_record(row, target).await
         }
         WorkEstimateCommands::Check {
             repo,

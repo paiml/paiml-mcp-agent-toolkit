@@ -373,42 +373,35 @@ fn estimate_project_path(path: Option<PathBuf>) -> Result<PathBuf> {
     Ok(project_path)
 }
 
+/// Where `pmat work estimate record` writes, and how it reports.
+pub struct EstimateRecordTarget {
+    /// `--repo`; the origin basename when absent
+    pub repo: Option<String>,
+    /// `--ledger`; `<path>/docs/audits/impl-estimates.jsonl` when absent
+    pub ledger: Option<PathBuf>,
+    /// Output format
+    pub format: QaOutputFormat,
+    /// Project path (default: current directory)
+    pub path: Option<PathBuf>,
+}
+
 /// `pmat work estimate record` — append one gated row to the estimate ledger.
 ///
 /// Refuses a row the reader could not pool. The refusal is the feature: a
 /// unit-less row is not a smaller measurement, it is no measurement at all.
-#[allow(clippy::too_many_arguments)]
+/// `row.repo` is ignored on entry: the key comes from `target.repo` or origin.
 pub async fn handle_work_estimate_record(
-    ticket: String,
-    phase: String,
-    mode: String,
-    unit: Option<String>,
-    est: Option<u64>,
-    actual: Option<u64>,
-    basis: Option<String>,
-    note: Option<String>,
-    repo: Option<String>,
-    ledger: Option<PathBuf>,
-    format: QaOutputFormat,
-    path: Option<PathBuf>,
+    mut row: EstimateRow,
+    target: EstimateRecordTarget,
 ) -> Result<()> {
-    let project_path = estimate_project_path(path)?;
+    let project_path = estimate_project_path(target.path)?;
     let origin = origin_repo_key(&project_path);
-    let repo = resolve_repo_key(repo.as_deref(), origin.as_deref())?;
-    let ledger = ledger.unwrap_or_else(|| project_path.join(ESTIMATE_LEDGER_REL));
-    let row = EstimateRow {
-        repo,
-        ticket,
-        phase,
-        mode,
-        est,
-        actual,
-        unit,
-        basis,
-        note,
-    };
+    row.repo = resolve_repo_key(target.repo.as_deref(), origin.as_deref())?;
+    let ledger = target
+        .ledger
+        .unwrap_or_else(|| project_path.join(ESTIMATE_LEDGER_REL));
     let line = append_row(&ledger, &row)?;
-    render_estimate_record(&row, line, &ledger, format);
+    render_estimate_record(&row, line, &ledger, target.format);
     Ok(())
 }
 

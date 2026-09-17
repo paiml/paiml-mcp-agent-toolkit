@@ -21,16 +21,17 @@ mod work_estimate_ledger_tests {
 
     fn lines_of(path: &Path) -> Vec<String> {
         std::fs::read_to_string(path)
-            .unwrap()
+            .expect("read ledger")
             .lines()
             .map(str::to_string)
             .collect()
     }
 
     fn assert_json_object(line: &str) {
-        let value: serde_json::Value =
-            serde_json::from_str(line).unwrap_or_else(|e| panic!("line is not JSON ({e}): {line}"));
-        assert!(value.is_object(), "line is not a JSON object: {line}");
+        assert!(
+            serde_json::from_str::<serde_json::Value>(line).is_ok_and(|v| v.is_object()),
+            "line is not a JSON object: {line}"
+        );
     }
 
     fn refusal(mutate: impl FnOnce(&mut EstimateRow)) -> Vec<String> {
@@ -50,7 +51,7 @@ mod work_estimate_ledger_tests {
 
     #[test]
     fn estimate_ledger_a_row_without_unit_is_refused_and_creates_nothing() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let ledger = dir.path().join("docs/audits/impl-estimates.jsonl");
         let mut r = row("PMAT-1");
         r.unit = None;
@@ -58,21 +59,24 @@ mod work_estimate_ledger_tests {
         assert!(err.contains("unit is required"), "got: {err}");
         assert!(!ledger.exists(), "a refused row must not create the ledger");
         assert!(
-            !ledger.parent().unwrap().exists(),
+            !ledger.parent().expect("ledger has a parent").exists(),
             "a refused row must not create the ledger's directory"
         );
     }
 
     #[test]
     fn estimate_ledger_a_refused_row_leaves_an_existing_ledger_byte_identical() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let ledger = dir.path().join("impl-estimates.jsonl");
         let before = b"{\"repo\":\"a\",\"ticket\":\"T-1\",\"unit\":\"turn\"}\n{\"x\":1}";
-        std::fs::write(&ledger, before).unwrap();
+        std::fs::write(&ledger, before).expect("write fixture");
         let mut r = row("PMAT-1");
         r.unit = Some("   ".into());
         assert!(append_row(&ledger, &r).is_err());
-        assert_eq!(std::fs::read(&ledger).unwrap(), before.to_vec());
+        assert_eq!(
+            std::fs::read(&ledger).expect("read ledger"),
+            before.to_vec()
+        );
     }
 
     #[test]
@@ -140,18 +144,24 @@ mod work_estimate_ledger_tests {
 
     #[test]
     fn estimate_ledger_appends_never_truncate_or_reorder() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let ledger = dir.path().join("impl-estimates.jsonl");
         let before = concat!(
             "{\"repo\":\"paiml-mcp-agent-toolkit\",\"ticket\":\"T-1\",\"unit\":\"turn\"}\n",
             "{\"repo\":\"paiml-mcp-agent-toolkit\",\"ticket\":\"T-2\",\"unit\":\"turn\"}\n",
             "{\"repo\":\"paiml-mcp-agent-toolkit\",\"ticket\":\"T-3\",\"unit\":\"turn\"}\n",
         );
-        std::fs::write(&ledger, before).unwrap();
-        assert_eq!(append_row(&ledger, &row("PMAT-4")).unwrap(), 4);
-        assert_eq!(append_row(&ledger, &row("PMAT-5")).unwrap(), 5);
+        std::fs::write(&ledger, before).expect("write fixture");
+        assert_eq!(
+            append_row(&ledger, &row("PMAT-4")).expect("admitted row appends"),
+            4
+        );
+        assert_eq!(
+            append_row(&ledger, &row("PMAT-5")).expect("admitted row appends"),
+            5
+        );
 
-        let after = std::fs::read(&ledger).unwrap();
+        let after = std::fs::read(&ledger).expect("read ledger");
         assert!(
             after.starts_with(before.as_bytes()),
             "old bytes are not a prefix"
@@ -159,27 +169,30 @@ mod work_estimate_ledger_tests {
         let lines = lines_of(&ledger);
         assert_eq!(lines.len(), 5, "got: {lines:?}");
         lines.iter().for_each(|l| assert_json_object(l));
-        let l4: EstimateRow = serde_json::from_str(&lines[3]).unwrap();
-        let l5: EstimateRow = serde_json::from_str(&lines[4]).unwrap();
+        let l4: EstimateRow = serde_json::from_str(&lines[3]).expect("line is a row");
+        let l5: EstimateRow = serde_json::from_str(&lines[4]).expect("line is a row");
         assert_eq!(l4.ticket, "PMAT-4");
         assert_eq!(l5.ticket, "PMAT-5");
     }
 
     #[test]
     fn estimate_ledger_first_append_creates_file_and_parent() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let ledger = dir.path().join("docs/audits/impl-estimates.jsonl");
-        assert_eq!(append_row(&ledger, &row("PMAT-1")).unwrap(), 1);
+        assert_eq!(
+            append_row(&ledger, &row("PMAT-1")).expect("admitted row appends"),
+            1
+        );
         assert_eq!(lines_of(&ledger).len(), 1);
     }
 
     #[test]
     fn estimate_ledger_a_row_that_would_split_the_key_is_refused_byte_identical() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let ledger = dir.path().join("impl-estimates.jsonl");
         let before =
             "{\"repo\":\"paiml-mcp-agent-toolkit\",\"ticket\":\"T-1\",\"unit\":\"turn\"}\n";
-        std::fs::write(&ledger, before).unwrap();
+        std::fs::write(&ledger, before).expect("write fixture");
         let mut r = row("PMAT-2");
         r.repo = "pmat".into();
         let err = append_row(&ledger, &r).unwrap_err().to_string();
@@ -187,21 +200,30 @@ mod work_estimate_ledger_tests {
             err.contains("would split the ledger") && err.contains("paiml-mcp-agent-toolkit"),
             "got: {err}"
         );
-        assert_eq!(std::fs::read(&ledger).unwrap(), before.as_bytes().to_vec());
-        assert_eq!(append_row(&ledger, &row("PMAT-3")).unwrap(), 2);
+        assert_eq!(
+            std::fs::read(&ledger).expect("read ledger"),
+            before.as_bytes().to_vec()
+        );
+        assert_eq!(
+            append_row(&ledger, &row("PMAT-3")).expect("admitted row appends"),
+            2
+        );
     }
 
     // ---- 4. a missing trailing newline is not glued onto --------------------
 
     #[test]
     fn estimate_ledger_missing_trailing_newline_starts_a_new_line() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let ledger = dir.path().join("impl-estimates.jsonl");
         let before = "{\"repo\":\"paiml-mcp-agent-toolkit\",\"ticket\":\"T-1\",\"unit\":\"turn\"}";
-        std::fs::write(&ledger, before).unwrap();
-        assert_eq!(append_row(&ledger, &row("PMAT-2")).unwrap(), 2);
+        std::fs::write(&ledger, before).expect("write fixture");
+        assert_eq!(
+            append_row(&ledger, &row("PMAT-2")).expect("admitted row appends"),
+            2
+        );
 
-        let after = std::fs::read(&ledger).unwrap();
+        let after = std::fs::read(&ledger).expect("read ledger");
         assert!(
             after.starts_with(before.as_bytes()),
             "old bytes are not a prefix"
@@ -215,14 +237,14 @@ mod work_estimate_ledger_tests {
 
     #[test]
     fn estimate_ledger_one_record_per_line_with_nulls_and_unit() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let ledger = dir.path().join("impl-estimates.jsonl");
         let mut r = row("PMAT-1");
         r.est = None;
         r.actual = None;
         r.basis = None;
         r.note = Some("first line\nsecond line".into());
-        append_row(&ledger, &r).unwrap();
+        append_row(&ledger, &r).expect("admitted row appends");
 
         let lines = lines_of(&ledger);
         assert_eq!(
@@ -230,7 +252,7 @@ mod work_estimate_ledger_tests {
             1,
             "an embedded newline split the record: {lines:?}"
         );
-        let value: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&lines[0]).expect("line is a row");
         assert!(value["est"].is_null() && value.get("est").is_some());
         assert!(value["actual"].is_null() && value.get("actual").is_some());
         assert_eq!(value["unit"], "turn");
@@ -240,13 +262,13 @@ mod work_estimate_ledger_tests {
 
     #[test]
     fn estimate_ledger_fields_serialise_in_ledger_order() {
-        let line = serde_json::to_string(&row("PMAT-1")).unwrap();
+        let line = serde_json::to_string(&row("PMAT-1")).expect("serialise row");
         let keys = [
             "repo", "ticket", "phase", "mode", "est", "actual", "unit", "basis",
         ];
         let positions: Vec<usize> = keys
             .iter()
-            .map(|k| line.find(&format!("\"{k}\":")).unwrap())
+            .map(|k| line.find(&format!("\"{k}\":")).expect("field present"))
             .collect();
         assert!(positions.windows(2).all(|w| w[0] < w[1]), "got: {line}");
     }
@@ -330,7 +352,7 @@ mod work_estimate_ledger_tests {
             .excluded
             .iter()
             .find(|(_, t, _)| t == "RANGE")
-            .unwrap()
+            .expect("RANGE is excluded")
             .0;
         assert_eq!(range_line, 8, "excluded rows carry their 1-based line");
     }
@@ -368,10 +390,10 @@ mod work_estimate_ledger_tests {
 
     #[test]
     fn estimate_ledger_a_written_row_passes_the_check() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let ledger = dir.path().join("impl-estimates.jsonl");
-        append_row(&ledger, &row("PMAT-1")).unwrap();
-        let text = std::fs::read_to_string(&ledger).unwrap();
+        append_row(&ledger, &row("PMAT-1")).expect("admitted row appends");
+        let text = std::fs::read_to_string(&ledger).expect("read ledger");
         let report = check_ledger_text(&text, Some("paiml-mcp-agent-toolkit"));
         assert!(report.violations.is_empty(), "got: {:?}", report.violations);
         assert_eq!(report.poolable, 1);
@@ -400,21 +422,24 @@ mod work_estimate_ledger_tests {
     fn estimate_ledger_repo_key_resolution() {
         let origin = Some("paiml-mcp-agent-toolkit");
         assert_eq!(
-            resolve_repo_key(None, origin).unwrap(),
+            resolve_repo_key(None, origin).expect("key resolves"),
             "paiml-mcp-agent-toolkit"
         );
         assert_eq!(
-            resolve_repo_key(Some("paiml-mcp-agent-toolkit"), origin).unwrap(),
+            resolve_repo_key(Some("paiml-mcp-agent-toolkit"), origin).expect("key resolves"),
             "paiml-mcp-agent-toolkit"
         );
-        assert_eq!(resolve_repo_key(Some("pmat"), None).unwrap(), "pmat");
         assert_eq!(
-            resolve_repo_key(Some("x"), origin).unwrap(),
+            resolve_repo_key(Some("pmat"), None).expect("key resolves"),
+            "pmat"
+        );
+        assert_eq!(
+            resolve_repo_key(Some("x"), origin).expect("key resolves"),
             "x",
             "--repo wins: a clone whose origin is a local path has a meaningless basename"
         );
         assert_eq!(
-            resolve_repo_key(Some("  "), origin).unwrap(),
+            resolve_repo_key(Some("  "), origin).expect("key resolves"),
             "paiml-mcp-agent-toolkit"
         );
 
@@ -435,14 +460,15 @@ mod work_estimate_ledger_tests {
         // stack; inline it aborts the test binary where RUST_MIN_STACK is unset.
         std::thread::Builder::new()
             .stack_size(8 * 1024 * 1024)
-            .spawn(move || {
-                let cli = crate::cli::commands::Cli::try_parse_from(&argv)
-                    .unwrap_or_else(|e| panic!("`pmat work estimate record` does not parse: {e}"));
-                format!("{cli:?}")
-            })
-            .unwrap()
+            .spawn(
+                move || match crate::cli::commands::Cli::try_parse_from(&argv) {
+                    Ok(cli) => format!("{cli:?}"),
+                    Err(e) => format!("`pmat work estimate record` does not parse: {e}"),
+                },
+            )
+            .expect("spawn the parse thread")
             .join()
-            .unwrap()
+            .expect("parsing `pmat work estimate record` must not panic")
     }
 
     #[test]
@@ -466,7 +492,7 @@ mod work_estimate_ledger_tests {
             env!("CARGO_MANIFEST_DIR"),
             "/docs/audits/impl-estimates.jsonl"
         ))
-        .unwrap();
+        .expect("the committed estimate ledger is readable");
         let report = check_ledger_text(&text, None);
         assert!(
             report.violations.is_empty(),
