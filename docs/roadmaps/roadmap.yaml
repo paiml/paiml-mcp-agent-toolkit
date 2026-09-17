@@ -3731,9 +3731,10 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-02T17:02:05Z
-  updated: 2026-09-17T14:07:01Z
+  updated: 2026-09-17T17:06:15Z
   spec: null
-  acceptance_criteria: []
+  acceptance_criteria:
+  - 'Scope (release-3.41.0 brief): (1) re-measure CB-200 with ONE binary over cold indexes of the commit that banked 1688 (683d6994d) and of master, and publish the set difference of below-A definitions; (2) bring the measured count back to at most the banked 1688 by behaviour-preserving refactors of below-A definitions (pinning tests where a refactor had none), then bank the measured count — the baseline may only go down; (3) make the ratchet fail where it is enforced: a required CI job measures CB-200 and fails on anything but a measured count equal to the baseline, make gate runs the same steps, and a planted below-A definition turns that job red.'
   phases: []
   subtasks: []
   estimated_effort: null

@@ -12,6 +12,20 @@ Verdict at this commit: **PARTIAL(blocker)**. The branch is green on everything 
 | discovery | `discover.json` sha256 prefix `c68a87a1ff488d21`. `gate_cmd_fallback=true`: discovery still reports `cargo test --workspace`, so this session ran `make gate` itself |
 | sessions | 2. The first (k_measured 94) was killed by the 15:30Z host crash. The second resumed from the tree |
 
+## Scope, and why the refactors are in it
+
+The ticket row names the symptom: the ratchet drifted and no leg could see it. The release-3.41.0 brief that dispatched this work set three jobs, now recorded on the row's `acceptance_criteria` through `pmat work edit`:
+
+1. re-measure with one binary and publish the set difference;
+2. bring the measured count back to at most the banked 1688 through behaviour-preserving refactors of below-A definitions, then bank the measured count, which may only go down;
+3. make a required CI job measure it and go red on a planted below-A definition.
+
+Raising the baseline to 1741 was forbidden, and a gate that goes red on master the moment it lands would block the release. So job 2 is the refactors, and it is the only way to satisfy job 3 without raising the number.
+
+Every extracted helper and every new test serves job 2. The two new tests, `2c8fdc395` (deep-context text high-complexity highlighting) and `de14fdb51` (markdown TDG component table), pin output before the extraction that touches it. That is the "covered by existing or new tests" condition for a behaviour-preserving refactor.
+
+**Note for reviewers (load discipline).** The host running this review has hard-crashed four times in 24 hours, and load is a suspect. Please do not run `cargo build`, `cargo test`, `make gate`, `pmat comply check` or an index build in this checkout: one review round left a 15 GB `target/`. Every measurement above names the command, tree and binary that produced it, and the CI runs on the PR re-execute them on GitHub's runners.
+
 ## Measurement: same binary, cold indexes, clean clones
 
 The binaries are `pmat` built at `ce945d81e` (`.pmat/pmat-636/bin/pmat-master-ce945d81e`) and at `683d6994d`, the commit that banked 1688 (`git log -S'baseline = 1688' -- .pmat-gates.toml`). The scope is CB-200's own: non-test paths minus `.pmat.yaml` and `.pmat-gates.toml` excludes. A replica of that scope reproduced CB-200's count exactly on every tree it was checked against.
@@ -269,7 +283,7 @@ The binaries are `pmat` built at `ce945d81e` (`.pmat/pmat-636/bin/pmat-master-ce
 - **CB-2115 red on master and GitHub state.** `ORPHAN-GITHUB #1393` was opened at 15:27Z by a sibling session with no roadmap row. It fails `traceability` on this PR (CI run 35247840393) and `make gate`'s `cb-2113-cb-2115` leg. This PR does not carry that row; the orchestrator's lifecycle PR does. CB-2113 passes (45 commits).
 - **The index-discard defect (why 4) is not fixed.** It is in `src/cli/handlers/query_handler/modes_docs.rs` and `function_index/build_persistence.rs`. It makes every default `pmat query` after a rebuild discard and rebuild the index. Not filed here: the brief forbids new issues this PR does not carry.
 - **`the_committed_baseline_is_the_measured_count` still passes with no index.** libtest has no not-measured outcome. The enforcement point is now `tdg-ratchet`, where NOT MEASURED exits 1.
-- **The slice A pinning test was removed.** `test_format_quality_claude_pins_report_text` was written before an extraction the crashed worker never made, in the `agent-daemon` module no default leg runs.
+- **A slice A pinning test was added and then removed on this branch, so the net diff shows neither.** `test_format_quality_claude_pins_report_text` was added to `src/agent/mcp_server_tests.rs` in `35da3cc6d` and removed in `da13898c8`. It pinned `format_quality_claude`, which this branch never changes: the crashed worker wrote the pin before an extraction it never made. It also sat in the `agent-daemon` module, which no default leg runs. Check with `git log -S test_format_quality_claude_pins_report_text --oneline`.
 
 ## Corrections to the brief
 
