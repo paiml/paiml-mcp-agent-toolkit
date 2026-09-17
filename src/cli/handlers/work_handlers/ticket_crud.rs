@@ -265,6 +265,7 @@ pub async fn handle_work_edit(
     path: Option<PathBuf>,
     level: Option<String>,
     implements: Vec<String>,
+    notes: Option<String>,
 ) -> Result<()> {
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
@@ -319,13 +320,20 @@ pub async fn handle_work_edit(
         changes.push(format!("labels: {}", t));
     }
 
+    // PMAT-900001: `notes:` had no writer, so a cross-reference could only
+    // replace the acceptance criteria through --description.
+    if let Some(n) = notes {
+        updated_item.notes = Some(n.clone());
+        changes.push(format!("notes: {}", n));
+    }
+
     // #1186: the claim and the bindings live on the contract, which exists once the
     // ticket was started; both may change while InProgress — start is one-shot.
     if level.is_some() || !implements.is_empty() {
         changes.extend(rebind_contract(&project_path, &item.id, level.as_deref(), &implements)?);
     }
     if changes.is_empty() {
-        println!("{}", c::warn("No changes specified. Use --title, --description, --priority, --status, --tags, --level, or --implements."));
+        println!("{}", c::warn("No changes specified. Use --title, --description, --priority, --status, --tags, --notes, --level, or --implements."));
         return Ok(());
     }
 

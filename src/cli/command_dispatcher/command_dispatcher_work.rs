@@ -241,6 +241,7 @@ impl CommandDispatcher {
                 path,
                 level,
                 implements,
+                notes,
             } => {
                 work_handlers::handle_work_edit(
                     id.clone(),
@@ -252,6 +253,7 @@ impl CommandDispatcher {
                     path.clone(),
                     level.clone(),
                     implements.clone(),
+                    notes.clone(),
                 )
                 .await
             }
