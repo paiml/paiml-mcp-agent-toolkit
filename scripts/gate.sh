@@ -30,6 +30,13 @@
 #
 # <contexts> is `;`-separated. Blank lines and lines starting with `#` are ignored.
 #
+# $PMAT_BIN — a leg that runs pmat runs the executable `cargo build --message-format json` REPORTS
+# building from this tree, never a hand-written ./target/debug/pmat: that path ignores
+# CARGO_TARGET_DIR and .cargo/config.toml, and under either one runs whatever binary an earlier
+# build left there. cmd rows name "$PMAT_BIN"; in a step's run: text, CI's ./target/debug/pmat is
+# rewritten to it. It is resolved the first time a leg needs it, and a leg that runs pmat when
+# cargo reports no pmat is a FAIL.
+#
 # Usage: scripts/gate.sh                       run the gate
 #        scripts/gate.sh --list                check the table and print it; run nothing
 #        scripts/gate.sh --legs FILE --root DIR   a fixture table and tree (scripts/gate-control.sh)
@@ -48,6 +55,7 @@ REQUIRED_CONTEXTS=(
   "provable ladder"
 )
 EXTENSION_MARKER="── EXTENSION POINT"
+PMAT_SPELLING="./target/debug/pmat"   # CI's path to the pmat it built; rewritten to $PMAT_BIN here
 
 legs_table() {
   cat <<'LEGS'
@@ -86,7 +94,7 @@ step    | gate | tests-dont-write-self-test | .github/workflows/ci.yml#traceabil
 # CB-2115 reads open GitHub issues. It was CI-only on "credential: the workflow's GH_TOKEN" until traceability went
 # red on PR #1368 (an issue opened with no roadmap row) while `make gate` read green; any clone that can push has a
 # gh token, and the check takes ~7s. No token is a FAIL here, never a skip: an unread GitHub is not an agreeing one.
-cmd     | gate | cb-2113-cb-2115 | ci.yml traceability "the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)" | CI sets GH_TOKEN to the workflow token; this uses $GH_TOKEN, else `gh auth token`, and fails without either | token="${GH_TOKEN:-$(gh auth token)}"; [ -n "$token" ]; GH_TOKEN="$token" ./target/debug/pmat comply check --checks CB-2113,CB-2115
+cmd     | gate | cb-2113-cb-2115 | ci.yml traceability "the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)" | CI sets GH_TOKEN to the workflow token; this uses $GH_TOKEN, else `gh auth token`, and fails without either | token="${GH_TOKEN:-$(gh auth token)}"; [ -n "$token" ]; GH_TOKEN="$token" "$PMAT_BIN" comply check --checks CB-2113,CB-2115
 ci-only | gate | tests-dont-write | ci.yml traceability "the test suite does not write to the repository (pre-release lane)" | trigger: runs on push to master only (the pre-release lane), never on a pull request | -
 ci-only | gate | windows-check | ci.yml windows-check | platform: cargo check --bin pmat on windows-latest | -
 
@@ -114,7 +122,7 @@ ci-only | feature-gate | flag-efficacy | feature-matrix.yml flag-efficacy | cost
 ci-only | feature-gate | cli-doc-sync-falsifier | feature-matrix.yml cli-doc-sync-falsifier | cost: three release-mode runs of tests/all | -
 
 # ── pmat score — quality-gate.yml job score (cargo-deny, above, is its first step)
-cmd     | pmat score | pmat-score | quality-gate.yml score "Run unified quality gate" | CI runs a release `cargo install --path .`; this runs the tree's debug build and writes score.json to the log directory, not the tree | ./target/debug/pmat score --gate 60 --format json -o "$GATE_LOGDIR/score.json"
+cmd     | pmat score | pmat-score | quality-gate.yml score "Run unified quality gate" | CI runs a release `cargo install --path .`; this runs the tree's debug build and writes score.json to the log directory, not the tree | "$PMAT_BIN" score --gate 60 --format json -o "$GATE_LOGDIR/score.json"
 
 # ── provable ladder — quality-gate.yml job provable-ladder
 cmd     | provable ladder | lean-build | quality-gate.yml provable-ladder "L5 — build Lean proofs (lake build)" | CI uses lean-action; this runs lake build on a scratch copy of contracts/lean so .lake/ never lands in the tree | work=$(mktemp -d) && cp -R contracts/lean/. "$work" && cd "$work" && lake build
@@ -141,13 +149,15 @@ while [ $# -gt 0 ]; do
     --list) MODE=list; shift ;;
     --legs) LEGS_FILE="${2:-}"; shift 2 ;;
     --root) ROOT="${2:-}"; shift 2 ;;
-    -h|--help) sed -n '2,42p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,/^set -uo pipefail$/p' "$0" | sed '$d'; exit 0 ;;
     *) echo "gate.sh: unknown argument '$1'" >&2; exit 2 ;;
   esac
 done
 if [ -n "$LEGS_FILE" ] && [ -z "$ROOT" ]; then echo "gate.sh: --legs needs --root" >&2; exit 2; fi
 if [ -z "$ROOT" ]; then ROOT="$(cd "$(dirname "$0")/.." && pwd)"; fi
 ROOT="$(cd "$ROOT" && pwd)" || { echo "gate.sh: --root is not a directory" >&2; exit 2; }
+
+shopt -u patsub_replacement 2>/dev/null || true   # bash 5.2: `&` in a ${x//p/r} replacement means the match
 
 trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"; printf '%s' "$s"; }
 
@@ -266,6 +276,53 @@ fi
 GATE_LOGDIR="$(mktemp -d "${TMPDIR:-/tmp}/pmat-gate.XXXXXX")"
 export GATE_LOGDIR
 RESULT=() SECS=()
+PMAT_BIN="" PMAT_BIN_RC=""
+
+# resolve_pmat_bin — set $PMAT_BIN to the pmat executable cargo reports building from $ROOT.
+# Once per run: a failed resolution is remembered, so every later pmat leg fails without a rebuild.
+resolve_pmat_bin() {
+  if [ -z "$PMAT_BIN_RC" ]; then
+    local pick
+    pick=$(cat <<'PY'
+import json, sys
+exe = []
+for line in sys.stdin:
+    try:
+        m = json.loads(line)
+    except ValueError:
+        continue
+    t = m.get("target") or {}
+    if m.get("reason") == "compiler-artifact" and t.get("name") == "pmat" and "bin" in (t.get("kind") or []) and m.get("executable"):
+        exe.append(m["executable"])
+if len(exe) != 1:
+    sys.exit(f"cargo reported {len(exe)} pmat executables, want exactly 1")
+print(exe[0])
+PY
+)
+    PMAT_BIN=$( (cd "$ROOT" && cargo build --locked --bin pmat --message-format json) 2> "$GATE_LOGDIR/pmat-bin.log" \
+      | python3 -c "$pick" 2>> "$GATE_LOGDIR/pmat-bin.log")
+    PMAT_BIN_RC=$?
+    if [ "$PMAT_BIN_RC" -eq 0 ] && [ ! -x "$PMAT_BIN" ]; then
+      echo "cargo reported '$PMAT_BIN', which is not an executable" >> "$GATE_LOGDIR/pmat-bin.log"
+      PMAT_BIN_RC=1
+    fi
+    [ "$PMAT_BIN_RC" -eq 0 ] || PMAT_BIN=""
+    export PMAT_BIN
+  fi
+  return "$PMAT_BIN_RC"
+}
+
+# needs_pmat_bin <leg text> <log> — resolve $PMAT_BIN when the text runs pmat, and name that
+# binary in the log. Non-zero when the leg runs pmat and cargo reported none.
+needs_pmat_bin() {
+  case "$1" in *"$PMAT_SPELLING"*|*PMAT_BIN*) ;; *) return 0 ;; esac
+  if ! resolve_pmat_bin; then
+    { echo "gate.sh: this leg runs pmat, and cargo build --message-format json reported no pmat built from $ROOT:"
+      tail -n 25 "$GATE_LOGDIR/pmat-bin.log"; } >> "$2"
+    return 1
+  fi
+  echo "gate.sh: pmat = $PMAT_BIN (reported by cargo build --message-format json)" >> "$2"
+}
 
 print_unmeasured() {
   echo ""
@@ -279,6 +336,7 @@ print_unmeasured() {
     [ "${KIND[$i]}" != ci-only ] && [ "${NOTE[$i]}" != "-" ] || continue
     printf '  %-26s %s\n' "${LEG[$i]}" "${NOTE[$i]}"
   done
+  [ -z "$PMAT_BIN" ] || echo "  every leg that ran pmat ran $PMAT_BIN, the executable cargo reported; a step's $PMAT_SPELLING was rewritten to it"
 }
 
 finish() {
@@ -311,7 +369,11 @@ for i in "${!KIND[@]}"; do
   start=$SECONDS
   if [ "${KIND[$i]}" = step ]; then
     IFS='#' read -r wf job step <<< "${SRC[$i]}"
-    if step_script "$wf" "$job" "$step" > "$log.sh" 2> "$log"; then
+    if step_script "$wf" "$job" "$step" > "$log.sh" 2> "$log" && needs_pmat_bin "$(< "$log.sh")" "$log"; then
+      if [ -n "$PMAT_BIN" ] && grep -qF "$PMAT_SPELLING" "$log.sh"; then
+        text="$(< "$log.sh")"
+        printf '%s\n' "${text//"$PMAT_SPELLING"/$(printf '%q' "$PMAT_BIN")}" > "$log.sh"
+      fi
       flags=(-e); [ "$(head -n 1 "$log.sh")" != "#shell=bash" ] || flags=(-eo pipefail)
       (cd "$ROOT" && bash --noprofile --norc "${flags[@]}" "$log.sh") >> "$log" 2>&1 < /dev/null
       rc=$?
@@ -319,8 +381,13 @@ for i in "${!KIND[@]}"; do
       rc=$?
     fi
   else
-    (cd "$ROOT" && bash --noprofile --norc -eo pipefail -c "${CMD[$i]}") > "$log" 2>&1 < /dev/null
-    rc=$?
+    : > "$log"
+    if needs_pmat_bin "${CMD[$i]}" "$log"; then
+      (cd "$ROOT" && bash --noprofile --norc -eo pipefail -c "${CMD[$i]}") >> "$log" 2>&1 < /dev/null
+      rc=$?
+    else
+      rc=1
+    fi
   fi
   SECS[$i]=$((SECONDS - start))
   if [ "$rc" -eq 0 ]; then

@@ -79,6 +79,16 @@ equations:
       - "the credential detector is controlled both ways (ci.yml traceability holds a token, windows-check does not), so it cannot pass vacuously when no credential row is left"
     preconditions: []
 
+  pmat_legs_run_the_built_binary:
+    formula: "for all legs r run here whose text runs pmat: the executable r runs = the one `cargo build --locked --bin pmat --message-format json` reports building from the tree; cargo reports none => r is FAIL"
+    domain: "cmd rows naming $PMAT_BIN or `cargo run --bin pmat`, and step rows whose run: text spells ./target/debug/pmat"
+    codomain: "PASS | FAIL"
+    invariants:
+      - "no leg runs a hand-written target/debug/pmat or target/release/pmat: that path ignores CARGO_TARGET_DIR and .cargo/config.toml, so under either it judges a binary some other tree built"
+      - "a step's CI text is not edited in the workflow; its ./target/debug/pmat is rewritten to $PMAT_BIN at run time, and any other spelling of the path is refused by the lib test"
+      - "the binary is resolved once per run and named in each pmat leg's log"
+    preconditions: []
+
 proof_obligations:
   - type: postcondition
     property: "the declared gate is make gate and it runs the table"
@@ -104,6 +114,10 @@ proof_obligations:
     property: "no CI-only row blames cost for a check that only runs pmat, or a credential that is a GitHub token"
     formal: "∀r: kind(r) = ci-only ⇒ (category(r) = cost ⇒ ¬runs_only_pmat(job(source(r)))) ∧ (category(r) = credential ⇒ ¬reads_github_with_a_token(job(source(r))))"
     applies_to: ci_only_reasons_are_measured
+  - type: invariant
+    property: "a leg that runs pmat runs the pmat cargo built from the tree it judges, or fails"
+    formal: "∀r: runs_pmat(r) ⇒ (binary(r) = cargo_reported_executable ∨ result(r) = FAIL)"
+    applies_to: pmat_legs_run_the_built_binary
 
 falsification_tests:
   - id: gate_is_declared
@@ -137,6 +151,12 @@ falsification_tests:
     test: "cargo test --lib make_gate_tests"
     if_fails: "a check the gate could run in seconds stays CI-only on an unmeasured reason, and its red reaches CI after a local green (feature-gate on PR #1368, 1d8c64f40)"
 
+  - id: pmat_legs_run_the_built_binary
+    rule: "with a stale pmat planted at ./target/debug/pmat and cargo building a fresh one elsewhere, every real pmat leg runs the fresh one; with cargo reporting none, every such leg is FAIL"
+    prediction: "arm 12 FRESH-BINARY, RED on 48737ee01 naming ten legs (eight ci.yml step legs, cb-2113-cb-2115, pmat-score); make_gate_tests::no_leg_runs_a_hand_written_pmat_binary_path"
+    test: "bash scripts/gate-control.sh && cargo test --lib make_gate_tests"
+    if_fails: "under CARGO_TARGET_DIR the gate's traceability and score legs judge a binary built from some other tree, and their PASS is not evidence (PMAT-1365, sixth session)"
+
 kani_harnesses: []
 
 qa_gate:
@@ -152,5 +172,5 @@ qa_gate:
     - validation
     - falsification
   pass_criteria: >
-    scripts/gate-control.sh exits 0 with arms 1-10 GREEN and arm 11 either GREEN or
-    printed NOT MEASURED; cargo test --lib make_gate_tests passes.
+    scripts/gate-control.sh exits 0 with arms 1-10 and 12 GREEN and arm 11 either GREEN
+    or printed NOT MEASURED; cargo test --lib make_gate_tests passes.

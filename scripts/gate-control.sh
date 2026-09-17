@@ -239,7 +239,19 @@ done
 [ "${#stale[@]}" -eq 0 ] || fail_arm 12 "legs ran the stale pmat planted at ./target/debug/pmat, not the one cargo built from the tree: ${stale[*]}"
 [ "${#unrun[@]}" -eq 0 ] || fail_arm 12 "legs never ran the pmat cargo built from the tree: ${unrun[*]}"
 [ -z "$logdir" ] || rm -rf "${logdir:?}"
-[ "$failed" != "$f12" ] || echo "gate-control: arm 12 FRESH-BINARY — $(echo $names | wc -w) real legs that run pmat ran the binary cargo built, never the stale ./target/debug/pmat"
+# ...and when cargo reports no pmat, each of those legs is a FAIL — never a fall-back to ./target.
+printf '#!/usr/bin/env bash\nexit 0\n' > "$bin12/cargo"
+OUT=$(PATH="$bin12:$PATH" GH_TOKEN=fixture-token bash "$gate" --legs "$work/fresh.legs" --root "$root12" 2>&1); RC=$?
+[ "$RC" -eq 1 ] || fail_arm 12 "with no pmat reported by cargo the gate must exit 1, got $RC"
+for leg in $names; do
+  case "$leg" in unrun-tests|reachability-ledger) continue ;; esac   # cargo run: cargo itself runs the binary
+  printf '%s\n' "$OUT" | grep -qE "^  FAIL +$leg " || fail_arm 12 "leg $leg did not FAIL when cargo reported no pmat"
+done
+! printf '%s\n' "$OUT" | grep -q STALE-PMAT-RAN || fail_arm 12 "a leg fell back to the stale ./target/debug/pmat when cargo reported no pmat"
+logdir=$(printf '%s\n' "$OUT" | sed -n 's/^logs: //p')
+! grep -qs STALE-PMAT-RAN "$logdir"/*.log || fail_arm 12 "a leg fell back to the stale ./target/debug/pmat when cargo reported no pmat"
+[ -z "$logdir" ] || rm -rf "${logdir:?}"
+[ "$failed" != "$f12" ] || echo "gate-control: arm 12 FRESH-BINARY — $(echo $names | wc -w) real legs that run pmat ran the binary cargo built, never the stale ./target/debug/pmat, and FAIL when cargo reports none"
 
 [ "$failed" = 0 ] || { echo "gate-control: RED" >&2; exit 1; }
 echo "gate-control: GREEN — make gate is declared, and every property it promises was seen to break"
