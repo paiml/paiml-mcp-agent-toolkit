@@ -44,13 +44,7 @@ fn format_text_category(
             if failures_only && sub.earned >= sub.max * 0.8 {
                 continue;
             }
-            let sub_icon = if sub.earned >= sub.max * 0.8 {
-                format!("  {}✓{}", c::seq(c::GREEN), c::seq(c::RESET))
-            } else if sub.earned >= sub.max * 0.5 {
-                format!("  {}~{}", c::seq(c::YELLOW), c::seq(c::RESET))
-            } else {
-                format!("  {}✗{}", c::seq(c::RED), c::seq(c::RESET))
-            };
+            let sub_icon = sub_score_icon(sub);
             output.push_str(&format!(
                 "    {} {}: {} - {}\n",
                 sub_icon,
@@ -59,6 +53,20 @@ fn format_text_category(
                 sub.description
             ));
         }
+    }
+}
+
+/// The colored ✓ / ~ / ✗ marker for a sub-score: at least 80% of its maximum,
+/// at least 50%, or below.
+fn sub_score_icon(sub: &crate::services::popper_score::PopperSubScore) -> String {
+    use crate::cli::colors as c;
+
+    if sub.earned >= sub.max * 0.8 {
+        format!("  {}✓{}", c::seq(c::GREEN), c::seq(c::RESET))
+    } else if sub.earned >= sub.max * 0.5 {
+        format!("  {}~{}", c::seq(c::YELLOW), c::seq(c::RESET))
+    } else {
+        format!("  {}✗{}", c::seq(c::RED), c::seq(c::RESET))
     }
 }
 
