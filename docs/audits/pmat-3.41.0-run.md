@@ -96,3 +96,12 @@ Corrections the D4 session made to this orchestrator's brief (findings): no reba
 Decisions:
 - The lane's scope FAIL is right (memory: a PR whose work is in no ticket's criteria needs its own ticket). 07:45Z launched a lifecycle session on the standing ticket PMAT-1336 (clone `.wt/PMAT-1336`, branch `PMAT-1336-register-1381`, pid 3020870) to land the #1381 row alone, byte-identical to the operator's unmerged `origin/PMAT-1381-row` (242755717), which is left untouched. Basis: until that row is on master, CB-2115 reds `gate → traceability` on every PR, D1/D3/D4 included. D4 resumes after it merges: rebase drops the row from #1368's diff and the objection with it.
 - STOP-THE-LINE (logged, not asked): release precondition "make gate green" cannot be met on master today — CB-200 reads 1742 vs a banked 1688 and no bypass is acceptable (nor is raising the baseline; PMAT-636/#1266 says never). #1266 joins the fix queue as D6, after D0/D2. The release does not proceed past that gate until it is green by measurement.
+
+## 2026-09-17T08:23Z — sessions in flight
+
+tree: run-log behind=0 against origin/master 441d198e7.
+- PMAT-1336 (the #1381 row): LIVE, HEAD d22870740, behind=0; PR: none.
+- D1 PMAT-1363: LIVE, HEAD eef6881f8, behind=0, clean at 08:12Z. PR #1364 `gh pr checks` earlier at 07:38Z: 31 pass / 14 fail (on the pre-session head).
+- D3 PMAT-1366: LIVE, HEAD 0cbff9129, behind=0; opened PR #1382 ("the estimate ledger gets one gated, append-only writer — `pmat work estimate record`").
+- D4 PMAT-1365: no session; PR #1368 draft, waits for the #1381 row.
+- Slots: 3/3.
