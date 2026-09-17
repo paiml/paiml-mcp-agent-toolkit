@@ -373,3 +373,12 @@ tree: run-log rebased, behind=0 against origin/master b58addab8.
 Raw (D2 session receipt, DONE, 92 turns, quorum round 6 = 3/3 on 77bdbf388): `pmat work migrate` now writes through `src/services/roadmap_write_lock.rs` under the repository lock; 0 occurrences of `fs::write(roadmap_path` left in `ticket_validate_migrate.rs`; `roadmap-writer-gate` row in `scripts/gate.sh` (15 required tests) green; `make gate` 28/29 local legs (the one red was master's CB-2115 orphans); ci/test 21760 passed / 0 failed; all five required contexts SUCCESS. (My own rerun of the D2 gate on master is owed — next entry.)
 - Lifecycle-7: master b58addab8 → "open items 114 · open issues 113 · ORPHAN-ROADMAP PMAT-1385"; sanctioned sync → 113/113; PR #1397. Quorum round 1: PASS / NO-VERDICT / PASS (gemini-3.8-flash-high returned nothing — a lane failure, not a judgment; NOT counted as agreement); round 2: 3/3 PASS; armed via `pmat-merge`.
 - D0 PR #1391 stays armed and red on that orphan until #1397 lands; it will then need master again, and both D0 and D2 add a row at `scripts/gate.sh`'s extension point — a likely conflict I resolve by keeping both rows, followed by another quorum round.
+
+## 2026-09-17T18:40Z — D2 re-verified on master; D0 finishing session launched for a three-file conflict
+
+tree: run-log HEAD behind=0 against origin/master b58addab8.
+
+Raw (my rerun on master b58addab8): `pmat query --literal "fs::write(roadmap_path" --files-with-matches` → `roadmap_handler_parsing.rs` (the markdown checkbox writer, not roadmap.yaml) + the two new gate test files that name the pattern; `ticket_validate_migrate.rs` is gone from the list (was the defect). `gate.sh --list` → 45 rows, 29 local, including `roadmap-writer-gate [ci / gate] … (roadmap_writer_gate_* and work_migrate_*)`. As logged at 06:40Z, the operator's literal "returns 0" gate could never be 0 on this tree; the shipped gate is scoped by serialisation site instead.
+- Trial `git merge --no-commit origin/master` in the D0 clone: conflicts in `scripts/gate.sh` (two rows at one extension point), `docs/status/orphan-files-ledger.md` and `docs/status/unrun-tests-ledger.md` (rendered ledgers). Aborted.
+
+Decision: rendered ledgers must be re-rendered by a binary built from the merged tree and `make gate` re-run — that is session work, not a cascade. 18:39Z launched a D0 finishing session (pid 4060048, K=80). Slots 2/3: D6, D0.
