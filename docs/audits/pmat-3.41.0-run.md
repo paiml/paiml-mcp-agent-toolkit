@@ -120,3 +120,11 @@ Corrections to the orchestrator's brief (findings): the ledger held 30 rows, 14 
 PROCESS FINDING: PR #1382 merged at 08:55:10Z with `docs/audits/quorum-PMAT-1366.json` `agreed=false` (FAIL/PASS/PASS). The dissent's only blocking claim — "no closing keyword" — was factually wrong (the PR body carried `Closes #1366`; the issue closed on merge), but the rule is three PASS, and a wrong FAIL is answered by another round, not by the author overruling it. Not reverted (the substance is verified above); every later brief now says: merge only through the quorum-gated helper, never around a non-agreed artifact.
 
 Side effect: #1382 also carried the PMAT-1381 row to master, which makes the PMAT-1336 lifecycle PR #1383 redundant for that row (its session is still live and will meet the conflict) and unblocks D4 at once. 08:57Z relaunched D4 PMAT-1365 (pid 614362) with a fifth-session resume note: rebase, mark ready, re-run quorum with the receipt, arm the merge. Slots 3/3: PMAT-1336, PMAT-1363, PMAT-1365.
+
+## 2026-09-17T09:34Z — three PRs in CI
+
+tree: run-log behind=0 against origin/master e89a827f7.
+- D1 PMAT-1363: LIVE, HEAD df6c351b2, pushed; PR #1364 checks 21 pass / 21 pending / 0 fail (was 14 fail at 07:38Z, 3 fail at 08:56Z).
+- D4 PMAT-1365: LIVE, rebased on e89a827f7, HEAD 1f6207559; PR #1368 out of draft, 7 pass / 35 pending.
+- PMAT-1336 lifecycle: LIVE, HEAD dcad45735; PR #1383 7 pass / 35 pending (rebased after #1382 carried the #1381 row).
+- Slots 3/3. D0 and D2 briefs are ready under `.run/briefs/`; they launch as D1 and D4 merge.
