@@ -76,3 +76,11 @@ Raw measurements:
 Decisions:
 - Launcher, briefs and session logs now live under `~/src/paiml-mcp-agent-toolkit.wt/.run/` (not a repo, not `/tmp`) — basis: the reboot loss above. The launcher refuses a 4th live session. First launch failed on my own guard: `pgrep | wc -l` under `pipefail` exits 1 when nothing matches (the trap already recorded in memory); fixed with `|| true`.
 - 06:32Z relaunched D1 PMAT-1363 (pid 2508652) and D4 PMAT-1365 (pid 2508663) with a fourth-session resume note; 06:34Z launched D3 PMAT-1366 (pid 2516703) in a new standalone clone on `PMAT-1366-estimate-ledger-unit` from 441d198e7. 3/3 slots live. D0 and D2 wait for a slot and for D1 (fragment mode) + D4 (`make gate` extension point).
+
+## 2026-09-17T07:22Z — sessions in flight
+
+tree: run-log HEAD=c4e119b4c origin/master=441d198e7 behind=0.
+- D1 PMAT-1363: LIVE, HEAD 223b973c7 ("save() and every model writer emit fragments; pmat roadmap aggregate"), behind=0, 4 dirty paths, not yet pushed.
+- D4 PMAT-1365: LIVE, HEAD 08eebd2e5, behind=0, clean, pushed; `gh pr checks 1368` at 07:21Z: pass=16 pending=26 skipping=4 fail=0. The session found that open issue #1381 had no roadmap row, which reds CB-2115 on every PR bound for master, and registered it on its branch (48cd21d03) — so D4 is now the PR that unblocks the others' traceability check.
+- D3 PMAT-1366: LIVE, HEAD b994265b7, behind=0. It backfilled `unit` on ledger lines 1–18 from each row's own text or receipt and found a second defect on the way: rows 17–30 were keyed `repo=pmat`, not the ledger key `paiml-mcp-agent-toolkit` (the orchestrator's "16 rows" count was of the correctly-keyed rows only). Its writer's `--mode` flag collided with pmat's global `--mode` and panicked; renamed `--exec-mode`.
+- D5: installed `pv 0.65.2` prints `0 error(s), 0 warning(s) / Contract is valid.` for `contracts/benchmarking-v1.yaml` with no denominator — the ground rule "N obligations, K evaluated, 0 failed" cannot be read off this pv's `validate` output at all until aprender#3397 lands. Each ticket session has to derive N and K another way and say how; decision on running aprender sessions for #3397–#3399 is taken when D0 and D2 no longer need the slots.
