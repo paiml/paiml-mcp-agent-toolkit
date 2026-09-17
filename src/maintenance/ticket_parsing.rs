@@ -191,19 +191,25 @@ pub fn list_tickets(dir: &Path) -> Result<Vec<TicketFile>> {
         let entry = entry?;
         let path = entry.path();
 
-        if path.extension().and_then(|s| s.to_str()) == Some("md") {
-            if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                if name.starts_with("TICKET-PMAT-") {
-                    match TicketFile::from_file(&path) {
-                        Ok(ticket) => tickets.push(ticket),
-                        Err(e) => eprintln!("Warning: Failed to parse {}: {}", path.display(), e),
-                    }
-                }
+        if is_ticket_file(&path) {
+            match TicketFile::from_file(&path) {
+                Ok(ticket) => tickets.push(ticket),
+                Err(e) => eprintln!("Warning: Failed to parse {}: {}", path.display(), e),
             }
         }
     }
 
     Ok(tickets)
+}
+
+/// A ticket file is a markdown file named `TICKET-PMAT-*.md`.
+fn is_ticket_file(path: &Path) -> bool {
+    let is_markdown = path.extension().and_then(|s| s.to_str()) == Some("md");
+    is_markdown
+        && path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .is_some_and(|name| name.starts_with("TICKET-PMAT-"))
 }
 
 /// Check if ticket exists

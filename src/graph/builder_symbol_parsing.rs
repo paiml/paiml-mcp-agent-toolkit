@@ -43,33 +43,35 @@ impl DependencyGraphBuilder {
         for (line_num, line) in content.lines().enumerate() {
             let trimmed = line.trim();
 
-            if trimmed.starts_with("pub fn ") {
-                if let Some(name) = Self::extract_function_name(trimmed) {
-                    symbols.push(Symbol {
-                        name: name.to_string(),
-                        kind: SymbolKind::Function,
-                        visibility: Visibility::Public,
-                        line: line_num,
-                    });
-                }
+            let (name, kind, visibility) = if trimmed.starts_with("pub fn ") {
+                (
+                    Self::extract_function_name(trimmed),
+                    SymbolKind::Function,
+                    Visibility::Public,
+                )
             } else if trimmed.starts_with("fn ") {
-                if let Some(name) = Self::extract_function_name(trimmed) {
-                    symbols.push(Symbol {
-                        name: name.to_string(),
-                        kind: SymbolKind::Function,
-                        visibility: Visibility::Private,
-                        line: line_num,
-                    });
-                }
+                (
+                    Self::extract_function_name(trimmed),
+                    SymbolKind::Function,
+                    Visibility::Private,
+                )
             } else if trimmed.starts_with("pub struct ") {
-                if let Some(name) = Self::extract_type_name(trimmed, "struct") {
-                    symbols.push(Symbol {
-                        name: name.to_string(),
-                        kind: SymbolKind::Struct,
-                        visibility: Visibility::Public,
-                        line: line_num,
-                    });
-                }
+                (
+                    Self::extract_type_name(trimmed, "struct"),
+                    SymbolKind::Struct,
+                    Visibility::Public,
+                )
+            } else {
+                continue;
+            };
+
+            if let Some(name) = name {
+                symbols.push(Symbol {
+                    name: name.to_string(),
+                    kind,
+                    visibility,
+                    line: line_num,
+                });
             }
         }
 
@@ -122,33 +124,37 @@ impl DependencyGraphBuilder {
         for (line_num, line) in content.lines().enumerate() {
             let trimmed = line.trim();
 
-            if trimmed.starts_with("export function ") || trimmed.starts_with("export const ") {
-                if let Some(name) = Self::extract_ts_name(trimmed) {
-                    symbols.push(Symbol {
-                        name: name.to_string(),
-                        kind: SymbolKind::Function,
-                        visibility: Visibility::Public,
-                        line: line_num,
-                    });
-                }
+            let (name, kind, visibility) = if trimmed.starts_with("export function ")
+                || trimmed.starts_with("export const ")
+            {
+                (
+                    Self::extract_ts_name(trimmed),
+                    SymbolKind::Function,
+                    Visibility::Public,
+                )
             } else if trimmed.starts_with("function ") || trimmed.starts_with("const ") {
-                if let Some(name) = Self::extract_ts_name(trimmed) {
-                    symbols.push(Symbol {
-                        name: name.to_string(),
-                        kind: SymbolKind::Function,
-                        visibility: Visibility::Private,
-                        line: line_num,
-                    });
-                }
+                (
+                    Self::extract_ts_name(trimmed),
+                    SymbolKind::Function,
+                    Visibility::Private,
+                )
             } else if trimmed.starts_with("export class ") {
-                if let Some(name) = Self::extract_ts_class_name(trimmed) {
-                    symbols.push(Symbol {
-                        name: name.to_string(),
-                        kind: SymbolKind::Struct,
-                        visibility: Visibility::Public,
-                        line: line_num,
-                    });
-                }
+                (
+                    Self::extract_ts_class_name(trimmed),
+                    SymbolKind::Struct,
+                    Visibility::Public,
+                )
+            } else {
+                continue;
+            };
+
+            if let Some(name) = name {
+                symbols.push(Symbol {
+                    name: name.to_string(),
+                    kind,
+                    visibility,
+                    line: line_num,
+                });
             }
         }
 

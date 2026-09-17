@@ -70,13 +70,20 @@ impl Metrics {
         }
 
         // Penalize low coverage
-        if self.coverage < 0.6 {
-            score -= 0.2;
-        } else if self.coverage < 0.8 {
-            score -= 0.1;
-        }
+        score -= self.coverage_penalty();
 
         score.max(0.0)
+    }
+
+    /// Score deduction for coverage below 60% (0.2) or below 80% (0.1).
+    fn coverage_penalty(&self) -> f64 {
+        if self.coverage < 0.6 {
+            0.2
+        } else if self.coverage < 0.8 {
+            0.1
+        } else {
+            0.0
+        }
     }
 
     /// Check if metrics meet quality thresholds

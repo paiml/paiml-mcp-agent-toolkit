@@ -1512,4 +1512,54 @@ mod coverage_tests {
         assert_eq!(result.quality_gate_status, "PASSED_WITH_WARNINGS");
         assert_eq!(result.recommendations.len(), 3);
     }
+
+    fn quality_output_for_claude(results: Vec<(&str, bool, &str)>) -> QualityGateOutput {
+        QualityGateOutput {
+            passed: results.iter().all(|(_, passed, _)| *passed),
+            results: results
+                .into_iter()
+                .map(|(check, passed, message)| {
+                    crate::services::quality_gate_service::QualityCheckResult {
+                        check: check.to_string(),
+                        passed,
+                        message: message.to_string(),
+                        violations: vec![],
+                    }
+                })
+                .collect(),
+            summary: crate::services::quality_gate_service::QualitySummary {
+                total_checks: 0,
+                passed_checks: 0,
+                failed_checks: 0,
+                total_violations: 0,
+                error_count: 0,
+                warning_count: 0,
+            },
+        }
+    }
+
+    /// Pins the claude-friendly quality report text, including per-check lines.
+    #[test]
+    fn test_format_quality_claude_pins_report_text() {
+        let failed = quality_output_for_claude(vec![
+            ("complexity", true, "ignored when passed"),
+            ("lint", false, "3 warnings"),
+        ]);
+        assert_eq!(
+            format_quality_claude("/p", false, &failed),
+            json!({
+                "type": "text",
+                "text": "🎯 Quality Gates Report for /p\n\nStatus: ❌ FAILED\nQuality issues detected!\n\nChecks completed:\n• complexity: ✅ PASSED\n• lint: ❌ 3 warnings\n\n⚠️ Please address the quality issues above."
+            })
+        );
+
+        let passed = quality_output_for_claude(vec![("satd", true, "ok")]);
+        assert_eq!(
+            format_quality_claude("/q", true, &passed),
+            json!({
+                "type": "text",
+                "text": "🎯 Quality Gates Report for /q\n\nStatus: ✅ PASSED\nAll Toyota Way standards met!\n\nChecks completed:\n• satd: ✅ PASSED\n\nThe codebase meets all quality standards. Great work! 🚀"
+            })
+        );
+    }
 }

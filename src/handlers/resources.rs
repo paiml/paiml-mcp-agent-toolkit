@@ -42,21 +42,10 @@ pub async fn handle_resource_read<T: TemplateServerTrait>(
     server: Arc<T>,
     request: McpRequest,
 ) -> McpResponse {
-    let params = match request.params {
-        Some(p) => p,
-        None => {
-            return McpResponse::error(
-                request.id,
-                -32602,
-                "Invalid params: missing resource read parameters".to_string(),
-            );
-        }
-    };
-
-    let read_params: ResourceReadParams = match serde_json::from_value(params) {
+    let read_params = match parse_resource_read_params(request.params) {
         Ok(p) => p,
-        Err(e) => {
-            return McpResponse::error(request.id, -32602, format!("Invalid params: {e}"));
+        Err(message) => {
+            return McpResponse::error(request.id, -32602, message);
         }
     };
 
@@ -77,4 +66,13 @@ pub async fn handle_resource_read<T: TemplateServerTrait>(
             McpResponse::error(request.id, -32000, format!("Failed to read resource: {e}"))
         }
     }
+}
+
+/// Decode `resources/read` params; the error is the invalid-params message.
+fn parse_resource_read_params(
+    params: Option<serde_json::Value>,
+) -> Result<ResourceReadParams, String> {
+    let params =
+        params.ok_or_else(|| "Invalid params: missing resource read parameters".to_string())?;
+    serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))
 }

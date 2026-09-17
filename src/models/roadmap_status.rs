@@ -227,14 +227,7 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
         return a_len;
     }
 
-    let mut matrix = vec![vec![0usize; b_len + 1]; a_len + 1];
-
-    for i in 0..=a_len {
-        matrix[i][0] = i;
-    }
-    for j in 0..=b_len {
-        matrix[0][j] = j;
-    }
+    let mut matrix = distance_matrix(a_len, b_len);
 
     for i in 1..=a_len {
         for j in 1..=b_len {
@@ -251,4 +244,18 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     }
 
     matrix[a_len][b_len]
+}
+
+/// Edit-distance matrix with the empty-prefix row and column filled in.
+fn distance_matrix(a_len: usize, b_len: usize) -> Vec<Vec<usize>> {
+    let mut matrix = vec![vec![0usize; b_len + 1]; a_len + 1];
+
+    for i in 0..=a_len {
+        matrix[i][0] = i;
+    }
+    for j in 0..=b_len {
+        matrix[0][j] = j;
+    }
+
+    matrix
 }

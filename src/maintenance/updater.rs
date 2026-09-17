@@ -4,7 +4,7 @@
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 use super::git::{extract_ticket_ids, get_current_commit, ticket_file_updated, CommitInfo};
-use super::roadmap::{Roadmap, RoadmapError};
+use super::roadmap::{Roadmap, RoadmapError, Ticket};
 use super::ticket::{TicketFile, TicketStatus};
 use std::path::Path;
 
@@ -78,20 +78,7 @@ fn format_roadmap_markdown(roadmap: &Roadmap) -> String {
 
         // Tickets
         for ticket in &sprint.tickets {
-            let checkbox = if ticket.completed { "[x]" } else { "[ ]" };
-            let commit_ref = if let Some(ref commit) = ticket.commit {
-                format!(
-                    " (commit: {})",
-                    commit.get(..7.min(commit.len())).unwrap_or(commit)
-                )
-            } else {
-                String::new()
-            };
-
-            output.push_str(&format!(
-                "- {} {}: {}{}\n",
-                checkbox, ticket.id, ticket.description, commit_ref
-            ));
+            output.push_str(&format_ticket_line(ticket));
         }
 
         output.push('\n');
@@ -107,6 +94,24 @@ fn format_roadmap_markdown(roadmap: &Roadmap) -> String {
     }
 
     output
+}
+
+/// One roadmap checklist line: checkbox, id, description and short commit hash.
+fn format_ticket_line(ticket: &Ticket) -> String {
+    let checkbox = if ticket.completed { "[x]" } else { "[ ]" };
+    let commit_ref = if let Some(ref commit) = ticket.commit {
+        format!(
+            " (commit: {})",
+            commit.get(..7.min(commit.len())).unwrap_or(commit)
+        )
+    } else {
+        String::new()
+    };
+
+    format!(
+        "- {} {}: {}{}\n",
+        checkbox, ticket.id, ticket.description, commit_ref
+    )
 }
 
 /// Update roadmap from current commit

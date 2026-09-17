@@ -327,10 +327,8 @@ fn format_complexity_output(
     match format {
         "full" => format_complexity_report(report),
         "json" => serde_json::to_string_pretty(report).unwrap_or_default(),
-        "sarif" => match format_as_sarif(report) {
-            Ok(sarif) => sarif,
-            Err(_) => "Error generating SARIF format".to_string(),
-        },
+        "sarif" => format_as_sarif(report)
+            .unwrap_or_else(|_| "Error generating SARIF format".to_string()),
         _ => format_complexity_summary(report), // default to summary
     }
 }

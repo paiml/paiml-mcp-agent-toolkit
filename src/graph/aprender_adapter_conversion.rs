@@ -72,13 +72,16 @@ pub fn extract_edge_weight(edge_data: &EdgeData) -> f64 {
         EdgeData::FunctionCall { count, .. } => *count as f64,
         EdgeData::TypeDependency { strength, .. } => *strength,
         EdgeData::DataFlow { confidence, .. } => *confidence,
-        EdgeData::Inheritance { depth } => {
-            if *depth == 0 {
-                1.0
-            } else {
-                1.0 / (*depth as f64)
-            }
-        }
+        EdgeData::Inheritance { depth } => inheritance_weight(*depth),
+    }
+}
+
+/// Inheritance weakens with depth: 1/depth, with depth 0 weighted as 1.
+fn inheritance_weight(depth: usize) -> f64 {
+    if depth == 0 {
+        1.0
+    } else {
+        1.0 / (depth as f64)
     }
 }
 
