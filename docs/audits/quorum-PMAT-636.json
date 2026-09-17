@@ -3,12 +3,12 @@
   "base": "master",
   "base_resolved": "origin/master",
   "base_note": "local master and origin/master agree",
-  "head": "253028f185fae14e6e147ef628be4b2b8e0f97c3",
-  "diff_sha256": "570d62694c2496f67bf35969d067a2bc8481e7920011ed8e7bfb1f687e375aaa",
+  "head": "fe99e6eae988a1b330b4f765f090362d218edef3",
+  "diff_sha256": "67271bd0211dd8636d0697a67d47682177f6e83b4935647a6f717230cd38dc21",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "file",
-  "prompt_bytes": 238730,
+  "prompt_bytes": 241421,
   "author": {
     "model": "claude-opus-5",
     "family": "claude",
@@ -20,25 +20,30 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff satisfies all conditions of PMAT-636. It implements the ratchet script and CI job as requested (Jobs 1 & 3), reducing the below-A count to 1680 through surgical, behaviour-preserving helper extractions from complex functions, and banking it in `.pmat-gates.toml` (Job 2). There are no forbidden changes or weakened gates.",
+      "summary": "The diff strictly follows the review brief. It successfully extracts inline logic into simple helper functions across src/ to lower the baseline to 1680 without altering behavior. It also properly integrates the tdg-ratchet check into the ci.yml file. The ticket requirements are met. The paiml-lane-witness file was not found in the .git directory.",
       "findings": [
         {
-          "claim": "The diff implements a required CI job to enforce the CB-200 ratchet using scripts/cb200-ratchet-gate.sh, satisfying Job 3.",
+          "claim": "Adds tdg-ratchet job to ci.yml and runs scripts/cb200-ratchet-gate.sh",
           "file": ".github/workflows/ci.yml",
           "grounding": "cited"
         },
         {
-          "claim": "The diff performs behaviour-preserving extractions of helper functions from complex below-A functions (e.g. format_offender_line, unfenced_lines), reducing the below-A count to 1680.",
+          "claim": "Extracts complex nested logic into small helper functions (e.g. ensure_chain_is_derivable, authority_ticket_id) to lower complexity below threshold",
+          "file": "src/cli/handlers.rs",
+          "grounding": "cited"
+        },
+        {
+          "claim": "Extracts inline formatting logic into format_offender_line",
           "file": "src/services/complexity/formatting.rs",
           "grounding": "cited"
         },
         {
-          "claim": "The new count of 1680 is banked as the baseline, as requested.",
-          "file": ".pmat-gates.toml",
+          "claim": "No logic changes; pure structural extractions to lower below-A grade counts",
+          "file": "src/services/ticket_crud.rs",
           "grounding": "cited"
         }
       ],
-      "raw_bytes": 3226,
+      "raw_bytes": 3364,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -52,9 +57,9 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "Independent review (Lane 2 of 3) for PMAT-636 (PR #1394). The review brief in docs/audits/quorum-PMAT-636.prompt.md and the entire 238,730-byte diff were reviewed completely against ticket PMAT-636, receipt docs/audits/impl-PMAT-636-receipt.md, and contract contracts/cb200-ratchet-ci-v1.yaml.\n\n1. Fulfillment of Acceptance Criteria:\n   - Measurement & Set Difference: Rigorously documented in docs/audits/impl-PMAT-636-receipt.md using a single binary across cold indexes (+53 drift on master: 85 newly below A, 32 no longer below A).\n   - Ratchet Baseline Reduction: 61 below-A functions were refactored across src/ast, src/cli, src/contracts, src/graph, src/handlers, src/maintenance, src/models, src/red_team, src/roadmap, src/services, src/tdg, and src/unified_quality via clean, behavior-preserving helper extractions. Two pinning tests were introduced to protect formatted outputs. The banked baseline in .pmat-gates.toml was lowered from 1688 to 1680.\n   - Enforcement at Required CI Gate: Added `tdg-ratchet` job to .github/workflows/ci.yml, wired into `gate` needs and result-checking loop, integrated into `scripts/gate.sh`, covered by `make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check`, and defined in contract `contracts/cb200-ratchet-ci-v1.yaml`.\n   - Control Suite (Red Before Green): `scripts/cb200-ratchet-gate.sh` provides a 10-arm control suite (arms 1–8 fixture assertions, arms 9–10 running the real pmat binary against a scratch project with a planted below-A definition) verifying rejection of OVER, BEATEN, STALE, NOT MEASURED, and DISAGREE outcomes.\n\n2. Refutation Doctrine Checks:\n   - No gates are weakened (the ratchet is lowered/tightened).\n   - No tests assert the opposite of the ticket.\n   - All claims in the receipt are substantiated by the diff.\n   - No out-of-scope changes or forbidden actions were taken.\n\nVerdict is PASS.",
+      "summary": "Independent review (Lane 2 of 3) for PMAT-636 (PR #1394). The review brief in docs/audits/quorum-PMAT-636.prompt.md, ticket PMAT-636, receipt docs/audits/impl-PMAT-636-receipt.md, and the entire 241,421-byte diff were reviewed completely against the refutation doctrine.\n\n1. Fulfillment of Acceptance Criteria:\n- Job 1 (Re-measure and publish set difference): Fully documented in the receipt using one binary over cold indexes across commit 683d6994d and master ce945d81e (+53 drift: 85 newly below A, 32 no longer below A; zero grader drift).\n- Job 2 (Reduce below-A count to <= 1688 via behavior-preserving refactors and bank count): 61 functions were surgically refactored via clean, behavior-preserving helper extractions across CLI, services, AST, and graph modules to bring them to grade A. Two pinning tests (`deep_context_text_highlights_only_nonzero_high_complexity_counts` and `markdown_component_breakdown_is_pinned_for_a_measured_file`) were introduced to guarantee no output drift. The banked baseline in `.pmat-gates.toml` was lowered from 1688 to 1680 (tightened, not loosened).\n- Job 3 (Required CI job enforcing the ratchet): Added `tdg-ratchet` job to `.github/workflows/ci.yml`, wired into `gate` needs and result-checking loop, integrated into `scripts/gate.sh`, covered by contract `contracts/cb200-ratchet-ci-v1.yaml` and test `make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check`.\n- Control Suite (Red before Green): `scripts/cb200-ratchet-gate.sh` provides a 10-arm control suite covering all failure modes (OVER, BEATEN, STALE, NOT MEASURED, DISAGREE) and live verification against a planted below-A definition.\n\n2. Refutation Doctrine Checks:\n- No gates are weakened (ratchet lowered from 1688 to 1680).\n- Raising baseline to 1741 was forbidden and was not done.\n- No tests assert the opposite of the ticket.\n- All receipt claims are substantiated by the diff.\n- No unauthorized or out-of-scope changes.\n\nVerdict: PASS.",
       "findings": [],
-      "raw_bytes": 5143,
+      "raw_bytes": 5248,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -68,9 +73,38 @@
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "Independent review (Lane 3 of 3) for PMAT-636 (PR #1394). Evaluated against ticket PMAT-636, receipt docs/audits/impl-PMAT-636-receipt.md, contract contracts/cb200-ratchet-ci-v1.yaml, and the complete 238,730-byte diff in docs/audits/quorum-PMAT-636.prompt.md.\n\n1. Requirement Fulfillment:\n   - Fixes the issue where `the_committed_baseline_is_the_measured_count` was unmeasurable in CI checkouts due to the lack of `.pmat/context.db`, allowing master to drift from 1688 to 1741 unobserved.\n   - Adds the required `tdg-ratchet` CI job in `.github/workflows/ci.yml` that invokes `scripts/cb200-ratchet-gate.sh` over an out-of-tree index.\n   - Wires `tdg-ratchet` into `gate` job's `needs` and verifies its result status (`needs.tdg-ratchet.result == 'success'`).\n   - Wires `tdg-ratchet-control` and `tdg-ratchet` steps into `scripts/gate.sh`.\n   - Adds contract `contracts/cb200-ratchet-ci-v1.yaml` and lib test `make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check`.\n\n2. Baseline Ratchet & Refactoring:\n   - Banks lowered baseline from 1688 to 1680 in `.pmat-gates.toml`. Baseline is tightened and cannot go up.\n   - Verifies 61 behavior-preserving function refactorings across CLI, services, and core crates to bring them to grade A without modifying semantics.\n   - Adds output pinning tests (`deep_context_text_highlights_only_nonzero_high_complexity_counts` and `markdown_component_breakdown_is_pinned_for_a_measured_file`) to protect extracted logic against regressions.\n\n3. Gate & Control Integrity:\n   - `scripts/cb200-ratchet-gate.sh` provides a comprehensive 10-arm control suite covering all non-PASS outcomes (OVER, BEATEN, STALE, NOT MEASURED, DISAGREE) as well as live execution over a planted below-A definition.\n   - No gates are weakened and no tests contradict acceptance criteria.\n\nVerdict: PASS.",
-      "findings": [],
-      "raw_bytes": 5063,
+      "summary": "Independent review (Lane 3 of 3) for PMAT-636 (PR #1394). Evaluated against ticket PMAT-636, receipt docs/audits/impl-PMAT-636-receipt.md, contract contracts/cb200-ratchet-ci-v1.yaml, and the complete 241,421-byte diff in docs/audits/quorum-PMAT-636.prompt.md.\n\n1. Requirement Fulfillment:\n   - Fixes the vulnerability where `the_committed_baseline_is_the_measured_count` was unmeasurable in CI checkouts due to the lack of `.pmat/context.db`, allowing master to drift from 1688 to 1741 unobserved.\n   - Adds the required `tdg-ratchet` CI job in `.github/workflows/ci.yml` that invokes `scripts/cb200-ratchet-gate.sh` over an out-of-tree index.\n   - Wires `tdg-ratchet` into `gate` job's `needs` and verifies its result status (`needs.tdg-ratchet.result == 'success'`).\n   - Wires `tdg-ratchet-control` and `tdg-ratchet` steps into `scripts/gate.sh`.\n   - Adds contract `contracts/cb200-ratchet-ci-v1.yaml` and lib test `make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check`.\n\n2. Baseline Ratchet & Refactoring:\n   - Banks lowered baseline from 1688 to 1680 in `.pmat-gates.toml`. Baseline is tightened and cannot go up.\n   - Verifies 61 behavior-preserving function refactorings across CLI, services, and core crates to bring them to grade A without modifying semantics.\n   - Adds output pinning tests (`deep_context_text_highlights_only_nonzero_high_complexity_counts` and `markdown_component_breakdown_is_pinned_for_a_measured_file`) to protect extracted logic against regressions.\n\n3. Gate & Control Integrity:\n   - `scripts/cb200-ratchet-gate.sh` provides a comprehensive 10-arm control suite covering all non-PASS outcomes (OVER, BEATEN, STALE, NOT MEASURED, DISAGREE) as well as live execution over a planted below-A definition.\n   - No gates are weakened and no tests contradict acceptance criteria.\n\nVerdict: PASS.",
+      "findings": [
+        {
+          "claim": "ci.yml introduces the required tdg-ratchet job and wires it into gate needs and result checks (lines 331, 341, 367-381).",
+          "file": ".github/workflows/ci.yml",
+          "fix": "N/A (conforming)",
+          "grounding": "cited",
+          "line": 331
+        },
+        {
+          "claim": "The baseline in .pmat-gates.toml is lowered from 1688 to 1680, locking in the reduced below-A count without allowing upward drift.",
+          "file": ".pmat-gates.toml",
+          "fix": "N/A (conforming)",
+          "grounding": "cited",
+          "line": 404
+        },
+        {
+          "claim": "scripts/cb200-ratchet-gate.sh implements a comprehensive 10-arm control test suite verifying all non-PASS outcomes (OVER, BEATEN, STALE, NOT MEASURED, DISAGREE) and live execution against a planted below-A definition.",
+          "file": "scripts/cb200-ratchet-gate.sh",
+          "fix": "N/A (conforming)",
+          "grounding": "cited",
+          "line": 1250
+        },
+        {
+          "claim": "Behavior-preserving helper extractions across 61 complex below-A functions bring the codebase count under the baseline, accompanied by output pinning tests in advanced_analysis_handlers and tdg_handlers.",
+          "file": "src/cli/handlers/advanced_analysis_handlers.rs",
+          "fix": "N/A (conforming)",
+          "grounding": "cited",
+          "line": 1595
+        }
+      ],
+      "raw_bytes": 7310,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -90,17 +124,57 @@
         1
       ],
       "claims": [
-        "The diff implements a required CI job to enforce the CB-200 ratchet using scripts/cb200-ratchet-gate.sh, satisfying Job 3."
+        "Adds tdg-ratchet job to ci.yml and runs scripts/cb200-ratchet-gate.sh"
+      ]
+    },
+    {
+      "file": ".github/workflows/ci.yml",
+      "line": 331,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "ci.yml introduces the required tdg-ratchet job and wires it into gate needs and result checks (lines 331, 341, 367-381)."
       ]
     },
     {
       "file": ".pmat-gates.toml",
+      "line": 404,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The baseline in .pmat-gates.toml is lowered from 1688 to 1680, locking in the reduced below-A count without allowing upward drift."
+      ]
+    },
+    {
+      "file": "scripts/cb200-ratchet-gate.sh",
+      "line": 1250,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "scripts/cb200-ratchet-gate.sh implements a comprehensive 10-arm control test suite verifying all non-PASS outcomes (OVER, BEATEN, STALE, NOT MEASURED, DISAGREE) and live execution against a planted below-A definition."
+      ]
+    },
+    {
+      "file": "src/cli/handlers.rs",
       "line": null,
       "lanes_agreeing": [
         1
       ],
       "claims": [
-        "The new count of 1680 is banked as the baseline, as requested."
+        "Extracts complex nested logic into small helper functions (e.g. ensure_chain_is_derivable, authority_ticket_id) to lower complexity below threshold"
+      ]
+    },
+    {
+      "file": "src/cli/handlers/advanced_analysis_handlers.rs",
+      "line": 1595,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "Behavior-preserving helper extractions across 61 complex below-A functions bring the codebase count under the baseline, accompanied by output pinning tests in advanced_analysis_handlers and tdg_handlers."
       ]
     },
     {
@@ -110,7 +184,17 @@
         1
       ],
       "claims": [
-        "The diff performs behaviour-preserving extractions of helper functions from complex below-A functions (e.g. format_offender_line, unfenced_lines), reducing the below-A count to 1680."
+        "Extracts inline formatting logic into format_offender_line"
+      ]
+    },
+    {
+      "file": "src/services/ticket_crud.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "No logic changes; pure structural extractions to lower below-A grade counts"
       ]
     }
   ],
