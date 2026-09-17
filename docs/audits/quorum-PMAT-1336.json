@@ -3,12 +3,12 @@
   "base": "master",
   "base_resolved": "origin/master",
   "base_note": "local master and origin/master agree",
-  "head": "9d2a36cc69f82827fe85384be9f4e2e768d76df1",
-  "diff_sha256": "6d7bfc3887f4b80f24049dab1d263a4ba123a8583e8de90c392df880e210026a",
+  "head": "9ec318643b33028ba7da80839e376171f6e60b40",
+  "diff_sha256": "1578339456d7c1d7cd3fbe13e66aa5507b5933c978b180ba398a0bf186898616",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "inline",
-  "prompt_bytes": 17909,
+  "prompt_bytes": 21942,
   "author": {
     "model": "claude-fable-5-1",
     "family": "claude",
@@ -20,9 +20,28 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff correctly updates the status of PMAT-1385 from 'planned' to 'completed' as part of the PMAT-1336 lifecycle handling (where closed tickets cannot complete themselves). The change to `roadmap.yaml` exactly matches the receipt claim, with no unrelated changes or weakened gates. All text additions to the receipt are coherent with the state described.",
-      "findings": [],
-      "raw_bytes": 1973,
+      "summary": "The diff correctly updates the roadmap.yaml statuses for PMAT-636 and PMAT-900001 to 'completed' and their 'updated' timestamps, and appends the corresponding receipt section as required by the lifecycle ticket PMAT-1336. I found no evidence that it weakens any gates, contradicts tests, or performs unrequested actions.",
+      "findings": [
+        {
+          "claim": "Updates PMAT-636 (github_issue: 1266) to status: completed and updates timestamp",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 3730
+        },
+        {
+          "claim": "Updates PMAT-900001 (github_issue: 1395) to status: completed and updates timestamp",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 7009
+        },
+        {
+          "claim": "Adds receipt section documenting the manual lifecycle closures of PMAT-636 and PMAT-900001",
+          "file": "docs/audits/impl-PMAT-1336-receipt.md",
+          "grounding": "cited",
+          "line": 122
+        }
+      ],
+      "raw_bytes": 3059,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -36,10 +55,29 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff for PMAT-1336 satisfies all three acceptance criteria: (1) pmat work sync --check-only confirms a bijection of 113/113 with 0 findings between live GitHub and roadmap.yaml, passing CB-2115; (2) the diff touches only docs/roadmaps/roadmap.yaml and docs/audits/impl-PMAT-1336-receipt.md, with no source changes; and (3) commit 9d2a36cc6 explicitly names the merge commit b58addab8 that closed issue #1385. No gates were weakened, no tests refute the ticket, and all receipt claims are backed by the diff. Verdict: PASS.",
-      "findings": [],
-      "raw_bytes": 2326,
-      "err_bytes": 0,
+      "summary": "The diff strictly fulfills all acceptance criteria of PMAT-1336: (1) it transitions orphaned roadmap items PMAT-636 and PMAT-900001 to 'completed' to preserve roadmap-to-issue bijection; (2) it modifies only docs/roadmaps/roadmap.yaml and docs/audits/impl-PMAT-1336-receipt.md without touching any source code; and (3) the commit message explicitly cites the merge commits (b3df4a402 for #1394 and 739d70269 for #1391). No gates are weakened, no tests contradict the ticket, and all claims in the receipt are verified against the diff.",
+      "findings": [
+        {
+          "claim": "Transitions PMAT-636 (github_issue: 1266) status from 'planned' to 'completed' and updates timestamp following the merge of PR #1394 (b3df4a402).",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 3730
+        },
+        {
+          "claim": "Transitions PMAT-900001 (github_issue: 1395) status from 'planned' to 'completed' and updates timestamp following the landing of PR #1391 (739d70269) and issue closure.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 7009
+        },
+        {
+          "claim": "Documents the lifecycle completions of PMAT-636 and PMAT-900001 with merge commit citations (b3df4a402 and 739d70269) and synchronization context.",
+          "file": "docs/audits/impl-PMAT-1336-receipt.md",
+          "grounding": "cited",
+          "line": 122
+        }
+      ],
+      "raw_bytes": 6135,
+      "err_bytes": 79,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
       "grounding_check": "parity",
@@ -52,9 +90,28 @@
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff for PMAT-1336 completes the roadmap row for PMAT-1385 (bound to GitHub issue #1385) after PR #1389 closed the issue on merge, resolving the resulting CB-2115 ORPHAN-ROADMAP finding. The diff strictly touches only docs/roadmaps/roadmap.yaml and docs/audits/impl-PMAT-1336-receipt.md, which adheres to PMAT-1336 acceptance criteria forbidding changes to source code. The receipt accurately records the merge commit, writer operation, and resulting state. No gates are weakened and no tests are modified. The change is fully verified with verdict PASS.",
-      "findings": [],
-      "raw_bytes": 2376,
+      "summary": "The diff strictly satisfies all acceptance criteria of PMAT-1336: (1) it completes the orphaned roadmap rows PMAT-636 and PMAT-900001 to maintain bijection with GitHub issue status; (2) it only touches docs/roadmaps/roadmap.yaml and docs/audits/impl-PMAT-1336-receipt.md with zero source code changes; and (3) the commit message explicitly cites the merge commits (b3df4a402 for #1394 and 739d70269 for #1391). No gates were weakened, no extra or forbidden changes were introduced, and all receipt claims are backed by the diff.",
+      "findings": [
+        {
+          "claim": "PMAT-636 (GitHub issue #1266) status transitioned from planned to completed with updated timestamp in docs/roadmaps/roadmap.yaml following the landing of PR #1394 at b3df4a402.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 3730
+        },
+        {
+          "claim": "PMAT-900001 (GitHub issue #1395) status transitioned from planned to completed with updated timestamp in docs/roadmaps/roadmap.yaml following the landing of PR #1391 at 739d70269 and issue closure.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 7009
+        },
+        {
+          "claim": "Implementation receipt section '2026-09-17 — PMAT-636 (closed by #1394) and PMAT-900001 (landed by #1391, issue closed here)' added, documenting the rationale, merge commits, and synchronization steps.",
+          "file": "docs/audits/impl-PMAT-1336-receipt.md",
+          "grounding": "cited",
+          "line": 122
+        }
+      ],
+      "raw_bytes": 4016,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -66,7 +123,50 @@
     }
   ],
   "dissent": [],
-  "dedup": [],
+  "dedup": [
+    {
+      "file": "docs/audits/impl-PMAT-1336-receipt.md",
+      "line": 122,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "Adds receipt section documenting the manual lifecycle closures of PMAT-636 and PMAT-900001",
+        "Documents the lifecycle completions of PMAT-636 and PMAT-900001 with merge commit citations (b3df4a402 and 739d70269) and synchronization context.",
+        "Implementation receipt section '2026-09-17 — PMAT-636 (closed by #1394) and PMAT-900001 (landed by #1391, issue closed here)' added, documenting the rationale, merge commits, and synchronization steps."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 3730,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-636 (GitHub issue #1266) status transitioned from planned to completed with updated timestamp in docs/roadmaps/roadmap.yaml following the landing of PR #1394 at b3df4a402.",
+        "Transitions PMAT-636 (github_issue: 1266) status from 'planned' to 'completed' and updates timestamp following the merge of PR #1394 (b3df4a402).",
+        "Updates PMAT-636 (github_issue: 1266) to status: completed and updates timestamp"
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 7009,
+      "lanes_agreeing": [
+        1,
+        2,
+        3
+      ],
+      "claims": [
+        "PMAT-900001 (GitHub issue #1395) status transitioned from planned to completed with updated timestamp in docs/roadmaps/roadmap.yaml following the landing of PR #1391 at 739d70269 and issue closure.",
+        "Transitions PMAT-900001 (github_issue: 1395) status from 'planned' to 'completed' and updates timestamp following the landing of PR #1391 (739d70269) and issue closure.",
+        "Updates PMAT-900001 (github_issue: 1395) to status: completed and updates timestamp"
+      ]
+    }
+  ],
   "uncovered": [],
   "coverage_source": "lanes",
   "partial": false,
