@@ -30,16 +30,17 @@ impl TdgGraph {
 
         // Add edges by iterating over adjacency
         for (_node_id, neighbors, _weights) in self.graph.iter_adjacency() {
-            let from_name = self.reverse_node_map.get(&_node_id);
-            if let Some(from) = from_name {
-                if let Some(&from_idx) = name_to_idx.get(from) {
-                    for &neighbor_id in neighbors {
-                        let to_node_id = NodeId(neighbor_id);
-                        if let Some(to_name) = self.reverse_node_map.get(&to_node_id) {
-                            if let Some(&to_idx) = name_to_idx.get(to_name) {
-                                vis.add_edge(from_idx, to_idx);
-                            }
-                        }
+            let Some(from) = self.reverse_node_map.get(&_node_id) else {
+                continue;
+            };
+            let Some(&from_idx) = name_to_idx.get(from) else {
+                continue;
+            };
+            for &neighbor_id in neighbors {
+                let to_node_id = NodeId(neighbor_id);
+                if let Some(to_name) = self.reverse_node_map.get(&to_node_id) {
+                    if let Some(&to_idx) = name_to_idx.get(to_name) {
+                        vis.add_edge(from_idx, to_idx);
                     }
                 }
             }

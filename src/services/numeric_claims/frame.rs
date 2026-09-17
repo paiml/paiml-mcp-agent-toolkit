@@ -353,20 +353,7 @@ pub fn scan_lines<'a>(path: &str, text: &'a str) -> Vec<(usize, &'a str)> {
     let ext = path.rsplit('.').next().unwrap_or("");
     let numbered = text.lines().enumerate().map(|(i, l)| (i + 1, l));
     match ext {
-        "md" | "markdown" => {
-            let mut fenced = false;
-            let mut out = Vec::new();
-            for (i, l) in numbered {
-                if l.trim_start().starts_with("```") {
-                    fenced = !fenced;
-                    continue;
-                }
-                if !fenced {
-                    out.push((i, l));
-                }
-            }
-            out
-        }
+        "md" | "markdown" => unfenced_lines(numbered),
         "rs" | "sh" => numbered
             .filter(|(_, l)| {
                 let t = l.trim_start();
@@ -379,6 +366,22 @@ pub fn scan_lines<'a>(path: &str, text: &'a str) -> Vec<(usize, &'a str)> {
     }
 }
 
+/// The numbered Markdown lines outside ``` fences; fence delimiters are dropped.
+fn unfenced_lines<'a>(numbered: impl Iterator<Item = (usize, &'a str)>) -> Vec<(usize, &'a str)> {
+    let mut fenced = false;
+    let mut out = Vec::new();
+    for (i, l) in numbered {
+        if l.trim_start().starts_with("```") {
+            fenced = !fenced;
+            continue;
+        }
+        if !fenced {
+            out.push((i, l));
+        }
+    }
+    out
+}
+
 /// Is this line one of the shapes where two files legitimately disagree?
 ///
 /// Order is meaningful only for the reason reported, never for the verdict: a
@@ -387,25 +390,19 @@ pub fn structural_drop(line: &str) -> Option<Dropped> {
     if line.trim_start().starts_with('|') {
         return Some(Dropped::TableRow);
     }
-    if DURATION.is_match(line) {
-        return Some(Dropped::Duration);
-    }
-    if PAST_STATE.is_match(line) {
-        return Some(Dropped::PastState);
-    }
-    if CODE.is_match(line) {
-        return Some(Dropped::Code);
-    }
-    if SECTION.is_match(line.trim()) {
-        return Some(Dropped::SectionHeading);
-    }
-    if RANGE.is_match(line) {
-        return Some(Dropped::RangeEndpoint);
-    }
-    if ANTI_FRAME.is_match(line) {
-        return Some(Dropped::AntiFrame);
-    }
-    None
+    // (pattern, the text it is matched against, the reason it reports)
+    let shapes: [(&Regex, &str, Dropped); 6] = [
+        (&DURATION, line, Dropped::Duration),
+        (&PAST_STATE, line, Dropped::PastState),
+        (&CODE, line, Dropped::Code),
+        (&SECTION, line.trim(), Dropped::SectionHeading),
+        (&RANGE, line, Dropped::RangeEndpoint),
+        (&ANTI_FRAME, line, Dropped::AntiFrame),
+    ];
+    shapes
+        .into_iter()
+        .find(|(pattern, text, _)| pattern.is_match(text))
+        .map(|(_, _, reason)| reason)
 }
 
 /// Overwrite date, version, arXiv and citation spans in place.

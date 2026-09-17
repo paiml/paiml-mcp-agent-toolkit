@@ -88,16 +88,7 @@ impl CudaSimdAnalyzer {
 
         for (line_num, line) in content.lines().enumerate() {
             if line.contains("[threadIdx.x") || line.contains("[tid") || line.contains("global_mem[") {
-                analysis.coalescing.total_operations += 1;
-                if line.contains("* stride") || line.contains("* STRIDE") {
-                    analysis.coalescing.problematic_accesses.push(MemoryAccessIssue {
-                        line: line_num + 1,
-                        pattern: AccessPattern::Strided { stride: 0 },
-                        impact: "Strided access may reduce memory throughput".to_string(),
-                    });
-                } else {
-                    analysis.coalescing.coalesced_operations += 1;
-                }
+                Self::record_indexed_access(line_num, line, &mut analysis.coalescing);
             }
             if line.contains("__shared__") && line.contains("[threadIdx") {
                 if line.contains("% 32") || line.contains("& 31") {
@@ -109,6 +100,20 @@ impl CudaSimdAnalyzer {
         if analysis.coalescing.total_operations > 0 {
             analysis.coalescing.efficiency = analysis.coalescing.coalesced_operations as f64
                 / analysis.coalescing.total_operations as f64;
+        }
+    }
+
+    /// Count one thread-indexed memory access; strided accesses are flagged, the rest coalesce.
+    fn record_indexed_access(line_num: usize, line: &str, coalescing: &mut CoalescingResult) {
+        coalescing.total_operations += 1;
+        if line.contains("* stride") || line.contains("* STRIDE") {
+            coalescing.problematic_accesses.push(MemoryAccessIssue {
+                line: line_num + 1,
+                pattern: AccessPattern::Strided { stride: 0 },
+                impact: "Strided access may reduce memory throughput".to_string(),
+            });
+        } else {
+            coalescing.coalesced_operations += 1;
         }
     }
 }

@@ -72,6 +72,35 @@ pub fn status(project_path: &Path) -> RatchetStatus {
     }
 }
 
+/// The ratchet file as last committed, or the HOLE that stands in for it when
+/// git cannot produce it or it does not parse. `(None, None)` is the initial
+/// capture: there is no history to compare against.
+fn previous_config(project_path: &Path) -> (Option<config::RatchetConfig>, Option<String>) {
+    let current = std::fs::read_to_string(project_path.join(config::RATCHET_FILE)).ok();
+    match history::prior_version(project_path, config::RATCHET_FILE, current.as_deref()) {
+        history::Prior::NoHistory => (None, None),
+        history::Prior::Unavailable(e) => (
+            None,
+            Some(format!(
+                "cannot read the previous {} from git ({e}), so a raised baseline could \
+                 not be detected",
+                config::RATCHET_FILE
+            )),
+        ),
+        history::Prior::Content(text) => match config::RatchetConfig::parse(&text) {
+            Ok(prev) => (Some(prev), None),
+            Err(e) => (
+                None,
+                Some(format!(
+                    "the previous committed {} does not parse ({e}), so a raised baseline \
+                     could not be detected",
+                    config::RATCHET_FILE
+                )),
+            ),
+        },
+    }
+}
+
 /// Read the config, run every metric's own command, ask git what the file used
 /// to say, and judge the result.
 ///
@@ -84,30 +113,7 @@ pub fn status(project_path: &Path) -> RatchetStatus {
 pub fn run(project_path: &Path) -> Result<config::RatchetReport, config::ConfigError> {
     let cfg = config::RatchetConfig::load(project_path)?;
     let measurements = measure::measure_all(project_path, &cfg.metric);
-    let current = std::fs::read_to_string(project_path.join(config::RATCHET_FILE)).ok();
-    let (previous, hole) =
-        match history::prior_version(project_path, config::RATCHET_FILE, current.as_deref()) {
-            history::Prior::NoHistory => (None, None),
-            history::Prior::Unavailable(e) => (
-                None,
-                Some(format!(
-                    "cannot read the previous {} from git ({e}), so a raised baseline could \
-                     not be detected",
-                    config::RATCHET_FILE
-                )),
-            ),
-            history::Prior::Content(text) => match config::RatchetConfig::parse(&text) {
-                Ok(prev) => (Some(prev), None),
-                Err(e) => (
-                    None,
-                    Some(format!(
-                        "the previous committed {} does not parse ({e}), so a raised baseline \
-                         could not be detected",
-                        config::RATCHET_FILE
-                    )),
-                ),
-            },
-        };
+    let (previous, hole) = previous_config(project_path);
 
     let mut report = config::evaluate_ratchet(
         &cfg.metric,

@@ -1182,35 +1182,7 @@ pub async fn handle_work_cot_derive(
         anyhow::bail!("{id}: no chain_of_thought steps to derive from");
     }
 
-    // Chain must be green before derivation (agents propose, receipts dispose).
-    let violations = crate::models::work_cot::check_chain(&steps);
-    if !violations.is_empty() {
-        for v in &violations {
-            println!("  {} {}", c::fail(""), v);
-        }
-        anyhow::bail!(
-            "CB-1640: fix {} chain-integrity violation(s) before deriving",
-            violations.len()
-        );
-    }
-
-    // #1200 (PMAT-685): a step with nothing to assert would render as
-    // `statement: ""` — an obligation nobody can falsify, which `pv` refuses
-    // (SCHEMA-005). Refuse it here, by name, and write nothing.
-    let hollow = crate::models::work_cot::hollow_steps(&steps);
-    if !hollow.is_empty() {
-        for step_id in &hollow {
-            println!(
-                "  {} {step_id}: no implication, no falsifiable_claim, and discharged_by names no top-level falsifiable_claims[] entry",
-                c::fail("")
-            );
-        }
-        anyhow::bail!(
-            "CB-1658: {} hollow step(s) ({}) — give each an implication or a falsifiable_claim (or discharge a top-level falsifiable_claims[] id) before deriving; nothing was written",
-            hollow.len(),
-            hollow.join(", ")
-        );
-    }
+    ensure_chain_is_derivable(&steps)?;
 
     let safe_id: String = id
         .chars()
@@ -1257,6 +1229,41 @@ pub async fn handle_work_cot_derive(
         "{}",
         c::pass(&format!("CoT digest recorded -> {}", digest_path.display()))
     );
+    Ok(())
+}
+
+/// Refuse derivation, naming every offender, while the chain has an integrity
+/// violation (CB-1640) or a hollow step (CB-1658). Nothing is written on refusal.
+fn ensure_chain_is_derivable(steps: &[crate::models::work_cot::CotStepView]) -> Result<()> {
+    // Chain must be green before derivation (agents propose, receipts dispose).
+    let violations = crate::models::work_cot::check_chain(steps);
+    if !violations.is_empty() {
+        for v in &violations {
+            println!("  {} {}", c::fail(""), v);
+        }
+        anyhow::bail!(
+            "CB-1640: fix {} chain-integrity violation(s) before deriving",
+            violations.len()
+        );
+    }
+
+    // #1200 (PMAT-685): a step with nothing to assert would render as
+    // `statement: ""` — an obligation nobody can falsify, which `pv` refuses
+    // (SCHEMA-005). Refuse it here, by name, and write nothing.
+    let hollow = crate::models::work_cot::hollow_steps(steps);
+    if !hollow.is_empty() {
+        for step_id in &hollow {
+            println!(
+                "  {} {step_id}: no implication, no falsifiable_claim, and discharged_by names no top-level falsifiable_claims[] entry",
+                c::fail("")
+            );
+        }
+        anyhow::bail!(
+            "CB-1658: {} hollow step(s) ({}) — give each an implication or a falsifiable_claim (or discharge a top-level falsifiable_claims[] id) before deriving; nothing was written",
+            hollow.len(),
+            hollow.join(", ")
+        );
+    }
     Ok(())
 }
 

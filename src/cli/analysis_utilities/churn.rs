@@ -155,13 +155,7 @@ fn write_summary_top_files(
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or(&file.relative_path);
-            let score_color = if file.churn_score > 0.5 {
-                c::RED
-            } else if file.churn_score > 0.3 {
-                c::YELLOW
-            } else {
-                c::GREEN
-            };
+            let score_color = churn_score_color(file.churn_score);
             writeln!(
                 output,
                 "  {}. {}{}{} - {}{}{} commits, {} authors, score: {}{:.2}{}",
@@ -174,6 +168,20 @@ fn write_summary_top_files(
         }
     }
     Ok(())
+}
+
+/// The color a churn score is shown in: red above 0.5, yellow above 0.3,
+/// green otherwise.
+fn churn_score_color(churn_score: f32) -> crate::cli::colors::Sgr {
+    use crate::cli::colors as c;
+
+    if churn_score > 0.5 {
+        c::RED
+    } else if churn_score > 0.3 {
+        c::YELLOW
+    } else {
+        c::GREEN
+    }
 }
 
 // Helper function to write hotspot files

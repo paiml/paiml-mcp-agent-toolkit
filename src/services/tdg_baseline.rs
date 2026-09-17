@@ -54,9 +54,16 @@
 //!
 //! # What runs where
 //!
-//! `.pmat/context.db` is gitignored (`**/.pmat/`) and no CI leg builds one, so
+//! `.pmat/context.db` is gitignored (`**/.pmat/`), so under `cargo test --lib`
 //! the live count is measurable on developer machines and agent runs, and not
-//! on a fresh checkout. The tests enumerate that rather than papering over it:
+//! on a fresh checkout. A green run of the absent-index case below is therefore
+//! NOT a measurement, and CI does not rely on it: the `tdg-ratchet` job in
+//! `.github/workflows/ci.yml` (PMAT-636) runs `scripts/cb200-ratchet-gate.sh`,
+//! which has CB-200 index the checkout out-of-tree and fails unless the count
+//! is measured and equals the baseline. Until that job, master drifted from 1688
+//! to 1741 below grade A under a green CI, because this test was the only
+//! re-derivation and CI always took its absent branch. The tests enumerate the
+//! cases rather than papering over them:
 //!
 //! - index present AND fresh — the full ratchet runs, and a silent zero is
 //!   refused.
@@ -823,8 +830,8 @@ mod tests {
     ///
     /// - index present — the ratchet runs at full strength, in both directions,
     ///   and a truncated index is refused rather than read as an improvement.
-    /// - index absent — `.pmat/` is gitignored and no CI leg builds one, so
-    ///   there is genuinely nothing to count. What is asserted instead is the
+    /// - index absent — `.pmat/` is gitignored, so there is nothing to count
+    ///   here (ci.yml `tdg-ratchet` measures it). What is asserted instead is the
     ///   thing that is true there and load-bearing: CB-200 answers "Not
     ///   measured", never Pass (#939). `..._strict` below refuses this case
     ///   outright for anyone who wants the unconditional check.

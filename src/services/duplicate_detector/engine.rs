@@ -465,10 +465,11 @@ impl DuplicateDetectionEngine {
                 continue;
             }
             match leader_of.get(signature) {
-                Some(&leader) if components.union(leader, idx) => {
-                    clone_pairs.push((fragments[leader].id, fragment.id, 1.0));
+                Some(&leader) => {
+                    if components.union(leader, idx) {
+                        clone_pairs.push((fragments[leader].id, fragment.id, 1.0));
+                    }
                 }
-                Some(_) => {}
                 None => {
                     leader_of.insert(signature, idx);
                     leaders.push(idx);

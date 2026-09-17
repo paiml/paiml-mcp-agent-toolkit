@@ -84,12 +84,7 @@ impl QualityGate for CriticalDefectGate {
 
         // Say how many files were waived. A gate that silently skips part of
         // its input reports a pass that means less than it appears to.
-        let message = match (offending, waived) {
-            (0, 0) => "No critical defects".to_string(),
-            (0, w) => format!("No unsuppressed critical defects ({w} file(s) waived under #279)"),
-            (n, 0) => format!("{n} file(s) with critical defects"),
-            (n, w) => format!("{n} file(s) with critical defects ({w} waived under #279)"),
-        };
+        let message = critical_defect_message(offending, waived);
 
         Ok(GateResult {
             gate_name: self.name().to_string(),
@@ -97,6 +92,16 @@ impl QualityGate for CriticalDefectGate {
             violations,
             message,
         })
+    }
+}
+
+/// Gate summary line: offending file count, plus how many files were waived under #279.
+fn critical_defect_message(offending: usize, waived: usize) -> String {
+    match (offending, waived) {
+        (0, 0) => "No critical defects".to_string(),
+        (0, w) => format!("No unsuppressed critical defects ({w} file(s) waived under #279)"),
+        (n, 0) => format!("{n} file(s) with critical defects"),
+        (n, w) => format!("{n} file(s) with critical defects ({w} waived under #279)"),
     }
 }
 

@@ -703,30 +703,7 @@ fn sarif_file_result(score: &crate::tdg::TdgScore) -> serde_json::Value {
 /// worst file — and disagreed with every other renderer of the same command.
 fn sarif_project_result(project: &crate::tdg::ProjectScore, root: &Path) -> serde_json::Value {
     let census = ungraded::WalkCensus::of(project);
-    // GH #704: with nothing analysed there is no score to quote at all — the
-    // message used to quote the 0.0/F default while explaining that it was not
-    // based on any measured file.
-    //
-    // Issue #1064: "over 1 file(s)" is true and misleading on a walk of sixteen.
-    // The sentence names the denominator when the two differ, so the one line a
-    // SARIF viewer shows cannot be read as covering the tree.
-    let text = match (project.average_score, project.average_grade) {
-        (Some(score), Some(grade)) if census.measured_the_whole_walk() => format!(
-            "Project TDG score {score:.1}/100 ({grade}) over {} file(s).",
-            project.total_files
-        ),
-        (Some(score), Some(grade)) => format!(
-            "Project TDG score {score:.1}/100 ({grade}) over {} of {} file(s) walked; \
-             {} could not be graded (see properties.ungraded_files).",
-            project.total_files,
-            census.walked(),
-            census.ungraded
-        ),
-        _ => format!(
-            "No analyzable files were found under {}; there is no project TDG score.",
-            root.display()
-        ),
-    };
+    let text = project_score_message(project, &census, root);
 
     serde_json::json!({
         "ruleId": "TDG000",
@@ -754,6 +731,39 @@ fn sarif_project_result(project: &crate::tdg::ProjectScore, root: &Path) -> serd
             "grade_capped": project.grade_capped,
         },
     })
+}
+
+/// The one sentence a SARIF viewer shows for the project-level result.
+///
+/// GH #704: with nothing analysed there is no score to quote at all — the
+/// message used to quote the 0.0/F default while explaining that it was not
+/// based on any measured file.
+///
+/// Issue #1064: "over 1 file(s)" is true and misleading on a walk of sixteen.
+/// The sentence names the denominator when the two differ, so the one line a
+/// SARIF viewer shows cannot be read as covering the tree.
+fn project_score_message(
+    project: &crate::tdg::ProjectScore,
+    census: &ungraded::WalkCensus,
+    root: &Path,
+) -> String {
+    match (project.average_score, project.average_grade) {
+        (Some(score), Some(grade)) if census.measured_the_whole_walk() => format!(
+            "Project TDG score {score:.1}/100 ({grade}) over {} file(s).",
+            project.total_files
+        ),
+        (Some(score), Some(grade)) => format!(
+            "Project TDG score {score:.1}/100 ({grade}) over {} of {} file(s) walked; \
+             {} could not be graded (see properties.ungraded_files).",
+            project.total_files,
+            census.walked(),
+            census.ungraded
+        ),
+        _ => format!(
+            "No analyzable files were found under {}; there is no project TDG score.",
+            root.display()
+        ),
+    }
 }
 
 fn sarif_rules() -> serde_json::Value {

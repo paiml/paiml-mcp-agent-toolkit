@@ -37,13 +37,9 @@ impl LanguageMapper for BaseLanguageMapper {
             let path = entry.path();
 
             if path.is_file() {
-                if let Some(ext) = path.extension() {
-                    if let Some(ext_str) = ext.to_str() {
-                        if extensions.contains(&ext_str.to_string()) {
-                            let file_nodes = self.map_file(&path).await?;
-                            nodes.extend(file_nodes);
-                        }
-                    }
+                if has_listed_extension(&path, &extensions) {
+                    let file_nodes = self.map_file(&path).await?;
+                    nodes.extend(file_nodes);
                 }
             } else if recursive && path.is_dir() {
                 let dir_nodes = self.map_directory(&path, recursive).await?;
@@ -70,4 +66,11 @@ impl LanguageMapper for BaseLanguageMapper {
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
         Box::new(self.clone())
     }
+}
+
+/// Whether `path` has one of the mapper's file extensions.
+fn has_listed_extension(path: &Path, extensions: &[String]) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| extensions.iter().any(|listed| listed == ext))
 }

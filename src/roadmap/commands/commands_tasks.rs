@@ -102,27 +102,32 @@ fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
     println!("🚀 Starting work on task: {task_id}");
 
     if create_branch {
-        let branch_name = format!("feature/{}", task_id.to_lowercase());
-        println!("🌿 Creating branch: {branch_name}");
-
-        // Attempt to create git branch (may fail in test environment)
-        let result = std::process::Command::new("git")
-            .args(["checkout", "-b", &branch_name])
-            .output();
-
-        match result {
-            Ok(output) if output.status.success() => {
-                println!("✅ Branch created successfully");
-            }
-            Ok(_) => {
-                println!("⚠️ Branch creation attempted but may have failed");
-            }
-            Err(_) => {
-                println!("⚠️ Git not available or branch creation failed");
-            }
-        }
+        create_task_branch(&task_id);
     }
 
     println!("✅ Task {task_id} is now active");
     Ok(())
+}
+
+/// Create the `feature/<task>` branch; git failures are reported, not returned.
+fn create_task_branch(task_id: &str) {
+    let branch_name = format!("feature/{}", task_id.to_lowercase());
+    println!("🌿 Creating branch: {branch_name}");
+
+    // Attempt to create git branch (may fail in test environment)
+    let result = std::process::Command::new("git")
+        .args(["checkout", "-b", &branch_name])
+        .output();
+
+    match result {
+        Ok(output) if output.status.success() => {
+            println!("✅ Branch created successfully");
+        }
+        Ok(_) => {
+            println!("⚠️ Branch creation attempted but may have failed");
+        }
+        Err(_) => {
+            println!("⚠️ Git not available or branch creation failed");
+        }
+    }
 }

@@ -142,66 +142,75 @@ fn expand_paths_with_extensions(paths: &[PathBuf], admitted: &[&str]) -> Vec<Pat
             continue;
         }
         if path.is_dir() {
-            // ONE ignore policy, ONE implementation.
-            //
-            // This was a raw `WalkDir` filtering only hidden entries, `target`
-            // and `node_modules`. It never read .gitignore/.ignore/.pmatignore
-            // and never excluded minified or vendored assets, so the MCP tools
-            // that reach files through here analysed a different population
-            // than the CLI did for the same directory — and the two surfaces
-            // then disagreed about the same repository.
-            //
-            // Measured on ~/src/cohete (10 .rs files) before this change:
-            //
-            // ```text
-            //   pmat analyze complexity   ->  11 files, total cyclomatic    54
-            //   mcp analyze_complexity    ->  27 files, total cyclomatic  2098
-            // ```
-            //
-            // The extra 16 were generated mdbook output — `book/book/*.js` and
-            // `book/out/*.js`, including a 137,537-byte `highlight.js` across
-            // 53 lines. Minified vendor code has enormous branch counts, which
-            // is where a 39x complexity gap comes from. They are untracked but
-            // NOT gitignored, so this is the vendor/minified exclusion doing
-            // the work, not .gitignore alone.
-            //
-            // `project_files`'s doc comment already records four analyzers that
-            // hand-rolled this same walk (`cuda-tdg`, `validate-docs`,
-            // `analyze assembly-script`, `analyze web-assembly`), each of which
-            // descended into gitignored trees. This was the fifth, and the one
-            // that made two TRANSPORTS disagree rather than two commands.
-            //
-            // A directory now goes through the discovery the CLI uses. An
-            // explicitly named FILE is still passed straight through above:
-            // asking for a specific file is an instruction, not a search, and
-            // the caller may legitimately name something the walk would skip.
-            match crate::services::file_discovery::ProjectFileDiscovery::new(path.clone())
-                .discover_files()
-            {
-                // The extension whitelist STILL applies. Discovery decides which
-                // files the project admits; `SOURCE_EXTENSIONS` decides which of
-                // those this function is about. Dropping the second filter when
-                // the first was introduced widened the population by everything
-                // discovery admits and this list does not — `Cargo.toml` first
-                // among them — and the MCP satd payload duly reported 15 declined
-                // files where the CLI reported 14, one extra under
-                // `examples_demo_fuzz_generated`. Two filters, two questions;
-                // replacing one with the other is not the same as composing them.
-                Ok(found) => out.extend(found.into_iter().filter(|f| {
-                    f.extension()
-                        .and_then(|e| e.to_str())
-                        .is_some_and(|ext| admitted.contains(&ext))
-                })),
-                // Discovery failing is not a licence to fall back to a walk
-                // with a different policy — that would reintroduce the split
-                // silently and only under error conditions, which is the worst
-                // place for it to live. Yield nothing for this root; the caller
-                // sees an empty population rather than a wrong one.
-                Err(_) => {}
-            }
+            out.extend(discover_with_extensions(path, admitted));
         }
     }
     out
+}
+
+/// The files project discovery admits under the directory `dir` whose
+/// extension is in `admitted`.
+fn discover_with_extensions(dir: &Path, admitted: &[&str]) -> Vec<PathBuf> {
+    // ONE ignore policy, ONE implementation.
+    //
+    // This was a raw `WalkDir` filtering only hidden entries, `target`
+    // and `node_modules`. It never read .gitignore/.ignore/.pmatignore
+    // and never excluded minified or vendored assets, so the MCP tools
+    // that reach files through here analysed a different population
+    // than the CLI did for the same directory — and the two surfaces
+    // then disagreed about the same repository.
+    //
+    // Measured on ~/src/cohete (10 .rs files) before this change:
+    //
+    // ```text
+    //   pmat analyze complexity   ->  11 files, total cyclomatic    54
+    //   mcp analyze_complexity    ->  27 files, total cyclomatic  2098
+    // ```
+    //
+    // The extra 16 were generated mdbook output — `book/book/*.js` and
+    // `book/out/*.js`, including a 137,537-byte `highlight.js` across
+    // 53 lines. Minified vendor code has enormous branch counts, which
+    // is where a 39x complexity gap comes from. They are untracked but
+    // NOT gitignored, so this is the vendor/minified exclusion doing
+    // the work, not .gitignore alone.
+    //
+    // `project_files`'s doc comment already records four analyzers that
+    // hand-rolled this same walk (`cuda-tdg`, `validate-docs`,
+    // `analyze assembly-script`, `analyze web-assembly`), each of which
+    // descended into gitignored trees. This was the fifth, and the one
+    // that made two TRANSPORTS disagree rather than two commands.
+    //
+    // A directory now goes through the discovery the CLI uses. An
+    // explicitly named FILE is still passed straight through above:
+    // asking for a specific file is an instruction, not a search, and
+    // the caller may legitimately name something the walk would skip.
+    match crate::services::file_discovery::ProjectFileDiscovery::new(dir.to_path_buf())
+        .discover_files()
+    {
+        // The extension whitelist STILL applies. Discovery decides which
+        // files the project admits; `SOURCE_EXTENSIONS` decides which of
+        // those this function is about. Dropping the second filter when
+        // the first was introduced widened the population by everything
+        // discovery admits and this list does not — `Cargo.toml` first
+        // among them — and the MCP satd payload duly reported 15 declined
+        // files where the CLI reported 14, one extra under
+        // `examples_demo_fuzz_generated`. Two filters, two questions;
+        // replacing one with the other is not the same as composing them.
+        Ok(found) => found
+            .into_iter()
+            .filter(|f| {
+                f.extension()
+                    .and_then(|e| e.to_str())
+                    .is_some_and(|ext| admitted.contains(&ext))
+            })
+            .collect(),
+        // Discovery failing is not a licence to fall back to a walk
+        // with a different policy — that would reintroduce the split
+        // silently and only under error conditions, which is the worst
+        // place for it to live. Yield nothing for this root; the caller
+        // sees an empty population rather than a wrong one.
+        Err(_) => Vec::new(),
+    }
 }
 
 /// Expand a list of paths into the files `analyze complexity` measures.

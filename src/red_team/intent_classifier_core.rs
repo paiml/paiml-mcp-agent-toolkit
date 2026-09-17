@@ -53,17 +53,7 @@ impl IntentClassifier {
     }
 
     fn aggregate_signals(&self, signals: Vec<SignalResult>) -> IntentClassification {
-        let mut hallucination_score = 0.0;
-        let mut iteration_score = 0.0;
-        let mut uncertain_score = 0.0;
-
-        for signal in &signals {
-            match signal.vote {
-                CommitIntent::HallucinationFix => hallucination_score += signal.confidence,
-                CommitIntent::PlannedIteration => iteration_score += signal.confidence,
-                CommitIntent::Uncertain => uncertain_score += signal.confidence,
-            }
-        }
+        let (hallucination_score, iteration_score, uncertain_score) = Self::tally_votes(&signals);
 
         let total_score = hallucination_score + iteration_score + uncertain_score;
         let hallucination_ratio = hallucination_score / total_score;
@@ -92,6 +82,23 @@ impl IntentClassifier {
             signals,
             reasoning,
         }
+    }
+
+    /// Sum signal confidence per vote: (hallucination fix, planned iteration, uncertain).
+    fn tally_votes(signals: &[SignalResult]) -> (f64, f64, f64) {
+        let mut hallucination_score = 0.0;
+        let mut iteration_score = 0.0;
+        let mut uncertain_score = 0.0;
+
+        for signal in signals {
+            match signal.vote {
+                CommitIntent::HallucinationFix => hallucination_score += signal.confidence,
+                CommitIntent::PlannedIteration => iteration_score += signal.confidence,
+                CommitIntent::Uncertain => uncertain_score += signal.confidence,
+            }
+        }
+
+        (hallucination_score, iteration_score, uncertain_score)
     }
 }
 

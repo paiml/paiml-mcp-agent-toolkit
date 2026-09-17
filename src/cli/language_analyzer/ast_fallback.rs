@@ -196,6 +196,16 @@ impl ProvenanceTally {
             self.ast + self.heuristic + self.heuristic_include_fragment + self.heuristic_fallback,
         )
     }
+
+    /// Add one file to the bucket its recorded provenance names.
+    fn count_in_bucket(&mut self, provenance: &Provenance) {
+        match provenance {
+            Provenance::Ast => self.ast += 1,
+            Provenance::Heuristic => self.heuristic += 1,
+            Provenance::HeuristicIncludeFragment => self.heuristic_include_fragment += 1,
+            Provenance::HeuristicFallback => self.heuristic_fallback += 1,
+        }
+    }
 }
 
 /// Tally the ledger over the files a run actually reported.
@@ -216,12 +226,8 @@ pub fn tally<'a>(
     };
     for path in analyzed_paths {
         tally.analyzed += 1;
-        match recorded.get(path) {
-            Some(Provenance::Ast) => tally.ast += 1,
-            Some(Provenance::Heuristic) => tally.heuristic += 1,
-            Some(Provenance::HeuristicIncludeFragment) => tally.heuristic_include_fragment += 1,
-            Some(Provenance::HeuristicFallback) => tally.heuristic_fallback += 1,
-            None => {}
+        if let Some(provenance) = recorded.get(path) {
+            tally.count_in_bucket(provenance);
         }
     }
     tally

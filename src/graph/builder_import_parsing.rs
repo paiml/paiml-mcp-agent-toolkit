@@ -81,15 +81,19 @@ impl DependencyGraphBuilder {
                     imports.push(module.to_string());
                 }
             } else if trimmed.starts_with("const ") && trimmed.contains(" = require(") {
-                if let Some(start) = trimmed.find("require('") {
-                    if let Some(end) = trimmed.get(start + 9..).unwrap_or_default().find('\'') {
-                        let module = trimmed.get(start + 9..start + 9 + end).unwrap_or_default();
-                        imports.push(module.to_string());
-                    }
+                if let Some(module) = Self::required_module(trimmed) {
+                    imports.push(module.to_string());
                 }
             }
         }
 
         Ok(imports)
+    }
+
+    /// Extract the module named by a single-quoted `require('...')` call.
+    fn required_module(line: &str) -> Option<&str> {
+        let start = line.find("require('")?;
+        let end = line.get(start + 9..).unwrap_or_default().find('\'')?;
+        Some(line.get(start + 9..start + 9 + end).unwrap_or_default())
     }
 }

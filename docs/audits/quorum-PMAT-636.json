@@ -1,0 +1,215 @@
+{
+  "ticket": "PMAT-636",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master and origin/master agree",
+  "head": "fe99e6eae988a1b330b4f765f090362d218edef3",
+  "diff_sha256": "67271bd0211dd8636d0697a67d47682177f6e83b4935647a6f717230cd38dc21",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "file",
+  "prompt_bytes": 241421,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff strictly follows the review brief. It successfully extracts inline logic into simple helper functions across src/ to lower the baseline to 1680 without altering behavior. It also properly integrates the tdg-ratchet check into the ci.yml file. The ticket requirements are met. The paiml-lane-witness file was not found in the .git directory.",
+      "findings": [
+        {
+          "claim": "Adds tdg-ratchet job to ci.yml and runs scripts/cb200-ratchet-gate.sh",
+          "file": ".github/workflows/ci.yml",
+          "grounding": "cited"
+        },
+        {
+          "claim": "Extracts complex nested logic into small helper functions (e.g. ensure_chain_is_derivable, authority_ticket_id) to lower complexity below threshold",
+          "file": "src/cli/handlers.rs",
+          "grounding": "cited"
+        },
+        {
+          "claim": "Extracts inline formatting logic into format_offender_line",
+          "file": "src/services/complexity/formatting.rs",
+          "grounding": "cited"
+        },
+        {
+          "claim": "No logic changes; pure structural extractions to lower below-A grade counts",
+          "file": "src/services/ticket_crud.rs",
+          "grounding": "cited"
+        }
+      ],
+      "raw_bytes": 3364,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Independent review (Lane 2 of 3) for PMAT-636 (PR #1394). The review brief in docs/audits/quorum-PMAT-636.prompt.md, ticket PMAT-636, receipt docs/audits/impl-PMAT-636-receipt.md, and the entire 241,421-byte diff were reviewed completely against the refutation doctrine.\n\n1. Fulfillment of Acceptance Criteria:\n- Job 1 (Re-measure and publish set difference): Fully documented in the receipt using one binary over cold indexes across commit 683d6994d and master ce945d81e (+53 drift: 85 newly below A, 32 no longer below A; zero grader drift).\n- Job 2 (Reduce below-A count to <= 1688 via behavior-preserving refactors and bank count): 61 functions were surgically refactored via clean, behavior-preserving helper extractions across CLI, services, AST, and graph modules to bring them to grade A. Two pinning tests (`deep_context_text_highlights_only_nonzero_high_complexity_counts` and `markdown_component_breakdown_is_pinned_for_a_measured_file`) were introduced to guarantee no output drift. The banked baseline in `.pmat-gates.toml` was lowered from 1688 to 1680 (tightened, not loosened).\n- Job 3 (Required CI job enforcing the ratchet): Added `tdg-ratchet` job to `.github/workflows/ci.yml`, wired into `gate` needs and result-checking loop, integrated into `scripts/gate.sh`, covered by contract `contracts/cb200-ratchet-ci-v1.yaml` and test `make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check`.\n- Control Suite (Red before Green): `scripts/cb200-ratchet-gate.sh` provides a 10-arm control suite covering all failure modes (OVER, BEATEN, STALE, NOT MEASURED, DISAGREE) and live verification against a planted below-A definition.\n\n2. Refutation Doctrine Checks:\n- No gates are weakened (ratchet lowered from 1688 to 1680).\n- Raising baseline to 1741 was forbidden and was not done.\n- No tests assert the opposite of the ticket.\n- All receipt claims are substantiated by the diff.\n- No unauthorized or out-of-scope changes.\n\nVerdict: PASS.",
+      "findings": [],
+      "raw_bytes": 5248,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Independent review (Lane 3 of 3) for PMAT-636 (PR #1394). Evaluated against ticket PMAT-636, receipt docs/audits/impl-PMAT-636-receipt.md, contract contracts/cb200-ratchet-ci-v1.yaml, and the complete 241,421-byte diff in docs/audits/quorum-PMAT-636.prompt.md.\n\n1. Requirement Fulfillment:\n   - Fixes the vulnerability where `the_committed_baseline_is_the_measured_count` was unmeasurable in CI checkouts due to the lack of `.pmat/context.db`, allowing master to drift from 1688 to 1741 unobserved.\n   - Adds the required `tdg-ratchet` CI job in `.github/workflows/ci.yml` that invokes `scripts/cb200-ratchet-gate.sh` over an out-of-tree index.\n   - Wires `tdg-ratchet` into `gate` job's `needs` and verifies its result status (`needs.tdg-ratchet.result == 'success'`).\n   - Wires `tdg-ratchet-control` and `tdg-ratchet` steps into `scripts/gate.sh`.\n   - Adds contract `contracts/cb200-ratchet-ci-v1.yaml` and lib test `make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check`.\n\n2. Baseline Ratchet & Refactoring:\n   - Banks lowered baseline from 1688 to 1680 in `.pmat-gates.toml`. Baseline is tightened and cannot go up.\n   - Verifies 61 behavior-preserving function refactorings across CLI, services, and core crates to bring them to grade A without modifying semantics.\n   - Adds output pinning tests (`deep_context_text_highlights_only_nonzero_high_complexity_counts` and `markdown_component_breakdown_is_pinned_for_a_measured_file`) to protect extracted logic against regressions.\n\n3. Gate & Control Integrity:\n   - `scripts/cb200-ratchet-gate.sh` provides a comprehensive 10-arm control suite covering all non-PASS outcomes (OVER, BEATEN, STALE, NOT MEASURED, DISAGREE) as well as live execution over a planted below-A definition.\n   - No gates are weakened and no tests contradict acceptance criteria.\n\nVerdict: PASS.",
+      "findings": [
+        {
+          "claim": "ci.yml introduces the required tdg-ratchet job and wires it into gate needs and result checks (lines 331, 341, 367-381).",
+          "file": ".github/workflows/ci.yml",
+          "fix": "N/A (conforming)",
+          "grounding": "cited",
+          "line": 331
+        },
+        {
+          "claim": "The baseline in .pmat-gates.toml is lowered from 1688 to 1680, locking in the reduced below-A count without allowing upward drift.",
+          "file": ".pmat-gates.toml",
+          "fix": "N/A (conforming)",
+          "grounding": "cited",
+          "line": 404
+        },
+        {
+          "claim": "scripts/cb200-ratchet-gate.sh implements a comprehensive 10-arm control test suite verifying all non-PASS outcomes (OVER, BEATEN, STALE, NOT MEASURED, DISAGREE) and live execution against a planted below-A definition.",
+          "file": "scripts/cb200-ratchet-gate.sh",
+          "fix": "N/A (conforming)",
+          "grounding": "cited",
+          "line": 1250
+        },
+        {
+          "claim": "Behavior-preserving helper extractions across 61 complex below-A functions bring the codebase count under the baseline, accompanied by output pinning tests in advanced_analysis_handlers and tdg_handlers.",
+          "file": "src/cli/handlers/advanced_analysis_handlers.rs",
+          "fix": "N/A (conforming)",
+          "grounding": "cited",
+          "line": 1595
+        }
+      ],
+      "raw_bytes": 7310,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": ".github/workflows/ci.yml",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Adds tdg-ratchet job to ci.yml and runs scripts/cb200-ratchet-gate.sh"
+      ]
+    },
+    {
+      "file": ".github/workflows/ci.yml",
+      "line": 331,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "ci.yml introduces the required tdg-ratchet job and wires it into gate needs and result checks (lines 331, 341, 367-381)."
+      ]
+    },
+    {
+      "file": ".pmat-gates.toml",
+      "line": 404,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The baseline in .pmat-gates.toml is lowered from 1688 to 1680, locking in the reduced below-A count without allowing upward drift."
+      ]
+    },
+    {
+      "file": "scripts/cb200-ratchet-gate.sh",
+      "line": 1250,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "scripts/cb200-ratchet-gate.sh implements a comprehensive 10-arm control test suite verifying all non-PASS outcomes (OVER, BEATEN, STALE, NOT MEASURED, DISAGREE) and live execution against a planted below-A definition."
+      ]
+    },
+    {
+      "file": "src/cli/handlers.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Extracts complex nested logic into small helper functions (e.g. ensure_chain_is_derivable, authority_ticket_id) to lower complexity below threshold"
+      ]
+    },
+    {
+      "file": "src/cli/handlers/advanced_analysis_handlers.rs",
+      "line": 1595,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "Behavior-preserving helper extractions across 61 complex below-A functions bring the codebase count under the baseline, accompanied by output pinning tests in advanced_analysis_handlers and tdg_handlers."
+      ]
+    },
+    {
+      "file": "src/services/complexity/formatting.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Extracts inline formatting logic into format_offender_line"
+      ]
+    },
+    {
+      "file": "src/services/ticket_crud.rs",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "No logic changes; pure structural extractions to lower below-A grade counts"
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}

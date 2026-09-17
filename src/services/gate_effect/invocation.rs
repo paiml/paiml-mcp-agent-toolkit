@@ -104,6 +104,36 @@ pub fn find_in_job(
     out
 }
 
+/// Why the invocation on line `idx` of `script` is not evidence: the reasons
+/// `inherited` from the path to it, the line's own neutering, and running
+/// against another tree, a GitHub snapshot file or a `selected` rule subset.
+fn invocation_suppressions(
+    script: &str,
+    idx: usize,
+    selected: &Option<Vec<String>>,
+    inherited: &[String],
+) -> Vec<String> {
+    let mut suppressions = inherited.to_vec();
+    suppressions.extend(effect::assess(script, idx));
+    let line = script.lines().nth(idx).unwrap_or("");
+    if let Some(elsewhere) = foreign_tree(line) {
+        suppressions.push(format!(
+            "runs comply against another tree (--path {elsewhere}), so its verdict is not \
+             evidence for this repository"
+        ));
+    }
+    if let Some(file) = fixture_snapshot(line) {
+        suppressions.push(format!(
+            "judges GitHub-facing rules from a snapshot file (--github-snapshot {file}), so its \
+             verdict is not evidence for this repository"
+        ));
+    }
+    if selected.is_some() {
+        suppressions.push(roster_restriction_reason(selected));
+    }
+    suppressions
+}
+
 #[allow(clippy::too_many_arguments)]
 fn collect_from_script(
     project_path: &Path,
@@ -123,25 +153,9 @@ fn collect_from_script(
         let Some(idx) = effect::find_line(script, needle) else {
             continue;
         };
-        let mut suppressions = inherited.to_vec();
-        suppressions.extend(effect::assess(script, idx));
         let line = script.lines().nth(idx).unwrap_or("");
-        if let Some(elsewhere) = foreign_tree(line) {
-            suppressions.push(format!(
-                "runs comply against another tree (--path {elsewhere}), so its verdict is not \
-                 evidence for this repository"
-            ));
-        }
-        if let Some(file) = fixture_snapshot(line) {
-            suppressions.push(format!(
-                "judges GitHub-facing rules from a snapshot file (--github-snapshot {file}), so its \
-                 verdict is not evidence for this repository"
-            ));
-        }
         let selected = parse_selected(line);
-        if selected.is_some() {
-            suppressions.push(roster_restriction_reason(&selected));
-        }
+        let suppressions = invocation_suppressions(script, idx, &selected, inherited);
         out.push(Invocation {
             workflow: job.workflow.clone(),
             job_id: job.id.clone(),

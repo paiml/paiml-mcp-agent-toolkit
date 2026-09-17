@@ -214,13 +214,7 @@ fn ci_gated_shortfalls(body: &Value) -> Vec<String> {
     if required_contexts(body).is_empty() {
         missing.push("no required status check");
     }
-    match strict_status_checks(body) {
-        Some(true) => {}
-        Some(false) => {
-            missing.push("required_status_checks.strict is false, so a stale branch can merge")
-        }
-        None => missing.push("required_status_checks.strict was not reported"),
-    }
+    missing.extend(strict_status_shortfall(body));
     if force_push_allowed(body) != Some(false) {
         missing.push("force pushes are not disabled");
     }
@@ -228,6 +222,15 @@ fn ci_gated_shortfalls(body: &Value) -> Vec<String> {
         missing.push("branch deletion is not disabled");
     }
     missing.into_iter().map(str::to_string).collect()
+}
+
+/// Why `required_status_checks.strict` does not hold, or `None` when it does.
+fn strict_status_shortfall(body: &Value) -> Option<&'static str> {
+    match strict_status_checks(body) {
+        Some(true) => None,
+        Some(false) => Some("required_status_checks.strict is false, so a stale branch can merge"),
+        None => Some("required_status_checks.strict was not reported"),
+    }
 }
 
 /// Collect every branch-protection violation in `body`.

@@ -98,14 +98,7 @@ impl ContractValidation for AnalyzeEntropyContract {
 
         // Validate severity level if provided
         if let Some(severity) = &self.min_severity {
-            match severity.as_str() {
-                "low" | "medium" | "high" => {}
-                _ => {
-                    return Err(ContractError::InvalidValue(
-                        "min_severity must be 'low', 'medium', or 'high'".into(),
-                    ))
-                }
-            }
+            validate_min_severity(severity)?;
         }
 
         // Validate top_violations if provided
@@ -122,6 +115,16 @@ impl ContractValidation for AnalyzeEntropyContract {
         }
 
         Ok(())
+    }
+}
+
+/// Accept only the severity levels the entropy analysis understands.
+fn validate_min_severity(severity: &str) -> Result<(), ContractError> {
+    match severity {
+        "low" | "medium" | "high" => Ok(()),
+        _ => Err(ContractError::InvalidValue(
+            "min_severity must be 'low', 'medium', or 'high'".into(),
+        )),
     }
 }
 

@@ -20,16 +20,7 @@ pub async fn handle_work_add(
         .transpose()?;
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
-    let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
-    let service = RoadmapService::new(&roadmap_path);
-
-    // Validate roadmap exists
-    if !service.exists() {
-        anyhow::bail!(
-            "No roadmap found at {}. Run 'pmat work init' first.",
-            roadmap_path.display()
-        );
-    }
+    let service = open_existing_roadmap(&project_path)?;
 
     // Everything about the item except its id, which only the allocator may
     // decide.
@@ -40,16 +31,7 @@ pub async fn handle_work_add(
         .as_ref()
         .map(|d| vec![d.clone()])
         .unwrap_or_default();
-    let mut labels: Vec<String> = tags
-        .clone()
-        .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
-        .unwrap_or_default();
-    // #1186: `--level` is recorded as a `level:<L>` label until `work start`
-    // writes the contract, which reads it back.
-    if let Some(lv) = claimed {
-        labels.retain(|l| !l.starts_with("level:"));
-        labels.push(format!("level:{lv}"));
-    }
+    let labels = ticket_labels(tags.as_deref(), claimed);
 
     // PMAT-673 (#1193, #1169): mint the id and write the item under ONE
     // exclusive lock. This used to be `generate_next_id(&service.load()?)`
@@ -75,23 +57,6 @@ pub async fn handle_work_add(
         labels,
         notes: None,
     };
-    // #1240, ask 1: the id space is collision-proof exactly when the number
-    // comes from an authority both branches must go through. A GitHub issue
-    // number is one — GitHub allocates it centrally, so two agents cannot be
-    // handed the same one whatever either can see of the other. `max(id) + 1`
-    // has the opposite property: both branches read the same roadmap, both
-    // compute the same answer, and the merge deletes one of the two tickets.
-    //
-    // Order matters. `--github-issue` derives the id, `--id` takes one the
-    // caller already allocated, and only with neither is the sequential
-    // allocator consulted — the unsafe-in-parallel path is now the fallback
-    // rather than the default.
-    // `{n:03}` is not cosmetic: the allocator mints `PMAT-{next:03}`
-    // (roadmap_service_operations.rs), so an unpadded `PMAT-2` would be a
-    // DIFFERENT id from the existing `PMAT-002` — two rows that read as the same
-    // ticket, which is the hazard this whole flag exists to remove. Issue numbers
-    // past 999 are unaffected; the padding only binds below 100.
-    let derived = github_issue.map(|n| format!("PMAT-{n:03}"));
     // #1240, operator decision 2026-09-09: the sequential allocator is REFUSED.
     // `max(id) + 1` is derived from state one branch can see, so two agents
     // working at once compute the same answer and the merge deletes one of the
@@ -108,23 +73,8 @@ pub async fn handle_work_add(
         report_created(&next_id, &title, priority, description.as_deref(), tags.as_deref());
         return Ok(());
     }
-    let Some(id) = derived.as_deref().or(explicit_id.as_deref()) else {
-        anyhow::bail!(
-            "refusing to mint a ticket id from `max(id) + 1`.\n\n\
-             That number comes from what THIS branch can see, so two agents \
-             working at once both compute it, both are right locally, and the \
-             merge keeps one entry per id — silently deleting one of the two \
-             tickets while its DAG rows, receipt filenames, commit trailers and \
-             PR body go on citing that id (#1240).\n\n\
-             Pass one of:\n  \
-             --github-issue <N>   derive the id from the issue number. GitHub \
-             allocates those centrally, so two agents cannot be handed the same \
-             one. This is the path to prefer.\n  \
-             --id <ID>            an id you allocated deliberately from some \
-             other authority."
-        )
-    };
-    let next_id = service.add_item_with_id(id, build)?;
+    let id = authority_ticket_id(github_issue, explicit_id.as_deref())?;
+    let next_id = service.add_item_with_id(&id, build)?;
 
     report_created(&next_id, &title, priority, description.as_deref(), tags.as_deref());
 
@@ -142,6 +92,80 @@ pub async fn handle_work_add(
     }
 
     Ok(())
+}
+
+/// Open the roadmap under `project_path`, refusing when there is none.
+fn open_existing_roadmap(project_path: &Path) -> Result<RoadmapService> {
+    let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
+    let service = RoadmapService::new(&roadmap_path);
+
+    // Validate roadmap exists
+    if !service.exists() {
+        anyhow::bail!(
+            "No roadmap found at {}. Run 'pmat work init' first.",
+            roadmap_path.display()
+        );
+    }
+    Ok(service)
+}
+
+/// The labels a new ticket carries: the comma-separated `--tags`, plus the
+/// claimed `--level` as its single `level:<L>` label.
+fn ticket_labels(
+    tags: Option<&str>,
+    claimed: Option<crate::cli::handlers::work_verification_level::VerificationLevel>,
+) -> Vec<String> {
+    let mut labels: Vec<String> = tags
+        .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_default();
+    // #1186: `--level` is recorded as a `level:<L>` label until `work start`
+    // writes the contract, which reads it back.
+    if let Some(lv) = claimed {
+        labels.retain(|l| !l.starts_with("level:"));
+        labels.push(format!("level:{lv}"));
+    }
+    labels
+}
+
+/// The id for a ticket minted without the sequential allocator: derived from
+/// `--github-issue`, else the caller's `--id`, else a refusal.
+///
+/// #1240, ask 1: the id space is collision-proof exactly when the number
+/// comes from an authority both branches must go through. A GitHub issue
+/// number is one — GitHub allocates it centrally, so two agents cannot be
+/// handed the same one whatever either can see of the other. `max(id) + 1`
+/// has the opposite property: both branches read the same roadmap, both
+/// compute the same answer, and the merge deletes one of the two tickets.
+///
+/// Order matters. `--github-issue` derives the id, `--id` takes one the
+/// caller already allocated, and only with neither is the sequential
+/// allocator consulted — the unsafe-in-parallel path is now the fallback
+/// rather than the default.
+///
+/// `{n:03}` is not cosmetic: the allocator mints `PMAT-{next:03}`
+/// (roadmap_service_operations.rs), so an unpadded `PMAT-2` would be a
+/// DIFFERENT id from the existing `PMAT-002` — two rows that read as the same
+/// ticket, which is the hazard this whole flag exists to remove. Issue numbers
+/// past 999 are unaffected; the padding only binds below 100.
+fn authority_ticket_id(github_issue: Option<u64>, explicit_id: Option<&str>) -> Result<String> {
+    let derived = github_issue.map(|n| format!("PMAT-{n:03}"));
+    let Some(id) = derived.as_deref().or(explicit_id) else {
+        anyhow::bail!(
+            "refusing to mint a ticket id from `max(id) + 1`.\n\n\
+             That number comes from what THIS branch can see, so two agents \
+             working at once both compute it, both are right locally, and the \
+             merge keeps one entry per id — silently deleting one of the two \
+             tickets while its DAG rows, receipt filenames, commit trailers and \
+             PR body go on citing that id (#1240).\n\n\
+             Pass one of:\n  \
+             --github-issue <N>   derive the id from the issue number. GitHub \
+             allocates those centrally, so two agents cannot be handed the same \
+             one. This is the path to prefer.\n  \
+             --id <ID>            an id you allocated deliberately from some \
+             other authority."
+        )
+    };
+    Ok(id.to_string())
 }
 
 /// Resolve `--status` into the one status it names.

@@ -147,6 +147,39 @@ impl AgentContextIndex {
     /// LZ4+bincode blob `context.idx/functions.lz4` (v1.x).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(index_path: &Path) -> Result<Self, String> {
+        Self::discard_unusable_index(index_path)?;
+
+        // Try SQLite path first (v2.0)
+        let db_candidate = index_path.with_extension("db");
+        if db_candidate.exists() {
+            // Validate schema before attempting full load — stale DBs from older
+            // versions may lack required tables, producing confusing warnings.
+            let conn = super::sqlite_backend::open_db(&db_candidate).ok();
+            let schema_ok = conn
+                .as_ref()
+                .is_some_and(super::sqlite_backend::has_valid_schema);
+            drop(conn);
+
+            if schema_ok {
+                match Self::load_from_sqlite(&db_candidate) {
+                    Ok(index) => return Ok(index),
+                    Err(e) => {
+                        eprintln!("  Warning: SQLite load failed, falling back to blob: {e}");
+                    }
+                }
+            } else {
+                // Delete broken DB so next save() regenerates it
+                let _ = std::fs::remove_file(&db_candidate);
+            }
+        }
+
+        Self::load_from_blob(index_path)
+    }
+
+    /// Reject, and delete, an index no backend may answer from: a torn
+    /// manifest, a manifest older than its database, or a pre-0-100 score
+    /// scale. `Err` carries the reason.
+    fn discard_unusable_index(index_path: &Path) -> Result<(), String> {
         // R30: ONE scale check, ahead of both backends, with ONE remediation.
         //
         // A pre-v3.30.0 index has every required table and every required
@@ -189,32 +222,7 @@ impl AgentContextIndex {
             super::scale_guard::discard_stale_index(index_path);
             return Err(reason);
         }
-
-        // Try SQLite path first (v2.0)
-        let db_candidate = index_path.with_extension("db");
-        if db_candidate.exists() {
-            // Validate schema before attempting full load — stale DBs from older
-            // versions may lack required tables, producing confusing warnings.
-            let conn = super::sqlite_backend::open_db(&db_candidate).ok();
-            let schema_ok = conn
-                .as_ref()
-                .is_some_and(super::sqlite_backend::has_valid_schema);
-            drop(conn);
-
-            if schema_ok {
-                match Self::load_from_sqlite(&db_candidate) {
-                    Ok(index) => return Ok(index),
-                    Err(e) => {
-                        eprintln!("  Warning: SQLite load failed, falling back to blob: {e}");
-                    }
-                }
-            } else {
-                // Delete broken DB so next save() regenerates it
-                let _ = std::fs::remove_file(&db_candidate);
-            }
-        }
-
-        Self::load_from_blob(index_path)
+        Ok(())
     }
 
     /// Load index from SQLite database (v2.0 fast path).

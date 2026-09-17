@@ -23,36 +23,7 @@ async fn validate_configuration(config_service: &ConfigurationService) -> Result
     println!("{}", "=".repeat(40));
     println!();
 
-    let path = config_service.config_path();
-    let raw = match config_service.load_status() {
-        ConfigLoadStatus::Unparsable(error) => {
-            // A file that did not load is not a file with zero issues. Say
-            // which file and where, on stdout, and fail — the stderr warning
-            // the service already printed is invisible to a CI job that keeps
-            // stdout and the exit code.
-            println!("Configuration could not be loaded: {}", path.display());
-            println!("   {error}");
-            println!();
-            println!("   Every setting in that file was replaced by pmat's built-in defaults,");
-            println!("   so there is nothing here to certify. Fix the file and re-run.");
-            anyhow::bail!("configuration could not be loaded: {}", path.display());
-        }
-        ConfigLoadStatus::Absent => {
-            println!(
-                "No configuration file at {} — validating the built-in defaults",
-                path.display()
-            );
-            println!();
-            None
-        }
-        ConfigLoadStatus::Loaded => {
-            println!("Configuration source: {}", path.display());
-            println!();
-            std::fs::read_to_string(path)
-                .ok()
-                .and_then(|c| c.parse::<toml::Table>().ok())
-        }
-    };
+    let raw = load_raw_config_for_validation(config_service)?;
 
     let config = config_service.get_config()?;
     let schema = schema_pmat_toml_keys();
@@ -86,6 +57,47 @@ async fn validate_configuration(config_service: &ConfigurationService) -> Result
 
     Ok(())
 }
+
+/// Announce which file is being validated and read its raw TOML table.
+///
+/// `Ok(None)` means there is no file and the built-in defaults are what
+/// gets validated; an unparsable file is an error.
+fn load_raw_config_for_validation(
+    config_service: &ConfigurationService,
+) -> Result<Option<toml::Table>> {
+    let path = config_service.config_path();
+    let raw = match config_service.load_status() {
+        ConfigLoadStatus::Unparsable(error) => {
+            // A file that did not load is not a file with zero issues. Say
+            // which file and where, on stdout, and fail — the stderr warning
+            // the service already printed is invisible to a CI job that keeps
+            // stdout and the exit code.
+            println!("Configuration could not be loaded: {}", path.display());
+            println!("   {error}");
+            println!();
+            println!("   Every setting in that file was replaced by pmat's built-in defaults,");
+            println!("   so there is nothing here to certify. Fix the file and re-run.");
+            anyhow::bail!("configuration could not be loaded: {}", path.display());
+        }
+        ConfigLoadStatus::Absent => {
+            println!(
+                "No configuration file at {} — validating the built-in defaults",
+                path.display()
+            );
+            println!();
+            None
+        }
+        ConfigLoadStatus::Loaded => {
+            println!("Configuration source: {}", path.display());
+            println!();
+            std::fs::read_to_string(path)
+                .ok()
+                .and_then(|c| c.parse::<toml::Table>().ok())
+        }
+    };
+    Ok(raw)
+}
+
 
 /// Sections the file declares that the schema does not have (with the nearest
 /// known section, if one is close enough to name), and keys under KNOWN

@@ -74,13 +74,7 @@ pub fn format_summary_output(
                 .file_name()
                 .unwrap_or_default()
                 .to_string_lossy();
-            let risk_color = if score.probability >= 0.7 {
-                c::RED
-            } else if score.probability >= 0.3 {
-                c::YELLOW
-            } else {
-                c::GREEN
-            };
+            let risk_color = risk_color(score.probability);
             let _ = writeln!(
                 output,
                 "  {}{}{} - {}{:.1}% risk{} ({:?})",
@@ -92,6 +86,20 @@ pub fn format_summary_output(
     }
 
     output
+}
+
+/// The color a defect probability is shown in: red from 0.7, yellow from 0.3,
+/// green below.
+fn risk_color(probability: f32) -> crate::cli::colors::Sgr {
+    use crate::cli::colors as c;
+
+    if probability >= 0.7 {
+        c::RED
+    } else if probability >= 0.3 {
+        c::YELLOW
+    } else {
+        c::GREEN
+    }
 }
 
 /// Generate recommendations for high-risk files

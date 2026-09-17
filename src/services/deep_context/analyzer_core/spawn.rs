@@ -33,6 +33,34 @@ fn needs_ast_cache(analysis_type: &AnalysisType) -> bool {
     )
 }
 
+/// The `ProjectContext` the AST phase's parse already describes, so the
+/// Provability and DAG phases can reuse it instead of parsing again.
+fn project_context_from_ast(
+    ast_contexts: &[crate::services::deep_context::EnhancedFileContext],
+) -> crate::services::context::ProjectContext {
+    let files: Vec<crate::services::context::FileContext> =
+        ast_contexts.iter().map(|efc| efc.base.clone()).collect();
+    let summary = crate::services::context::ProjectSummary {
+        total_files: files.len(),
+        total_functions: files
+            .iter()
+            .flat_map(|f| f.items.iter())
+            .filter(|i| matches!(i, crate::services::context::AstItem::Function { .. }))
+            .count(),
+        total_structs: 0,
+        total_enums: 0,
+        total_traits: 0,
+        total_impls: 0,
+        dependencies: vec![],
+    };
+    crate::services::context::ProjectContext {
+        project_type: "rust".to_string(),
+        files,
+        summary,
+        graph: None,
+    }
+}
+
 impl DeepContextAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_parallel_analyses_with_progress(
@@ -56,17 +84,7 @@ impl DeepContextAnalyzer {
 
         if run_ast {
             if !ast_requested {
-                if let Some(dependent) = self
-                    .config
-                    .include_analyses
-                    .iter()
-                    .find(|t| needs_ast_cache(t))
-                {
-                    info!(
-                        "AST phase added implicitly: {:?} reads a cache only the AST phase fills",
-                        dependent
-                    );
-                }
+                self.log_implicit_ast_phase();
             }
 
             let file_classifier_config = self.config.file_classifier_config.clone();
@@ -85,27 +103,7 @@ impl DeepContextAnalyzer {
             // Extract ProjectContext from AST results for Provability/DAG reuse.
             // This eliminates 2 full analyze_project() calls (~2 GB syn parsing).
             if let AnalysisResult::Ast(Ok(ref ast_contexts)) = ast_result {
-                let files: Vec<crate::services::context::FileContext> =
-                    ast_contexts.iter().map(|efc| efc.base.clone()).collect();
-                let summary = crate::services::context::ProjectSummary {
-                    total_files: files.len(),
-                    total_functions: files
-                        .iter()
-                        .flat_map(|f| f.items.iter())
-                        .filter(|i| matches!(i, crate::services::context::AstItem::Function { .. }))
-                        .count(),
-                    total_structs: 0,
-                    total_enums: 0,
-                    total_traits: 0,
-                    total_impls: 0,
-                    dependencies: vec![],
-                };
-                prebuilt_context = Some(Arc::new(crate::services::context::ProjectContext {
-                    project_type: "rust".to_string(),
-                    files,
-                    summary,
-                    graph: None,
-                }));
+                prebuilt_context = Some(Arc::new(project_context_from_ast(ast_contexts)));
             }
 
             // Only integrate the AST result into `results.ast_contexts` when the
@@ -131,6 +129,22 @@ impl DeepContextAnalyzer {
 
         analysis_progress.finish_with_message("Analyses complete");
         Ok(results)
+    }
+
+    /// Say which requested analysis made the AST phase run when AST itself was
+    /// not requested.
+    fn log_implicit_ast_phase(&self) {
+        if let Some(dependent) = self
+            .config
+            .include_analyses
+            .iter()
+            .find(|t| needs_ast_cache(t))
+        {
+            info!(
+                "AST phase added implicitly: {:?} reads a cache only the AST phase fills",
+                dependent
+            );
+        }
     }
 
     /// Spawn all configured analysis tasks EXCEPT AST (which runs in Phase 1)
