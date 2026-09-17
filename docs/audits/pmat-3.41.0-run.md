@@ -465,3 +465,8 @@ tree: run-log behind=3 against origin/master 03f893a4a. Host up 7 hours.
 
 tree: run-log behind=3 against origin/master 03f893a4a. Host up 7 hours, 39 minutes.
 - REL-3.41.0 LIVE, PR head ebb67a216 (quorum artifact on top of the cut), armed via `pmat-merge`; 0 failing checks so far.
+
+## 2026-09-17T23:31Z — 3.41.0 cut merged (ecd97c6bc), tag v3.41.0 pushed, release.yml run 35286438196 in progress
+
+tree: run-log rebased, behind=0 against origin/master ecd97c6bc; tag v3.41.0 → ecd97c6bc.
+- `release.yml` run 35286438196 started 23:21:02Z on v3.41.0 — the first tag since v3.39.0 with a 90/75-minute clean-room budget. Publish waits on its `gate / cpu-gates`.
