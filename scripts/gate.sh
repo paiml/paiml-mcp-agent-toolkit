@@ -139,6 +139,9 @@ ci-only | mutation-diff (not required) | mutation-diff | .github/workflows/mutat
 #   D2 — roadmap-write query gate
 # A new row needs no other edit: the runner, the CI-ONLY printout and the verdict pick it up.
 # Keep this marker; scripts/gate-control.sh and src/make_gate_tests.rs assert it is here.
+# D0 — PMAT-900001 (contracts/pmat-issue-closure-v1.yaml): the call-site gate, run as CI's own step.
+# Its PR-body sibling step needs `${{ }}` and a pull_request event, so it cannot be a leg here.
+step    | gate | issue-closure | .github/workflows/ci.yml#traceability#control — no pmat code path can close a GitHub issue (PMAT-900001) | - | -
 LEGS
 }
 
