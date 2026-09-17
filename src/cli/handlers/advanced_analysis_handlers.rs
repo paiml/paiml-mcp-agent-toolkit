@@ -583,16 +583,7 @@ fn format_deep_context_text(
     let _ = writeln!(
         &mut out,
         "  High Complexity Funcs:  {}",
-        if report.complexity_metrics.high_complexity_count > 0 {
-            format!(
-                "{}{}{}",
-                c::YELLOW,
-                report.complexity_metrics.high_complexity_count,
-                c::RESET
-            )
-        } else {
-            c::number(&report.complexity_metrics.high_complexity_count.to_string())
-        }
+        high_complexity_count_text(report.complexity_metrics.high_complexity_count)
     );
     let _ = writeln!(
         &mut out,
@@ -624,16 +615,7 @@ fn format_deep_context_text(
                 c::path(&filename),
                 c::number(&format!("{:.1}", file_detail.avg_complexity)),
                 c::number(&file_detail.function_count.to_string()),
-                if file_detail.high_complexity_functions > 0 {
-                    format!(
-                        "{}{}{}",
-                        c::YELLOW,
-                        file_detail.high_complexity_functions,
-                        c::RESET
-                    )
-                } else {
-                    c::number(&file_detail.high_complexity_functions.to_string())
-                },
+                high_complexity_count_text(file_detail.high_complexity_functions),
             );
         }
         let _ = writeln!(&mut out);
@@ -645,6 +627,18 @@ fn format_deep_context_text(
     }
 
     out
+}
+
+/// A high-complexity function count for the text report: yellow when there is
+/// at least one, a plain number otherwise.
+fn high_complexity_count_text(count: usize) -> String {
+    use crate::cli::colors as c;
+
+    if count > 0 {
+        format!("{}{}{}", c::YELLOW, count, c::RESET)
+    } else {
+        c::number(&count.to_string())
+    }
 }
 
 // Tests extracted to advanced_analysis_handlers_tests.rs for file health compliance (CB-040)

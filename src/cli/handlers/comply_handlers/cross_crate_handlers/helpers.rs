@@ -115,39 +115,7 @@ pub(super) fn compute_signatures(
         .into_iter()
         .map(|chunk| {
             let chunk: Vec<_> = chunk.to_vec();
-            std::thread::spawn(move || {
-                let dup_config = DuplicateDetectionConfig {
-                    normalize_identifiers: true,
-                    normalize_literals: true,
-                    ignore_comments: true,
-                    ..Default::default()
-                };
-                let extractor = UniversalFeatureExtractor::new(dup_config);
-                let hasher = MinHashGenerator::new(128);
-                let mut signed = Vec::new();
-
-                for (crate_name, func) in &chunk {
-                    let lang = parse_language(&func.language);
-                    let tokens = extractor.extract_features(&func.source, lang);
-                    if tokens.len() < 5 {
-                        continue;
-                    }
-                    let shingles = hasher.generate_shingles(&tokens, 3);
-                    if shingles.is_empty() {
-                        continue;
-                    }
-                    let minhash = hasher.compute_signature(&shingles);
-                    signed.push(SignedFunction {
-                        crate_name: crate_name.clone(),
-                        function_name: func.function_name.clone(),
-                        signature: func.signature.clone(),
-                        file_path: func.file_path.clone(),
-                        minhash,
-                        language: lang,
-                    });
-                }
-                signed
-            })
+            std::thread::spawn(move || sign_candidates(&chunk))
         })
         .collect();
 
@@ -155,6 +123,42 @@ pub(super) fn compute_signatures(
         .into_iter()
         .flat_map(|h| h.join().unwrap_or_default())
         .collect()
+}
+
+/// MinHash-sign each `(crate name, function)` candidate, dropping those too
+/// small to fingerprint (under 5 tokens, or no shingles).
+fn sign_candidates(candidates: &[(String, FunctionEntry)]) -> Vec<SignedFunction> {
+    let dup_config = DuplicateDetectionConfig {
+        normalize_identifiers: true,
+        normalize_literals: true,
+        ignore_comments: true,
+        ..Default::default()
+    };
+    let extractor = UniversalFeatureExtractor::new(dup_config);
+    let hasher = MinHashGenerator::new(128);
+    let mut signed = Vec::new();
+
+    for (crate_name, func) in candidates {
+        let lang = parse_language(&func.language);
+        let tokens = extractor.extract_features(&func.source, lang);
+        if tokens.len() < 5 {
+            continue;
+        }
+        let shingles = hasher.generate_shingles(&tokens, 3);
+        if shingles.is_empty() {
+            continue;
+        }
+        let minhash = hasher.compute_signature(&shingles);
+        signed.push(SignedFunction {
+            crate_name: crate_name.clone(),
+            function_name: func.function_name.clone(),
+            signature: func.signature.clone(),
+            file_path: func.file_path.clone(),
+            minhash,
+            language: lang,
+        });
+    }
+    signed
 }
 
 pub(super) fn build_report(
