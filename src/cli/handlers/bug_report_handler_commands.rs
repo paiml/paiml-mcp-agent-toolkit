@@ -98,6 +98,11 @@ fn create_github_issue(title: &str, body: &str) -> Result<()> {
 
     println!("{}", c::label("Creating GitHub issue..."));
 
+    // PMAT-900001: a bug report quotes user text; an issue body is copied
+    // into PRs and commits later, so never let it carry a closing reference.
+    let title = &crate::services::closing_keywords::neutralise(title);
+    let body = &crate::services::closing_keywords::neutralise(body);
+
     // Create issue
     let output = Command::new("gh")
         .args([

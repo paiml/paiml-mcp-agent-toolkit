@@ -74,6 +74,8 @@ async fn complete_task(
             .commit_pattern
             .replace("{task_id}", task_id)
             .replace("{message}", "Complete implementation");
+        // PMAT-900001: commit_pattern is user config; never let it mint a close.
+        let message = crate::services::closing_keywords::neutralise(&message);
 
         println!("📝 Creating commit: {message}");
         std::process::Command::new("git")

@@ -187,7 +187,7 @@ prompt: |
   ```bash
   git add .
   git commit -m "$(cat <<'EOF'
-  feat: Add CSV export format (fixes #${ISSUE_NUMBER})
+  feat: Add CSV export format (Refs #${ISSUE_NUMBER})
 
   Implements GitHub issue #${ISSUE_NUMBER}
 
@@ -215,7 +215,7 @@ prompt: |
   gh pr create \
     --title "feat: Add CSV export format" \
     --body "$(cat <<'EOF'
-  Fixes #${ISSUE_NUMBER}
+  Closes #${ISSUE_NUMBER}
 
   ## Summary
   - Implements CSV export format with --format csv flag
@@ -273,14 +273,15 @@ prompt: |
   pmat validate-readme
   ```
 
-  ## STEP 10: CLOSE ISSUE
+  ## STEP 10: LET THE MERGE CLOSE THE ISSUE
 
-  **Issue will auto-close when PR merges if using "Closes #NNN" in commit/PR**
+  **Do not close the issue by hand.** The PR body's own line `Closes #NNN` closes it when
+  the PR merges, and only then. If the PR must leave the issue open, write `Refs #NNN`.
 
-  **Or manually close with summary:**
-  ```bash
-  gh issue close ${ISSUE_NUMBER} --comment "Implemented in PR #XXX. All acceptance criteria met."
-  ```
+  GitHub closes an issue on ANY close/fix/resolve word (any tense, optional colon) placed
+  directly before `#NNN` in a merged PR body or a commit on the default branch — including
+  `no-close: #NNN` and a subject ending `(fixes #NNN)`. pmat's commit-msg hooks refuse those;
+  a line that starts with `Closes #NNN` is the one form they accept.
 
   ## WORKFLOW SUMMARY
 
@@ -325,7 +326,7 @@ prompt: |
 
   - Use `gh issue list --assignee @me` to see your assigned issues
   - Use `gh pr status` to check PR status
-  - Link PRs to issues with "Closes #NNN" or "Fixes #NNN"
+  - Link a PR to the issue it completes with its own line `Closes #NNN`; mention any other issue as `Refs #NNN`
   - Update issue comments with progress
   - Ask for clarification if acceptance criteria unclear
 
@@ -366,9 +367,7 @@ github_integration:
     - "gh pr create"
     - "gh pr status"
   commit_keywords:
-    - "Fixes #NNN"
     - "Closes #NNN"
-    - "Resolves #NNN"
 language_support:
   rust:
     test_file: "tests/github_issue_NNN_tests.rs"

@@ -1,0 +1,189 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-17"
+  author: PAIML Engineering
+  registry: true
+  references:
+    - "aprender issue 3091 — a PR body line `no-close: <ref>` closed the issue it was written to keep open"
+    - "commit 1cdffdcca — a PR body closed issue 1339 here, leaving its roadmap row planned (CB-2115 red on master)"
+    - "PMAT-900001 plan grill, resolutions D1-D10 — docs/audits/impl-PMAT-900001-receipt.md"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  contract: pmat-issue-closure-v1
+  status: active
+  description: >
+    An issue in a pmat-managed repository closes in exactly one way: a merged pull request
+    whose own body carries a line starting `Closes #N`. GitHub also closes an issue on any
+    close/fix/resolve word, in any tense and with an optional colon, placed directly before
+    `#N` or `owner/repo#N` in a merged PR body or a commit that reaches the default branch.
+    It reads no word boundary a human would, so `no-close: #N` closes. pmat interpolated free
+    text (roadmap titles, analysis output) into commit subjects and issue bodies, told users
+    to run `gh issue close` after `pmat work complete`, and taught a `(fixes #N)` subject in
+    its github-ticket prompt. This contract states what now holds. No pmat code path closes
+    an issue. Every text pmat emits is neutralised. Every commit-msg hook pmat writes, and
+    CI on every pull request, refuse a closing reference that is not a `Closes #N` line.
+
+equations:
+  no_call_site_closes_an_issue:
+    formula: "calls(closers) \\ (definitions ∪ tests) = ∅, where closers = {.close_issue(, .update_issue(, (Some(\"closed\") as an argument), closeIssue, \"issue\",\"close\" argv, gh issue close, state=closed, .state(IssueState::Closed)}"
+    domain: "Rust function bodies indexed by pmat query, at any revision"
+    codomain: "PASS | FAIL (scripts/issue-closure-gate.sh query leg)"
+    invariants:
+      - "a hit in a function annotated #[test] or #[tokio::test] is a test, and is skipped"
+      - "advice text that hands a user `gh issue close` is a closer: pmat telling a human to close is pmat closing"
+    preconditions: []
+
+  definitions_are_counted_apart_and_must_be_found:
+    formula: "for all d in DEFINITIONS: on_disk(d) and returned_by(pmat query --literal 'fn name(', d); else FAIL"
+    domain: "DEFINITIONS = github_client.rs {update_issue, close_issue, reopen_issue}, github_issues_client.rs {update_issue}"
+    codomain: "PASS | FAIL"
+    invariants:
+      - "the definitions are public client API (github-api feature) and an uncompiled orphan file; they are kept, uncalled, and named — never silently allowed"
+      - "a definition that is renamed or deleted fails the gate until DEFINITIONS and this contract change in the same commit"
+    preconditions: []
+
+  a_blind_leg_is_not_a_clean_leg:
+    formula: "scanned(leg) = 0  =>  FAIL, for leg in {query, text}"
+    domain: "any tree the gate is pointed at"
+    codomain: "PASS | FAIL"
+    invariants:
+      - "an empty tree exits 1, never 0"
+    preconditions: []
+
+  non_indexed_emitters_are_scanned:
+    formula: "git grep -E TEXT_ERE over tracked files \\ (docs/**, *.md, the gate's own files) \\ Rust test regions = ∅"
+    domain: "scripts, YAML, prompts, Makefiles and Rust consts — everything pmat query cannot see"
+    codomain: "PASS | FAIL (scripts/issue-closure-gate.sh text leg)"
+    invariants:
+      - "in a .rs file a hit at or after its first #[cfg(test)] line, or in a *test*.rs file, is a test; a const after a mid-file test module is the known blind spot, and function bodies there are still covered by the query leg"
+    preconditions: []
+
+  one_predicate_two_renderings:
+    formula: "for all fixtures t: rust_find(t) = shell_hits(t), and closing_keywords_lint.sh contains PATTERN byte for byte"
+    domain: "src/services/closing_keywords.rs FIXTURES"
+    codomain: bool
+    invariants:
+      - "a line that starts with `Closes #N` is the one sanctioned form; the rest of that line is still judged"
+      - "neutralise(t) inserts `issue ` before the reference, so find(neutralise(t)) = ∅ and the author's words survive"
+    preconditions: []
+
+  every_commit_msg_hook_pmat_writes_refuses_a_close:
+    formula: "for all writers w in {pmat hooks install, pmat work init (hook_manager), quality::git_hooks}: exit(hook_w(msg)) ≠ 0 <=> closes(msg), on a message every writer's own ticket and format rules accept"
+    domain: "commit messages"
+    codomain: bool
+    invariants:
+      - "the three writers splice one snippet, src/services/closing_keywords_lint.sh; none carries its own copy"
+      - "the lint runs before any ticket rule and refuses regardless of [hooks] strict: the sanctioned form always exists, so refusing costs no expressible intent"
+    preconditions: []
+
+  pmat_emitters_never_mint_a_close:
+    formula: "for all emitted texts e from {work complete commit, 5 other commit builders, 4 issue builders}: find(e) = ∅; the github-ticket prompt rendered with an issue number has find = ∅ and teaches `Closes #N`; work complete never advises `gh issue close`"
+    domain: "pmat's commit and issue emitters, and prompts/github-ticket.yaml"
+    codomain: bool
+    invariants:
+      - "work complete commits with --no-verify (the CB-2113 hook refuses a commit naming a completed item), so it lints its own message in-process and does not commit a closing one"
+    preconditions: []
+
+  pr_title_and_body_are_linted:
+    formula: "on every pull_request event: exit(pr-body-closing-lint --pr N) ≠ 0 <=> closes(live title + body); an unreadable PR exits 2, never 0"
+    domain: "the LIVE title and body read through gh at step run time, not the event payload"
+    codomain: "exit code in {0, 1, 2}"
+    invariants:
+      - "the title is judged: a merge commit carries it onto the default branch"
+      - "the required step (ci.yml traceability) runs on push events; pr-checks.yml re-runs the lint on `edited`, which ci.yml does not trigger on"
+    preconditions: []
+
+proof_obligations:
+  - type: invariant
+    property: "no pmat code path outside the named definitions and tests can close a GitHub issue"
+    formal: "calls(closers) \\ (DEFINITIONS ∪ tests) = ∅"
+    applies_to: no_call_site_closes_an_issue
+  - type: invariant
+    property: "every named definition is on disk and found by the query leg"
+    formal: "∀d ∈ DEFINITIONS: on_disk(d) ∧ found(d)"
+    applies_to: definitions_are_counted_apart_and_must_be_found
+  - type: postcondition
+    property: "a leg that scanned nothing fails"
+    formal: "scanned(leg) = 0 ⇒ exit = 1"
+    applies_to: a_blind_leg_is_not_a_clean_leg
+  - type: invariant
+    property: "no script, YAML, prompt or Rust const outside tests hands out a close"
+    formal: "grep(TEXT_ERE, tracked \\ excluded) \\ tests = ∅"
+    applies_to: non_indexed_emitters_are_scanned
+  - type: equivalence
+    property: "the Rust predicate and the shell snippet judge every fixture alike"
+    formal: "∀t ∈ FIXTURES: find(t) ≡ hits_sh(t)"
+    applies_to: one_predicate_two_renderings
+  - type: invariant
+    property: "all three commit-msg hook writers refuse exactly the closing fixtures"
+    formal: "∀w, t: refuses(w, t) ⇔ closes(t)"
+    applies_to: every_commit_msg_hook_pmat_writes_refuses_a_close
+  - type: postcondition
+    property: "pmat's emitted commits, issues and prompt carry no unintended closing reference, and work complete advises no hand close"
+    formal: "∀e ∈ emitted: find(e) = ∅ ∧ ¬advises_hand_close(work_complete)"
+    applies_to: pmat_emitters_never_mint_a_close
+  - type: postcondition
+    property: "a PR whose live title or body would close an unnamed issue is red, and an unreadable PR is never green"
+    formal: "closes(title ⧺ body) ⇔ exit = 1; unreadable ⇒ exit = 2"
+    applies_to: pr_title_and_body_are_linted
+
+falsification_tests:
+  - id: no_call_site_closes_an_issue
+    rule: "a planted `c.close_issue(7)` call, and a planted `gh` argv [\"issue\", \"close\", \"7\"], each turn the gate RED naming the planted function"
+    prediction: "self-test arms rust-call and gh-args exit 1 with `CALL SITE src/lib.rs:… finish`; origin/master's commit.rs (its `gh issue close` advice) is RED on this tree"
+    test: "bash scripts/issue-closure-gate.sh \"$PMAT_BIN\" --self-test && bash scripts/issue-closure-gate.sh \"$PMAT_BIN\""
+    if_fails: "a new code path closes an issue pmat was never asked to close, and nothing notices until the issue is gone"
+  - id: definitions_are_counted_apart_and_must_be_found
+    rule: "renaming close_issue in the fixture turns the gate RED"
+    prediction: "self-test arm definition-renamed exits 1 with `BLIND: definition src/services/github_client.rs:close_issue`"
+    test: "bash scripts/issue-closure-gate.sh \"$PMAT_BIN\" --self-test"
+    if_fails: "the query leg goes blind (an index change, a pattern typo) and reports zero call sites it never looked for"
+  - id: a_blind_leg_is_not_a_clean_leg
+    rule: "an empty tree is RED"
+    prediction: "self-test arm vacuous exits 1 with `VACUOUS: 0 Rust files` and `VACUOUS: 0 files in the text leg's pathspec`"
+    test: "bash scripts/issue-closure-gate.sh \"$PMAT_BIN\" --self-test"
+    if_fails: "a gate pointed at the wrong directory passes"
+  - id: non_indexed_emitters_are_scanned
+    rule: "a planted `gh issue close 7` in a script, and in a Rust const, each turn the gate RED"
+    prediction: "self-test arms script and rust-const exit 1 with `TEXT HIT scripts/ok.sh` and `TEXT HIT src/advice.rs`"
+    test: "bash scripts/issue-closure-gate.sh \"$PMAT_BIN\" --self-test"
+    if_fails: "a closer in a hook template, script or prompt — the places pmat query cannot see — passes"
+  - id: one_predicate_two_renderings
+    rule: "the shell snippet and the Rust predicate disagree on no fixture; dropping the optional colon from PATTERN turns tests RED"
+    prediction: "closing_keywords::tests all pass; the colon mutant turned 4 of 6 RED (commit 75a9a28bd)"
+    test: "cargo test --lib closing_keyword"
+    if_fails: "the hook and the emitter neutraliser drift, so a message pmat judges clean is refused by its own hook, or worse, the reverse"
+  - id: every_commit_msg_hook_pmat_writes_refuses_a_close
+    rule: "removing the lint call from one writer's template turns its RED fixtures GREEN"
+    prediction: "every_commit_msg_hook_pmat_writes_refuses_exactly_the_closing_fixtures RED naming `hook_manager: \"no-close: #3091\"` under that mutant (commit e0f1ad8e4)"
+    test: "cargo test --lib closing_keyword"
+    if_fails: "one of three hook writers lets a closing commit through while the other two refuse it"
+  - id: pmat_emitters_never_mint_a_close
+    rule: "interpolating the raw roadmap title into the work complete commit, or restoring origin/master's github-ticket prompt, is RED"
+    prediction: "work_complete_commit_message_neutralises_a_closing_title and the_github_ticket_prompt_teaches_only_the_sanctioned_close RED under those mutants (commit e0f1ad8e4)"
+    test: "cargo test --lib closing_keyword"
+    if_fails: "a roadmap titled with a closing reference closes an unrelated issue when its completion commit reaches master"
+  - id: pr_title_and_body_are_linted
+    rule: "the brief's RED fixtures are refused and its GREEN fixtures pass; an unreadable PR exits 2"
+    prediction: "--self-test: 4 RED exit 1, 4 GREEN exit 0; --pr 999999999 exits 2"
+    test: "bash scripts/pr-body-closing-lint.sh --self-test"
+    if_fails: "a PR body closes an issue on merge (aprender#3091, #1339) with every check green"
+
+kani_harnesses: []
+
+qa_gate:
+  id: ISSUE-CLOSURE
+  name: pmat never closes an issue unasked
+  description: >
+    Shell, YAML and Rust. The call-site obligations are carried by scripts/issue-closure-gate.sh,
+    whose --self-test plants each defect in a scratch repository before its verdict on this
+    tree is read. The predicate, hook and emitter obligations are lib tests under
+    `cargo test --lib closing_keyword`, which ci / gate reaches. The CI steps live in ci.yml's
+    traceability job, which the required top-level `gate` job needs; `make gate` runs the
+    call-site step verbatim through its step row `issue-closure`.
+  checks:
+    - validation
+    - falsification
+  pass_criteria: >
+    issue-closure-gate --self-test prints "every arm as expected" and the tree run prints PASS;
+    pr-body-closing-lint --self-test prints "every fixture as expected";
+    cargo test --lib closing_keyword passes.

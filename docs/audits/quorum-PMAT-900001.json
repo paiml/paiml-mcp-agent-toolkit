@@ -1,0 +1,182 @@
+{
+  "ticket": "PMAT-900001",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master and origin/master agree",
+  "head": "f97d1f296523cd688f0fbaec0e28c4c02f5bbf6b",
+  "diff_sha256": "e396af0519f14821abea539d70019a56f25f80b9f8fa199b2a6ce1b33de432bf",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "file",
+  "prompt_bytes": 157896,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "I have reviewed the PMAT-900001 diff, ticket, and receipt. The diff correctly implements the issue-closure contract and prevents unintentional issue closures by neutralising emitters and implementing a gate/linting system for PRs and commits. I found no evidence that any test asserts the opposite of the ticket, no gate is weakened, and all receipt claims are backed by the diff. The implementation of `pmat work edit --notes` correctly satisfies the required roadmap cross-reference capability. No refutations were found.",
+      "findings": [],
+      "raw_bytes": 2411,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Independent review (Lane 2 of 3) for PMAT-900001:\n\nThe diff fully satisfies the ticket PMAT-900001, the receipt, and the issue-closure contract (contracts/pmat-issue-closure-v1.yaml) without refutation:\n1. Issue-Closure Contract: Validated with pv validate (0 errors, 0 warnings; 8 equations, 8 proof obligations, 8 falsification tests).\n2. Call-Site Gate: scripts/issue-closure-gate.sh passes its --self-test against all 6 planted defect arms. Scanned cleanly against the tree (4498 Rust files, 5144 text files, 4/4 definitions found, 0 call sites, 0 text hits). Integrated into ci.yml and scripts/gate.sh (row 46), verified by scripts/gate-control.sh (arm 12 FRESH-BINARY passing).\n3. Closing-Keyword Lint & Emitter Neutralisation: Single shared regex pattern across Rust (src/services/closing_keywords.rs) and shell (src/services/closing_keywords_lint.sh), confirmed byte-for-byte by differential unit tests. All 3 commit-msg hook writers splice the shared snippet. All 6 commit builders and 4 issue builders route free text through closing_keywords::neutralise. prompts/github-ticket.yaml teaches only the sanctioned Closes #N. scripts/pr-body-closing-lint.sh passes --self-test. cargo test --lib closing_keyword (12 tests) passes cleanly.\n4. Work Edit Notes & Roadmap Cross-Reference: pmat work edit --notes implemented and tested (work_add_append_only_edit_notes_sets_notes_and_keeps_the_criteria passes). Roadmap item PMAT-900001 is bound to GitHub issue #1395, and PMAT-1369 carries the upstream aprender#3397-3399 cross-reference in notes.\n5. Ledgers & Gates: Status ledgers (orphan-files-ledger.md, unrun-tests-ledger.md) are verified current. No gates were weakened, and no out-of-scope changes were introduced.\n\nVerdict: PASS.",
+      "findings": [],
+      "raw_bytes": 5320,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Independent review (Lane 3 of 3) for PMAT-900001: The diff satisfies all ticket requirements, matches the receipt and contract, and contains no refuting evidence. All deliverables (issue-closure contract, call-site gate with anti-vacuous self-test, shared closing-keyword lint in hooks and CI, emitter neutralisation, and work edit --notes cross-referencing) are verified and pass testing cleanly.",
+      "findings": [
+        {
+          "claim": "pv validate confirms 0 errors and 0 warnings on contracts/pmat-issue-closure-v1.yaml, pv status confirms 8 equations, 8 proof obligations, and 8 falsification tests, and pv-obligation-gate.py reports 0 problems.",
+          "file": "contracts/pmat-issue-closure-v1.yaml",
+          "grounding": "measured",
+          "line": 1
+        },
+        {
+          "claim": "The issue-closure gate self-test verifies that all planted defects (rust-call, gh-args, script, rust-const, definition-renamed, vacuous) trigger exit 1 and the clean tree exits 0.",
+          "file": "scripts/issue-closure-gate.sh",
+          "grounding": "measured",
+          "line": 1212
+        },
+        {
+          "claim": "Running issue-closure-gate.sh against target/debug/pmat scanned 4498 Rust files and 5144 text files, finding 4/4 definitions, 0 call sites, and 0 illegal text hits, exiting 0 PASS.",
+          "file": "scripts/issue-closure-gate.sh",
+          "grounding": "measured",
+          "line": 1104
+        },
+        {
+          "claim": "The PR body closing lint self-test verifies that all 4 RED fixtures exit 1 and all 4 GREEN fixtures exit 0, and an unreadable PR exits 2.",
+          "file": "scripts/pr-body-closing-lint.sh",
+          "grounding": "measured",
+          "line": 1292
+        },
+        {
+          "claim": "All unit and differential tests for closing keywords, hook templates, and prompt/emitter neutralisation pass (12 passed, 0 failed in cargo test --lib closing_keyword).",
+          "file": "src/services/closing_keywords.rs",
+          "grounding": "measured",
+          "line": 1964
+        },
+        {
+          "claim": "The pmat work edit --notes implementation correctly updates notes without replacing acceptance criteria, verified by work_add_append_only_edit_notes_sets_notes_and_keeps_the_criteria.",
+          "file": "src/tests/work_add_append_only_tests.rs",
+          "grounding": "measured",
+          "line": 2330
+        }
+      ],
+      "raw_bytes": 6264,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "contracts/pmat-issue-closure-v1.yaml",
+      "line": 1,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "pv validate confirms 0 errors and 0 warnings on contracts/pmat-issue-closure-v1.yaml, pv status confirms 8 equations, 8 proof obligations, and 8 falsification tests, and pv-obligation-gate.py reports 0 problems."
+      ]
+    },
+    {
+      "file": "scripts/issue-closure-gate.sh",
+      "line": 1104,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "Running issue-closure-gate.sh against target/debug/pmat scanned 4498 Rust files and 5144 text files, finding 4/4 definitions, 0 call sites, and 0 illegal text hits, exiting 0 PASS."
+      ]
+    },
+    {
+      "file": "scripts/issue-closure-gate.sh",
+      "line": 1212,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The issue-closure gate self-test verifies that all planted defects (rust-call, gh-args, script, rust-const, definition-renamed, vacuous) trigger exit 1 and the clean tree exits 0."
+      ]
+    },
+    {
+      "file": "scripts/pr-body-closing-lint.sh",
+      "line": 1292,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The PR body closing lint self-test verifies that all 4 RED fixtures exit 1 and all 4 GREEN fixtures exit 0, and an unreadable PR exits 2."
+      ]
+    },
+    {
+      "file": "src/services/closing_keywords.rs",
+      "line": 1964,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "All unit and differential tests for closing keywords, hook templates, and prompt/emitter neutralisation pass (12 passed, 0 failed in cargo test --lib closing_keyword)."
+      ]
+    },
+    {
+      "file": "src/tests/work_add_append_only_tests.rs",
+      "line": 2330,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "The pmat work edit --notes implementation correctly updates notes without replacing acceptance criteria, verified by work_add_append_only_edit_notes_sets_notes_and_keeps_the_criteria."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": true,
+    "disarmed": true,
+    "note": "auto-merge was armed from an earlier round; disarmed before lanes launched"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}

@@ -230,6 +230,23 @@ jobs:
       - name: control — an active spec with no current review must be refused (CB-2111, exit 1)
         run: bash scripts/spec-review-control.sh ./target/debug/pmat
 
+      # PMAT-900001 (contracts/pmat-issue-closure-v1.yaml). An issue closes when a merged PR
+      # body carries its own Closes line, and in no other way pmat starts. The gate plants a
+      # closer call, a gh argv, a script, a Rust const, a renamed definition and an empty tree
+      # in scratch repositories and must see each RED before its verdict on this tree is read.
+      # `make gate` runs this step verbatim (scripts/gate.sh row `issue-closure`).
+      - name: control — no pmat code path can close a GitHub issue (PMAT-900001)
+        run: bash scripts/issue-closure-gate.sh ./target/debug/pmat --self-test && bash scripts/issue-closure-gate.sh ./target/debug/pmat
+      # The PR's LIVE title and body, read through gh when the step runs: a body edited after
+      # the event is judged as it is now on a re-run. ci.yml does not trigger on `edited`;
+      # pr-checks.yml re-runs the same lint there.
+      - name: a PR title and body close only what their own Closes lines name (PMAT-900001)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: bash scripts/pr-body-closing-lint.sh --self-test && bash scripts/pr-body-closing-lint.sh --pr "$PR_NUMBER"
+
       # PMAT-1313. The fast PR lane is a claim about what still runs; this is the
       # arm set that makes the claim falsifiable. It reads files only — no build,
       # no binary — so it costs the job nothing.

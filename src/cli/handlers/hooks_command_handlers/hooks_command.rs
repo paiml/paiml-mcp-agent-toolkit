@@ -421,6 +421,10 @@ impl HooksCommand {
         COMMIT_MSG_HOOK_TEMPLATE
             .replace("__STRICT__", if strict { "1" } else { "0" })
             .replace("__PATTERN__", pattern)
+            .replace(
+                crate::services::closing_keywords::LINT_PLACEHOLDER,
+                crate::services::closing_keywords::LINT_SH,
+            )
     }
 
     /// Remove the `commit-msg` hook if it is ours.
@@ -512,6 +516,10 @@ const COMMIT_MSG_HOOK_TEMPLATE: &str = r##"#!/usr/bin/env bash
 # Bypass (emergency, audited by the comply check over the branch): git commit --no-verify
 set -u
 MSG_FILE="$1"
+# PMAT-900001: a closing keyword before #N closes that issue when this commit
+# reaches the default branch. Refused whatever the ticket checks below say.
+__PMAT_CLOSING_KEYWORD_LINT__
+pmat_closing_keyword_commit_msg_lint "$MSG_FILE" || exit 1
 PATTERN='__PATTERN__'
 STRICT=__STRICT__
 ROADMAP=docs/roadmaps/roadmap.yaml

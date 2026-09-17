@@ -163,26 +163,81 @@ pub(super) fn update_changelog(project_path: &PathBuf, item: &RoadmapItem) {
     }
 }
 
+/// The commit subject/body `pmat work complete` writes for a finished item,
+/// shared by [`print_complete_next_steps`] (prints it for the user to run)
+/// and [`auto_commit_work_files`] (runs it directly).
+///
+/// `item.title` is free text pmat did not write — a roadmap title of `this
+/// fixes #5` must not become a line GitHub reads as a close once this
+/// message lands in a commit that reaches the default branch, so the title
+/// is routed through [`closing_keywords::neutralise`] before interpolation
+/// (PMAT-900001).
+pub(super) fn work_complete_commit_message(
+    item: &RoadmapItem,
+    id: &str,
+    metadata: &CommitMetadata,
+) -> String {
+    let rust_score_line = rust_score_trailer(metadata.rust_project_score);
+    let title = crate::services::closing_keywords::neutralise(&item.title);
+    format!(
+        "feat: {} (Refs {})\n\nWork-Item: {}\nTDG-Score: {:.1}/100\nRepo-Score: {:.1}/100\n{}Metrics: .pmat-metrics/commit-*-meta.json",
+        title, id, item.id, metadata.tdg_score, metadata.repo_score, rust_score_line
+    )
+}
+
+/// What to tell the user about the linked GitHub issue: pmat never closes it
+/// itself; only a merged PR whose own body carries its own `Closes #N` line
+/// does (the one sanctioned form — grill D9 / PMAT-900001).
+pub(super) fn github_issue_advice(item: &RoadmapItem) -> Option<String> {
+    item.github_issue.map(|n| {
+        format!("Issue #{n} stays open until a merged PR body carries its own line: Closes #{n}")
+    })
+}
+
+/// Judge `commit_msg`, then stage `files`, for [`auto_commit_work_files`].
+/// Prints why and returns false when the commit must not happen.
+///
+/// That commit runs with `--no-verify` (grill D9 / CB-2113: the commit-msg hook
+/// pmat writes refuses a commit naming a *completed* item, and this message
+/// carries no `Pmat-Ticket:` trailer), so no hook ever lints it. pmat lints it
+/// itself, before staging anything: a closing reference here would close the
+/// linked issue the moment the commit reaches the default branch (PMAT-900001).
+pub(super) fn ready_to_commit(project_path: &Path, files: &[&str], commit_msg: &str) -> bool {
+    let hits = crate::services::closing_keywords::find(commit_msg);
+    if !hits.is_empty() {
+        println!(
+            "{}",
+            c::warn("Auto-commit: commit message would close a GitHub issue, not committing")
+        );
+        for hit in &hits {
+            println!("   line {}: {}", hit.line, hit.text);
+        }
+        return false;
+    }
+    let add_status = std::process::Command::new("git")
+        .arg("add")
+        .args(files)
+        .current_dir(project_path)
+        .status();
+    if !matches!(add_status, Ok(s) if s.success()) {
+        println!("{}", c::warn("Auto-commit: failed to stage files"));
+        return false;
+    }
+    true
+}
+
 /// Print completion next steps with commit metadata (helper for handle_work_complete)
 pub(super) fn print_complete_next_steps(item: &RoadmapItem, id: &str, metadata: &CommitMetadata) {
     println!("{}", c::subheader("🎯 Next steps:"));
-    let rust_score_line = metadata.rust_project_score;
-    let rust_score_line = rust_score_trailer(rust_score_line);
-    let commit_msg = format!(
-        "feat: {} (Refs {})\n\nWork-Item: {}\nTDG-Score: {:.1}/100\nRepo-Score: {:.1}/100\n{}Metrics: .pmat-metrics/commit-*-meta.json",
-        item.title, id, item.id, metadata.tdg_score, metadata.repo_score, rust_score_line
-    );
+    let commit_msg = work_complete_commit_message(item, id, metadata);
 
     println!("   1. git commit -m \"$(cat <<'EOF'");
     println!("{}", commit_msg);
     println!("EOF");
     println!(")\"");
 
-    if item.is_github_synced() {
-        println!(
-            "   2. Close GitHub issue: gh issue close {}",
-            item.github_issue.expect("internal error")
-        );
+    if let Some(advice) = github_issue_advice(item) {
+        println!("   2. {}", advice);
     }
     println!();
 }
@@ -216,27 +271,12 @@ pub(super) fn auto_commit_work_files(
         }
     }
 
-    // git add the modified files
-    let add_status = Command::new("git")
-        .arg("add")
-        .args(&files_to_add)
-        .current_dir(project_path)
-        .status();
-
-    if !matches!(add_status, Ok(s) if s.success()) {
-        println!("{}", c::warn("Auto-commit: failed to stage files"));
+    let commit_msg = work_complete_commit_message(item, id, metadata);
+    if !ready_to_commit(project_path, &files_to_add, &commit_msg) {
         println!();
         print_complete_next_steps(item, id, metadata);
         return;
     }
-
-    // Build commit message
-    let rust_score_line = metadata.rust_project_score;
-    let rust_score_line = rust_score_trailer(rust_score_line);
-    let commit_msg = format!(
-        "feat: {} (Refs {})\n\nWork-Item: {}\nTDG-Score: {:.1}/100\nRepo-Score: {:.1}/100\n{}Metrics: .pmat-metrics/commit-*-meta.json",
-        item.title, id, item.id, metadata.tdg_score, metadata.repo_score, rust_score_line
-    );
 
     let commit_status = Command::new("git")
         .args(["commit", "-m", &commit_msg, "--no-verify"])
@@ -247,12 +287,8 @@ pub(super) fn auto_commit_work_files(
         Ok(s) if s.success() => {
             println!();
             println!("{}", c::pass("Auto-committed work completion files"));
-            if item.is_github_synced() {
-                println!(
-                    "{} Next: gh issue close {}",
-                    c::label("🎯"),
-                    item.github_issue.expect("internal error")
-                );
+            if let Some(advice) = github_issue_advice(item) {
+                println!("{} Next: {}", c::label("🎯"), advice);
             }
             println!("{} Next: git push origin master", c::label("🎯"));
         }
@@ -346,5 +382,103 @@ mod rust_score_trailer_tests {
             .await
             .expect("read");
         assert_eq!(got, Some(236.9));
+    }
+}
+
+#[cfg(test)]
+mod closing_keyword_tests {
+    //! PMAT-900001: `pmat work complete` must never emit a closing keyword
+    //! adjacent to `#N` in its own commit message, and must never advise the
+    //! user to hand-close the linked issue — the merged PR's own `Closes #N`
+    //! line does that.
+    use super::*;
+    use crate::models::roadmap::RoadmapItem;
+    use crate::services::closing_keywords;
+
+    fn item_titled(title: &str) -> RoadmapItem {
+        let mut item = RoadmapItem::new("PMAT-1".to_string(), title.to_string());
+        item.github_issue = Some(5);
+        item
+    }
+
+    fn metadata() -> CommitMetadata {
+        CommitMetadata {
+            commit_sha: None,
+            work_item_id: "PMAT-1".to_string(),
+            prompt: "prompt".to_string(),
+            tdg_score: 90.0,
+            repo_score: 80.0,
+            rust_project_score: None,
+            timestamp: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn work_complete_commit_message_neutralises_a_closing_title() {
+        for title in ["this fixes #5", "no-close: #3091"] {
+            let item = item_titled(title);
+            let msg = work_complete_commit_message(&item, "PMAT-1", &metadata());
+            assert!(
+                closing_keywords::find(&msg).is_empty(),
+                "title {title:?} produced a closing commit message: {msg:?}"
+            );
+        }
+        let msg =
+            work_complete_commit_message(&item_titled("this fixes #5"), "PMAT-1", &metadata());
+        assert!(
+            msg.contains("fixes issue #5"),
+            "neutralised words must survive: {msg:?}"
+        );
+    }
+
+    #[test]
+    fn github_issue_advice_never_tells_the_user_to_hand_close() {
+        let item = item_titled("a plain title");
+        let advice = github_issue_advice(&item).expect("github-synced item has advice");
+        assert!(
+            !advice.contains("gh issue close"),
+            "advice must not hand the user a close command: {advice:?}"
+        );
+        assert!(advice.contains("Closes #5"), "{advice:?}");
+    }
+
+    /// The in-process lint that stands in for the hook `--no-verify` skips:
+    /// a closing message is refused BEFORE anything is staged; a clean one is
+    /// staged and admitted.
+    #[test]
+    fn ready_to_commit_refuses_a_closing_message_before_staging() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let git = |args: &[&str]| {
+            std::process::Command::new("git")
+                .current_dir(dir.path())
+                .args(args)
+                .output()
+                .expect("git")
+        };
+        assert!(git(&["init", "-q"]).status.success());
+        std::fs::write(dir.path().join("roadmap.yaml"), "x\n").expect("write");
+        let staged = || {
+            String::from_utf8_lossy(&git(&["diff", "--cached", "--name-only"]).stdout).to_string()
+        };
+
+        assert!(!ready_to_commit(
+            dir.path(),
+            &["roadmap.yaml"],
+            "feat: this fixes #5 (Refs PMAT-1)"
+        ));
+        assert_eq!(staged(), "", "a refused message must stage nothing");
+
+        assert!(ready_to_commit(
+            dir.path(),
+            &["roadmap.yaml"],
+            "feat: this fixes issue #5 (Refs PMAT-1)"
+        ));
+        assert_eq!(staged().trim(), "roadmap.yaml");
+    }
+
+    #[test]
+    fn github_issue_advice_is_none_when_not_github_synced() {
+        let item = RoadmapItem::new("PMAT-1".to_string(), "a plain title".to_string());
+        assert_eq!(github_issue_advice(&item), None);
     }
 }

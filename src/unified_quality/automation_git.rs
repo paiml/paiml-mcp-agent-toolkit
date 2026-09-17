@@ -19,7 +19,8 @@ impl GitSafetyNet {
     }
 
     fn commit_fixes(&self, fixes: &[AppliedFix]) -> Result<()> {
-        let message = format!("Auto-fix: {} violations", fixes.len());
+        // PMAT-900001: every pmat commit builder routes through the one neutraliser.
+        let message = crate::services::closing_keywords::neutralise(&format!("Auto-fix: {} violations", fixes.len()));
         Command::new("git")
             .current_dir(&self.work_dir)
             .args(["commit", "-m", &message])

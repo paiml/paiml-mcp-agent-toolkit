@@ -103,6 +103,8 @@ async fn create_auto_commit(
             &format!("{:.1}%", summary.complexity_reduction),
         )
         .replace("{satd_removed}", &summary.satd_removed.to_string());
+    // PMAT-900001: the template is user config; never let it mint a close.
+    let message = crate::services::closing_keywords::neutralise(&message);
 
     // Create the commit
     let status = Command::new("git")

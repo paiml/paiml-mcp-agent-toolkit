@@ -5,6 +5,26 @@ on:
     types: [opened, edited, synchronize]
 
 jobs:
+  # PMAT-900001: the same lint ci.yml's required traceability job runs, re-run when the
+  # title or body is edited (ci.yml does not trigger on `edited`).
+  pr-body-closing-keywords:
+    name: PR body closes only what its Closes lines name
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            scripts/pr-body-closing-lint.sh
+            src/services/closing_keywords_lint.sh
+          sparse-checkout-cone-mode: false
+      - name: lint the live title and body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_REPO: ${{ github.repository }}
+        run: bash scripts/pr-body-closing-lint.sh --self-test && bash scripts/pr-body-closing-lint.sh --pr "$PR_NUMBER"
+
   pr-title:
     name: PR Title Check
     runs-on: ubuntu-22.04

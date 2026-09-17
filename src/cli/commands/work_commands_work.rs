@@ -140,6 +140,11 @@ pub enum WorkCommands {
         /// claim to L2 unless --level says otherwise.
         #[arg(long)]
         implements: Vec<String>,
+
+        /// New notes (markdown; replaces existing) — where a cross-reference to
+        /// related issues belongs, without replacing the acceptance criteria.
+        #[arg(long)]
+        notes: Option<String>,
     },
 
     /// Delete a work ticket (DELETE)
