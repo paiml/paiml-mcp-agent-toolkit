@@ -216,20 +216,113 @@ mod dead_code_outcome_tests {
     /// A one-file crate under a temp dir; `body` is `src/lib.rs`.
     fn crate_with(body: &str) -> tempfile::TempDir {
         let tmp = tempfile::tempdir().expect("tempdir");
+        crate_at(tmp.path(), "fx", body);
+        tmp
+    }
+
+    /// A one-file crate named `name` at `dir`; `body` is `src/lib.rs`.
+    fn crate_at(dir: &Path, name: &str, body: &str) {
+        std::fs::create_dir_all(dir.join("src")).expect("src");
         std::fs::write(
-            tmp.path().join("Cargo.toml"),
-            "[package]\nname = \"fx\"\nversion = \"0.0.0\"\nedition = \"2021\"\n\n[workspace]\n\n[lib]\npath = \"src/lib.rs\"\n",
+            dir.join("Cargo.toml"),
+            format!("[package]\nname = \"{name}\"\nversion = \"0.0.0\"\nedition = \"2021\"\n\n[workspace]\n\n[lib]\npath = \"src/lib.rs\"\n"),
         )
         .expect("manifest");
-        std::fs::create_dir_all(tmp.path().join("src")).expect("src");
-        std::fs::write(tmp.path().join("src/lib.rs"), body).expect("lib");
+        std::fs::write(dir.join("src/lib.rs"), body).expect("lib");
         // The analyzer passes `--locked` (#1076), so a fixture with no
         // `Cargo.lock` is refused for the MISSING LOCKFILE — not for the
         // reason each test below names. That made the uncompilable-crate leg
         // pass locally for the wrong reason and fail in `ci / test`, where the
         // refusal took a different shape (run 34123854548).
-        crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(tmp.path());
-        tmp
+        crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(dir);
+    }
+
+    /// `cargo check --lib --bins` exactly as the analyzer spells it, run in
+    /// `dir` with the ambient environment; returns whether it exited 0.
+    fn plain_cargo_check_succeeds(dir: &Path) -> bool {
+        std::process::Command::new("cargo")
+            .current_dir(dir)
+            .args(["check", "--message-format=json", "--lib", "--bins"])
+            .output()
+            .expect("cargo check runs")
+            .status
+            .success()
+    }
+
+    /// #1305 (duplicate report #1284): the planted form of the `ci / test`
+    /// flake, deterministic.
+    ///
+    /// cargo fingerprints a workspace-root package by its path RELATIVE to the
+    /// workspace root, so two different crates that share a package name share
+    /// one fingerprint in a shared target directory — and freshness is decided
+    /// by mtime. A source older than the other crate's last check is "fresh":
+    /// cargo replays that crate's (empty) diagnostics and exits 0 without
+    /// compiling a line of it. `ci / test` sets `CARGO_TARGET_DIR` to a per-PR
+    /// directory that `ci / coverage` mounts too, and every nested `cargo
+    /// check` in the suite inherits it, so the uncompilable `fx` fixture above
+    /// was intermittently answered by another run's compilable `fx`.
+    ///
+    /// Planted without touching process-global state: a `.cargo/config.toml`
+    /// above both crates shares their target dir (an inherited
+    /// `CARGO_TARGET_DIR` overrides it and is shared just the same), the
+    /// package name is unique to this test so no concurrent process can move
+    /// the fingerprint, and the broken source is backdated instead of slept on.
+    #[test]
+    fn a_broken_crate_sharing_a_target_dir_with_a_same_named_crate_is_not_measured() {
+        let parent = tempfile::tempdir().expect("tempdir");
+        let shared = parent.path().join("shared-target");
+        std::fs::create_dir_all(parent.path().join(".cargo")).expect(".cargo");
+        std::fs::write(
+            parent.path().join(".cargo/config.toml"),
+            format!("[build]\ntarget-dir = {:?}\n", shared.display().to_string()),
+        )
+        .expect("config");
+        let suffix: String = parent
+            .path()
+            .file_name()
+            .map(|n| n.to_string_lossy().to_lowercase())
+            .unwrap_or_default()
+            .chars()
+            .filter(char::is_ascii_alphanumeric)
+            .collect();
+        let name = format!("fx_shared_{suffix}");
+        let broken = parent.path().join("broken");
+        let fine = parent.path().join("fine");
+        crate_at(&broken, &name, "pub fn broken( {\n");
+        let an_hour_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        std::fs::File::options()
+            .write(true)
+            .open(broken.join("src/lib.rs"))
+            .and_then(|f| f.set_modified(an_hour_ago))
+            .expect("backdate the broken source");
+        crate_at(&fine, &name, "pub fn fine() {}\n");
+
+        // The premise, measured rather than assumed: plain cargo IS fooled.
+        // If this ever fails, cargo stopped sharing fingerprints across roots
+        // and the plant below no longer tests anything.
+        assert!(plain_cargo_check_succeeds(&fine), "the compilable crate must check");
+        assert!(
+            plain_cargo_check_succeeds(&broken),
+            "premise: plain `cargo check` in {} was expected to exit 0 by replaying the \
+             same-named crate's fingerprint from the shared target dir; it did not, so this \
+             test no longer plants the #1305 condition",
+            broken.display()
+        );
+
+        let rt = tokio::runtime::Runtime::new().expect("rt");
+        let measured = rt.block_on(check_dead_code_outcome(&fine, 15.0)).expect("outcome");
+        assert!(measured.not_measured.is_none(), "{:?}", measured.not_measured);
+        let o = rt.block_on(check_dead_code_outcome(&broken, 15.0)).expect("outcome");
+        assert!(
+            o.not_measured.is_some(),
+            "an uncompilable crate was reported as MEASURED (violations={:?}) because its \
+             `cargo check` replayed a same-named crate's fingerprint from a shared target dir; \
+             CARGO_TARGET_DIR={:?}",
+            o.violations,
+            std::env::var_os("CARGO_TARGET_DIR")
+        );
+        let reason = o.not_measured.expect("checked above").reason;
+        assert!(reason.contains("could not compile"), "{reason}");
     }
 
     /// CRUX-02 leg 1: a crate `cargo check` cannot compile is NOT MEASURED,
