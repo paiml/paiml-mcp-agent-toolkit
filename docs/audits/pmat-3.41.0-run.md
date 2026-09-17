@@ -201,3 +201,15 @@ Mechanism (why the run keeps stalling here): CB-2115 is a live bijection, so its
 Decisions:
 - No more stand-alone lifecycle sessions while three tickets are live. Each ticket PR carries master's current CB-2115 findings as ONE separate commit through a sanctioned writer, with the quorum asked to rule on scope and shown the precedent (#1364: SCOPE ACCEPT 3/3). Basis: measured cycle time above. Sessions are told not to file new issues in this repo unless the same PR carries the row.
 - 11:28Z launched the D4 finishing session (pid 2768639): merge master, carry the #1386 row, re-quorum, arm through `pmat-merge`; one named re-run allowed for the #1305 flake only. Slots 3/3: D2 (PMAT-1385), D7 (PMAT-1305), D4.
+
+## 2026-09-17T11:50Z — CORRECTION: carrying lifecycle rows inside ticket PRs does not pass quorum; stand-alone lifecycle PRs are back
+
+tree: run-log behind=0 against origin/master 7c2aa59b8.
+
+Raw (D4 finishing session, ~30 turns, `PARTIAL(blocker)`): merged master cleanly (behind=0, HEAD 0522fb62c pushed, not armed). Added the #1386 row with `pmat work add --github-issue 1386` in its own commit → CB-2115 115/115 green locally. Quorum on ea3edddc2: FAIL/PASS/PASS — lane 1 (gemini-3.1-pro-high) FAILed the row as "an unrelated roadmap item" with the receipt section and the #1364 precedent in front of it. Per the brief the row was reverted (7fbce2a6d) and not argued a third time. `make gate` on 9dc60d624: 27/28; the one red is `lib-tests` 21734/21735 — the #1305 flake, locally this time, not re-run.
+
+Correction to my own 11:28Z decision (finding): "each ticket PR carries master's CB-2115 rows, the quorum will accept it given the precedent" is refuted by measurement — the same lane has now failed it three times on #1368 (once without, twice with the explanation), while #1364's lanes accepted it. Lane verdicts on scope are not stable across PRs; a plan that depends on them is not a plan. Stand-alone lifecycle PRs under PMAT-1336 are the only shape that has passed every time (#1375, #1377, #1380, #1383), so that is the rule again, batched: each one folds in every finding live at arm time. Cost accepted: ~40 min CI per lifecycle PR plus ~40 min for the ticket PR behind it, per merge, because branch protection is strict.
+
+New finding from the D4 session, in D4's own code (not yet fixed, goes into the next D4 session): `scripts/gate.sh` legs `cb-2113-cb-2115` and `pmat-score` call `./target/debug/pmat` and ignore `CARGO_TARGET_DIR`; under the build isolation my briefs mandate they ran a stale binary from 09:30Z, so those two legs' PASS was not evidence. A gate that runs whatever binary happens to be lying in `./target` is the "never hand-write a binary path" trap from memory; the fix is to take the path from `cargo build --message-format json`.
+
+11:50Z launched lifecycle session 3 (clone `.wt/PMAT-1336`, branch `PMAT-1336-lifecycle-3`, pid 1435689): register #1386 plus whatever else the bijection reports at arm time. Slots 3/3: D2, D7, PMAT-1336. D4 waits for it (needs: merge master, fix the gate.sh binary path RED→GREEN, one more quorum round, arm).
