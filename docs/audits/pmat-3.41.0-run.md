@@ -316,3 +316,10 @@ Raw: `uptime` at 15:40Z = "up 8 min"; `last -x reboot` shows boots at Sep 16 20:
 What survived: every clone, commit and isolated target dir. D0: HEAD 75a9a28bd, 42 commits unpushed, 2 files uncommitted. D2: 46a49e0f5, clean, pushed, PR #1389 (real reds besides the runner loss: `ci / lint`, `traceability`). D6: dd56a0cb5, 1 unpushed commit, measurement artefacts on disk under `/mnt/nvme-raid0/targets/pmat-636*`.
 
 Decision + basis: cause unknown; load is a suspect (three sessions building and running full suites beside 21 clean-room runners on one box; yesterday's three crashes fall in the previous orchestrator's run as well). Relaunched all three at 15:41Z (pids 35673, 35685, 35696) with a crash-resume note and a load rule — one heavy job at a time per session, `CARGO_BUILD_JOBS=8`, never a full-suite pair — and "push early". This does not fix the machine; it is reported to the operator as the top risk to the release, because clean-room and `cargo publish` run on this host too.
+
+## 2026-09-17T16:12Z — lifecycle PR #1392 MERGED; three sessions live after the crash
+
+tree: run-log rebased, behind=0 against origin/master f25d7f1cc.
+
+Raw: at 15:44:11Z `gh run rerun 35238657820 --failed` (the one re-run, for the runner-lost `ci / test` + `ci / coverage` jobs; `ci / gate` and `gate` were red only as their aggregates). Result 45 pass / 0 fail; auto-merge fired; master = f25d7f1cc. PMAT-1365's row is terminal; master's bijection was coherent at arm time.
+- D0 HEAD 7b1fc68f1 (pushing as it goes), D2 HEAD 77bdbf388, D6 HEAD 35da3cc6d — all LIVE, host up 40 min, load average ≤ 10 since the relaunch (48 cores).
