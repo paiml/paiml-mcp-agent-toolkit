@@ -6973,11 +6973,11 @@ roadmap:
   github_issue: 1385
   item_type: task
   title: 'pmat work migrate rewrites roadmap.yaml with a bare fs::write: no repository lock, no fragment mode (unlocked write bypass)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-17T10:04:40Z
-  updated: 2026-09-17T10:04:40Z
+  updated: 2026-09-17T18:24:08.824927805+00:00
   spec: null
   acceptance_criteria: []
   phases: []
