@@ -1,4 +1,87 @@
-# impl-PMAT-1365 — receipt (sixth session)
+# impl-PMAT-1365 — receipt (seventh session)
+
+Verdict at this commit: **the gate finding is fixed on the branch; merge pending** quorum and CI. A commit cannot record its own merge, so the merge outcome is in the session's closing JSON receipt, not in this file.
+
+The seventh session did three things:
+
+1. It merged master `7fa1be27d` (#1387). That PR registered PMAT-1386, the row the sixth session's quorum would not let this PR carry. **This PR adds no lifecycle row.**
+2. It fixed the stale-binary finding, RED first. The finding was wider than recorded: **ten legs** ran a hand-written `./target/debug/pmat`, not two.
+3. It ran `make gate` on `e94b2c6cc` with `CARGO_TARGET_DIR=/mnt/nvme-raid0/targets/pmat-1365`: **27 PASS, 1 FAIL**. The one FAIL is `lib-tests`, on exactly the two known reds, #1305 and CB-200 (#1266). Neither is waived, and no baseline was raised.
+
+## The merge (seventh session)
+
+| check | result |
+|---|---|
+| merge | `git merge origin/master` `7fa1be27d` at `d27c9344e`, with no conflicts. Incoming: `docs/audits/impl-PMAT-1336-receipt.md`, `docs/audits/quorum-PMAT-1336.json` and `docs/roadmaps/roadmap.yaml` (the PMAT-1386 row). Behind = 0 |
+| `git diff origin/master -- docs/roadmaps/roadmap.yaml` | one hunk, and it is this ticket's own row (`labels: [kind:code]`, `updated`). The carried-then-reverted PMAT-1386 commits (`9dc60d624`, `7fbce2a6d`) leave no residue |
+| `git diff origin/master -- docs/audits/impl-estimates.jsonl` | +1 line, this ticket's row. `merge=union` duplicated nothing, so nothing was restored |
+| `pmat analyze reachability --check-ledger` | exit 0 on `48737ee01` and on `e94b2c6cc` |
+| `pmat analyze unrun-tests --executed '' --check-ledger` | exit 1 on `48737ee01`, which added one lib test. Re-rendered in `e94b2c6cc` (24297/27424 → 24298/27425), exit 0 after. It was not measured on the merge commit `d27c9344e` itself |
+
+The binary used for both checks was built from this tree into the isolated target dir. The `cargo build --message-format json` output named `/mnt/nvme-raid0/targets/pmat-1365/debug/pmat`.
+
+## The stale-binary finding: RED `48737ee01`, GREEN `e7812f9a9`
+
+**Mechanism.** `make gate` runs the `build-pmat` leg (`cargo build --bin pmat --locked`), which writes to `$CARGO_TARGET_DIR/debug/pmat`. Legs that then run `./target/debug/pmat` ignore both `CARGO_TARGET_DIR` and `.cargo/config.toml`. So with an isolated target dir, they judged whatever binary an earlier build had left in `./target`. In this clone that was one built at 11:30 by an earlier session. Their PASS was evidence about some other tree.
+
+The sixth session named two such legs and proposed `${CARGO_TARGET_DIR:-target}/debug/pmat` as the fix. **Both were wrong.** The two `cmd` legs were not alone: eight `step` legs run the same path, because they execute ci.yml's `run:` text verbatim. And the proposed spelling still ignores a `build.target-dir` set in `.cargo/config.toml`.
+
+**The fix.** `scripts/gate.sh` sets `$PMAT_BIN` once per run to the executable that `cargo build --locked --bin pmat --message-format json` reports:
+
+- `cmd` rows run `"$PMAT_BIN"`.
+- In a step's `run:` text, CI's `./target/debug/pmat` is rewritten to `$PMAT_BIN` at run time. The workflow file is not edited.
+- A leg that runs pmat when cargo reports none is a FAIL. It never falls back to `./target`.
+- Each pmat leg's log names the binary it ran, and the verdict block prints it.
+
+**RED, then GREEN, on the same controls:**
+
+| control | on `48737ee01`'s gate.sh (RED) | on `e7812f9a9` (GREEN) |
+|---|---|---|
+| `scripts/gate-control.sh` arm 12 FRESH-BINARY. It plants a stale pmat that prints `STALE-PMAT-RAN` at `./target/debug/pmat`, and puts first on PATH a cargo that builds a pmat printing `FRESH-PMAT-RAN` in another dir. It then runs the REAL table's rows that run pmat | exit 1. Ten legs ran STALE and never FRESH: roadmap-validate-control, roadmap-validate, traceability-control, roadmap-coherence-control, work-sync-control, ticket-release-control, spec-epic-control, spec-review-control, cb-2113-cb-2115, pmat-score. With cargo reporting no pmat, nine did not FAIL and fell back to STALE | exit 0. All 12 legs ran FRESH (the ten above plus unrun-tests and reachability-ledger). With cargo reporting no pmat, every non-`cargo run` pmat leg is FAIL and none ran STALE |
+| `make_gate_tests::no_leg_runs_a_hand_written_pmat_binary_path` (nextest, one test binary, gate.sh swapped under it, since the test reads the file at run time) | FAIL: `cmd legs run a hand-written pmat path … ["cb-2113-cb-2115", "pmat-score"]` | PASS, and the other 5 `make_gate_tests` pass too |
+
+The contract `contracts/make-gate-v1.yaml` gains `pmat_legs_run_the_built_binary`, with its obligation and falsification test. `pv validate` → 0 errors.
+
+**Every leg checked for the pattern.** `pmat query --literal "target/debug/pmat"` returned raw-file hits only in `src/` comments and `docs/`, and its output was truncated at 40 lines. So `grep` was used for the non-Rust files: `scripts/*.sh`, `Makefile` and the workflows the step legs read.
+
+| leg / site | runs | verdict |
+|---|---|---|
+| `cb-2113-cb-2115`, `pmat-score` (cmd) | `./target/debug/pmat` | **defect, fixed** → `"$PMAT_BIN"` |
+| `roadmap-validate-control`, `roadmap-validate`, `traceability-control`, `roadmap-coherence-control`, `work-sync-control`, `ticket-release-control`, `spec-epic-control`, `spec-review-control` (step, ci.yml) | `./target/debug/pmat` in the step text | **defect, fixed** → rewritten to `$PMAT_BIN` at run time. The six control scripts take the binary as `$1` and hard-code no path |
+| `unrun-tests`, `reachability-ledger` (cmd) | `cargo run --locked --quiet --bin pmat` | correct already. cargo runs the binary it built |
+| `build-pmat` (step) | `cargo build --bin pmat --locked` | builds only and runs no pmat. Correct |
+| `gate-control` | fixture tables only. Arm 12 uses a fixture cargo | n/a |
+| `dependabot-alerts-live`, `dependabot-self-test`, `orphan-ledger`, `pr-lane-control`, `tests-dont-write-self-test`, `reusable-pin-drift`, `fmt`, `clippy-all-targets`, `lib-tests`, `cargo-deny`, `cargo-audit`, `lean-build`, `lean-no-holes`, `pv-obligations` | no pmat binary | n/a |
+| `scripts/*.sh` with a `target/debug` or `target/release` hit: capture_golden_traces, dogfood-use, reduce-complexity, profile_context, record-metric, implement-dependency-reduction, run-full-qa, qa-retest, setup-quality, validate-timeout-feature | — | none is reached by a `make gate` leg. **Not fixed here** |
+| `Makefile` targets `pre-release-checks` (L1602), `dev` (L2538), `sprint-close` (L2617), `quality-gate-full` (L2655) | `./target/debug/pmat` | the same pattern, but these are not legs of `make gate`. **Not fixed here**; named so nobody assumes otherwise |
+
+**What earlier receipts claimed.** The sixth session's `make gate` on `9dc60d624` ran all ten legs above against the stale binary, not only `cb-2113-cb-2115`. Earlier sessions' runs, where `./target/debug/pmat` was not rebuilt by the same build, carry the same doubt. The run below is the first in which those legs judged this tree's binary under an isolated target dir.
+
+## Verification — seventh session, re-run by the orchestrator
+
+`make gate` on `e94b2c6cc` (HEAD=e94b2c6cc origin/master=7fa1be27d behind=0), `CARGO_TARGET_DIR=/mnt/nvme-raid0/targets/pmat-1365`:
+
+| leg | result | leg | result |
+|---|---|---|---|
+| gate-control | PASS 4s (arms 1–12; arm 11 LIVE matched 6 contexts) | cb-2113-cb-2115 | PASS 9s. CB-2113 ✓ 27 non-merge commits; CB-2115 ✓ 115/115 |
+| fmt | PASS 3s | orphan-ledger | PASS 0s |
+| clippy-all-targets | PASS 122s | dependabot-self-test | PASS 0s |
+| **lib-tests** | **FAIL 147s**: 21734/21736. `dead_code_outcome_tests::a_crate_that_does_not_compile_is_reported_as_not_measured` (#1305; sibling PR #1388) and `tdg_baseline::tests::the_committed_baseline_is_the_measured_count` (CB-200: 1741 vs 1688, #1266) | dependabot-alerts-live | PASS 1s |
+| cargo-deny | PASS 1s | unrun-tests | PASS 38s |
+| cargo-audit | PASS 2s | reachability-ledger | PASS 25s |
+| reusable-pin-drift | PASS 0s | pmat-score | PASS 58s |
+| build-pmat | PASS 31s | lean-build | PASS 3s |
+| roadmap-validate-control, roadmap-validate, traceability-control, roadmap-coherence-control, work-sync-control, ticket-release-control, spec-epic-control, spec-review-control | PASS (0–3s each) | lean-no-holes | PASS 0s |
+| pr-lane-control, tests-dont-write-self-test | PASS 0s | pv-obligations | PASS 1s |
+
+- Every pmat leg's log opens with `gate.sh: pmat = /mnt/nvme-raid0/targets/pmat-1365/debug/pmat (reported by cargo build --message-format json)`.
+- The verdict block prints: `every leg that ran pmat ran /mnt/nvme-raid0/targets/pmat-1365/debug/pmat … a step's ./target/debug/pmat was rewritten to it`.
+- The 16 CI-only rows were printed by name.
+- Verdict: RED on `lib-tests` only, and this PR does not cause it. The PR's job is to declare the gate, and #1305 and #1266 are owned elsewhere.
+
+---
+
+# Sixth session (history)
 
 Verdict: **PARTIAL(blocker)**. `make gate` is declared, and discovery finds it.
 The branch is up to date with master `7c2aa59b8` (#1383, which registered PMAT-1385 and completed PMAT-1363).
@@ -108,11 +191,13 @@ ci-only | gate | <leg> | <where CI runs it> | <platform|credential|cost|trigger|
 | CB-2115 ORPHAN-ROADMAP PMAT-1366 | roadmap lifecycle (PMAT-1336) | a merged PR closes its issue → a ticket cannot complete its own row in the PR that closes it → the row stays `planned` → CB-2115 reds every PR. The fifth instance of this gap in two days | fixed on master by #1364 (`df6c351b2`); #1384 closed as redundant |
 | CB-2115 ORPHAN-ROADMAP PMAT-1363, ORPHAN-GITHUB #1385 | roadmap lifecycle (PMAT-1336) | the same gap, plus an issue opened after master's last change → every PR red again, minutes after the previous fix | fixed on master by #1383 (`7c2aa59b8`) |
 | CB-2115 ORPHAN-GITHUB #1386 | roadmap lifecycle (PMAT-1336) | a sibling session filed an issue at 10:50Z, before #1383 merged → no lifecycle PR can land before the next orphan → every open PR stays red | **not fixed here**. It was carried in `9dc60d624` and dropped in `7fbce2a6d` after a scope FAIL. Master has to land the row; the lifecycle gap stays open under PMAT-1336 |
-| `make gate` runs a stale pmat under `CARGO_TARGET_DIR` | scripts/gate.sh (this ticket) | the `cb-2113-cb-2115` and `pmat-score` rows call `./target/debug/pmat` → `build-pmat` writes to `$CARGO_TARGET_DIR/debug/pmat` → with an isolated target dir, the legs run whatever binary is left in `./target` (here, one built at 09:30Z by the fifth session) → no control arm sets `CARGO_TARGET_DIR` | **not fixed**. Found in the sixth session; blocks nothing on CI (CI does not set it). The fix is `${CARGO_TARGET_DIR:-target}/debug/pmat`, with a `gate-control.sh` arm |
-| lib-tests red locally: `a_crate_that_does_not_compile_is_reported_as_not_measured` | #1305 (a sibling session is root-causing it) | failed in 0.261 s under nextest on `9dc60d624`; 21734/21735 passed | **not fixed, not re-run, not waived**: #1305 |
-| lib-tests red locally: CB-200, 1742 vs 1688 | src/services/tdg_baseline.rs (#1266) | debt below grade A was added on master → the lib test measures only where `.pmat/context.db` exists → CI checkouts have no index, so `ci / gate` passes it unmeasured | **not fixed, not waived**: #1266. Passed in `make gate` on the merged head `be34454e7`; not investigated why |
+| `make gate` runs a stale pmat under `CARGO_TARGET_DIR` | scripts/gate.sh (this ticket) | the `cb-2113-cb-2115` and `pmat-score` rows call `./target/debug/pmat` → `build-pmat` writes to `$CARGO_TARGET_DIR/debug/pmat` → with an isolated target dir, the legs run whatever binary is left in `./target` (here, one built at 09:30Z by the fifth session) → no control arm sets `CARGO_TARGET_DIR` | **fixed (seventh session)**: RED `48737ee01`, GREEN `e7812f9a9`. Ten legs, not two. The proposed `${CARGO_TARGET_DIR:-target}` spelling was also wrong, because it ignores `.cargo/config.toml`; `$PMAT_BIN` is what cargo reports |
+| lib-tests red locally: `a_crate_that_does_not_compile_is_reported_as_not_measured` | #1305 (a sibling session is root-causing it) | failed in 0.261 s under nextest on `9dc60d624`; 21734/21735 passed | **not fixed, not re-run, not waived**: #1305. Red again in the seventh session's `make gate` on `e94b2c6cc` |
+| lib-tests red locally: CB-200, 1742 vs 1688 | src/services/tdg_baseline.rs (#1266) | debt below grade A was added on master → the lib test measures only where `.pmat/context.db` exists → CI checkouts have no index, so `ci / gate` passes it unmeasured | **not fixed, not waived**: #1266. Passed in `make gate` on the merged head `be34454e7`; not investigated why. Red in the seventh session: 1741 vs 1688 |
 
 ## Dispatch ledger
+
+Seventh session: no Claude subagents, and no agy delegate. `make gate` ran once, on `e94b2c6cc`, and is reported above. The pre-merge review is `quorum-review.sh` (three agy lanes) on the head that carries this receipt; its artifact is committed on top.
 
 Sixth session: no Claude subagents. One `quorum-review.sh` round ran (three agy lanes) on `ea3edddc2`: NOT AGREED, lane 1 FAIL on scope, artifact `91f1b5a9b`. No second round was run, because the row it FAILed was dropped and the session stopped. `make gate` ran on `9dc60d624` in `/mnt/nvme-raid0/targets/pmat-1365`, 869 s: **27 PASS, 1 FAIL** (`lib-tests`: #1305's test, above). `cb-2113-cb-2115` PASSed, but it measured with the stale `./target/debug/pmat` (see Jidoka).
 
@@ -122,12 +207,13 @@ Fifth session: no subagents were dispatched. transcript-gate.sh: `PASS attempted
 
 - `estimate.sh paiml-mcp-agent-toolkit 5` → `K_HAT=35 BASIS=docs/audits/impl-estimates.jsonl:L22-L31`, 14 pooled rows.
 - The fourth session declared K̂=60 as `first-run[U]`. That was wrong: estimate.sh exited 2.
-- `k_measured`: fourth session 104; fifth session 37 at the first receipt commit and 64 at this one. Sessions 1–3 were not measured.
+- `k_measured`: seventh session 37 when this receipt was written; fourth session 104; fifth session 37 at the first receipt commit and 64 at this one. Sessions 1–3 were not measured.
 - The row is therefore recorded with `unit: session` and is never pooled.
 
 ## Gaps
 
 - Routing R-4 was not followed in any session: the implementation phases were done directly.
-- Not merged. No agreed quorum artifact exists for this head, and `traceability` is red on master's #1386 orphan.
-- This receipt's final version has not been quorum-reviewed. The last round judged `ea3edddc2`.
+- The sixth-session blocker is gone: master carries PMAT-1386 (#1387). Merge state is recorded in the session's closing receipt.
+- The Makefile targets `pre-release-checks`, `dev`, `sprint-close` and `quality-gate-full`, and ten non-gate scripts, still hand-write a target path. They are not legs of `make gate` and are not fixed here.
+- `lib-tests` is red locally on #1305 and CB-200 (#1266). This session did not investigate either one.
 - The fourth session never timed the `cost:` CI-only rows one by one. The fifth did not either.
