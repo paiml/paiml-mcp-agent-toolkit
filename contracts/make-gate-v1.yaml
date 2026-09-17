@@ -1,0 +1,176 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-16"
+  author: PAIML Engineering
+  registry: true
+  references:
+    - "issue 1365 — pmat has no declared gate_cmd; discovery falls back to a guess that is weaker than ci / gate"
+    - "issue 1364 — 3.41.0 release blocker: the pre-publish check and the merge gate must be one command"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  contract: make-gate-v1
+  status: active
+  description: >
+    paiml-implement discovers a repository's gate by probing `make -n gate`. pmat had no
+    such target, so discovery fell back to `cargo test --workspace` with
+    gate_cmd_fallback=true: a command that runs none of the six status contexts master
+    requires (gate, ci / gate, docs build (docs.rs environment), feature-gate, pmat
+    score, provable ladder), and whose green an agent then trusted. `make gate` now runs
+    scripts/gate.sh, whose one table maps every required context to the legs this machine
+    runs and to CI-only rows that say why they are not run. What is not measured is
+    printed by name on every exit, green or red, so a local green cannot be read as CI
+    green. Legs taken from a workflow run the step text read from that workflow at run
+    time, so they cannot drift from CI; a step that has gone is a FAIL, never a skip.
+
+equations:
+  gate_is_declared:
+    formula: "make -n gate exits 0 and runs scripts/gate.sh  =>  discovery reports gate_cmd = make gate, gate_cmd_fallback = false"
+    domain: "this repository's Makefile at any revision"
+    codomain: bool
+    invariants:
+      - "the target is .PHONY and its only recipe is scripts/gate.sh, so the table is the single source of what the gate runs"
+      - "the extension-point marker ends the table: sibling gates append rows there, and nowhere else"
+    preconditions: []
+
+  every_required_context_is_accounted:
+    formula: "for all c in REQUIRED_CONTEXTS: |rows(c)| >= 1, where a row is a leg run here (step | cmd) or a ci-only row whose note is '<platform|credential|cost|trigger|not-gating|not-required>: <reason>'; otherwise exit 2 before any leg runs"
+    domain: "the table in scripts/gate.sh, or a fixture table passed with --legs"
+    codomain: "exit code in {0, 1, 2}"
+    invariants:
+      - "REQUIRED_CONTEXTS equals master's branch-protection contexts plus the org ruleset's, when gh api can read them"
+      - "a table in which no row runs is refused: a gate that measures nothing is vacuous, not green"
+      - "a ci-only row without a category and a reason is refused"
+    preconditions: []
+
+  step_legs_are_the_workflow_steps:
+    formula: "a step leg executes run(workflow, job, step) as read at run time; exactly one such step with a run: script and no ${{ }}, if:, env:, working-directory or non-bash shell, else the leg is FAIL"
+    domain: "rows of kind step"
+    codomain: "PASS | FAIL"
+    invariants:
+      - "a renamed or removed workflow step turns the leg FAIL, never NOTRUN or skipped"
+      - "shell: bash runs as bash -eo pipefail and a step with no shell as bash -e, as GitHub Actions runs them"
+    preconditions: []
+
+  unmeasured_is_printed_on_every_exit:
+    formula: "exit in {0, 1}  =>  stdout names every ci-only row with its reason, and every leg run differently from CI with how it differs"
+    domain: "any scripts/gate.sh run past table validation"
+    codomain: bool
+    invariants:
+      - "a green verdict says it is the local floor, never a substitute for the required checks"
+      - "an interrupted run still prints the block and exits 1 (EXIT trap)"
+    preconditions: []
+
+  gate_can_fail:
+    formula: "exists a leg run here with non-zero exit  =>  exit 1 naming it; every later leg still runs"
+    domain: "rows of kind step or cmd"
+    codomain: "exit code"
+    invariants:
+      - "no fail-fast: one run names every red leg"
+      - "a leg that did not run is NOTRUN, which is not PASS"
+    preconditions: []
+
+  ci_only_reasons_are_measured:
+    formula: "for all r with kind(r) = ci-only: (category(r) = cost => not runs_only_pmat(job(source(r)))) and (category(r) = credential => not reads_github_with_a_token(job(source(r)))), where runs_only_pmat means every step of the CI job is a setup action, `cargo build ... --bin pmat`, or `cargo run ... --bin pmat -- ...`, and reads_github_with_a_token means the job or a step sets GH_TOKEN or GITHUB_TOKEN"
+    domain: "ci-only rows of the table in scripts/gate.sh whose source job is in this tree"
+    codomain: bool
+    invariants:
+      - "a check that only runs pmat is a leg here: make gate already builds pmat (build-pmat), so a release build is not a cost this gate would pay"
+      - "the source of every ci-only cost row resolves to a job, else the reading is broken and the test fails rather than passing vacuously"
+      - "a GitHub token is not a credential this gate lacks: a leg that needs one takes $GH_TOKEN, else `gh auth token`, and fails without either, never skips"
+      - "the credential detector is controlled both ways (ci.yml traceability holds a token, windows-check does not), so it cannot pass vacuously when no credential row is left"
+    preconditions: []
+
+  pmat_legs_run_the_built_binary:
+    formula: "for all legs r run here whose text runs pmat: the executable r runs = the one `cargo build --locked --bin pmat --message-format json` reports building from the tree; cargo reports none => r is FAIL"
+    domain: "cmd rows naming $PMAT_BIN or `cargo run --bin pmat`, and step rows whose run: text spells ./target/debug/pmat"
+    codomain: "PASS | FAIL"
+    invariants:
+      - "no leg runs a hand-written target/debug/pmat or target/release/pmat: that path ignores CARGO_TARGET_DIR and .cargo/config.toml, so under either it judges a binary some other tree built"
+      - "a step's CI text is not edited in the workflow; its ./target/debug/pmat is rewritten to $PMAT_BIN at run time, and any other spelling of the path is refused by the lib test"
+      - "the binary is resolved once per run and named in each pmat leg's log"
+    preconditions: []
+
+proof_obligations:
+  - type: postcondition
+    property: "the declared gate is make gate and it runs the table"
+    formal: "make -n gate ⊢ scripts/gate.sh"
+    applies_to: gate_is_declared
+  - type: invariant
+    property: "no required status context is silent"
+    formal: "∀c ∈ REQUIRED_CONTEXTS: ∃r ∈ table: c ∈ contexts(r) ∧ (runs(r) ∨ reason(r) ≠ ∅)"
+    applies_to: every_required_context_is_accounted
+  - type: invariant
+    property: "a leg taken from a workflow is that workflow's step, or it fails"
+    formal: "kind(r) = step ⇒ (script(r) = run(source(r)) ∨ result(r) = FAIL)"
+    applies_to: step_legs_are_the_workflow_steps
+  - type: postcondition
+    property: "what is not measured is printed on every exit"
+    formal: "exit ∈ {0,1} ⇒ ∀r: kind(r) = ci-only ⇒ printed(leg(r), reason(r))"
+    applies_to: unmeasured_is_printed_on_every_exit
+  - type: postcondition
+    property: "any red leg makes the gate red, and the run continues"
+    formal: "∃r: runs(r) ∧ rc(r) ≠ 0 ⇒ exit = 1 ∧ ∀r' > r: attempted(r')"
+    applies_to: gate_can_fail
+  - type: invariant
+    property: "no CI-only row blames cost for a check that only runs pmat, or a credential that is a GitHub token"
+    formal: "∀r: kind(r) = ci-only ⇒ (category(r) = cost ⇒ ¬runs_only_pmat(job(source(r)))) ∧ (category(r) = credential ⇒ ¬reads_github_with_a_token(job(source(r))))"
+    applies_to: ci_only_reasons_are_measured
+  - type: invariant
+    property: "a leg that runs pmat runs the pmat cargo built from the tree it judges, or fails"
+    formal: "∀r: runs_pmat(r) ⇒ (binary(r) = cargo_reported_executable ∨ result(r) = FAIL)"
+    applies_to: pmat_legs_run_the_built_binary
+
+falsification_tests:
+  - id: gate_is_declared
+    rule: "make -n gate resolves to scripts/gate.sh"
+    prediction: "arm 1 DECLARED; make_gate_tests::make_gate_is_declared_and_runs_the_table"
+    test: "bash scripts/gate-control.sh && cargo test --lib make_gate_tests"
+    if_fails: "discovery falls back to cargo test --workspace and an agent trusts a gate that runs none of the required contexts"
+  - id: every_required_context_is_accounted
+    rule: "a table that drops a required context, gives a CI-only row no reason, or runs nothing is refused with exit 2"
+    prediction: "arms 2, 8, 9, 10 and 11; make_gate_tests::every_required_context_has_a_row_and_every_ci_only_row_a_reason"
+    test: "bash scripts/gate-control.sh && cargo test --lib make_gate_tests"
+    if_fails: "a required context is neither run nor named, and a local green is read as CI green"
+  - id: step_legs_are_the_workflow_steps
+    rule: "a renamed, GitHub-bound or failing step is a FAIL"
+    prediction: "arms 5, 6 and 7; make_gate_tests::every_step_leg_names_one_runnable_step_in_its_workflow"
+    test: "bash scripts/gate-control.sh && cargo test --lib make_gate_tests"
+    if_fails: "CI renames a step and the local leg silently stops measuring it"
+  - id: unmeasured_is_printed_on_every_exit
+    rule: "green and red runs both print every CI-only row by name"
+    prediction: "arms 3 and 4"
+    test: "bash scripts/gate-control.sh"
+    if_fails: "a red run hides what was never measured, and a green run hides it from whoever reads only the verdict"
+  - id: gate_can_fail
+    rule: "a failing leg exits 1, is named, and does not stop the legs after it"
+    prediction: "arm 4"
+    test: "bash scripts/gate-control.sh"
+    if_fails: "the gate is theater: its green carries no information"
+  - id: ci_only_reasons_are_measured
+    rule: "a ci-only cost row whose CI job only builds and runs pmat, or a ci-only credential row whose CI job holds a GitHub token, is refused"
+    prediction: "make_gate_tests::no_ci_only_cost_row_hides_a_check_that_only_runs_pmat, RED on 22e4cd1fe naming unrun-tests and reachability-ledger; make_gate_tests::no_ci_only_credential_row_blames_a_github_token_gh_already_holds, RED on 143db4aca naming dependabot-alerts-live, and naming cb-2115 too against the gate.sh of ae9914c2f"
+    test: "cargo test --lib make_gate_tests"
+    if_fails: "a check the gate could run in seconds stays CI-only on an unmeasured reason, and its red reaches CI after a local green (feature-gate on PR #1368, 1d8c64f40)"
+
+  - id: pmat_legs_run_the_built_binary
+    rule: "with a stale pmat planted at ./target/debug/pmat and cargo building a fresh one elsewhere, every real pmat leg runs the fresh one; with cargo reporting none, every such leg is FAIL"
+    prediction: "arm 12 FRESH-BINARY, RED on 48737ee01 naming ten legs (eight ci.yml step legs, cb-2113-cb-2115, pmat-score); make_gate_tests::no_leg_runs_a_hand_written_pmat_binary_path"
+    test: "bash scripts/gate-control.sh && cargo test --lib make_gate_tests"
+    if_fails: "under CARGO_TARGET_DIR the gate's traceability and score legs judge a binary built from some other tree, and their PASS is not evidence (PMAT-1365, sixth session)"
+
+kani_harnesses: []
+
+qa_gate:
+  id: MAKE-GATE
+  name: declared make gate
+  description: >
+    Shell and Makefile, so the obligations are carried by executable controls rather
+    than Lean or Kani. scripts/gate-control.sh plants each defect against fixture tables
+    and a fixture workflow; src/make_gate_tests.rs re-checks the static half of the
+    table under cargo test --lib, which ci / gate reaches. `make gate` runs the control
+    as its first leg.
+  checks:
+    - validation
+    - falsification
+  pass_criteria: >
+    scripts/gate-control.sh exits 0 with arms 1-10 and 12 GREEN and arm 11 either GREEN
+    or printed NOT MEASURED; cargo test --lib make_gate_tests passes.

@@ -4882,11 +4882,11 @@ roadmap:
   github_issue: 1284
   item_type: task
   title: 'flake: a_crate_that_does_not_compile_is_reported_as_not_measured is nondeterministic in ci/test — PASSED on PR #1215 (run on 07af99725, with the PMAT-705 lockfile fix) and FAILED identically on PR #1222 (job in run for c0d3faeee, same fix present): not_measured None, violations [], not_applicable None, i.e. the analyzer reports a clean full measurement for a crate that cannot compile. Suspect the dead-code cache (PMAT-648 keyed on git write-tree) returning a hit across fixtures, or a shared .pmat cache dir in CI; the local run is green either way'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-07T20:15:35Z
-  updated: 2026-09-10T18:18:08.278327787+00:00
+  updated: 2026-09-17T13:32:02.704262369+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6172,11 +6172,11 @@ roadmap:
   github_issue: 1305
   item_type: task
   title: 'a_crate_that_does_not_compile_is_reported_as_not_measured is flaky in ci / test: the dead-code analyzer intermittently reports a measured zero for a crate that cannot compile (run 34562657315; master passed identical Rust)'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-11T05:24:33Z
-  updated: 2026-09-11T05:24:33Z
+  updated: 2026-09-17T13:32:02.704262369+00:00
   spec: null
   acceptance_criteria:
   - the failing condition is reproduced, or the environment the analyzer's nested cargo check inherits in ci / test is pinned, with the command or run that shows it
@@ -6836,14 +6836,15 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:32Z
-  updated: 2026-09-15T16:00:32Z
+  updated: 2026-09-16T15:17:35Z
   spec: null
   acceptance_criteria:
   - 'See paiml/paiml-mcp-agent-toolkit#1365. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
 - id: PMAT-1366
   github_issue: 1366

@@ -49,6 +49,27 @@ COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examp
 # Default target: format and build all projects
 all: format build
 
+# ── `make gate` — the DECLARED quality gate for this repository (PMAT-1365) ──
+#
+# paiml-implement's discovery probes `make -n gate`; without this target it fell
+# back to `cargo test --workspace` (gate_cmd_fallback=true), a guess that runs none
+# of the six status contexts master requires, and whose green was trusted.
+#
+# What the gate runs lives in ONE table, in scripts/gate.sh: every required context
+# maps to the legs this machine runs (workflow steps are read from the workflow at
+# run time, so they cannot drift from CI) and to CI-only rows that say why they are
+# not run here — platform, credential, cost, trigger. Those rows are printed by name
+# on every run, green or red. A local green is a floor, never a substitute for the
+# required checks. scripts/gate-control.sh proves each property can fail;
+# contracts/make-gate-v1.yaml states them.
+#
+# EXTENSION POINT: sibling gates (D0 issue-closure contract, D2 roadmap-write query
+# gate) append their rows at the marked end of the table in scripts/gate.sh — not
+# as prerequisites here, so the CI-only printout and the verdict cover them too.
+.PHONY: gate
+gate: ## The declared quality gate: runs every local leg of the required checks, names the CI-only ones
+	@bash scripts/gate.sh
+
 # Validate everything passes across all projects
 validate: check lint test-fast
 	@echo "✅ All projects validated! All checks passed:"
