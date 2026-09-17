@@ -1,13 +1,28 @@
-# impl-PMAT-1365 — receipt (fifth session)
+# impl-PMAT-1365 — receipt (sixth session)
 
-Verdict at the judged head: **PARTIAL(blocker)**. `make gate` is declared, and discovery finds it.
-The branch is up to date with master `8915fe3e6`. One thing blocks the merge, and it does not come from this branch:
+Verdict at the judged head: **ready to merge once CI is green**. `make gate` is declared, and discovery finds it.
+The branch is up to date with master `7c2aa59b8` (#1383, which registered PMAT-1385 and completed PMAT-1363).
 
-1. The required `traceability` job fails on CB-2115 with two findings. `ORPHAN-ROADMAP PMAT-1363`: #1363 closed at 09:51Z with its row still `planned`. `ORPHAN-GITHUB #1385`: an issue opened at 09:57Z with no row. Both are master's lifecycle drift. The orchestrator's housekeeping PR **#1383** (`chore(PMAT-1336): register PMAT-1385 and complete PMAT-1363`) carries the fix, and it is kept out of this diff (see Scope).
+The fifth session left one blocker: the required `traceability` job (CB-2115) was red on master's own state. #1383 fixed those two findings. By the time it merged, master was red on CB-2115 again, this time with `ORPHAN-GITHUB #1386`. That issue was opened at 10:50:15Z by a sibling session and has no roadmap row. This diff now carries that one row, in one separate commit. The reason is in the next section.
 
-`make gate`'s CB-200 lib test, red on `bfe4e7acd` (#1266), **passed** on the merged head `be34454e7`.
+**Next step, exactly:** commit the quorum artifact for this head, push, and wait for CI to go green. Then run `bash ~/.claude/skills/quorum-review/pmat-merge 1368 --auto --merge`.
 
-**Next step, exactly:** once #1383 is on master, run `git merge origin/master` on this branch and re-render the two ledgers only if `--check-ledger` fails. Push, then run `bash ~/.claude/skills/quorum-review/pmat-merge 1368 --auto --merge`. That refuses if the diff changed from the judged one; if it did, re-run `quorum-review.sh --base master --ticket PMAT-1365 --pr 1368` first.
+## Lifecycle row carried in this diff: PMAT-1386 (scope — read this before judging scope)
+
+| field | value |
+|---|---|
+| commit | `9dc60d624` `chore(PMAT-1365): register PMAT-1386 — issue #1386 is open with no roadmap row`. It changes one file, `docs/roadmaps/roadmap.yaml`, and adds 16 lines: one row and nothing else |
+| writer | `pmat work add --github-issue 1386 "<issue title>"`, a sanctioned writer. #1383 wrote PMAT-1385 with the same writer (`475abd957`). The row was not typed by hand |
+| label | none, because issue #1386 has no labels (`gh issue view 1386 --json labels` → `[]`) |
+| before | on the merged tree `4de1b69ca`, `pmat comply check --checks CB-2113,CB-2115` gave CB-2113 ✓ (19 commits) and CB-2115 ✗, with 1 finding: `ORPHAN-GITHUB #1386` |
+| after | on `9dc60d624`, the same command gave CB-2113 ✓ (19 commits) and CB-2115 ✓: 115 open items and 115 open issues in bijection |
+| the issue | `gh issue view 1386` → OPEN, created 2026-09-17T10:50:15Z. It stays open: this row registers the issue and does not fix it |
+
+**Why the row is in this PR and not in its own.** CB-2115 is a bijection between open issues and open roadmap items. It is checked against master's state, so an issue anyone opens reds `traceability` on every open PR until its row lands. A separate lifecycle PR for this one row costs a full CI cycle of about 40 minutes. That already happened twice today. #1384 was opened for PMAT-1366, then closed after #1364 fixed the row itself. #1383 fixed PMAT-1363 and PMAT-1385, and #1386 arrived before #1383 merged. The next orphan arrives before a lifecycle PR merges, so this PR could not go green by waiting for one.
+
+**Precedent.** PR #1364 carried PMAT-1366's lifecycle row for exactly this reason, and its quorum ruled SCOPE ACCEPT 3/3. This ticket's own earlier scope FAIL, in the fourth session over the #1381 row, came from a round that ran without this receipt's explanation. Master now carries that row itself (#1382), so it is not in this diff.
+
+**What a reviewer can check.** The commit touches no file other than `docs/roadmaps/roadmap.yaml`. It adds no status change to any other row, and it does not close or relabel any issue. `git show 9dc60d624 --stat` shows this.
 
 ## Identity
 
@@ -15,7 +30,7 @@ The branch is up to date with master `8915fe3e6`. One thing blocks the merge, an
 |---|---|
 | ticket | PMAT-1365 (`kind:code`, #1365) |
 | branch | `PMAT-1365-declare-gate-land`, pushed as `PMAT-1365-declare-gate` (PR #1368) |
-| base | rebased onto `origin/master` `e89a827f7` (#1382), then `git merge origin/master` `8915fe3e6` (#1364) at `896a9bdff` because master's protection is strict; behind = 0 |
+| base | rebased onto `origin/master` `e89a827f7` (#1382); then `git merge origin/master` `8915fe3e6` (#1364) at `896a9bdff`; then (sixth session) `git merge origin/master` `7c2aa59b8` (#1383) at `4de1b69ca`, a clean merge. Merges, not rebases, because master's protection is strict; behind = 0 |
 | model-gate | `opus-5`, class opus, admit, basis=transcript |
 | discover.json on the rebased head `bfe4e7acd` | `gate_cmd=make gate`, `gate_cmd_fallback=false`, sha256 `4a969e3bf1a4ceab0d234a7ee1e2c565e4be95bc4c4ca5fdb68837ba945b2ad9` — the GREEN |
 | discover on master `441d198e7` (fourth session, clean clone) | `gate_cmd=cargo test --workspace`, `gate_cmd_fallback=true` — the RED |
@@ -30,6 +45,16 @@ The branch is up to date with master `8915fe3e6`. One thing blocks the merge, an
 | receipt commit, `impl-estimates.jsonl` | `.gitattributes` gives the ledger `merge=union` (PMAT-1366), so the rebase re-added 31 rows that #1382 had rewritten | master's bytes restored; this ticket's row re-appended with `pmat work estimate record` |
 
 Re-render evidence: `pmat analyze reachability --check-ledger` → 0; `pmat analyze unrun-tests --executed '' --check-ledger` → 0. After merging `8915fe3e6`, both ledgers were taken from master and re-rendered again (4489→4490 tracked; 24292/27419→24297/27424).
+
+## The merge (sixth session)
+
+| check | result on `4de1b69ca` |
+|---|---|
+| merge conflicts | none. Only `docs/audits/impl-PMAT-1336-receipt.md`, `docs/audits/quorum-PMAT-1336.json` and `docs/roadmaps/roadmap.yaml` came in |
+| `pmat analyze reachability --check-ledger` | exit 0, `ledger is current: docs/status/orphan-files-ledger.md`, so no re-render |
+| `pmat analyze unrun-tests --executed '' --check-ledger` | exit 0, `ledger is current: docs/status/unrun-tests-ledger.md`, so no re-render |
+| `docs/audits/impl-estimates.jsonl` vs master | `git diff origin/master` shows +1 line, this ticket's row. `merge=union` duplicated nothing this time, so nothing was restored |
+| code since the judged head `f6f0aea1d` | `git diff --stat f6f0aea1d HEAD` touches only `docs/audits/*`, `docs/roadmaps/roadmap.yaml` and this receipt. `src/`, `scripts/`, `Makefile`, `contracts/` and `.config/` are byte-identical |
 
 ## How a sibling gate adds a row (D0 issue-closure contract, D2 roadmap-write query gate)
 
@@ -66,7 +91,8 @@ ci-only | gate | <leg> | <where CI runs it> | <platform|credential|cost|trigger|
 ## Scope
 
 - **#1381 row: gone from this diff.** It was the fourth session's one blocking quorum FAIL. Master now carries it (#1382).
-- **Foreign roadmap rows: none in this diff.** The fourth session's rule was: a foreign roadmap row that draws a scope FAIL comes out and must reach master on its own. #1380 (PMAT-1373) set the precedent for this lifecycle gap. This session opened #1384 for PMAT-1366; master fixed that row itself in #1364, so #1384 was closed. PMAT-1363 and #1385 are #1383's.
+- **Foreign roadmap rows: one, PMAT-1386** (sixth session, `9dc60d624`). The reasons are in "Lifecycle row carried in this diff" above. The fourth session's rule still stands: a foreign row that draws a scope FAIL comes out and reaches master on its own. The sixth session's rule is stricter. If a lane FAILs this row on scope, the commit is dropped, the ticket stops at PARTIAL(blocker), and the scope is not argued a third time.
+- Fifth session: #1384 was opened for PMAT-1366, and master fixed that row itself in #1364, so #1384 was closed. PMAT-1363 and #1385 were fixed by #1383.
 - Still in this diff: `PMAT-1365`'s own row gains `kind:code` (the label `kind-gate.sh` reads).
 
 ## Jidoka
@@ -77,12 +103,15 @@ ci-only | gate | <leg> | <where CI runs it> | <platform|credential|cost|trigger|
 | CB-2115 ORPHAN-GITHUB #1381 | roadmap lifecycle | an issue opened after master's last green has no row → CB-2115 is a bijection over open issues → every PR goes red | fixed on master by #1382; this branch's copy was dropped in the rebase |
 | dependabot-alerts-live false credential reason | scripts/gate.sh | a CI-only reason is accepted as asserted, and `gh` already holds the token | fixed (fourth session): RED `d30834a1e`, GREEN `5161561f3` |
 | CB-2115 ORPHAN-ROADMAP PMAT-1366 | roadmap lifecycle (PMAT-1336) | a merged PR closes its issue → a ticket cannot complete its own row in the PR that closes it → the row stays `planned` → CB-2115 reds every PR. The fifth instance of this gap in two days | fixed on master by #1364 (`df6c351b2`); #1384 closed as redundant |
-| CB-2115 ORPHAN-ROADMAP PMAT-1363, ORPHAN-GITHUB #1385 | roadmap lifecycle (PMAT-1336) | the same gap, plus an issue opened after master's last change → every PR red again, minutes after the previous fix | **not fixed here**: #1383 |
+| CB-2115 ORPHAN-ROADMAP PMAT-1363, ORPHAN-GITHUB #1385 | roadmap lifecycle (PMAT-1336) | the same gap, plus an issue opened after master's last change → every PR red again, minutes after the previous fix | fixed on master by #1383 (`7c2aa59b8`) |
+| CB-2115 ORPHAN-GITHUB #1386 | roadmap lifecycle (PMAT-1336) | a sibling session filed an issue at 10:50Z, before #1383 merged → no lifecycle PR can land before the next orphan → every open PR stays red | **fixed in this diff** (`9dc60d624`, sanctioned writer). The lifecycle gap itself stays open under PMAT-1336 |
 | lib-tests red locally: CB-200, 1742 vs 1688 | src/services/tdg_baseline.rs (#1266) | debt below grade A was added on master → the lib test measures only where `.pmat/context.db` exists → CI checkouts have no index, so `ci / gate` passes it unmeasured | **not fixed, not waived**: #1266. Passed in `make gate` on the merged head `be34454e7`; not investigated why |
 
-## Dispatch ledger (fifth session)
+## Dispatch ledger
 
-No subagents were dispatched. transcript-gate.sh: `PASS attempted=0 denied=0 stalled=0 running_peak=0 slots=3`, which is vacuous. The pre-merge review is `quorum-review.sh` (three agy lanes), run on this commit. Its artifact is `docs/audits/quorum-PMAT-1365.json`, committed on top.
+Sixth session: no Claude subagents. The pre-merge review is `quorum-review.sh`, three agy lanes, re-run on this head because the diff changed. `make gate` ran on `9dc60d624` in its own target directory, `/mnt/nvme-raid0/targets/pmat-1365`, while the quorum ran.
+
+Fifth session: no subagents were dispatched. transcript-gate.sh: `PASS attempted=0 denied=0 stalled=0 running_peak=0 slots=3`, which is vacuous. The pre-merge review is `quorum-review.sh` (three agy lanes), run on this commit. Its artifact is `docs/audits/quorum-PMAT-1365.json`, committed on top.
 
 ## Estimates
 
@@ -94,5 +123,6 @@ No subagents were dispatched. transcript-gate.sh: `PASS attempted=0 denied=0 sta
 ## Gaps
 
 - Routing R-4 was not followed in any session: the implementation phases were done directly.
-- Not merged. CI green and the merge wait on #1383 reaching master (see Next step).
+- Not merged at this commit. The merge waits on CI for this head and on the quorum artifact.
+- `make gate` on this head (`9dc60d624`) ran at the same time as this receipt's quorum, so its result is not recorded here. It is in the session's final JSON receipt. The code it tests is byte-identical to `be34454e7`, where it gave 27 PASS and 1 FAIL. That one FAIL was CB-2115 on master's drift, which is now fixed.
 - The fourth session never timed the `cost:` CI-only rows one by one. The fifth did not either.
