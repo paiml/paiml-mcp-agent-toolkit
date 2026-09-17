@@ -22,6 +22,9 @@ use crate::services::roadmap_service::RoadmapService;
 
 const HEADER: &str = "roadmap_version: '1.0'\ngithub_enabled: false\ngithub_repo: null\n";
 
+/// How long the lock test holds the lock while watching for a write that ignores it.
+const HOLD: Duration = Duration::from_secs(3);
+
 /// A project directory holding `docs/roadmaps/roadmap.yaml` with `base`, and
 /// `entries/` when `with_entries`. Returns (guard, project path, roadmap path).
 fn project(base: &str, with_entries: bool) -> (tempfile::TempDir, PathBuf, PathBuf) {
@@ -81,18 +84,24 @@ fn work_migrate_waits_for_the_repository_lock() {
 
         let target = project.clone();
         let writer = std::thread::spawn(move || migrate(&target, false, true));
-        std::thread::sleep(Duration::from_millis(500));
-        let landed = written.exists() && read(&written).contains("status: completed");
-        assert!(
-            !landed,
-            "pmat work migrate wrote {} while another process held {} (entries/: {with_entries})",
-            written.display(),
-            lock_path.display()
-        );
-        assert!(
-            !writer.is_finished(),
-            "migrate returned without waiting for the lock (entries/: {with_entries})"
-        );
+        // Hold the lock for the whole window and look throughout it, not once at the
+        // end: a migrate that ignores the lock is caught the moment its write lands or
+        // it returns, however slow the machine — only one slower than HOLD escapes.
+        let deadline = std::time::Instant::now() + HOLD;
+        while std::time::Instant::now() < deadline {
+            let landed = written.exists() && read(&written).contains("status: completed");
+            assert!(
+                !landed,
+                "pmat work migrate wrote {} while another process held {} (entries/: {with_entries})",
+                written.display(),
+                lock_path.display()
+            );
+            assert!(
+                !writer.is_finished(),
+                "migrate returned without waiting for the lock (entries/: {with_entries})"
+            );
+            std::thread::sleep(Duration::from_millis(25));
+        }
 
         FileExt::unlock(&held).expect("release");
         drop(held);

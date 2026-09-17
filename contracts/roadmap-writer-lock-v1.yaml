@@ -114,7 +114,7 @@ falsification_tests:
     if_fails: "a source or propagation rule broke and the tree test is vacuously green"
   - id: RWL-F-004
     rule: "a write through the token waits for the lock (RWL-OB-004)"
-    prediction: "with the lock held from outside, migrate (whole-file and fragment mode), work add, save and aggregate --write do not land for 500 ms and land after release. Mutation measured 2026-09-17: dropping lock_exclusive from RoadmapWriteLock::acquire turns all four RED; with the pre-fix handler restored the migrate test is RED (it wrote roadmap.yaml while the lock was held)"
+    prediction: "with the lock held from outside, migrate (whole-file and fragment mode) is watched for 3 s — failing the moment its write lands or it returns — and work add, save and aggregate --write do not land for 500 ms; all land after release. Mutation measured 2026-09-17: dropping lock_exclusive from RoadmapWriteLock::acquire turns all four RED; with the pre-fix handler restored the migrate test is RED (it wrote roadmap.yaml while the lock was held)"
     test: "cargo test --lib -- work_migrate_waits_for_the_repository_lock roadmap_fragments_an_add_waits_for_the_repository_lock roadmap_fragments_a_save_waits_for_the_repository_lock roadmap_fragments_aggregate_write_waits_for_the_repository_lock"
     if_fails: "two pmat processes interleave a read-modify-write and one silently undoes the other"
   - id: RWL-F-005

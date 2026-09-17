@@ -84,6 +84,10 @@ Lanes 2 and 3 marked round 1's findings RESOLVED; lane 1 kept both OPEN with fou
 
 Lane 1 wrote 19 scratch files into its own review clone (a `syn` scratch crate and `#[path]` experiments). `agy-lane.sh` reported it `KEPT` and the shared checkout was untouched. The clone was deleted after its contents were listed.
 
+### Review round 5, and the lock test's window
+
+Round 5 on `94ef6b2fc` was PASS, PASS, and one BLIND lane (exit 4: it never read its workspace, so its FAIL is void). That is `agreed=false, partial=true`, and it does not meet the merge rule. The void lane's one finding still describes a real weakness. `work_migrate_waits_for_the_repository_lock` looked once, after 500 ms, so a migrate ignoring the lock but slower than that would pass. The test now holds the lock for 3 s and checks every 25 ms, failing the moment the write lands or the writer returns. Measured: GREEN in 6.03 s over both modes; with `lock_exclusive` removed from `RoadmapWriteLock::acquire` it fails at once (0.03 s), naming the roadmap it wrote while the lock was held. The PMAT-1363 lock tests keep their own 500 ms shape; they are not this ticket's.
+
 ## RED, then GREEN
 
 | state | tree | gate | migrate tests |
@@ -178,4 +182,4 @@ Lane 1 wrote 19 scratch files into its own review clone (a `syn` scratch crate a
 
 ## Verdict
 
-DONE on the code, the gate, the contract and review rounds 1 and 2's findings. Rounds 3 and 4 returned 3/3 PASS, on `bcda37008` and on its rebase `8d948e6b4`. Adding the `make gate` row changed the judged diff, so merge waits for a fifth round to return 3 PASS (`docs/audits/quorum-PMAT-1385.json`, `agreed=true`) on the head that merges, and for CI to go green.
+DONE on the code, the gate, the contract and review rounds 1 and 2's findings. Rounds 3 and 4 returned 3/3 PASS, on `bcda37008` and on its rebase `8d948e6b4`. Adding the `make gate` row changed the judged diff. Round 5 did not agree (one lane blind), and the lock-test change above changed the diff again, so merge waits for round 6 to return 3 PASS (`docs/audits/quorum-PMAT-1385.json`, `agreed=true`) on the head that merges, and for CI to go green.
