@@ -353,3 +353,15 @@ tree: run-log behind=0 against origin/master f25d7f1cc. Host up 2 hours, 7 minut
 Raw: #1396 quorum 3/3 PASS, armed via `pmat-merge`, 33 pass / 9 pending / 0 fail. D0 session (second, K=220) ended with all four scope items done and PR #1391 armed on 3/3 (round 1 was 2 PASS / 1 FAIL on `--notes` not being in the ticket row; the row was amended through `pmat work edit -d`, round 2 3/3): contract `contracts/pmat-issue-closure-v1.yaml` 8 obligations / 8 evaluated / 0 failed; `scripts/issue-closure-gate.sh` fails on zero files scanned, six planted defects each RED for its own reason, RED on master's emitters (2 call sites, 3 text hits), green on the branch (4/4 definitions, 0 call sites); one lint snippet spliced into all three commit-msg hook writers plus a PR title/body lint in CI; `pmat work edit --notes` added RED→GREEN and the PMAT-1369 → aprender#3397–#3399 cross-reference written with it. Its finding: the new PR-body lint would have refused 15 of the last 60 merged PRs, and GitHub does read those lines as closes (#1380 lists 1373 as a closing reference). `pmat work complete` still commits with `--no-verify` (the strict hook refuses its message), so it now lints its own message before staging.
 
 Correction to the operator's brief: `make clean-room-p1` is not a pmat Makefile target; it is in `~/src/infra/machines/clean-room/Makefile:413` (and per memory the pmat leg is `clean-room-pmat` there). Slots 2/3: D2, D6; nothing else queued before the release cut.
+
+## 2026-09-17T18:00Z — #1396 MERGED; D0 (#1391) cascaded by the orchestrator, disarmed by design, re-reviewed 3/3 and re-armed
+
+tree: run-log rebased, behind=0 against origin/master 121fe31c7.
+
+Raw:
+- #1396 merged (master 121fe31c7); bijection 114/114.
+- D0 clone: `git merge origin/master` → the predicted conflict in `docs/roadmaps/roadmap.yaml`. Resolved with `git merge-file --theirs` on the three index stages (conflict regions only → master's side). Checks: 0 conflict markers; exactly one `PMAT-900001` row and one `PMAT-1393` row; `git diff origin/master -- roadmap.yaml` = only D0's own PMAT-1369 `notes:`/`updated` hunk; `pmat work sync --check-only` coherent. Merge commit 4111549f7, behind=0.
+- `pmat-merge 1391` → "auto-merge was armed from an earlier verdict and has been disarmed … no quorum verdict … at 4111549f7" — the head-bound arming doing its job. New round: "AGREED: lane 1=PASS, lane 2=PASS, lane 3=PASS" (author claude-opus-5, the diff's author); verdict committed; re-armed.
+- Removed finished sessions' isolated target dirs (pmat-D0-B, pmat-D0-C, pmat-1365: ~60 GB).
+
+Decision: the orchestrator did the cascade rather than a session (no code judgment involved; the resolution rule was written down before the conflict existed). Slots 2/3: D2, D6.
