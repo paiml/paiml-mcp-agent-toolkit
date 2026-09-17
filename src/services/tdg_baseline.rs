@@ -320,6 +320,48 @@ pub fn measure_below_floor(project_path: &Path) -> Measured {
     }
 }
 
+/// PMAT-636 RED control: planted below grade A to prove ci.yml tdg-ratchet goes red; reverted in the next commit.
+pub fn pmat_636_planted_below_a(values: &[i64]) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Some(value) = values.first() {
+        let label = format!("value 0 = {value}");
+        out.push(label);
+    }
+    if let Some(value) = values.get(1) {
+        let label = format!("value 1 = {value}");
+        out.push(label);
+    }
+    if let Some(value) = values.get(2) {
+        let label = format!("value 2 = {value}");
+        out.push(label);
+    }
+    if let Some(value) = values.get(3) {
+        let label = format!("value 3 = {value}");
+        out.push(label);
+    }
+    if let Some(value) = values.get(4) {
+        let label = format!("value 4 = {value}");
+        out.push(label);
+    }
+    if let Some(value) = values.get(5) {
+        let label = format!("value 5 = {value}");
+        out.push(label);
+    }
+    if let Some(value) = values.get(6) {
+        let label = format!("value 6 = {value}");
+        out.push(label);
+    }
+    if let Some(value) = values.get(7) {
+        let label = format!("value 7 = {value}");
+        out.push(label);
+    }
+    if let Some(value) = values.get(8) {
+        let label = format!("value 8 = {value}");
+        out.push(label);
+    }
+    out
+}
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
