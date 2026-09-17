@@ -71,3 +71,21 @@ After it, `pmat work sync --check-only` reads 115/115 coherent, and `pmat work v
 Two things the skill's own gates reported, recorded here rather than worked around:
 - `kind-gate.sh PMAT-1336` exits 2, `unknown kind 'lifecycle'`, and `model-gate.sh` exits 2 for the same reason. The rail knows only `code | triage | docs | measurement`. The branch keeps to the triage path allow-list (`docs/roadmaps/roadmap.yaml`, `docs/audits/**`), and no `src/` file changes.
 - The quorum artifact lives at `docs/audits/quorum-PMAT-1336.json`, as it did for #1383, not under `.quorum/`, which does not exist in this repository.
+
+## 2026-09-17 — PMAT-1305 and PMAT-708, closed around #1388 and left `planned`
+
+#1388 (PMAT-1305) merged at ce945d81e at 2026-09-17T13:27:53Z. Its `Closes #1305` closed issue #1305 at 13:27:54Z. #1388's body names #1284 as a duplicate report of the same flaky test but does not close it: "whether this PR also closes it is left to the quorum". noahgift closed #1284 by hand at 13:29:02Z (stateReason COMPLETED), with the comment "duplicate of #1305 … fixed by #1388 (ce945d81e)". Neither row was touched, so PMAT-1305 (github_issue 1305) and PMAT-708 (github_issue 1284) both stayed `planned`.
+
+At `HEAD=ce945d81e origin/master=ce945d81e behind=0`, `pmat comply check --checks CB-2113,CB-2115` failed CB-2115 with two findings: `ORPHAN-ROADMAP PMAT-1305: #1305 is closed` and `ORPHAN-ROADMAP PMAT-708: #1284 is closed`. `pmat work sync` read open items 115 against open issues 113. CB-2113 read `not_applicable` (HEAD is the default branch). The required `gate` needs `traceability`, so these two findings made every open PR red, including #1368, which is armed for auto-merge.
+
+Fixed with `pmat work sync --direction github-to-yaml`. Its dry-run planned exactly `close-item PMAT-1305 #1305 → Completed` and `close-item PMAT-708 #1284 → Completed`. The writer applied both in one run. Its diff was split by hunk into one commit per finding, and the two commits together equal the writer's output line for line:
+- da02fb505 completes PMAT-1305: the row's `status` and `updated` lines.
+- ebbd9033e completes PMAT-708: the row's `status` and `updated` lines. The row keeps its `deferred:3.41.0` label.
+
+After both, `pmat work sync --check-only` reads 113/113 coherent. `pmat comply check --checks CB-2113,CB-2115` passes both: CB-2113 finds the Pmat-Ticket trailer on both branch commits, and CB-2115 finds the bijection.
+
+Corrections to the brief:
+- The brief said #1388 might also have closed #1284. It did not. #1284 was closed by hand a minute later, not by a closing keyword. The row is PMAT-708, not a PMAT-1284 row.
+- `.quorum/` does not exist in this repository. As for #1383 and #1387, the quorum artifact is `docs/audits/quorum-PMAT-1336.json`.
+
+Gates of the skill itself: `kind-gate.sh PMAT-1336` and `model-gate.sh PMAT-1336` both still exit 2 on `kind:lifecycle`, as recorded for PMAT-1386. The branch keeps to `docs/roadmaps/roadmap.yaml` and `docs/audits/**`.
