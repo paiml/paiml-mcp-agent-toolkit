@@ -392,3 +392,21 @@ tree: run-log behind=0 against origin/master b58addab8. Host up 3 hours, 35 minu
 
 tree: run-log behind=3 against origin/master eb5f79919. Host up 4 hours, 3 minutes.
 - Lifecycle-7 #1397 merged ~19:1xZ. D0 PR #1391 head 13915b557 armed (finishing session), 31 pass / 12 pending / 0 fail. D6 PMAT-636 LIVE at 51ed4d34f, still no PR. Slots 2/3.
+
+## 2026-09-17T19:57Z — D0 MERGED (#1391, 739d70269) and re-verified on master; only D6 remains
+
+tree: run-log rebased HEAD behind=0 against origin/master 739d70269; binary /mnt/nvme-raid0/targets/pmat-orch/debug/pmat (path from `cargo build --message-format json`, built from this tree).
+
+Raw (my rerun):
+```
+scripts/issue-closure-gate.sh $PMAT_BIN
+LEG query  scanned_rs_files=4498   definitions=4/4 … call_sites=0 test_hits_skipped=2
+LEG text   scanned_files=5144      hits=0 test_hits_skipped=3
+issue-closure-gate: PASS            exit=0
+scripts/issue-closure-gate.sh $PMAT_BIN --self-test → "every arm as expected", exit=0
+  (arms seen going RED: planted CALL SITE shut_issue; BLIND definition; VACUOUS 0 Rust files; DEFINITION GONE ×4; VACUOUS text pathspec)
+```
+So the D0 contract's gate holds on master and each of its failure modes reds for its own reason. Run without a binary argument the script prints usage and exits 0 — harmless, but a usage error that exits 0 is worth a follow-up (the header says usage = 2).
+- Bijection on 739d70269: 113/113 coherent, 0 planned actions. #1391 deliberately carries no `Closes` line ("Refs #1395 … completed together by a later lifecycle PR"), so issue 1395 is OPEN and row PMAT-900001 is `planned` — coherent, not red. Closing an issue is the orchestrator's alone and needs a quorum artifact (`mutate.sh close --quorum`); it is folded into the release-cut window rather than reddening master for a CI cycle now.
+
+State of the fix queue: D0 #1391 ✔, D1 #1364 ✔, D2 #1389 ✔, D3 #1382 ✔, D4 #1368 ✔, D7/#1305 #1388 ✔, lifecycle #1383 #1387 #1390 #1392 #1396 #1397 ✔; D5 ticketed upstream (aprender#3397–#3399). OPEN: D6 PMAT-636 / #1266 (CB-200) — the one remaining red leg of `make gate`; session LIVE at 20790317c, no PR yet.
