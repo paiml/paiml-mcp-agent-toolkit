@@ -2,34 +2,46 @@
   "ticket": "PMAT-1365",
   "base": "master",
   "base_resolved": "origin/master",
-  "base_note": "local master and origin/master agree",
-  "head": "08eebd2e55917cc75008a8aafa817d09784baecc",
-  "diff_sha256": "5d83d6e57fe4fa98fdd426204187f8d20e9414a2fd423e2f02c9047617a6527d",
+  "base_note": "local master differs from origin/master by 11 commit(s); judged against origin/master (fetch failed: origin/master may itself be stale)",
+  "head": "1f62075591f776406b3f4e6240f3a333d4c09438",
+  "diff_sha256": "a28972bf73e0f8e15106c60927ea4cb81a0ccb2cd6ff6580108e0f12dfc1ef11",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "inline",
-  "prompt_bytes": 65510,
+  "prompt_bytes": 94227,
   "author": {
     "model": "claude-opus-5",
     "family": "claude",
     "source": "flag"
   },
-  "agreed": false,
+  "agreed": true,
   "lanes": [
     {
       "lane": 1,
       "status": "SUCCESS",
-      "verdict": "FAIL",
-      "summary": "The diff successfully implements the `make gate` quality gate as described in PMAT-1365, including the Makefile target, control scripts, test tests, and profile configuration. However, it also adds a completely unrelated ticket (PMAT-1381: 'pmat work complete: ticket-scoped completion checks — repo-wide falsifications report, don\\\\'t block') to the `roadmap.yaml` file. This violates the instruction to FAIL if the change does something the ticket does not ask for.",
+      "verdict": "PASS",
+      "summary": "The diff satisfies PMAT-1365 by fully declaring and implementing the `make gate` quality gate. The previous issue identified in Lane 1 (the unrelated addition of PMAT-1381 to roadmap.yaml) has been successfully resolved through the rebase. The gate logic strictly accounts for all required contexts, workflow steps are evaluated accurately, and no gate is weakened. No refuting evidence was found.",
       "findings": [
         {
-          "claim": "The diff adds a new, unrelated ticket PMAT-1381 to the roadmap.",
+          "claim": "Makefile declares a .PHONY gate target that runs scripts/gate.sh, fulfilling the requirement for a declared gate_cmd.",
+          "file": "Makefile",
+          "grounding": "cited",
+          "line": 71
+        },
+        {
+          "claim": "The diff correctly adds the kind:code label to PMAT-1365 without including unrelated tickets such as PMAT-1381, addressing previous quorum failures.",
           "file": "docs/roadmaps/roadmap.yaml",
           "grounding": "cited",
-          "line": 6946
+          "line": 6839
+        },
+        {
+          "claim": "scripts/gate.sh implements the quality gate, explicitly running or addressing all 6 required CI status contexts.",
+          "file": "scripts/gate.sh",
+          "grounding": "cited",
+          "line": 218
         }
       ],
-      "raw_bytes": 2606,
+      "raw_bytes": 3258,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -43,14 +55,66 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff fully satisfies ticket PMAT-1365 without weakening any gate or violating repository invariants. It implements `make gate` via `scripts/gate.sh`, dynamically runs workflow steps directly from CI definitions, reports all unmeasured CI-only rows on both green and red exits, validates falsification behavior across 11 arms in `scripts/gate-control.sh`, and enforces contract invariants under `cargo test --lib make_gate_tests`. No refuting evidence was found.",
+      "summary": "The diff fully satisfies ticket PMAT-1365 without weakening any gate or violating repository invariants. It implements `make gate` via `scripts/gate.sh`, dynamically runs workflow steps directly from CI definitions, reports all unmeasured CI-only rows on both green and red exits, validates falsification behavior across 11 arms in `scripts/gate-control.sh`, and enforces contract invariants under `cargo test --lib make_gate_tests`. The previously reported unrelated roadmap row for PMAT-1381 was removed during the rebase onto origin/master, and all receipt claims are backed by the diff and verified by measurement. No refuting evidence was found.",
       "findings": [
         {
           "claim": "Makefile declares a .PHONY `gate:` target running `scripts/gate.sh`, eliminating discovery fallback to `cargo test --workspace`.",
           "file": "Makefile",
           "fix": "N/A (verified correct)",
           "grounding": "cited",
-          "line": 71
+          "line": 70
+        },
+        {
+          "claim": "`scripts/gate.sh` accounts for all 6 required CI status contexts, rejecting unaccounted contexts, reasonless CI-only rows, or vacuous tables with exit code 2.",
+          "file": "scripts/gate.sh",
+          "fix": "N/A (verified correct)",
+          "grounding": "cited",
+          "line": 196
+        },
+        {
+          "claim": "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime using Python/PyYAML, preventing drift between CI and local gate legs.",
+          "file": "scripts/gate.sh",
+          "fix": "N/A (verified correct)",
+          "grounding": "cited",
+          "line": 225
+        },
+        {
+          "claim": "`scripts/gate-control.sh` executes 11 falsification arms asserting failure behavior on broken, malformed, or missing checks and tables.",
+          "file": "scripts/gate-control.sh",
+          "fix": "N/A (verified correct)",
+          "grounding": "measured",
+          "line": 46
+        },
+        {
+          "claim": "`cargo test --lib make_gate_tests` passes 5 tests independently validating the declared Makefile target, workflow step parsing, context coverage, and prohibiting invalid CI-only exemptions.",
+          "file": "src/make_gate_tests.rs",
+          "fix": "N/A (verified correct)",
+          "grounding": "measured",
+          "line": 93
+        }
+      ],
+      "raw_bytes": 5669,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff fully satisfies ticket PMAT-1365 and adheres strictly to repository quality requirements and invariants. It establishes `make gate` as the declared repository quality gate via `scripts/gate.sh`, dynamically executing workflow steps directly from CI definitions, printing all unmeasured CI-only rows on both green and red exits, validating falsification behavior across 11 arms in `scripts/gate-control.sh`, and enforcing contract invariants under `cargo test --lib make_gate_tests`. No gate is weakened, no unrelated changes remain in the diff, and all claims are backed by measured and cited evidence.",
+      "findings": [
+        {
+          "claim": "Makefile declares a .PHONY `gate:` target running `scripts/gate.sh`, eliminating discovery fallback to `cargo test --workspace`.",
+          "file": "Makefile",
+          "fix": "N/A (verified correct)",
+          "grounding": "cited",
+          "line": 70
         },
         {
           "claim": "`scripts/gate.sh` accounts for all 6 required CI status contexts, rejecting unaccounted contexts, reasonless CI-only rows, or vacuous tables with exit code 2.",
@@ -60,7 +124,7 @@
           "line": 218
         },
         {
-          "claim": "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime using Python/PyYAML, preventing drift between CI and local gate legs.",
+          "claim": "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime using Python/PyYAML, preventing drift between CI and local gate runs.",
           "file": "scripts/gate.sh",
           "fix": "N/A (verified correct)",
           "grounding": "cited",
@@ -81,60 +145,8 @@
           "line": 93
         }
       ],
-      "raw_bytes": 5112,
-      "err_bytes": 79,
-      "envelope_status": "SUCCESS",
-      "verdict_source": "structured_output",
-      "grounding_check": "parity",
-      "model": "gemini-3.8-flash-high",
-      "model_measured": "gemini-3.8-flash-high",
-      "model_source": "measured",
-      "family": "gemini"
-    },
-    {
-      "lane": 3,
-      "status": "SUCCESS",
-      "verdict": "PASS",
-      "summary": "The diff fully satisfies ticket PMAT-1365 and strictly adheres to repository requirements and invariants. It establishes `make gate` as the declared gate command using `scripts/gate.sh`, dynamically executing workflow steps directly from CI definitions, printing all unmeasured CI-only rows on both green and red exits, providing comprehensive falsification testing via `scripts/gate-control.sh`, and validating contract invariants through `src/make_gate_tests.rs`. No gate is weakened, and all claims are grounded and measured.",
-      "findings": [
-        {
-          "claim": "Makefile declares a .PHONY `gate:` target executing `bash scripts/gate.sh`, replacing fallback guessing with the declared repository gate.",
-          "file": "Makefile",
-          "fix": "N/A (verified correct)",
-          "grounding": "cited",
-          "line": 71
-        },
-        {
-          "claim": "`scripts/gate.sh` requires all 6 status contexts from master and rejects unaccounted or vacuous tables with exit code 2.",
-          "file": "scripts/gate.sh",
-          "fix": "N/A (verified correct)",
-          "grounding": "cited",
-          "line": 218
-        },
-        {
-          "claim": "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime via python/PyYAML, preventing drift between CI and local gate runs.",
-          "file": "scripts/gate.sh",
-          "fix": "N/A (verified correct)",
-          "grounding": "cited",
-          "line": 227
-        },
-        {
-          "claim": "`scripts/gate-control.sh` executes 11 falsification arms asserting failure behavior on broken, malformed, or missing checks and tables.",
-          "file": "scripts/gate-control.sh",
-          "fix": "N/A (verified correct)",
-          "grounding": "measured",
-          "line": 46
-        },
-        {
-          "claim": "`cargo test --lib make_gate_tests` verifies the gate declaration, workflow step resolution, context accounting, and refusal of unmeasured CI-only reasons.",
-          "file": "src/make_gate_tests.rs",
-          "fix": "N/A (verified correct)",
-          "grounding": "measured",
-          "line": 93
-        }
-      ],
-      "raw_bytes": 9481,
-      "err_bytes": 79,
+      "raw_bytes": 5225,
+      "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
       "grounding_check": "parity",
@@ -144,42 +156,37 @@
       "family": "gemini"
     }
   ],
-  "dissent": [
-    {
-      "lane": 1,
-      "verdict": "FAIL",
-      "summary": "The diff successfully implements the `make gate` quality gate as described in PMAT-1365, including the Makefile target, control scripts, test tests, and profile configuration. However, it also adds a completely unrelated ticket (PMAT-1381: 'pmat work complete: ticket-scoped completion checks — repo-wide falsifications report, don\\\\'t block') to the `roadmap.yaml` file. This violates the instruction to FAIL if the change does something the ticket does not ask for.",
-      "findings": [
-        {
-          "claim": "The diff adds a new, unrelated ticket PMAT-1381 to the roadmap.",
-          "file": "docs/roadmaps/roadmap.yaml",
-          "grounding": "cited",
-          "line": 6946
-        }
-      ]
-    }
-  ],
+  "dissent": [],
   "dedup": [
     {
       "file": "Makefile",
-      "line": 71,
+      "line": 70,
       "lanes_agreeing": [
         2,
         3
       ],
       "claims": [
-        "Makefile declares a .PHONY `gate:` target executing `bash scripts/gate.sh`, replacing fallback guessing with the declared repository gate.",
         "Makefile declares a .PHONY `gate:` target running `scripts/gate.sh`, eliminating discovery fallback to `cargo test --workspace`."
       ]
     },
     {
-      "file": "docs/roadmaps/roadmap.yaml",
-      "line": 6946,
+      "file": "Makefile",
+      "line": 71,
       "lanes_agreeing": [
         1
       ],
       "claims": [
-        "The diff adds a new, unrelated ticket PMAT-1381 to the roadmap."
+        "Makefile declares a .PHONY gate target that runs scripts/gate.sh, fulfilling the requirement for a declared gate_cmd."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 6839,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The diff correctly adds the kind:code label to PMAT-1365 without including unrelated tickets such as PMAT-1381, addressing previous quorum failures."
       ]
     },
     {
@@ -195,26 +202,44 @@
     },
     {
       "file": "scripts/gate.sh",
+      "line": 196,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "`scripts/gate.sh` accounts for all 6 required CI status contexts, rejecting unaccounted contexts, reasonless CI-only rows, or vacuous tables with exit code 2."
+      ]
+    },
+    {
+      "file": "scripts/gate.sh",
       "line": 218,
       "lanes_agreeing": [
-        2,
+        1,
         3
       ],
       "claims": [
         "`scripts/gate.sh` accounts for all 6 required CI status contexts, rejecting unaccounted contexts, reasonless CI-only rows, or vacuous tables with exit code 2.",
-        "`scripts/gate.sh` requires all 6 status contexts from master and rejects unaccounted or vacuous tables with exit code 2."
+        "scripts/gate.sh implements the quality gate, explicitly running or addressing all 6 required CI status contexts."
+      ]
+    },
+    {
+      "file": "scripts/gate.sh",
+      "line": 225,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime using Python/PyYAML, preventing drift between CI and local gate legs."
       ]
     },
     {
       "file": "scripts/gate.sh",
       "line": 227,
       "lanes_agreeing": [
-        2,
         3
       ],
       "claims": [
-        "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime using Python/PyYAML, preventing drift between CI and local gate legs.",
-        "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime via python/PyYAML, preventing drift between CI and local gate runs."
+        "`scripts/gate.sh` extracts workflow `run:` step scripts dynamically at runtime using Python/PyYAML, preventing drift between CI and local gate runs."
       ]
     },
     {
@@ -225,8 +250,7 @@
         3
       ],
       "claims": [
-        "`cargo test --lib make_gate_tests` passes 5 tests independently validating the declared Makefile target, workflow step parsing, context coverage, and prohibiting invalid CI-only exemptions.",
-        "`cargo test --lib make_gate_tests` verifies the gate declaration, workflow step resolution, context accounting, and refusal of unmeasured CI-only reasons."
+        "`cargo test --lib make_gate_tests` passes 5 tests independently validating the declared Makefile target, workflow step parsing, context coverage, and prohibiting invalid CI-only exemptions."
       ]
     }
   ],
