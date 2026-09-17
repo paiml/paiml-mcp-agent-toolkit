@@ -163,3 +163,12 @@ aggregate(aggregate(x)) sha=e1a984eeee7990df
 Decision: D1's contract holds by my own measurement (three runs byte-identical, equal to the committed file, idempotent; the control goes red). The last line is by design, not a hole: roadmap.yaml is its own base, so a row with no fragment has nothing to be compared against — same semantics as aprender's aggregator.
 
 Finding (not blocking, goes to #1370's follow-up): on a READ-ONLY copy every run exits 2 — `FAIL cannot take the roadmap lock … (Failed to open lock file: "docs/roadmaps/roadmap.yaml.lock") — this box cannot judge`. A print-only `aggregate` and `--check` need a writable lock file, and outside a git repository that file is created beside the roadmap (`roadmap.yaml.lock` was left in the tree). Honest (exit 2, not a false ok), but a read-only CI mount cannot run the parity check. My first three runs were on the read-only copy and measured exactly that; the numbers above are from a writable copy.
+
+## 2026-09-17T10:37Z — sessions in flight
+
+tree: run-log behind=0 against origin/master 8915fe3e6.
+- PR #1383:      32 pass      10 pending       4 skipping — chore(PMAT-1336): register PMAT-1385 and complete PMAT-1363 — master's two CB-2115 findings
+- PR #1368:       1 fail      23 pass      18 pending       4 skipping — build(make): declare `gate` — pmat had no gate of its own, so discovery guessed a weaker one
+- D2 filed its own ticket: PMAT-1385 (branch `PMAT-1385-roadmap-unlocked-write-bypass`), LIVE, no PR yet. D4 rebased onto the D1 merge (HEAD be34454e7). PMAT-1336 HEAD 7f46ba209.
+- Drafted the D6 brief (`.run/briefs/PMAT-636.tmpl`, CB-200 / #1266): re-measure with one binary on both trees and publish the set difference before fixing; never raise the baseline; make a required CI job able to see the count. Queue after the next free slot: D0, then D6.
+- Correction: the previous entry's heading said 10:12Z; its commit landed at ~10:11Z — headings are now generated with `date -u`, not typed.
