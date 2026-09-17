@@ -237,3 +237,19 @@ tree: run-log behind=0 against origin/master 7fa1be27d.
 - PR #1388:      26 pass      16 pending       4 skipping 
 - PR #1368:      15 pass      27 pending       4 skipping 
 - D2 PMAT-1385: LIVE at 287746ab0, last transcript event 12:55Z (a long-running command or a delegate is in flight; pid alive). D7 at 34d347c69, D4 at c5f254f70. Slots 3/3. Queue: D0, D6.
+
+## 2026-09-17T13:31Z — D7 MERGED (#1388, ce945d81e): the #1305 "flake" was a shared cargo target dir in CI; lifecycle-4 launched
+
+tree: run-log rebased, behind=0 against origin/master ce945d81e.
+
+Raw (D7 session receipt, verdict DONE, quorum agreed=true 3/3 on ae8efee2f, merged 13:27:53Z, 45 pass / 0 fail):
+- Mechanism: cargo fingerprints a workspace member by its path relative to the workspace root; the dead-code analyzer inherited `CARGO_TARGET_DIR=/workspace/target`, which `ci / test` and `ci / coverage` mount per PR, so coverage's COMPILABLE `fx` fixture made test's UNCOMPILABLE `fx` fixture look fresh and `cargo check` exited 0 — a clean full measurement of a crate that cannot compile. Not a test flake: a product defect (a gate reporting on what it could not see).
+- Fix: the analyzer builds into `<target_directory>/pmat-dead-code/<name>-<fnv1a64(canonical workspace root)>`.
+- Reproduction (harness `scripts/repro-pmat-1305-shared-target-race.sh`, N=40 per mode): before 17/80 aligned, 17/80 free, 0/40 single; after 0/80, 0/80, 0/40; under the mutant 19/80. Planted test red 3/3 before, green after, red under the mutant. Contract `contracts/dead-code-target-isolation-v1.yaml`: 5 obligations + 6 falsification tests, all evaluated, 0 failed.
+- All four hypotheses in my brief were REFUTED by measurement (cache hit across fixtures, shared `.pmat` dir, `set_current_dir` race, TMPDIR); the cause was not on the list. Findings, not failures.
+- #1284 closed as duplicate through `mutate.sh close` on a 3/3 scope vote. Rows now awaiting a lifecycle commit: PMAT-1305 and PMAT-708 (#1284).
+- Session findings worth keeping: F-5 a `quorum-review.sh` review lane ran in the SHARED checkout and applied/reverted the mutant patch there (lane-confinement breach, same class as memory's escape #5 — belongs to paiml-implement/quorum-review, not fixed here); F-6 `pmat-merge` hashes against the literal local base ref while `quorum-review.sh` uses `origin/<base>` — a stale local `master` disarms a good PR (new clones now fast-forward local master; told to every later session); F-9 some lib test writes a 15 GB `target/` into the repo root despite an inherited `CARGO_TARGET_DIR` (disk hazard with several clones live — `df` checked below).
+
+Same class, three times today: one target dir shared by things that believed they were alone — the operator's `cargo` shell function across clones (09:58Z), `scripts/gate.sh`'s hard-coded `./target/debug/pmat` (11:50Z), and now CI's per-PR mount across jobs.
+
+Decision: #1388's merge orphans PMAT-1305 (and PMAT-708) under CB-2115, and PR #1368 — armed for auto-merge since ~13:25Z, 40 pass / 4 pending — is strict-protected, so it must take master and will go red on `traceability` until those rows are terminal. 13:30Z launched lifecycle-4 (pid 3360656) to complete both and anything else live. Slots 3/3: D2, D4, lifecycle-4. disk: 320G free (82% used).
