@@ -351,25 +351,7 @@ pub(crate) fn check_hook_performance(project_path: &Path) -> ComplianceCheck {
     let code =
         crate::services::repo_score::scorers::precommit_scorer::strip_shell_comments(&content)
             .to_lowercase();
-    let mut expensive_ops: Vec<String> = Vec::new();
-
-    // Commands with a cold-start cost, matched against what the script invokes.
-    let expensive_patterns = [
-        ("cargo build", "full build in pre-commit"),
-        ("cargo test", "full test suite in pre-commit"),
-        (
-            "cargo clippy",
-            "full clippy in pre-commit (use cached results)",
-        ),
-        ("npm install", "package install in pre-commit"),
-        ("pip install", "package install in pre-commit"),
-    ];
-
-    for (pattern, description) in &expensive_patterns {
-        if code.contains(pattern) {
-            expensive_ops.push(format!("{}: {}", pattern, description));
-        }
-    }
+    let expensive_ops = cold_start_commands(&code);
 
     if expensive_ops.is_empty() {
         ComplianceCheck {
@@ -392,6 +374,31 @@ pub(crate) fn check_hook_performance(project_path: &Path) -> ComplianceCheck {
             severity: Severity::Warning,
         }
     }
+}
+
+/// Each known cold-start command `code` (a lowercased, comment-stripped hook
+/// script) invokes, as `"<command>: <why it is expensive>"`.
+fn cold_start_commands(code: &str) -> Vec<String> {
+    let mut expensive_ops: Vec<String> = Vec::new();
+
+    // Commands with a cold-start cost, matched against what the script invokes.
+    let expensive_patterns = [
+        ("cargo build", "full build in pre-commit"),
+        ("cargo test", "full test suite in pre-commit"),
+        (
+            "cargo clippy",
+            "full clippy in pre-commit (use cached results)",
+        ),
+        ("npm install", "package install in pre-commit"),
+        ("pip install", "package install in pre-commit"),
+    ];
+
+    for (pattern, description) in &expensive_patterns {
+        if code.contains(pattern) {
+            expensive_ops.push(format!("{}: {}", pattern, description));
+        }
+    }
+    expensive_ops
 }
 
 /// CB-1321: Dockerfile Contract

@@ -508,36 +508,42 @@ fn format_tdg_score_markdown(
     if include_components && nothing_was_measured(project) {
         output.push_str("## Component Breakdown\n\nNot measured — 0 files analyzed.\n");
     } else if include_components {
-        output.push_str("## Component Breakdown\n\n");
-        output.push_str("| Component | Score | Max |\n");
-        output.push_str("|-----------|-------|-----|\n");
-        output.push_str(&format!(
-            "| Structural Complexity | {:.1} | 25 |\n",
-            score.structural_complexity
-        ));
-        output.push_str(&format!(
-            "| Semantic Complexity | {:.1} | 20 |\n",
-            score.semantic_complexity
-        ));
-        output.push_str(&format!(
-            "| Duplication | {:.1} | 20 |\n",
-            score.duplication_ratio
-        ));
-        output.push_str(&format!(
-            "| Coupling | {:.1} | 15 |\n",
-            score.coupling_score
-        ));
-        output.push_str(&format!(
-            "| Documentation | {:.1} | 10 |\n",
-            score.doc_coverage
-        ));
-        output.push_str(&format!(
-            "| Consistency | {:.1} | 10 |\n",
-            score.consistency_score
-        ));
+        output.push_str(&component_breakdown_markdown(score));
     }
 
     Ok(output)
+}
+
+/// The `## Component Breakdown` table: each TDG component's score against its maximum.
+fn component_breakdown_markdown(score: &crate::tdg::TdgScore) -> String {
+    let mut out = String::from("## Component Breakdown\n\n");
+    out.push_str("| Component | Score | Max |\n");
+    out.push_str("|-----------|-------|-----|\n");
+    out.push_str(&format!(
+        "| Structural Complexity | {:.1} | 25 |\n",
+        score.structural_complexity
+    ));
+    out.push_str(&format!(
+        "| Semantic Complexity | {:.1} | 20 |\n",
+        score.semantic_complexity
+    ));
+    out.push_str(&format!(
+        "| Duplication | {:.1} | 20 |\n",
+        score.duplication_ratio
+    ));
+    out.push_str(&format!(
+        "| Coupling | {:.1} | 15 |\n",
+        score.coupling_score
+    ));
+    out.push_str(&format!(
+        "| Documentation | {:.1} | 10 |\n",
+        score.doc_coverage
+    ));
+    out.push_str(&format!(
+        "| Consistency | {:.1} | 10 |\n",
+        score.consistency_score
+    ));
+    out
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -1056,5 +1062,25 @@ mod cap_disclosure_tests {
         let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
         assert!(value["score"]["breakdown"].is_object());
         assert!(value["grade_capped"].is_null());
+    }
+
+    /// PMAT-636: pins the measured component table of the markdown renderer
+    /// byte-for-byte, so extracting it into a helper cannot change it.
+    #[test]
+    fn markdown_component_breakdown_is_pinned_for_a_measured_file() {
+        let score = file_at(80.0);
+        let md = format_tdg_score_markdown(&score, None, true, None).expect("render");
+        let table = "## Component Breakdown\n\n\
+                     | Component | Score | Max |\n\
+                     |-----------|-------|-----|\n\
+                     | Structural Complexity | 20.0 | 25 |\n\
+                     | Semantic Complexity | 16.0 | 20 |\n\
+                     | Duplication | 16.0 | 20 |\n\
+                     | Coupling | 12.0 | 15 |\n\
+                     | Documentation | 8.0 | 10 |\n\
+                     | Consistency | 8.0 | 10 |\n";
+        assert!(md.ends_with(table), "got:\n{md}");
+        let without = format_tdg_score_markdown(&score, None, false, None).expect("render");
+        assert_eq!(md, format!("{without}{table}"));
     }
 }

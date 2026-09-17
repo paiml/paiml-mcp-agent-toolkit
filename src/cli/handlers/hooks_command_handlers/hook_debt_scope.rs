@@ -232,10 +232,10 @@ pub fn diff_scoped_verdict(
     thresholds: DebtThresholds,
 ) -> Result<DebtVerdict> {
     let new_functions = measure_source(new_source)?;
-    let old_functions = match old_source {
-        Some(text) => measure_source(text)?,
-        None => Vec::new(),
-    };
+    let old_functions = old_source
+        .map(measure_source)
+        .transpose()?
+        .unwrap_or_default();
     let ranges = parse_touched_ranges(diff);
 
     let mut growths = Vec::new();
@@ -375,28 +375,7 @@ pub fn staged_verdict(
         repo_root,
         &["diff", "--cached", "-M", "--name-status", "-z"],
     )? {
-        Some(output) => {
-            let mut resolved = spec.clone();
-            let mut parts = output.split('\0').peekable();
-            while let Some(status) = parts.next() {
-                if status.is_empty() {
-                    break;
-                }
-                if status.starts_with('R') || status.starts_with('C') {
-                    let old_path = parts.next();
-                    let new_path = parts.next();
-                    if let (Some(o), Some(n)) = (old_path, new_path) {
-                        if n == spec {
-                            resolved = o.to_string();
-                            break;
-                        }
-                    }
-                } else {
-                    parts.next(); // skip path
-                }
-            }
-            resolved
-        }
+        Some(output) => pre_rename_path(&output, &spec),
         None => spec.clone(),
     };
 
@@ -407,6 +386,32 @@ pub fn staged_verdict(
     let diff = git_read(repo_root, &["diff", "--cached", "-U0", "--", &spec])?
         .ok_or_else(|| anyhow!("`git diff --cached -U0 -- {spec}` failed in {repo_root:?}"))?;
     diff_scoped_verdict(old_source.as_deref(), &new_source, &diff, thresholds)
+}
+
+/// The HEAD-side path of `spec` in `git diff --cached -M --name-status -z`
+/// output: the source of a rename or copy whose destination is `spec`, else
+/// `spec` itself.
+fn pre_rename_path(name_status: &str, spec: &str) -> String {
+    let mut resolved = spec.to_string();
+    let mut parts = name_status.split('\0').peekable();
+    while let Some(status) = parts.next() {
+        if status.is_empty() {
+            break;
+        }
+        if status.starts_with('R') || status.starts_with('C') {
+            let old_path = parts.next();
+            let new_path = parts.next();
+            if let (Some(o), Some(n)) = (old_path, new_path) {
+                if n == spec {
+                    resolved = o.to_string();
+                    break;
+                }
+            }
+        } else {
+            parts.next(); // skip path
+        }
+    }
+    resolved
 }
 
 /// [`staged_verdict`] for a path as the user typed it: finds the repository
