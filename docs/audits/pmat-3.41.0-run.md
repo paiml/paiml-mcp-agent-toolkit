@@ -222,3 +222,11 @@ tree: run-log behind=0 against origin/master 7c2aa59b8.
 - PR #1368 (build(make): declare `gate` — pmat had no gate of its own, so discovery guessed a weaker o):       2 fail      41 pass       1 pending       5 skipping 
 - D7 PMAT-1305 opened #1388 after ~65 min: "dead-code analyzer builds into a target dir only its workspace r…" — i.e. the mechanism it found is a SHARED cargo target dir, the same class as the cross-clone hazard logged at 09:58Z. Receipt pending.
 - D2 PMAT-1385: LIVE, HEAD dbf8774ec, no PR yet. Lifecycle-3: PR #1387 open. Slots 3/3.
+
+## 2026-09-17T12:37Z — lifecycle PR #1387 MERGED (7fa1be27d); D4 seventh session launched
+
+tree: run-log rebased, behind=0 against origin/master 7fa1be27d.
+
+Raw: #1387 armed through `pmat-merge` on a 3/3 PASS artifact (judged 81fe249fa), 45 pass / 0 fail, merged 12:3xZ; session reports CB-2115 on master = 115 items / 115 issues / 0 findings. Cycle time launch→merge: 46 min. Note: `kind-gate.sh` and `model-gate.sh` both exit 2 on `kind:lifecycle` — the skill has no such kind; the session recorded it rather than working around it (goes to paiml-implement, not fixed here).
+
+Decision: 12:36Z launched D4 session seven (pid 3325886): merge master, fix its own gate.sh stale-binary finding RED→GREEN, full `make gate`, one quorum round, arm via `pmat-merge`; told NOT to carry lifecycle rows and to stop if a new orphan appears. Slots 3/3: D2 (PMAT-1385), D7 (PMAT-1305, PR #1388 in CI), D4.
