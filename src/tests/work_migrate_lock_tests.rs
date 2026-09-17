@@ -245,4 +245,26 @@ fn work_migrate_in_fragment_mode_refuses_to_carry_text_after_the_last_row() {
     migrate(&blank_project, false, true).expect("trailing blank lines do not block a migration");
     assert!(read(&blank_entries.join("PMAT-002.yaml")).contains("status: completed"));
     assert_eq!(read(&blank_roadmap), blank);
+
+    // Control: a block scalar whose text starts with `#`, and a comment written inside
+    // the row, are the row's own lines — not text after it.
+    let scalar = format!(
+        "{HEADER}roadmap:\n- id: PMAT-002\n  title: second\n  status: done\n  notes: |\n    # heading inside the note\n    body\n    # last line of the note\n  # a comment inside the row\n"
+    );
+    let (_scalar_dir, scalar_project, scalar_roadmap) = project(&scalar, true);
+    let scalar_entries = scalar_roadmap
+        .parent()
+        .expect("the roadmap has a directory")
+        .join("entries");
+    migrate(&scalar_project, false, true).expect("a row's own lines do not block a migration");
+    assert_eq!(
+        read(&scalar_entries.join("PMAT-002.yaml")),
+        scalar
+            .split_once("roadmap:\n")
+            .expect("the fixture has a roadmap key")
+            .1
+            .replace("status: done", "status: completed"),
+        "the fragment is the whole row, block scalar and inner comment included"
+    );
+    assert_eq!(read(&scalar_roadmap), scalar);
 }

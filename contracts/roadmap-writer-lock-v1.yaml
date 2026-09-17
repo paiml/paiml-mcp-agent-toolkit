@@ -16,7 +16,7 @@ metadata:
     so a write through it that compiles is a locked write. The WRITER GATE: a taint
     analysis of every file the crate compiles outside cfg(test), from path literals
     naming docs/roadmaps or roadmap.yaml to the serialisation sites (fs::write,
-    File::create, rename, copy, remove_file, a writing OpenOptions::open, …), finds
+    File::create, rename, copy, remove_file, create_dir_all, a writing OpenOptions::open, …), finds
     no raw write reaching a roadmap path outside RoadmapWriteLock. The gate reads what
     is written, not what a variable is called, so renaming a binding cannot satisfy
     it. `pmat work migrate` is the writer that bypassed the lock: it now reads,
@@ -31,9 +31,11 @@ equations:
     formula: |
       sinks(src) = { s | s is a raw filesystem write in a file compiled outside cfg(test)
                          ∧ dest(s) ∈ taint*(path literals naming docs/roadmaps | roadmap.yaml) }
-      ∀ s ∈ sinks(src) : fn(s) ∈ { RoadmapWriteLock::write, RoadmapWriteLock::replace,
-                                   RoadmapWriteLock::remove, open_lock_file }
-      ∀ a ∈ ALLOWED : ∃ s ∈ sinks(src) : fn(s) = a                     [the allow-list is live]
+      ∀ s ∈ sinks(src) : (file(s), fn(s), kind(s)) ∈ ALLOWED, where ALLOWED is keyed by kind:
+        RoadmapWriteLock::write {fs::write} · ::replace {fs::write, fs::rename, fs::remove_file}
+        · ::remove {fs::remove_file} · ::create_dir_all {fs::create_dir_all}
+        · open_lock_file {OpenOptions::open, fs::create_dir_all} · IdAuthority::in_git {fs::create_dir_all: <git common dir>/pmat}
+      ∀ (f, k) ∈ ALLOWED : ∃ s ∈ sinks(src) : fn(s) = f ∧ kind(s) = k       [the allow-list is live, per kind]
     domain: "the syntax tree of every file reached from src/lib.rs and src/bin/*.rs through mod declarations and include! at any depth (inline module, impl, function body); include!(concat!(env!(OUT_DIR), ...)) resolved to the build script's output; any other computed include! fails the walk; cfg(test) items skipped. 3037 files, 4 of them generated, measured 2026-09-17"
     codomain: bool
     invariants:
@@ -67,7 +69,7 @@ equations:
 proof_obligations:
   - type: invariant
     property: "RWL-OB-001 no raw write reaches a path under docs/roadmaps/ outside RoadmapWriteLock"
-    formal: "sinks(src) ⊆ ALLOWED"
+    formal: "∀ s ∈ sinks(src) : (file(s), fn(s), kind(s)) ∈ ALLOWED"
     applies_to: every_roadmap_write_goes_through_the_lock_token
   - type: invariant
     property: "RWL-OB-002 the gate can fail: a planted unlocked write is reported whether its path travels through a renamed binding, a helper parameter, a const, a struct field, a return value, a clap default, format!, or a .map closure, and for every sink kind; prose, reads and cfg(test) code are not reported"
@@ -75,7 +77,7 @@ proof_obligations:
     applies_to: tainted_sinks
   - type: invariant
     property: "RWL-OB-003 the allow-list is live: every allowed writer is still reached by taint from a real call site, so a broken source cannot turn the gate vacuous"
-    formal: "∀ a ∈ ALLOWED : ∃ s ∈ sinks(src) : fn(s) = a"
+    formal: "∀ (f, k) ∈ ALLOWED : ∃ s ∈ sinks(src) : fn(s) = f ∧ kind(s) = k"
     applies_to: every_roadmap_write_goes_through_the_lock_token
   - type: invariant
     property: "RWL-OB-004 every write through the token waits for the repository's exclusive lock — migrate in both modes, work add, save, aggregate --write"
@@ -97,13 +99,13 @@ proof_obligations:
 falsification_tests:
   - id: RWL-F-001
     rule: "no raw roadmap write outside the token (RWL-OB-001)"
-    prediction: "the tree test reports 0. Measured 2026-09-17: 11 on 8915fe3e6 (write_migration, replace_atomically ×3 kinds, write_fragment ×2, remove_fragment, open_lock_file, persist_new_row, replace_item_raw, write_roadmap_unlocked); with the pre-fix ticket_validate_migrate.rs restored over the fix: 1, write_migration; and still 1 with every roadmap_path binding in that handler renamed to zz, a tree on which `pmat query --literal \"fs::write(roadmap_path\"` no longer lists the file"
+    prediction: "the tree test reports 0. Measured 2026-09-17: 11 on 8915fe3e6 (write_migration, replace_atomically ×3 kinds, write_fragment ×2, remove_fragment, open_lock_file, persist_new_row, replace_item_raw, write_roadmap_unlocked); with the pre-fix ticket_validate_migrate.rs restored over the fix: 1, write_migration; and still 1 with every roadmap_path binding in that handler renamed to zz, a tree on which `pmat query --literal \"fs::write(roadmap_path\"` no longer lists the file. The allow-list is keyed by sink kind: planting an fs::write in open_lock_file, or putting a raw fs::create_dir_all back in write_roadmap_unlocked, each turns the tree test RED (measured)"
     test: "cargo test --lib roadmap_writer_gate_every_roadmap_write_in_the_tree_goes_through_the_lock_token"
     if_fails: "a writer of docs/roadmaps/ bypasses the repository lock again and can undo a concurrent work add"
   - id: RWL-F-002
     rule: "the gate can fail (RWL-OB-002)"
-    prediction: "the migrate shape, a renamed binding, a cross-file helper, consts/fields/returns/clap defaults/format!/closures and all eight sink kinds are reported; prose, reads and test code are not. Mutation measured 2026-09-17: removing the let-binding propagation turns 5 of the gate's tests RED"
-    test: "cargo test --lib -- roadmap_writer_gate_catches_the_migrate_shape roadmap_writer_gate_a_renamed_binding_is_still_caught roadmap_writer_gate_crosses_files roadmap_writer_gate_follows_consts_returns_fields_and_clap_defaults roadmap_writer_gate_sees_every_sink_kind roadmap_writer_gate_is_silent_on_unrelated_reads_and_tests roadmap_writer_gate_source_predicate"
+    prediction: "the migrate shape, a renamed binding, a cross-file helper, consts/fields/returns/clap defaults/format!/closures and all eight sink kinds are reported; prose, reads and test code are not. Mutation measured 2026-09-17: removing the let-binding propagation turns 5 of the gate's tests RED. The module walk reaches an include! inside an impl, a #[path] module inside an inline module and a module declared in a function body, skips cfg(test), and fails on an include! it cannot locate; resolving #[path] from the file directory inside an inline module turns that test RED (measured)"
+    test: "cargo test --lib -- roadmap_writer_gate_catches_the_migrate_shape roadmap_writer_gate_a_renamed_binding_is_still_caught roadmap_writer_gate_crosses_files roadmap_writer_gate_walk_reaches_nested_modules_and_includes roadmap_writer_gate_follows_consts_returns_fields_and_clap_defaults roadmap_writer_gate_sees_every_sink_kind roadmap_writer_gate_is_silent_on_unrelated_reads_and_tests roadmap_writer_gate_source_predicate"
     if_fails: "the gate passes a tree it cannot see into"
   - id: RWL-F-003
     rule: "the allow-list is live (RWL-OB-003)"
@@ -127,6 +129,6 @@ falsification_tests:
     if_fails: "pmat work migrate edits the generated roadmap.yaml and the roadmap-fragment-parity gate refuses the pull request"
   - id: RWL-F-007
     rule: "a refused fragment-mode migration writes nothing (RWL-OB-007)"
-    prediction: "a base row whose id cannot be a filename refuses the migration and entries/ stays empty, although PMAT-001 before it was migratable; a last row followed by a footer comment and a top-level key is refused with roadmap.yaml byte-identical and entries/ empty, while the same row followed only by blank lines migrates. Mutations measured 2026-09-17: skipping the check-before-write loop turns the first RED; disabling the text-after-row check turns the second RED"
+    prediction: "a base row whose id cannot be a filename refuses the migration and entries/ stays empty, although PMAT-001 before it was migratable; a last row followed by a footer comment and a top-level key is refused with roadmap.yaml byte-identical and entries/ empty, while the same row followed only by blank lines migrates. Mutations measured 2026-09-17: skipping the check-before-write loop turns the first RED; disabling the text-after-row check turns the second RED; a block scalar whose text starts with # and a comment indented inside the row stay the row's own lines and migrate; restoring the rule that skipped #-lines turns that arm RED (measured)"
     test: "cargo test --lib -- work_migrate_in_fragment_mode_refuses_before_writing_anything work_migrate_in_fragment_mode_refuses_to_carry_text_after_the_last_row"
     if_fails: "a failed migration leaves half its fragments behind"

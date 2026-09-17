@@ -8,7 +8,7 @@
 #
 # The gate itself is a `--lib` suite, so the required `ci / gate` check (sovereign-ci's
 # `cargo test --lib`) runs it on every pull request; this script is how a human or
-# `make gate` runs the same 14 tests without the other 21,000.
+# `make gate` runs the same 15 tests without the other 21,000.
 #
 # Why a script and not the bare cargo command: `cargo test -- <filter>` that matches
 # NOTHING exits 0 ("0 passed"). A renamed test, a module that stopped being compiled,
@@ -39,6 +39,7 @@ REQUIRED=(
   roadmap_writer_gate_sees_every_sink_kind
   roadmap_writer_gate_is_silent_on_unrelated_reads_and_tests
   roadmap_writer_gate_crosses_files
+  roadmap_writer_gate_walk_reaches_nested_modules_and_includes
   roadmap_writer_gate_source_predicate
   work_migrate_waits_for_the_repository_lock
   work_migrate_keeps_every_byte_it_does_not_normalise

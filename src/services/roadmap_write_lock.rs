@@ -74,6 +74,19 @@ impl RoadmapWriteLock {
         })
     }
 
+    /// Create `dir` and its parents.
+    ///
+    /// A directory is not roadmap content, but `docs/roadmaps/entries/` is the
+    /// switch that turns fragment mode on (PMAT-1363), so creating one is a roadmap
+    /// write like any other and holds the same lock.
+    ///
+    /// # Errors
+    ///
+    /// The I/O error of the creation.
+    pub fn create_dir_all(&self, dir: &Path) -> std::io::Result<()> {
+        std::fs::create_dir_all(dir)
+    }
+
     /// Delete `path`. `Ok(false)` when there was nothing to delete.
     ///
     /// # Errors

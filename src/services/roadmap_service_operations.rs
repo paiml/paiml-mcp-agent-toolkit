@@ -328,7 +328,7 @@ impl RoadmapService {
             return self.write_roadmap_as_fragments(lock, &entries, roadmap);
         }
         if let Some(parent) = self.roadmap_path.parent() {
-            fs::create_dir_all(parent)
+            lock.create_dir_all(parent)
                 .with_context(|| format!("Failed to create directory: {:?}", parent))?;
         }
         let yaml = serde_yaml_ng::to_string(roadmap)

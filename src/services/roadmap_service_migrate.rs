@@ -247,16 +247,17 @@ fn write_fragment_migration(
 /// end of the file — so a trailing comment, or a top-level key after the list, is
 /// inside it. Written into a superseding fragment it would move to the fragment's
 /// sorted slot, and the aggregate would drop it from where it stood. A row's own
-/// lines are its first line and every later non-blank, non-comment line indented
-/// deeper than the row; blank and comment lines between two of those stay with it.
+/// lines are its first line and every later non-blank line indented deeper than the
+/// row — a field, a block scalar's text (even text starting with `#`), a comment
+/// written inside the row. What is left is at the row's own column or left of it:
+/// a section comment, or a key that is not part of the list.
 fn text_after_row(block: &str, indent: usize) -> Option<String> {
     let mut end = 0;
     let mut offset = 0;
     for (index, line) in block.split_inclusive('\n').enumerate() {
         offset += line.len();
-        let content = line.trim();
         let depth = line.len() - line.trim_start_matches(' ').len();
-        if index == 0 || (!content.is_empty() && !content.starts_with('#') && depth > indent) {
+        if index == 0 || (!line.trim().is_empty() && depth > indent) {
             end = offset;
         }
     }

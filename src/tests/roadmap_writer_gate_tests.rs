@@ -19,31 +19,57 @@ use std::path::{Path, PathBuf};
 
 use super::roadmap_writer_gate::{is_source, is_test_only as test_only, tainted_sinks, Sink};
 
-/// The only functions allowed to write a path under `docs/roadmaps/` with a raw
-/// filesystem call, and why.
-const ALLOWED: &[(&str, &str, &str)] = &[
+/// The only raw filesystem writes allowed to reach a path under `docs/roadmaps/`:
+/// `(file, function, the sink kinds it may use, why)`. Keyed by KIND as well as by
+/// function, so a new primitive added to an allowed function — an `fs::write` in
+/// `open_lock_file`, which is not a token method — is a violation, not a pass.
+const ALLOWED: &[(&str, &str, &[&str], &str)] = &[
     (
         "src/services/roadmap_write_lock.rs",
         "RoadmapWriteLock::write",
+        &["fs::write"],
         "a method of the lock token: the exclusive lock is held for as long as the token exists",
     ),
     (
         "src/services/roadmap_write_lock.rs",
         "RoadmapWriteLock::replace",
-        "a method of the lock token: staging file plus rename, under the held lock",
+        &["fs::write", "fs::rename", "fs::remove_file"],
+        "a method of the lock token: staging file, rename, and the staging file's removal on failure",
     ),
     (
         "src/services/roadmap_write_lock.rs",
         "RoadmapWriteLock::remove",
+        &["fs::remove_file"],
         "a method of the lock token: deletes a fragment under the held lock",
     ),
     (
         "src/services/roadmap_write_lock.rs",
+        "RoadmapWriteLock::create_dir_all",
+        &["fs::create_dir_all"],
+        "a method of the lock token: creating entries/ turns fragment mode on",
+    ),
+    (
+        "src/services/roadmap_write_lock.rs",
         "open_lock_file",
-        "opens the LOCK file itself (outside git it is the sibling roadmap.yaml.lock); \
+        &["OpenOptions::open", "fs::create_dir_all"],
+        "opens the LOCK file itself and its directory (outside git, the sibling roadmap.yaml.lock); \
          it writes no roadmap content, and it is what taking the lock means",
     ),
+    (
+        "src/services/roadmap_id_authority.rs",
+        "IdAuthority::in_git",
+        &["fs::create_dir_all"],
+        "creates <git common dir>/pmat, the lock's own directory inside .git, before any lock can \
+         exist; the path is tainted only because it is resolved from the roadmap's location, and \
+         it is never under docs/roadmaps/",
+    ),
 ];
+
+fn allowed(sink: &Sink) -> bool {
+    ALLOWED.iter().any(|(file, function, kinds, _)| {
+        sink.file == *file && sink.function == *function && kinds.contains(&sink.kind)
+    })
+}
 
 fn sinks(files: &[(&str, &str)]) -> Vec<Sink> {
     let owned: Vec<(String, String)> = files
@@ -240,15 +266,10 @@ fn roadmap_writer_gate_source_predicate() {
 /// script's real output and read like any other file. Any other computed path fails
 /// the walk: a file the gate cannot locate is not a file it has checked.
 fn production_sources(root: &Path) -> Vec<(String, String)> {
-    let mut walk = ModuleWalk::default();
-    for crate_root in ["src/lib.rs", "src/bin/pmat.rs", "src/bin/pmat-agent.rs"] {
-        let file = root.join(crate_root);
-        let children = file
-            .parent()
-            .expect("a crate root has a directory")
-            .to_path_buf();
-        walk.file(root, &file, &children);
-    }
+    let walk = walk_crate(
+        root,
+        &["src/lib.rs", "src/bin/pmat.rs", "src/bin/pmat-agent.rs"],
+    );
     assert!(
         walk.unreadable.is_empty(),
         "the gate could not read {} compiled file(s):\n  {}",
@@ -256,6 +277,20 @@ fn production_sources(root: &Path) -> Vec<(String, String)> {
         walk.unreadable.join("\n  ")
     );
     walk.sources.into_values().collect()
+}
+
+/// The walk from `roots` (paths relative to `root`), with whatever it could not read.
+fn walk_crate(root: &Path, roots: &[&str]) -> ModuleWalk {
+    let mut walk = ModuleWalk::default();
+    for crate_root in roots {
+        let file = root.join(crate_root);
+        let children = file
+            .parent()
+            .expect("a crate root has a directory")
+            .to_path_buf();
+        walk.file(root, &file, &children);
+    }
+    walk
 }
 
 #[derive(Default)]
@@ -399,8 +434,16 @@ impl<'ast> syn::visit::Visit<'ast> for Scan<'_> {
             return;
         }
         let children = self.children();
+        // The Rust reference: `#[path]` on a module declared at a file's top level is
+        // relative to that file's directory; inside an inline module it is relative
+        // to the inline module's own directory.
+        let base = if self.children.len() > 1 {
+            children
+        } else {
+            self.here
+        };
         let file = match explicit {
-            Some(path) => self.here.join(path),
+            Some(path) => base.join(path),
             None if children.join(format!("{name}.rs")).is_file() => {
                 children.join(format!("{name}.rs"))
             }
@@ -473,6 +516,62 @@ fn path_attribute(attrs: &[syn::Attribute]) -> Option<String> {
     })
 }
 
+#[test]
+fn roadmap_writer_gate_walk_reaches_nested_modules_and_includes() {
+    // A crate whose writers hide from a top-level-only walk: an include! inside an
+    // impl, a #[path] module inside an inline module, a module declared in a function
+    // body, and a cfg(test) module that must stay unread.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    let put = |relative: &str, text: &str| {
+        let path = root.join(relative);
+        std::fs::create_dir_all(path.parent().expect("a directory")).expect("mkdir");
+        std::fs::write(path, text).expect("write fixture");
+    };
+    let write = "std::fs::write(std::path::Path::new(\"docs/roadmaps/roadmap.yaml\"), \"\").ok();";
+    put(
+        "src/lib.rs",
+        "pub struct S;\nimpl S { include!(\"methods.rs\"); }\n\
+         mod outer { #[path = \"deep.rs\"] mod deep; }\n\
+         fn host() { #[path = \"in_fn.rs\"] mod in_fn; }\n\
+         #[cfg(test)] mod tests;\n",
+    );
+    put(
+        "src/methods.rs",
+        &format!("fn from_impl(&self) {{ {write} }}\n"),
+    );
+    put(
+        "src/outer/deep.rs",
+        &format!("pub fn from_inline_path() {{ {write} }}\n"),
+    );
+    put(
+        "src/in_fn.rs",
+        &format!("pub fn from_fn_body() {{ {write} }}\n"),
+    );
+    put(
+        "src/tests.rs",
+        &format!("pub fn test_only() {{ {write} }}\n"),
+    );
+
+    let walk = walk_crate(root, &["src/lib.rs"]);
+    assert!(walk.unreadable.is_empty(), "{:?}", walk.unreadable);
+    let sources: Vec<(String, String)> = walk.sources.into_values().collect();
+    let mut found: Vec<String> = tainted_sinks(&sources)
+        .expect("fixture parses")
+        .into_iter()
+        .map(|s| s.function)
+        .collect();
+    found.sort();
+    // An include!d file is parsed on its own, so a method included into an impl is
+    // reported without its owner: the walk's job is to REACH it.
+    assert_eq!(found, vec!["from_fn_body", "from_impl", "from_inline_path"]);
+
+    // An include! the walk cannot locate is a failure, never a skip.
+    put("src/lib.rs", "include!(concat!(\"gen\", \"/x.rs\"));\n");
+    let walk = walk_crate(root, &["src/lib.rs"]);
+    assert_eq!(walk.unreadable.len(), 1, "{:?}", walk.unreadable);
+}
+
 fn tree_sinks() -> (usize, Vec<Sink>) {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let sources = production_sources(&root);
@@ -489,11 +588,7 @@ fn roadmap_writer_gate_every_roadmap_write_in_the_tree_goes_through_the_lock_tok
     );
     let violations: Vec<String> = found
         .iter()
-        .filter(|sink| {
-            !ALLOWED
-                .iter()
-                .any(|(file, function, _)| sink.file == *file && sink.function == *function)
-        })
+        .filter(|sink| !allowed(sink))
         .map(ToString::to_string)
         .collect();
     assert!(
@@ -511,13 +606,15 @@ fn roadmap_writer_gate_every_allowed_writer_is_still_reached() {
     // and an allowed writer the taint no longer reaches means the SOURCES broke:
     // the gate would then pass a tree it cannot see into.
     let (_, found) = tree_sinks();
-    for (file, function, _) in ALLOWED {
-        assert!(
-            found
-                .iter()
-                .any(|s| s.file == *file && s.function == *function),
-            "{file} {function} is allowed but no roadmap write reaches it — the allow-list \
-             is stale or the taint sources stopped matching the real writers"
-        );
+    for (file, function, kinds, _) in ALLOWED {
+        for kind in *kinds {
+            assert!(
+                found
+                    .iter()
+                    .any(|s| s.file == *file && s.function == *function && s.kind == *kind),
+                "{file} {function}: {kind} is allowed but no roadmap write reaches it — the \
+                 allow-list is stale or the taint sources stopped matching the real writers"
+            );
+        }
     }
 }

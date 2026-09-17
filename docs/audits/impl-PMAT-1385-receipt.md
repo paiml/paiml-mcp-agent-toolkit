@@ -18,9 +18,9 @@
 |---|---|---|---|
 | 1 | `pmat work migrate` reads, transforms and writes under one repository lock (`RoadmapService::migrate_text`; shared lock for `--dry-run`) | DONE | `work_migrate_waits_for_the_repository_lock` in both modes; RED with the pre-fix handler |
 | 2 | whole-file mode keeps every byte the transform does not change; the `.bak` is the roadmap as read under the lock | DONE | `work_migrate_keeps_every_byte_it_does_not_normalise` (comment, unknown key, block scalar) |
-| 3 | fragment mode (`docs/roadmaps/entries/`): `roadmap.yaml` never written, no `.bak`; changed fragments rewritten; a changed base row gets a superseding fragment; everything checked before the first write; a base row carrying trailing text refused | DONE | `work_migrate_in_fragment_mode_*` (3 tests); mutations M2, M3, M5 RED |
+| 3 | fragment mode (`docs/roadmaps/entries/`): `roadmap.yaml` never written, no `.bak`; changed fragments rewritten; a changed base row gets a superseding fragment; everything checked before the first write; a base row carrying trailing text refused | DONE | `work_migrate_in_fragment_mode_*` (3 tests); mutations M2, M3, M5, M6 RED |
 | 4 | every raw write under `docs/roadmaps/` is a method of `RoadmapWriteLock`, a value that exists only while the exclusive flock is held | DONE | M1 RED (4 lock tests) |
-| 5 | the writer gate: a `--lib` taint analysis at the serialisation site, run by the required `ci / gate` | DONE | 11 → 1 → 0; renamed-binding mutant RED; M4 RED; CI job 105200164445 ran all gate tests `ok` |
+| 5 | the writer gate: a `--lib` taint analysis at the serialisation site, run by the required `ci / gate` | DONE | 11 → 1 → 0; renamed-binding mutant RED; M4, M7, M8, M9 RED; CI job 105200164445 ran all gate tests `ok` |
 | 6 | `make gate` row | NOT ADDED | PR #1368 had not merged; shipped as a `--lib` suite plus `scripts/roadmap-writer-gate.sh`, and the row is written out below |
 
 Contract `contracts/roadmap-writer-lock-v1.yaml`:
@@ -28,7 +28,7 @@ Contract `contracts/roadmap-writer-lock-v1.yaml`:
 - `pv status`: 7 proof obligations, 7 falsification tests.
 - `pv lint contracts --severity error`: PASS.
 - `scripts/pv-obligation-gate.py`: 0 problems over 38 contracts.
-- Evaluation: each falsification test was run by exact name, and an obligation counts only if every covering test ran green (14 gate and migrate tests, plus the 3 PMAT-1363 lock tests RWL-F-004 names). **7 obligations, 7 evaluated, 0 failed.**
+- Evaluation: each falsification test was run by exact name (18 test names across the 7 entries, including the 3 PMAT-1363 lock tests RWL-F-004 names), and an obligation counts only if every covering test ran green. **7 obligations, 7 evaluated, 0 failed.**
 
 ## Plan and routing
 
@@ -48,7 +48,8 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
 |---|---|---|---|---|
 | ph1 delegate | grillme | 3 | FAIL / FAIL / FAIL | `1cabaeba-dec6-49d1-a04f-33786d283c10`, `05af913e-0ccf-4838-a9bc-2c02f48a06f3`, `fcb5e9c0-436c-45ac-a036-b0db07b28a13` (children=3) |
 | ph4 delegate, round 1 on `dbf8774ec` | quorum (grillme) | 3 | FAIL / PASS / PASS | `a68900f9-561c-4691-8d1d-da9bc6bdcb21`, `15a767d1-855a-46f0-b0b0-92f846475e01`, `3f0dc15d-e2d4-4f8f-a7f5-184ad3f14d96` (children=3) |
-| ph4 delegate, round 2 | quorum (grillme) | 3 | recorded in `docs/audits/quorum-PMAT-1385.json` | in the artifact |
+| ph4 delegate, round 2 on `287746ab0` | quorum (grillme) | 3 | FAIL / PASS / PASS | `b180962a-f1b2-4af7-aa74-ee8c3b87c3ce`, `43046cca-dbdf-408d-a786-55a19556647a`, `3c2cb5d2-e522-49f5-8c37-f0001f6a36f2` (children=3) |
+| ph4 delegate, round 3 | quorum (grillme) | 3 | recorded in `docs/audits/quorum-PMAT-1385.json` | in the artifact |
 
 - Lanes: `gemini-3.1-pro-high`, `gemini-3.8-flash-high`, `gemini-3.7-flash-high`. Each model is measured from the lane's own log, and none is the author's family.
 - Slots: at most 1 live subagent at any time. Denials: 0. Stalls: 0.
@@ -72,6 +73,17 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
    It reads 3037 files, including the 4 generated ones the old walk skipped (`tool_registry.rs`, `alias_table.rs`, `trigram_index.rs`, `mcp_tool_schemas_gen.rs`). The tree still reports 0.
 3. **Contract nit.** RWL-F-004 named three tests by prefix; it now names them in full.
 
+### Review round 2: lane 1's four BLOCKING claims, each read against the code and fixed
+
+Lanes 2 and 3 marked round 1's findings RESOLVED; lane 1 kept both OPEN with four claims. Each was checked against the code before acting:
+
+1. **`text_after_row` skipped `#`-lines. Real.** A block scalar whose text starts with `#`, or a comment indented inside the row, would have been read as text after the row and wrongly refused. The rule is now: a row's own lines are its first line and every later non-blank line deeper than the row's column. The trailing-text test gained a control arm (a block scalar with `#` lines and an inner comment migrate whole). M6 restores the old rule and turns that arm RED.
+2. **`create_dir_all` under `docs/roadmaps/` without the token. Partly real.** Both calls (in `write_roadmap_unlocked` and `write_fragment`) already sat inside functions holding the token, so the lock was held. But directory creation was not a sink, and creating `entries/` is what turns fragment mode on. Now `fs::create_dir[_all]` is a sink and `RoadmapWriteLock::create_dir_all` is the only way to call it on a roadmap path. M9 puts the raw call back and turns the tree test RED. The new sink found one more site, `IdAuthority::in_git`. It creates `<git common dir>/pmat`, the lock's own directory inside `.git`; the path is tainted only because it is resolved from the roadmap's location. It is allowed for that one kind, with the reason recorded.
+3. **The allow-list ignored `sink.kind`. Real for `open_lock_file`,** a free function, not a token method. `ALLOWED` is now `(file, function, kinds, reason)`, and liveness is checked per kind. M8 plants an `fs::write` in `open_lock_file` and turns the tree test RED.
+4. **`#[path]` inside an inline module resolved from the file's directory. Real** per the Rust reference: inside an inline module, the path is relative to that module's own directory. Fixed. New test `roadmap_writer_gate_walk_reaches_nested_modules_and_includes` builds a synthetic crate with an `include!` inside an impl, a `#[path]` module inside an inline module, a module declared in a function body and a `cfg(test)` module. All three writers are reached, the test-only one is not, and an `include!` the walk cannot locate is reported. M7 resolves `#[path]` from the file's directory and turns it RED.
+
+Lane 1 wrote 19 scratch files into its own review clone (a `syn` scratch crate and `#[path]` experiments). `agy-lane.sh` reported it `KEPT` and the shared checkout was untouched. The clone was deleted after its contents were listed.
+
 ## RED, then GREEN
 
 | state | tree | gate | migrate tests |
@@ -81,6 +93,7 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
 | same, every `roadmap_path` binding renamed to `zz` | same | **1**, still RED; `pmat query --literal "fs::write(roadmap_path" --files-with-matches` no longer lists `ticket_validate_migrate.rs` | — |
 | fix | `HEAD=7c0029e9b origin/master=8915fe3e6 behind=0` | 0; allow-list live | 4/4 GREEN |
 | after review round 1 | `HEAD=9553fd200 origin/master=7fa1be27d behind=0` | 0; allow-list live; 3037 files | 5/5 GREEN; the suite with the PMAT-1363 fragment tests is 59/59 |
+| after review round 2 | `HEAD=287746ab0 origin/master=7fa1be27d behind=0` + round-2 fixes | 0; allow-list live per kind | 5/5 GREEN; suite 60/60 |
 
 ## Mutations (each applied, run, restored from git)
 
@@ -91,6 +104,10 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
 | M3 | skip the check-before-write loop | 1: `work_migrate_in_fragment_mode_refuses_before_writing_anything` |
 | M4 | the engine loses `let` propagation | 5: 4 planted-mutant tests plus the allow-list liveness test |
 | M5 | disable the text-after-row refusal | 1: `work_migrate_in_fragment_mode_refuses_to_carry_text_after_the_last_row` |
+| M6 | restore the rule that skipped `#`-lines when finding a row's own lines | 1: the same test's block-scalar arm |
+| M7 | resolve `#[path]` inside an inline module from the file's directory | 1: `roadmap_writer_gate_walk_reaches_nested_modules_and_includes` |
+| M8 | plant `std::fs::write(lock_path, "")` in `open_lock_file` | 1: the tree test (`open_lock_file: fs::write`), the kind is not allowed there |
+| M9 | put a raw `fs::create_dir_all(parent)` back in `write_roadmap_unlocked` | 1: the tree test (`write_roadmap_unlocked: fs::create_dir_all`) |
 
 ## Every writer of a path under `docs/roadmaps/`, with its verdict
 
@@ -101,7 +118,9 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
 | `persist_new_row` (`work add`), `replace_item_raw` (`work edit`) | `roadmap.yaml` or `entries/` | locked by convention; now take the token |
 | `roadmap_fragments::write_fragment`, `remove_fragment` | `entries/<id>.yaml` | `pub` and callable with no lock; now require the token |
 | `replace_atomically` (`pmat roadmap aggregate --write`) | `roadmap.yaml` | locked via `with_write_lock`; now receives the token through `Access::Write` |
-| `open_lock_file` | the lock file; outside git, `roadmap.yaml.lock` beside the roadmap | the lock itself; allowed, and it writes no roadmap content |
+| `open_lock_file` | the lock file; outside git, `roadmap.yaml.lock` beside the roadmap | the lock itself; allowed for `OpenOptions::open` and `fs::create_dir_all` only, and it writes no roadmap content |
+| `IdAuthority::in_git` | `<git common dir>/pmat/` (directory) | the lock's own directory inside `.git`, tainted only through the roadmap's location; allowed for `fs::create_dir_all` only |
+| `write_roadmap_unlocked`, `write_fragment` directory creation | `docs/roadmaps/`, `docs/roadmaps/entries/` | already under the lock; now through `RoadmapWriteLock::create_dir_all` (creating `entries/` turns fragment mode on) |
 | `apply_roadmap_changes` (`pmat maintain roadmap --fix`) | `--roadmap`, default **`ROADMAP.md`** | not this class: markdown checkboxes at a runtime path. The gate's clap rule keys defaults by subcommand, so another subcommand's `--roadmap docs/roadmaps/roadmap.yaml` does not taint this one |
 | `handle_roadmap_sync` (`pmat roadmap sync`) | `<project>/ROADMAP.yaml` | not under `docs/roadmaps/` |
 | `pmat spec sync` | via `RoadmapService::save` | locked |
@@ -109,9 +128,9 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
 ## Where the gate runs, and how its failure reaches the build
 
 - `ci / test`, a job of the required `ci / gate`, runs sovereign-ci's `cargo test --lib`. If that fails and the retry `cargo test --lib -p paiml-mcp-agent-toolkit` fails too, the step prints `::error::Tests failed` and exits 1. Run 35220796603, job 105200164445, on `dbf8774ec`, printed every gate and migrate test as `ok`, including `roadmap_writer_gate_every_roadmap_write_in_the_tree_goes_through_the_lock_token`; the result was `21745 passed; 0 failed`.
-- `scripts/roadmap-writer-gate.sh` runs the 14 named tests. It refuses a vacuous filter, because `cargo test -- <filter>` exits 0 when nothing matches: each test must appear by name as `ok`. `--self-test` covers 5 arms: control, a filter that matched nothing, the tree test missing, a failed test, and no result line. Judged on the RED logs above: exit 1.
+- `scripts/roadmap-writer-gate.sh` runs the 15 named tests. It refuses a vacuous filter, because `cargo test -- <filter>` exits 0 when nothing matches: each test must appear by name as `ok`. `--self-test` covers 5 arms: control, a filter that matched nothing, the tree test missing, a failed test, and no result line. Judged on the RED logs above: exit 1.
 - The row for `scripts/gate.sh`'s extension point, once #1368 merges:
-  `cmd | ci / gate | roadmap-writer-gate | sovereign-ci.yml test "Run tests" | runs only the 14 named tests, and refuses a filter that matched none | bash scripts/roadmap-writer-gate.sh`
+  `cmd | ci / gate | roadmap-writer-gate | sovereign-ci.yml test "Run tests" | runs only the 15 named tests, and refuses a filter that matched none | bash scripts/roadmap-writer-gate.sh`
 
 ## Verification (claimed vs re-run)
 
@@ -122,7 +141,8 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
 | `pmat analyze unrun-tests --check-ledger`, `pmat analyze reachability --check-ledger` (this tree's binary) | both exit 0 after regeneration |
 | ratchet counts at HEAD | `panic!(` 785, `.unwrap()` 20325 total and 9177 outside `cfg(test)`: every one equals its baseline |
 | CB-200 with this tree's binary | 1741 below A on a clean `origin/master` worktree and 1741 at HEAD. The delta is 0, and the red is pre-existing |
-| `pmat verify --format json` | recorded in the PR once finished |
+| `pmat verify --format json` at `9553fd200` (this tree's binary) | format ok, satd ok, clippy ok, tests ok; complexity `not_applicable` ("no Rust files changed vs HEAD"; the pre-commit hook measured complexity on every commit); `ok: null` with `not_measured: [complexity]` |
+| `cargo test --lib -- roadmap_writer_gate work_migrate_ roadmap_fragments_` after review round 2 | 60 passed, 0 failed; `scripts/roadmap-writer-gate.sh --judge`: GREEN, 15 required tests |
 
 ## Jidoka
 
@@ -136,7 +156,7 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
 
 ## Estimates
 
-`K̂=35`, `K=70`, `basis=docs/audits/impl-estimates.jsonl:L23-L32`. **Actual 166** (`k_measured` from the transcript at this receipt, before review round 2, CI and merge), recorded as `docs/audits/impl-estimates.jsonl` L33 through `pmat work estimate record`. `0.8K` (56) was crossed; the andon did not fire because every commit past it was green (RED only in the deliberate RED commit). The estimate missed by 4.7×: the gate needed three precision rounds (350 → 287 → 11 raw writes) and the walk a fourth, none of which a first-run basis could price.
+`K̂=35`, `K=70`, `basis=docs/audits/impl-estimates.jsonl:L23-L32`. **Actual 166** (`k_measured` from the transcript at the first receipt commit, before review rounds 2 and 3, CI and merge), recorded as `docs/audits/impl-estimates.jsonl` L33 through `pmat work estimate record`. `0.8K` (56) was crossed; the andon did not fire because every commit past it was green (RED only in the deliberate RED commit). The estimate missed by 4.7×: the gate needed three precision rounds (350 → 287 → 11 raw writes) and the walk a fourth, none of which a first-run basis could price.
 
 ## Corrections to the brief
 
@@ -160,4 +180,4 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
 
 ## Verdict
 
-DONE on the code, the gate, the contract and review round 1's findings. Merge waits for review round 2 to return 3 PASS (`docs/audits/quorum-PMAT-1385.json`, `agreed=true`) on the head that merges, and for CI to go green.
+DONE on the code, the gate, the contract and review rounds 1 and 2's findings. Merge waits for review round 3 to return 3 PASS (`docs/audits/quorum-PMAT-1385.json`, `agreed=true`) on the head that merges, and for CI to go green.

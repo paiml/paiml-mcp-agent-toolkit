@@ -562,7 +562,8 @@ pub fn write_fragment(
         path: path.to_path_buf(),
         reason: e.to_string(),
     };
-    std::fs::create_dir_all(entries_dir).map_err(|e| io(entries_dir, e))?;
+    lock.create_dir_all(entries_dir)
+        .map_err(|e| io(entries_dir, e))?;
     let staging = entries_dir.join(format!(".{id}.yaml.tmp"));
     lock.replace(&staging, &path, block)
         .map_err(|e| io(&path, e))?;

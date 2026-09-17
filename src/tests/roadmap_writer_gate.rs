@@ -29,8 +29,9 @@
 //!   free function of that name.
 //! - SINKS, the serialisation site itself: `fs::write`, `File::create[_new]`,
 //!   `fs::rename`/`copy`/`hard_link` (destination), `fs::remove_file`/
-//!   `remove_dir_all`, `symlink`, a method `.open(..)` on an option chain that is not
-//!   read-only, `NamedTempFile::persist`, and a bare `write(..)` imported from `fs`.
+//!   `remove_dir_all`, `create_dir[_all]` (creating `entries/` turns fragment mode
+//!   on), `symlink`, a method `.open(..)` on an option chain that is not read-only,
+//!   `NamedTempFile::persist`, and a bare `write(..)` imported from `fs`.
 //!
 //! What it cannot see, stated rather than implied: a path that reaches a sink only
 //! from runtime data (a CLI argument with no roadmap default, an environment
@@ -1039,6 +1040,8 @@ fn sink_kind(previous: &str, last: &str) -> Option<(&'static str, usize)> {
         ("fs", "hard_link") => ("fs::hard_link", 1),
         ("fs", "remove_file") => ("fs::remove_file", 0),
         ("fs", "remove_dir_all") => ("fs::remove_dir_all", 0),
+        ("fs", "create_dir_all") => ("fs::create_dir_all", 0),
+        ("fs", "create_dir") => ("fs::create_dir", 0),
         (_, "symlink" | "symlink_file") => ("symlink", 1),
         _ => return None,
     })
