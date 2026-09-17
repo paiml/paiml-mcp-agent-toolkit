@@ -1,10 +1,9 @@
-# impl receipt — PMAT-900001 (PARTIAL: andon)
+# impl receipt — PMAT-900001
 
-Verdict: **PARTIAL(andon)**. The turn budget ran out after discovery, the id-scheme blocker and the plan
-grill, before any code phase. This receipt carries the plan, the grill's resolved decisions and the evidence,
-so a relaunch with an explicit `--budget-turns` can start at Phase 2 and skip rediscovery.
+Verdict: **VERDICT_PENDING**. Session 1 ended in PARTIAL(andon) after discovery, the id-scheme blocker and the
+plan grill. Its record is kept below. Session 2 resumed after a host crash and ran the code phases 2–6.
 
-## Identity
+## Identity (session 1)
 
 | field | value |
 |---|---|
@@ -88,8 +87,123 @@ Slots used: 1 of 3. Denials: 0. Stalls: 0.
 6. `pmat query` indexes function bodies only, so a gate cannot be purely query-based: consts, scripts, YAML and prompts need a separate leg (E3).
 7. The brief says no custom closer exists. That holds for call sites (E1, E2), but pmat does *advise* a hand close after `pmat work complete` and in `prompts/github-ticket.yaml`.
 
-## Gaps
+## Gaps (session 1)
 
 - Phases 2–6 not run: no code, no contract, no gate, no RED/GREEN evidence, no diff quorum, and no issue created (so CB-2115 on master is untouched).
 - `make gate` row blocked on PR #1368.
 - Out of scope, noted: aprender owns retiring its `no-close:` convention (aprender#3400); `--no-verify` in `auto_commit_work_files`; `pmat query --exclude-tests` still returns functions from `tests.rs` files.
+
+## Session 2 — identity
+
+| field | value |
+|---|---|
+| resumed at | HEAD 75a9a28bd, 42 commits unpushed, 2 uncommitted files (core_handlers/commit.rs, core_handlers/github.rs), after a host crash |
+| first action | the 42 commits pushed (WIP stashed so the pre-push fmt check judged committed code only), then Phase 0 re-run |
+| discover.json sha256 | 57875a66fbcd2b2d6a82bc15e0d468b920bd14e0ebbd2711177f398f22cfffc4 |
+| gate_cmd | `make gate`, **gate_cmd_fallback=false** (PR #1368 merged as ef2a0b947) |
+| kind-gate / model-gate / config-lint / target-guard | kind=code · model=opus-5 class=opus decision=admit basis=transcript · slots=3 · PASS |
+| base at every measurement | `behind=0` (origin/master ef2a0b947, then f25d7f1cc after merging #1392 at 7b1fc68f1) |
+| build isolation | `CARGO_TARGET_DIR=/mnt/nvme-raid0/targets/pmat-D0 CARGO_BUILD_JOBS=8`; one heavy job at a time; no `./target` was left in the clone after any commit |
+
+## Session 2 — phases, routing, commits
+
+| phase | what | route.sh printed | executed | commit |
+|---|---|---|---|---|
+| 2 | predicate + shared shell snippet (session 1 WIP, committed before the crash) | — | direct | 75a9a28bd |
+| 3+4 | three commit-msg hook writers splice the snippet; 6 commit builders and 4 issue builders neutralise; work complete message/advice; github-ticket prompt | `route=agy-goal w=1.00 basis=absent` | **direct** | e0f1ad8e4 |
+| 5 | `scripts/issue-closure-gate.sh`, `scripts/pr-body-closing-lint.sh`, contract, ci.yml + pr-checks.yml steps, `scripts/gate.sh` row | `route=agy-goal w=1.00 basis=absent` | **direct** | ce0209730 |
+| 6a | `pmat work edit --notes`; PMAT-1369 cross-reference written by this tree's binary | — | direct | 0943bc9b3 |
+| 6b | merge origin/master (#1392) | — | direct | 7b1fc68f1 |
+| 6c | CB-200 share and ledgers found by `make gate` | — | direct | 65debfcaa, 3c791bcfa |
+
+Routing deviation, named: route.sh printed `agy-goal` for the implementation phases. They ran direct. The
+crash-resume brief set load discipline (one heavy job at a time) and the phases shared files with the
+uncommitted WIP the crash left, so a writing lane in a linked worktree would have had to be declared a
+concurrent scope over the same paths. No Claude subagent and no agy lane ran for code: slots used 0 of 3 in
+phases 2–6a, denials 0, stalls 0.
+
+## Session 2 — RED before GREEN (every row re-run by the orchestrator)
+
+| claim | RED (mutant or pre-fix tree) | GREEN (as committed) |
+|---|---|---|
+| work complete neutralises its title | raw `item.title` interpolated → `work_complete_commit_message_neutralises_a_closing_title` FAILED | passes |
+| github-ticket prompt teaches only `Closes #N` | origin/master's prompt restored → `the_github_ticket_prompt_teaches_only_the_sanctioned_close` FAILED | passes |
+| all three hook writers refuse exactly the closing fixtures | lint call dropped from hook_manager's template → FAILED naming `hook_manager` and the `no-close` fixture | passes |
+| (the three mutants above, one build) | `cargo test --lib closing_keyword`: 8 passed, 3 failed | 11 passed, 0 failed |
+| no pmat code path can close an issue | origin/master's commit.rs + prompt restored → gate FAIL: 2 CALL SITEs (`print_complete_next_steps`, `auto_commit_work_files`), 3 TEXT HITs | gate PASS: definitions 4/4, call_sites 0, text hits 0 (installed pmat and this tree's binary alike) |
+| the gate can fail (self-test) | 6 arms, each exit 1 naming its own plant: rust-call, gh-args (`CALL SITE src/lib.rs:13 finish`), script, rust-const (`TEXT HIT`), definition-renamed (`BLIND`), vacuous (`VACUOUS: 0 Rust files`, `DEFINITION GONE`) | clean arm exit 0 |
+| a first-draft query pattern was over-broad | `Some("closed")` as a literal matched a READ in `work_sync/github.rs parse_snapshot` → CALL SITE (false positive) | narrowed to argument position; PASS; self-test unchanged |
+| the step row runs the built pmat | `scripts/gate-control.sh` arm 12 RED: `legs never ran the pmat cargo built from the tree: issue-closure` (the flag came before PMAT_BIN, so the control's stubs never reached pmat) | PMAT_BIN moved to `$1`; gate-control GREEN, arm 12 counts 13 pmat legs |
+| PR title/body lint | `--self-test`: `no-close: #3091`, `No-Close #12`, `this fixes #5`, `re-fixes: #7` exit 1; an unreadable PR (`--pr 999999999`) exits 2 | `Closes #1`, `keeps-open #3091`, `prefix #12`, `fixture #3` exit 0; PR #1391's live body exit 0 |
+| `pmat work edit --notes` | flag parsed and ignored → `work_add_append_only_edit_notes_sets_notes_and_keeps_the_criteria` FAILED ("--notes must reach the row") | passes; append-only + refuses-invalid suites 12 passed |
+| hooks in this clone refuse a close | this tree's `pmat hooks install --strict --force`, then `.git/hooks/commit-msg` on 6 messages: `this fixes #5`, `no-close: #3091`, `(closes #8)` exit 1 | `Closes #1`, `keeps-open #3091`, a `Merge remote-tracking branch` subject exit 0 |
+| `make gate` at 7b1fc68f1 (behind=0) | **RED: 25 PASS, 4 FAIL**. `issue-closure` PASSED (21 s). (a) `lib-tests` 21753/21755. One failure is CB-200 `the_committed_baseline_is_the_measured_count`, 1741 below A against baseline 1688; it is master's #1266 (measured 1741–1742 on clean master by the PMAT-1365 and PMAT-1363 receipts). The other is the unrun-tests ledger text. (b) `cb-2113-cb-2115`: CB-2113 ✓, CB-2115 ORPHAN-ROADMAP PMAT-900001 (no issue, by D1 until it is bound) and ORPHAN-GITHUB #1393 (opened on master today with no row; not this ticket's to carry). (c, d) `unrun-tests` and `reachability-ledger`: count-only drift from this branch's own additions | this branch's own share fixed: grading the changed Rust files before and after found **one** new below-A definition (`auto_commit_work_files` B+). 65debfcaa brings it to A- (the lint moves into `ready_to_commit`, A+; a mutant disabling the lint turns `ready_to_commit_refuses_a_closing_message_before_staging` RED). 3c791bcfa re-renders both ledgers (+1 tracked .rs file, +13 executed lib tests); `--check-ledger` exits 0 for both |
+
+Contract `contracts/pmat-issue-closure-v1.yaml`: `pv validate` 0 errors, 0 warnings; `pv status` 8 equations,
+**8 proof obligations, 8 falsification tests; 8 evaluated (every `test:` command run above), 0 failed**.
+`scripts/pv-obligation-gate.py`: 0 problems over 40 contracts. `cargo test --lib make_gate_tests closing_keyword`: 17 passed.
+
+## Session 2 — measurements that changed a decision
+
+- **PR-body history.** Over the last 60 merged PRs, 15 would be refused by the lint. The hits are narrative
+  close references ("merged and closed #1373") and titles ending `(closes #N)`. GitHub reads them as closes. For
+  #1380 `closingIssuesReferences` lists 1373, and for #1377 it lists 1371. A title closes through the merge commit
+  that carries it. The lint therefore stays strict, and the refusal says how to write each intent.
+  The scan is at `.pmat/d0/s2/pr-body-scan.txt`, not committed.
+- **`--no-verify` in `pmat work complete`.** It cannot simply be dropped. Its message carries `(Refs ID)` and
+  no `Pmat-Ticket:` trailer. This clone's strict hook exits 1 on it ("no Pmat-Ticket trailer in the message's
+  LAST paragraph", measured), and CB-2113 also refuses a trailer that names a completed item. The fix is in the
+  commit path instead: `auto_commit_work_files` runs the same predicate in-process on the exact message and
+  does not commit a closing one. So the commit no hook sees is still linted.
+- **`pmat query --exclude-tests`** returned 2 inline `#[test]` functions, so the gate runs its own
+  attribute check.
+- **CB-2115 reads `github_issue` only** (`work_sync` `find_item_by_github_issue`). A cross-repository reference
+  in `notes:` cannot be taken for an issue of this repository.
+
+## Session 2 — where each check runs
+
+| check | local | required CI |
+|---|---|---|
+| call-site gate + self-test | `make gate` row `issue-closure` (kind `step`: it runs the ci.yml step text verbatim, `./target/debug/pmat` rewritten to `$PMAT_BIN`) | ci.yml job `traceability`, step "control — no pmat code path can close a GitHub issue (PMAT-900001)". The top-level `gate` job `needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability]`, and `gate` is the org-ruleset context |
+| PR title/body lint | `scripts/pr-body-closing-lint.sh --pr N` | same job, `if: github.event_name == 'pull_request'` (live body through gh). pr-checks.yml re-runs it on `edited` and is not required. This is not a `make gate` leg because the step needs `${{ }}` |
+| predicate, hooks, emitters, prompt, `--notes` | `cargo test --lib closing_keyword` / `edit_notes` | `ci / gate` lib tests |
+
+## Session 2 — five whys (to a mechanism)
+
+1. Why could pmat close an issue nobody asked it to close? It wrote a closing keyword next to `#N` into text
+   that reaches the default branch: commit subjects built from roadmap titles, a prompt that taught
+   `(fixes #N)`, and advice to run `gh issue close`.
+2. Why did pmat write that text? The emitters interpolate free text pmat did not author, and nothing judges
+   that text before `git commit` or `gh issue create`.
+3. Why did nothing judge it? No predicate for "this text closes an issue" existed. Each of the three
+   commit-msg hook writers enforced only its own ticket or format rule.
+4. Why did no predicate exist? GitHub's rule is wider than a reader expects. It accepts any tense, an
+   optional colon, and no word boundary (`no-close: #3091`), so a human-readable rule was never written down.
+   Every incident (aprender#3091, #1339) looked like a one-off.
+5. Why did no incident force one? The close is a side effect of a merge. The emitting code, the merged text
+   and the closed issue sit in three places, and no gate joined them.
+
+**Mechanism now:** one predicate (`closing_keywords::PATTERN`), rendered in Rust and in one shell snippet that is
+proven equal by a differential test. The emitters neutralise their output, every hook writer and CI refuse a
+close outside a `Closes #N` line, and a call-site gate with planted-defect arms keeps pmat from closing an issue itself.
+
+## Corrections to the session-2 brief
+
+1. The brief said HEAD e03760258. The tree at resume was 75a9a28bd with 42 unpushed commits, as the crash note says. They were pushed first.
+2. "6 commit builders and 3 issue-body builders": there are **4** issue builders. `test_discovery_handlers_tickets.rs create_github_issue` is the fourth, and it is fixed too.
+3. `--no-verify` in `pmat work complete` stays, measured above. The fix lints that commit's message in-process instead.
+4. D10 revised: PMAT-1369's cross-reference went into `notes:` through a new `pmat work edit --notes` (RED→GREEN). `-d` would have replaced its acceptance criteria.
+5. Only the call-site step can be a `make gate` row. The PR-body step needs `${{ }}` and a pull_request event.
+6. PMAT_BIN must be the first argument of any control script `scripts/gate.sh` runs. gate-control arm 12 enforces this through its stubs, which is how the first draft was caught.
+7. The PR-body lint would have refused 15 of the last 60 merged PRs. That is the measured cost of the rule, and the hits are real GitHub close references.
+
+## Session 2 — dispatch ledger, quorum, issue, merge
+
+QUORUM_AND_MERGE_PENDING
+
+## Gaps
+
+- Rust `const` hits after a mid-file `#[cfg(test)]` module are skipped by the text leg. Function bodies there are still covered by the query leg. The gap is named in the contract.
+- ci.yml does not trigger on `edited`. If the body is edited after the last CI run, the required check keeps the verdict of that run until the job is re-run. pr-checks.yml gives a fresh, non-required signal.
+- A PR body is Markdown. GitHub's treatment of close references inside code spans was inconsistent across #1342, #1390 and #1323, so the lint judges code spans too. It is the stricter side.
+- Out of scope, as in session 1: aprender owns retiring its `no-close:` convention (aprender#3400).
