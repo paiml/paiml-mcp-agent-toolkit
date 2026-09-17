@@ -227,7 +227,77 @@ pass `pr-body-closing-lint --file`. The PR references the issue as `Refs #1395`,
 it on merge would leave the row `planned` against a closed issue, the ORPHAN-ROADMAP that 1cdffdcca recorded. The
 row and the issue are completed together by a later lifecycle PR, as this repository does.
 
-QUORUM2_AND_MERGE_PENDING
+Round 2 on 495f40971 (base 4111549f7): 3/3 PASS, artifact committed by 495f40971.
+
+## Session 3 — identity (the merge session)
+
+| field | value |
+|---|---|
+| why | sibling PR #1389 (PMAT-1385) merged as b58addab8; master conflicted with this branch in three files |
+| resumed at | HEAD 495f40971 (the round-2 verdict commit), clean tree, behind=18 |
+| discover.json sha256 | fa3e9e53d2b813358b4621e891d2ade3ae2d66379918f58c8dccb87a0e096d35 |
+| gate_cmd | `make gate`, gate_cmd_fallback=false |
+| kind-gate / model-gate / config-lint / target-guard | `kind=code ticket=PMAT-900001 files=32` · `model=opus-5 class=opus decision=admit basis=transcript` · `slots=3 gh_calls_per_min=30 bank=3` · PASS |
+| base at every measurement | `HEAD=<sha> origin/master=b58addab8 behind=0` after the merge, at every measurement below |
+| binary | `/mnt/nvme-raid0/targets/pmat-D0/debug/pmat`, taken from `cargo build --bin pmat --message-format json`'s `executable` field |
+| Claude subagents | 0 (slots 0 of 3, denials 0, stalls 0). The session is one merge, one gate and one review round: nothing to fan out |
+
+## Session 3 — the three conflicts, and how each was resolved
+
+`git merge origin/master` conflicted in exactly the three files the brief named.
+
+| file | resolution | proof |
+|---|---|---|
+| `scripts/gate.sh` | both rows kept below `# ── EXTENSION POINT`, master's `roadmap-writer-gate` first, then `issue-closure`. `git diff master -- scripts/gate.sh` is **+4 lines and nothing else** — the blank line and the three this branch adds | `bash scripts/gate.sh --list` → `46 rows, 30 run here, 16 CI-only; every required context has a row`, with `roadmap-writer-gate` at row 45 and `issue-closure` at row 46 |
+| `docs/status/orphan-files-ledger.md` | master's side taken (`git checkout --theirs`), then RE-RENDERED by the merged tree's binary (`pmat analyze reachability --write-ledger`). Count-only: 4497→4498 tracked `.rs` files, 4015→4016 reachable. Orphans stay **407**, quarantined **75** — this branch adds no orphan | `pmat analyze reachability --check-ledger` → `ledger is current`, **exit 0** |
+| `docs/status/unrun-tests-ledger.md` | master's side taken, then RE-RENDERED (`pmat analyze unrun-tests --write-ledger`). Count-only: 27447→27460 lib tests, 24320→24333 executed. Unrun stays **3127** — this branch adds no unrun test | `pmat analyze unrun-tests --check-ledger` → `ledger is current`, **exit 0** |
+
+Neither ledger was hand-merged. The writer refuses a dirty tree, so the orphan ledger was committed
+(f2333da18) before the unrun ledger could be rendered (5ab1d1606) — the refusal is the mechanism that
+keeps a rendered ledger reproducible from its own commit, and it fired here.
+
+`docs/audits/impl-estimates.jsonl` did **not** duplicate: after the merge it is byte-identical to
+master's copy (md5 `caad5530517a476da38c68579a1f4a55`, 35 lines, `sort | uniq -d` empty). This branch had
+never appended a row, so `merge=union` had nothing to union. Correction to the brief, below.
+
+## Session 3 — `make gate` on the merged tree (one run, every leg)
+
+At `HEAD=5ab1d1606 origin/master=b58addab8 behind=0`. **30 legs run here, 28 PASS, 2 FAIL**; 16 named
+CI-only. Logs `/tmp/pmat-gate.C4MiRg`. Every leg that ran pmat ran the binary above, as the runner asserts.
+
+PASS: gate-control 4s · fmt 3s · clippy-all-targets 105s · cargo-deny 1s · cargo-audit 3s ·
+reusable-pin-drift 0s · build-pmat 26s · roadmap-validate-control 0s · roadmap-validate 0s ·
+traceability-control 1s · roadmap-coherence-control 1s · work-sync-control 0s · ticket-release-control 3s ·
+spec-epic-control 2s · spec-review-control 3s · pr-lane-control 0s · tests-dont-write-self-test 0s ·
+orphan-ledger 0s · dependabot-self-test 0s · dependabot-alerts-live 1s · **unrun-tests 36s** ·
+**reachability-ledger 24s** · pmat-score 55s · lean-build 4s · lean-no-holes 0s · pv-obligations 1s ·
+**roadmap-writer-gate 56s** (master's new leg, on this branch) · **issue-closure 189s** (this ticket's leg).
+
+FAIL, both master's and named as such by the brief:
+
+- `lib-tests` — one test of 21771: `services::tdg_baseline::tests::the_committed_baseline_is_the_measured_count`.
+  `CB-200 REGRESSED: 1741 definitions below grade A, recorded baseline 1688`. **1741 is the number two
+  independent sessions measured on clean master** (PMAT-1363 and PMAT-1365 receipts), and it is unchanged from
+  this branch's own pre-merge measurement at 7b1fc68f1 — so neither this branch nor PMAT-1385 adds to it. It is
+  issue #1266, owned by the PMAT-636 session. Nothing here raises the baseline. 21770 passed, 1 failed, 160 skipped.
+- `cb-2113-cb-2115` — CB-2113 **✓** (`all 14 non-merge commit(s) in b58adda..HEAD carry a Pmat-Ticket trailer
+  naming an open roadmap item`); CB-2115 **✗** with exactly **one** finding: `ORPHAN-ROADMAP PMAT-1385: #1385 is
+  closed`. That is master's own orphan, opened the moment PR #1389 merged, and the armed lifecycle PR #1397
+  completes it. **PMAT-900001 is no longer an orphan** — session 2 bound it to #1395, and it does not appear in
+  the finding. No lifecycle row is carried here.
+
+The two ledger legs that were red in session 2 (`unrun-tests`, `reachability-ledger`) are green: the
+re-render fixed them, which is what the brief asked for.
+
+## Session 3 — corrections to the brief
+
+1. HEAD was **495f40971**, not `78xxxxx`. The round-2 verdict commit is `quorum: PMAT-900001 — 3/3 PASS on 4111549f7`.
+2. `docs/audits/impl-estimates.jsonl` did **not** duplicate rows. It came out of the merge byte-identical to
+   master's 35-line copy, because this branch had never appended a row. Nothing had to be restored.
+3. The brief's order — merge, build, then re-render — cannot be followed literally for the unrun-tests
+   ledger: `--write-ledger` refuses a dirty tree, so the orphan ledger's own re-render has to be committed
+   first. Two commits, not one.
+4. `make gate` reds are **2**, not the 4 of session 2, and neither is `issue-closure`, which passes in 189s.
 
 ## Gaps
 
