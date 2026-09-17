@@ -72,6 +72,16 @@ mod roadmap_fragments_tests;
 #[cfg(test)]
 #[path = "../../../tests/roadmap_fragments_wiring_tests.rs"]
 mod roadmap_fragments_wiring_tests;
+// PMAT-1385: the roadmap WRITER GATE — every raw write that can land under
+// docs/roadmaps/ goes through the RoadmapWriteLock token — and its planted
+// mutants. Registered here for the same reason as the suites above.
+// `cargo test --lib -- roadmap_writer_gate` runs them.
+#[cfg(test)]
+#[path = "../../../tests/roadmap_writer_gate.rs"]
+mod roadmap_writer_gate;
+#[cfg(test)]
+#[path = "../../../tests/roadmap_writer_gate_tests.rs"]
+mod roadmap_writer_gate_tests;
 // PMAT-680: `work add` must mint from ONE authority per repository — the git
 // common dir's lock plus every ref's roadmap — so two checkouts of the same
 // repository cannot mint the same id. Registered here for the same reason as
