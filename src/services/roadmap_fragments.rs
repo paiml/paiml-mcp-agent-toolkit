@@ -114,31 +114,34 @@ impl PartialOrd for Numeral {
 /// be followed by prose (`PMAT-12 (notes)`), never by a word character.
 #[must_use]
 pub fn parse_id(id: &str) -> Option<(&str, Numeral)> {
-    if !id.bytes().next()?.is_ascii_alphabetic() {
-        return None;
-    }
     let (prefix, rest) = id.split_once('-')?;
-    if !prefix
+    let is_prefix = prefix
         .bytes()
-        .all(|b| b.is_ascii_alphanumeric() || b == b'_')
-    {
-        return None;
-    }
-    let digits_end = rest
+        .next()
+        .is_some_and(|b| b.is_ascii_alphabetic())
+        && prefix.bytes().all(is_word_byte);
+    is_prefix.then_some(())?;
+    Some((prefix, leading_numeral(rest)?))
+}
+
+/// `[A-Za-z0-9_]` — a regex word character, in ASCII.
+fn is_word_byte(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || b == b'_'
+}
+
+/// The digits `rest` starts with, when there is at least one and no word
+/// character follows them (`12` and `12 (notes)` qualify; `12a` does not).
+fn leading_numeral(rest: &str) -> Option<Numeral> {
+    let end = rest
         .bytes()
         .position(|b| !b.is_ascii_digit())
         .unwrap_or(rest.len());
-    if digits_end == 0 {
-        return None;
-    }
-    if let Some(next) = rest[digits_end..].chars().next() {
-        if next.is_ascii_alphanumeric() || next == '_' {
-            return None;
-        }
-    }
-    let digits = rest[..digits_end].trim_start_matches('0');
-    let digits = if digits.is_empty() { "0" } else { digits };
-    Some((prefix, Numeral(digits.to_string())))
+    let ends_cleanly = rest.as_bytes().get(end).is_none_or(|&b| !is_word_byte(b));
+    (end > 0 && ends_cleanly).then_some(())?;
+    let digits = rest[..end].trim_start_matches('0');
+    Some(Numeral(
+        if digits.is_empty() { "0" } else { digits }.to_string(),
+    ))
 }
 
 /// Can this id be a filename? `FILENAME_SAFE` in `roadmap_fragments.py`.
@@ -262,41 +265,48 @@ pub fn insertion_index(entries: &[(String, String)], id: &str) -> usize {
 ///
 /// [`FragmentError::NotAFilename`] or [`FragmentError::Malformed`].
 pub fn check_fragment(id: &str, block: &str, indent: usize) -> Result<(), FragmentError> {
-    let malformed = |reason: String| FragmentError::Malformed {
-        id: id.to_string(),
-        reason,
-    };
     if !is_filename_safe(id) {
         return Err(FragmentError::NotAFilename(id.to_string()));
     }
+    fragment_shape(id, block, indent).map_err(|reason| FragmentError::Malformed {
+        id: id.to_string(),
+        reason,
+    })
+}
+
+/// Why `block` is not exactly one row declaring `id` at `indent`, ending in a newline.
+fn fragment_shape(id: &str, block: &str, indent: usize) -> Result<(), String> {
     if !block.ends_with('\n') {
-        return Err(malformed(
+        return Err(
             "does not end in a newline, so its last line would fuse with the next row".into(),
-        ));
+        );
     }
     let mut lines = block
         .split_inclusive('\n')
         .map(|l| l.trim_end_matches('\n'));
-    match lines.next().and_then(|first| row_start_id(first, indent)) {
-        Some(declared) if declared == id => {}
-        Some(declared) => {
-            return Err(malformed(format!(
-                "declares id {declared:?}; a fragment's id is its filename"
-            )))
-        }
-        None => {
-            return Err(malformed(format!(
-                "its first line is not `- id: {id}` at column {indent}; anything before the row \
-                 would be glued onto the previous row and repeated on every aggregation"
-            )))
-        }
+    let declared = lines.next().and_then(|first| row_start_id(first, indent));
+    first_row_declares(id, declared.as_deref(), indent)?;
+    lines
+        .find_map(|line| row_start_id(line, indent))
+        .map_or(Ok(()), |extra| {
+            Err(format!(
+                "declares a second row ({extra:?}); one fragment is one ticket"
+            ))
+        })
+}
+
+/// A fragment's first line must declare its own id: its id is its filename.
+fn first_row_declares(id: &str, declared: Option<&str>, indent: usize) -> Result<(), String> {
+    match declared {
+        Some(declared) if declared == id => Ok(()),
+        Some(declared) => Err(format!(
+            "declares id {declared:?}; a fragment's id is its filename"
+        )),
+        None => Err(format!(
+            "its first line is not `- id: {id}` at column {indent}; anything before the row \
+             would be glued onto the previous row and repeated on every aggregation"
+        )),
     }
-    if let Some(extra) = lines.find_map(|line| row_start_id(line, indent)) {
-        return Err(malformed(format!(
-            "declares a second row ({extra:?}); one fragment is one ticket"
-        )));
-    }
-    Ok(())
 }
 
 /// The base with every fragment placed at its sorted slot. `aggregate` in

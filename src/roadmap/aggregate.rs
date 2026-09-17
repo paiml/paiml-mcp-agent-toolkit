@@ -98,24 +98,38 @@ fn default_entries_dir(roadmap: &Path) -> PathBuf {
 }
 
 fn aggregate_locked(roadmap: &Path, entries_dir: &Path, mode: AggregateMode) -> AggregateReport {
-    let (base, out) = match fragments::aggregate_paths(roadmap, entries_dir) {
-        Ok(pair) => pair,
-        Err(e @ FragmentError::Io { .. }) => {
-            return AggregateReport::new(
-                2,
-                String::new(),
-                format!("FAIL {e} — an input that cannot be read is never a pass\n"),
-            )
-        }
-        Err(e) => return AggregateReport::new(1, String::new(), format!("FAIL {e}\n")),
-    };
+    fragments::aggregate_paths(roadmap, entries_dir).map_or_else(refusal, |(base, out)| {
+        emit(roadmap, entries_dir, mode, &base, out)
+    })
+}
+
+/// Exit 2 for an input that cannot be read — never a pass — and 1 for a violation.
+fn refusal(e: FragmentError) -> AggregateReport {
+    match e {
+        FragmentError::Io { .. } => AggregateReport::new(
+            2,
+            String::new(),
+            format!("FAIL {e} — an input that cannot be read is never a pass\n"),
+        ),
+        _ => AggregateReport::new(1, String::new(), format!("FAIL {e}\n")),
+    }
+}
+
+/// The three terminal arms: print, write, or check.
+fn emit(
+    roadmap: &Path,
+    entries_dir: &Path,
+    mode: AggregateMode,
+    base: &str,
+    out: String,
+) -> AggregateReport {
     // Re-read rather than threading the list through: aggregate_paths already
     // proved it readable, and the count is only for the message.
     let fragments = fragments::read_fragments(entries_dir).unwrap_or_default();
     match mode {
         AggregateMode::Print => AggregateReport::new(0, out, String::new()),
-        AggregateMode::Write => write_aggregate(roadmap, &base, &out, fragments.len()),
-        AggregateMode::Check => check_aggregate(roadmap, entries_dir, &base, &out, &fragments),
+        AggregateMode::Write => write_aggregate(roadmap, base, &out, fragments.len()),
+        AggregateMode::Check => check_aggregate(roadmap, entries_dir, base, &out, &fragments),
     }
 }
 
@@ -136,7 +150,7 @@ fn write_aggregate(
             ),
         );
     }
-    if let Err(e) = std::fs::write(roadmap, out) {
+    if let Err(e) = replace_atomically(roadmap, out) {
         return AggregateReport::new(
             2,
             String::new(),
@@ -191,4 +205,44 @@ fn check_aggregate(
             fragments.len()
         ),
     )
+}
+
+/// Write `contents` beside `path` and rename it over `path`.
+///
+/// The repository lock keeps every pmat reader out while this runs, but git, an
+/// editor, or the CI parity gate take no such lock: an in-place write would let
+/// them read a truncated aggregate, and a crash mid-write would leave one on disk.
+/// A rename within one directory is atomic, the same guarantee `write_fragment`
+/// gives each fragment.
+fn replace_atomically(path: &Path, contents: &str) -> std::io::Result<()> {
+    let name = path.file_name().map_or_else(
+        || "roadmap.yaml".into(),
+        |n| n.to_string_lossy().into_owned(),
+    );
+    let staging = path.with_file_name(format!(".{name}.aggregate.tmp"));
+    std::fs::write(&staging, contents)?;
+    std::fs::rename(&staging, path).inspect_err(|_| {
+        let _ = std::fs::remove_file(&staging);
+    })
+}
+
+/// `pmat roadmap aggregate` as the CLI runs it: print both streams, and exit with
+/// the report's code when it is not 0.
+///
+/// # Errors
+///
+/// Never; a failure is the process exit code, which is the command's contract.
+pub fn execute(
+    write: bool,
+    check: bool,
+    roadmap: &Path,
+    entries: Option<&Path>,
+) -> anyhow::Result<()> {
+    let report = run_aggregate(roadmap, entries, AggregateMode::from_flags(write, check));
+    print!("{}", report.stdout);
+    eprint!("{}", report.stderr);
+    if report.code != 0 {
+        std::process::exit(report.code);
+    }
+    Ok(())
 }

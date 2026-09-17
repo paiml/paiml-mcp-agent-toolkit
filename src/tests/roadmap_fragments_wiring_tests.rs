@@ -526,6 +526,15 @@ fn roadmap_fragments_aggregate_command_prints_writes_and_checks() {
         runs[0] == runs[1] && runs[1] == runs[2],
         "three writes differ"
     );
+    let leftovers: Vec<String> = std::fs::read_dir(path.parent().expect("parent"))
+        .expect("readdir")
+        .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+        .filter(|name| name.ends_with(".tmp"))
+        .collect();
+    assert!(
+        leftovers.is_empty(),
+        "--write replaces the aggregate by rename and leaves no staging file: {leftovers:?}"
+    );
     assert_eq!(
         runs[0], printed.stdout,
         "--write writes what the default prints"
@@ -674,6 +683,29 @@ fn roadmap_fragments_an_id_spent_by_a_fragment_on_another_ref_is_spent() {
     let path = docs.join("roadmap.yaml");
     let authority = IdAuthority::discover(&path);
     assert_eq!(authority.max_id_across_refs(), Some(50));
+
+    // A fragment NAME is read by the same rule as a roadmap ROW of that id — one
+    // reader, `roadmap_text::id_number` — so a ticket cannot be spent in one form
+    // and free in the other. `ABC-70-1` spends 1 as a row, so it spends 1 as a
+    // fragment; a second parser here (e.g. `parse_id`, which reads 70) would move
+    // the maximum and this line.
+    git(&root, &["checkout", "-q", "other"]);
+    std::fs::write(
+        docs.join("entries/ABC-70-1.yaml"),
+        "- id: ABC-70-1\n  title: a legacy multi-dash id\n  status: planned\n",
+    )
+    .expect("fragment");
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-q", "-m", "a multi-dash fragment"]);
+    git(&root, &["checkout", "-q", "main"]);
+    let as_rows =
+        crate::services::roadmap_text::max_id_number("roadmap:\n- id: PMAT-050\n- id: ABC-70-1\n");
+    assert_eq!(as_rows, Some(50));
+    assert_eq!(
+        authority.max_id_across_refs(),
+        as_rows,
+        "fragment names and roadmap rows must spend the same numbers"
+    );
     let minted = RoadmapService::new(&path)
         .add_item_with_next_id(an_item)
         .expect("mint");

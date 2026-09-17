@@ -229,19 +229,26 @@ pub fn next_id_number(raw: &str, lock_high_water: Option<u32>) -> u32 {
 /// exactly the same rules.
 #[must_use]
 pub fn max_id_number(raw: &str) -> Option<u32> {
-    let mut max: Option<u32> = None;
-    for (_, id) in id_lines(raw) {
-        let Some(token) = id.split_whitespace().next() else {
-            continue;
-        };
-        let bare = token.trim_matches(|c| c == '"' || c == '\'');
-        if let Some(number) = bare.rsplit('-').next() {
-            if let Ok(parsed) = number.parse::<u32>() {
-                max = Some(max.map_or(parsed, |seen: u32| seen.max(parsed)));
-            }
-        }
-    }
-    max
+    id_lines(raw)
+        .into_iter()
+        .filter_map(|(_, id)| id_number(&id))
+        .max()
+}
+
+/// The number an id spends for the allocator: the digits after its LAST dash.
+///
+/// PMAT-1363: the id authority reads `entries/<id>.yaml` NAMES on other refs as
+/// well as roadmap rows, and both go through this one function. Two readers that
+/// disagreed would let a ticket count as spent in one form and free in the other.
+/// It is deliberately not `roadmap_fragments::parse_id`: every id `work add` mints
+/// is exactly `PREFIX-N`, which both read identically, and for any other shape an
+/// over-count only leaves a gap — while changing this rule would change what the
+/// allocator has always read from the rows.
+#[must_use]
+pub fn id_number(id: &str) -> Option<u32> {
+    let token = id.split_whitespace().next()?;
+    let bare = token.trim_matches(|c| c == '"' || c == '\'');
+    bare.rsplit('-').next()?.parse::<u32>().ok()
 }
 
 /// Everything a roadmap's raw text can be rejected for.
@@ -656,27 +663,9 @@ pub fn titles_by_id(raw: &str) -> BTreeMap<String, String> {
         }
 
         if let Some(id) = id_value_on_line(line) {
-            // A flow-style row declares both on one line: `- {id: X, title: Y}`.
-            if let Some(title) = title_in_flow_mapping(line) {
-                out.insert(id, title);
-            } else {
-                // The sequence dash puts the id two columns left of its siblings.
-                let key_indent = if strip_sequence_dash(line.trim_start()).is_some() {
-                    indent + 2
-                } else {
-                    indent
-                };
-                // A row at this indent or deeper is finished with; anything still
-                // waiting there never declared a title.
-                pending.retain(|(_, at)| *at < key_indent);
-                pending.push((id, key_indent));
-            }
+            open_row(line, indent, id, &mut out, &mut pending);
         } else if let Some(rest) = line.trim_start().strip_prefix("title:") {
-            // Innermost first: the deepest row whose keys sit at this indent.
-            if let Some(position) = pending.iter().rposition(|(_, at)| *at == indent) {
-                let (id, _) = pending.remove(position);
-                out.insert(id, clean_scalar(rest));
-            }
+            claim_title(indent, rest, &mut out, &mut pending);
         }
 
         if opens_block_scalar(line) {
@@ -684,6 +673,45 @@ pub fn titles_by_id(raw: &str) -> BTreeMap<String, String> {
         }
     }
     out
+}
+
+/// [`titles_by_id`]: a row starts on `line`. A flow-style row declares its title on
+/// the same line (`- {id: X, title: Y}`); any other row waits in `pending` for one.
+fn open_row(
+    line: &str,
+    indent: usize,
+    id: String,
+    out: &mut BTreeMap<String, String>,
+    pending: &mut Vec<(String, usize)>,
+) {
+    if let Some(title) = title_in_flow_mapping(line) {
+        out.insert(id, title);
+        return;
+    }
+    // The sequence dash puts the id two columns left of its siblings.
+    let key_indent = if strip_sequence_dash(line.trim_start()).is_some() {
+        indent + 2
+    } else {
+        indent
+    };
+    // A row at this indent or deeper is finished with; anything still waiting
+    // there never declared a title.
+    pending.retain(|(_, at)| *at < key_indent);
+    pending.push((id, key_indent));
+}
+
+/// [`titles_by_id`]: a `title:` key at `indent` belongs to the innermost row still
+/// waiting whose keys sit at that indent.
+fn claim_title(
+    indent: usize,
+    rest: &str,
+    out: &mut BTreeMap<String, String>,
+    pending: &mut Vec<(String, usize)>,
+) {
+    if let Some(position) = pending.iter().rposition(|(_, at)| *at == indent) {
+        let (id, _) = pending.remove(position);
+        out.insert(id, clean_scalar(rest));
+    }
 }
 
 /// The `title` of a flow mapping such as `- {id: X, title: Y}`.

@@ -152,23 +152,7 @@ impl RoadmapService {
         let item = build(id.clone());
         match parsed {
             Some(_) => {
-                let block = crate::services::roadmap_text::render_item_block(
-                    &item,
-                    crate::services::roadmap_text::row_indent(&raw),
-                );
-                // PMAT-1363: when the repo has opted in, the row is its OWN
-                // file and roadmap.yaml is not opened for write at all. That is
-                // what makes two pull requests disjoint on the roadmap — the
-                // append below still has both branches writing one file's tail.
-                if let Some(entries) = self.fragment_dir()? {
-                    crate::services::roadmap_fragments::write_fragment(&entries, &id, &block)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
-                } else {
-                    let appended = crate::services::roadmap_text::append_item(&raw, &block);
-                    fs::write(&self.roadmap_path, appended).with_context(|| {
-                        format!("Failed to write roadmap file: {:?}", self.roadmap_path)
-                    })?;
-                }
+                self.persist_new_row(&raw, &item)?;
             }
             None => {
                 let mut roadmap = Roadmap::default();
@@ -231,23 +215,9 @@ impl RoadmapService {
                 self.roadmap_path.display()
             );
         }
-        let item = build(id.to_string());
-        let block = crate::services::roadmap_text::render_item_block(
-            &item,
-            crate::services::roadmap_text::row_indent(&raw),
-        );
-        // PMAT-1363: the caller-allocated-id path (`--id`, `--github-issue`) needs
-        // the same seam as the allocator path above. This is the one `pmat work add
-        // --github-issue` actually takes, so leaving it appending would have made
-        // the migrated behaviour depend on which flag the caller used.
-        if let Some(entries) = self.fragment_dir()? {
-            crate::services::roadmap_fragments::write_fragment(&entries, id, &block)
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
-        } else {
-            let appended = crate::services::roadmap_text::append_item(&raw, &block);
-            fs::write(&self.roadmap_path, appended)
-                .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
-        }
+        // PMAT-1363: the same seam as the allocator path — this is the path
+        // `pmat work add --github-issue` takes.
+        self.persist_new_row(&raw, &build(id.to_string()))?;
         // Keep the shared high-water mark ahead of a caller-supplied id, so the
         // allocator cannot later hand out an id this call already spent.
         if let Some(number) = id.rsplit('-').next().and_then(|n| n.parse::<u32>().ok()) {
@@ -257,6 +227,28 @@ impl RoadmapService {
             }
         }
         Ok(id.to_string())
+    }
+
+    /// Write one NEW row: its own `entries/<id>.yaml` in a repository that has
+    /// opted in, an append to `roadmap.yaml` otherwise. The caller holds the lock.
+    ///
+    /// PMAT-1363: the fragment is what makes two pull requests disjoint on the
+    /// roadmap — an append still has both branches writing one file's tail. Both
+    /// `work add` paths (allocated id and caller-supplied id) come through here,
+    /// so the behaviour cannot depend on which flag the caller used.
+    fn persist_new_row(&self, raw: &str, item: &RoadmapItem) -> Result<()> {
+        let block = crate::services::roadmap_text::render_item_block(
+            item,
+            crate::services::roadmap_text::row_indent(raw),
+        );
+        if let Some(entries) = self.fragment_dir()? {
+            crate::services::roadmap_fragments::write_fragment(&entries, &item.id, &block)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            return Ok(());
+        }
+        let appended = crate::services::roadmap_text::append_item(raw, &block);
+        fs::write(&self.roadmap_path, appended)
+            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))
     }
 
     /// Replace ONE row's raw text — the row declaring `id` — with `item`.

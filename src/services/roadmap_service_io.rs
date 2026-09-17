@@ -251,7 +251,6 @@ impl RoadmapService {
     /// cannot be a filename; and a model that declares one id twice.
     fn write_roadmap_as_fragments(&self, entries: &Path, roadmap: &Roadmap) -> Result<()> {
         use crate::services::roadmap_fragments as fragments;
-        use std::collections::{BTreeSet, HashMap};
 
         let base = fs::read_to_string(&self.roadmap_path)
             .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
@@ -262,61 +261,9 @@ impl RoadmapService {
         .map_err(|e| anyhow::anyhow!("{}: {e}", entries.display()))?;
         let current = self.parse_roadmap_yaml(&view)?;
 
-        if current.roadmap_version != roadmap.roadmap_version
-            || current.github_enabled != roadmap.github_enabled
-            || current.github_repo != roadmap.github_repo
-        {
-            anyhow::bail!(
-                "refusing to change the roadmap header: in a repository with {} the header \
-                 exists only in {}, which is generated. Change it on the default branch, not \
-                 through a ticket (PMAT-1363).",
-                entries.display(),
-                self.roadmap_path.display()
-            );
-        }
-
-        let mut wanted: BTreeSet<&str> = BTreeSet::new();
-        for item in &roadmap.roadmap {
-            if !wanted.insert(item.id.as_str()) {
-                anyhow::bail!("refusing to save: the roadmap declares {} twice", item.id);
-            }
-        }
-        let before: HashMap<&str, &RoadmapItem> =
-            current.roadmap.iter().map(|item| (item.id.as_str(), item)).collect();
-        let changed: Vec<&RoadmapItem> = roadmap
-            .roadmap
-            .iter()
-            .filter(|item| before.get(item.id.as_str()).copied() != Some(*item))
-            .collect();
-        let removed: Vec<&str> = current
-            .roadmap
-            .iter()
-            .map(|item| item.id.as_str())
-            .filter(|id| !wanted.contains(id))
-            .collect();
-
-        for item in &changed {
-            if !fragments::is_filename_safe(&item.id) {
-                anyhow::bail!(
-                    "refusing to save {:?}: an id that cannot be a filename cannot be a fragment, \
-                     and {} is generated here, so this ticket has no write path (PMAT-1363)",
-                    item.id,
-                    self.roadmap_path.display()
-                );
-            }
-        }
-        let base_ids: BTreeSet<String> = fragments::split_entries(&base)
-            .1
-            .into_iter()
-            .map(|(id, _)| id)
-            .collect();
-        if let Some(id) = removed.iter().find(|id| base_ids.contains(**id)) {
-            anyhow::bail!(
-                "refusing to remove {id}: its row is in the generated {}; a fragment can \
-                 supersede a base row but cannot delete one (PMAT-1363)",
-                self.roadmap_path.display()
-            );
-        }
+        self.refuse_header_change(entries, &current, roadmap)?;
+        let (changed, removed) = fragment_changes(&current, roadmap)?;
+        self.refuse_unwritable(&base, &changed, &removed)?;
 
         let indent = crate::services::roadmap_text::row_indent(&base);
         for item in changed {
@@ -329,4 +276,74 @@ impl RoadmapService {
         }
         Ok(())
     }
+
+    /// The header (`roadmap_version`, `github_enabled`, `github_repo`) exists only
+    /// in the generated aggregate, so no fragment can carry a change to it.
+    fn refuse_header_change(&self, entries: &Path, current: &Roadmap, wanted: &Roadmap) -> Result<()> {
+        if current.roadmap_version != wanted.roadmap_version
+            || current.github_enabled != wanted.github_enabled
+            || current.github_repo != wanted.github_repo
+        {
+            anyhow::bail!(
+                "refusing to change the roadmap header: in a repository with {} the header \
+                 exists only in {}, which is generated. Change it on the default branch, not \
+                 through a ticket (PMAT-1363).",
+                entries.display(),
+                self.roadmap_path.display()
+            );
+        }
+        Ok(())
+    }
+
+    /// Refuse, before anything is written, a change no fragment can express: a
+    /// changed ticket whose id cannot be a filename, or removing a base row.
+    fn refuse_unwritable(&self, base: &str, changed: &[&RoadmapItem], removed: &[&str]) -> Result<()> {
+        use crate::services::roadmap_fragments as fragments;
+        if let Some(item) = changed.iter().find(|item| !fragments::is_filename_safe(&item.id)) {
+            anyhow::bail!(
+                "refusing to save {:?}: an id that cannot be a filename cannot be a fragment, \
+                 and {} is generated here, so this ticket has no write path (PMAT-1363)",
+                item.id,
+                self.roadmap_path.display()
+            );
+        }
+        let base_ids: std::collections::BTreeSet<String> =
+            fragments::split_entries(base).1.into_iter().map(|(id, _)| id).collect();
+        if let Some(id) = removed.iter().find(|id| base_ids.contains(**id)) {
+            anyhow::bail!(
+                "refusing to remove {id}: its row is in the generated {}; a fragment can \
+                 supersede a base row but cannot delete one (PMAT-1363)",
+                self.roadmap_path.display()
+            );
+        }
+        Ok(())
+    }
+}
+
+/// `(changed, removed)` between the current view and the model to save: every
+/// ticket that is new or differs, and every current id the model no longer
+/// declares. A model that declares one id twice is refused.
+fn fragment_changes<'a>(
+    current: &'a Roadmap,
+    wanted: &'a Roadmap,
+) -> Result<(Vec<&'a RoadmapItem>, Vec<&'a str>)> {
+    use std::collections::{BTreeSet, HashMap};
+    let mut ids: BTreeSet<&str> = BTreeSet::new();
+    if let Some(item) = wanted.roadmap.iter().find(|item| !ids.insert(item.id.as_str())) {
+        anyhow::bail!("refusing to save: the roadmap declares {} twice", item.id);
+    }
+    let before: HashMap<&str, &RoadmapItem> =
+        current.roadmap.iter().map(|item| (item.id.as_str(), item)).collect();
+    let changed = wanted
+        .roadmap
+        .iter()
+        .filter(|item| before.get(item.id.as_str()).copied() != Some(*item))
+        .collect();
+    let removed = current
+        .roadmap
+        .iter()
+        .map(|item| item.id.as_str())
+        .filter(|id| !ids.contains(id))
+        .collect();
+    Ok((changed, removed))
 }

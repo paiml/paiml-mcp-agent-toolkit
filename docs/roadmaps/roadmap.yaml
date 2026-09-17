@@ -6808,7 +6808,7 @@ roadmap:
   github_issue: 1363
   item_type: task
   title: 'roadmap fragments: pmat writes roadmap.yaml in every consumer, making it a shared mutable file on the merge path'
-  status: completed
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:32Z

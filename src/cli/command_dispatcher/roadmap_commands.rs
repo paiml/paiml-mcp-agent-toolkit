@@ -40,15 +40,7 @@ impl CommandDispatcher {
             entries,
         } = &roadmap_cmd
         {
-            let mode = crate::roadmap::aggregate::AggregateMode::from_flags(*write, *check);
-            let report =
-                crate::roadmap::aggregate::run_aggregate(roadmap, entries.as_deref(), mode);
-            print!("{}", report.stdout);
-            eprint!("{}", report.stderr);
-            if report.code != 0 {
-                std::process::exit(report.code);
-            }
-            return Ok(());
+            return crate::roadmap::aggregate::execute(*write, *check, roadmap, entries.as_deref());
         }
 
         // Load configuration (with defaults)

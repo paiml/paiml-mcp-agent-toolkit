@@ -162,32 +162,26 @@ impl IdAuthority {
             }
         }
 
-        let mut max: Option<u32> = None;
-        let mut spend = |found: u32| max = Some(max.map_or(found, |seen: u32| seen.max(found)));
-        for blob in &blobs {
-            let Some(text) = git_stdout(&repo.toplevel, &["cat-file", "-p", blob]) else {
-                continue;
-            };
-            if let Some(found) = roadmap_text::max_id_number(&text) {
-                spend(found);
-            }
-        }
-        for tree in &trees {
-            let Some(names) = git_stdout(&repo.toplevel, &["ls-tree", "--name-only", tree]) else {
-                continue;
-            };
-            for name in non_empty_lines(&names) {
-                if let Some(found) = name
-                    .strip_suffix(".yaml")
-                    .and_then(|id| id.rsplit('-').next())
-                    .and_then(|digits| digits.parse::<u32>().ok())
-                {
-                    spend(found);
-                }
-            }
-        }
-        max
+        let from_rows = blobs.iter().filter_map(|blob| {
+            let text = git_stdout(&repo.toplevel, &["cat-file", "-p", blob])?;
+            roadmap_text::max_id_number(&text)
+        });
+        let from_fragments = trees
+            .iter()
+            .filter_map(|tree| max_fragment_id_in_tree(&repo.toplevel, tree));
+        from_rows.chain(from_fragments).max()
     }
+}
+
+/// The greatest id number an `entries/` tree's `<id>.yaml` names spend, read by
+/// [`roadmap_text::id_number`] — the same rule as a roadmap row of that id.
+fn max_fragment_id_in_tree(toplevel: &Path, tree: &str) -> Option<u32> {
+    let names = git_stdout(toplevel, &["ls-tree", "--name-only", tree])?;
+    non_empty_lines(&names)
+        .iter()
+        .filter_map(|name| name.strip_suffix(".yaml"))
+        .filter_map(roadmap_text::id_number)
+        .max()
 }
 
 /// The pre-PMAT-680 authority: `<roadmap>.yaml.lock` beside the roadmap.
