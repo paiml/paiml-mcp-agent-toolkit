@@ -58,7 +58,8 @@ excluded L2 ticket=PMAT-631 reason=range-phase … excluded L16 ticket=PMAT-680 
 - `.gitattributes` — `docs/audits/impl-estimates.jsonl merge=union`.
 - `docs/audits/impl-estimates.jsonl` — the one sanctioned rewrite (table below).
 - `contracts/estimate-ledger-v1.yaml`.
-- `docs/status/unrun-tests-ledger.md` — regenerated (27 new lib tests).
+- `docs/status/unrun-tests-ledger.md` — regenerated (27 new lib tests); `docs/status/orphan-files-ledger.md` — regenerated (2 new reachable files).
+- `docs/roadmaps/roadmap.yaml` — `kind:code` on PMAT-1366; a planned row PMAT-1381 for the orphan issue #1381 (CB-2115).
 - The record flag for the row's `mode` is `--exec-mode`. `--mode` is pmat's global cli|mcp flag, and a second arg with id `mode` panicked at argument access on every call. Unit tests missed this; running the built binary found it (see Jidoka).
 
 ## Backfill (L1–L18 unit; L17–L30 repo) — no other byte of any row changed
@@ -188,6 +189,9 @@ filed=paiml/paiml-implement#216 covers five asks:
 | `record --mode` shadowed the global `--mode` and panicked at argument access | this PR (src/cli/commands/work_commands_work.rs) | unit tests exercised the domain functions, never clap parsing; the global arg is `global = true` with id `mode` | renamed `--exec-mode`; parse test on an 8 MiB thread; mutant M7 |
 | `pmat verify` tests red at 42469eba8: ratchet +40 `.unwrap()`, +2 `panic!(`, +1 `#[allow(` | this PR | the ratchet counts test code too; the handler had 12 args | expect/assert in tests; handler takes `EstimateRow` + `EstimateRecordTarget`; baselines unchanged, not raised |
 | unrun-tests ledger drift | this PR | 27 new lib tests change the rendered total | `pmat analyze unrun-tests --write-ledger` from a clean tree |
+| orphan-files ledger drift (4483 → 4485 tracked `.rs`, 0 new orphans) | this PR | two new `include!`d files are reachable and change the rendered total; `pmat verify` does not run `analyze reachability --check-ledger` | `pmat analyze reachability --write-ledger` (0cbff9129), found by running the CI job's command locally before CI reached it |
+| PR title check red: no conventional-commit type | orchestrator | the title started with the ticket id | retitled `fix(PMAT-1366): …` |
+| traceability job red: CB-2115 `ORPHAN-GITHUB #1381` | not this diff: #1381 was opened 2026-09-16 after master's last roadmap change | CB-2115 is a bijection over OPEN issues, so every PR bound for master inherits the orphan | roadmap row PMAT-1381 (status planned, github_issue 1381) added on this branch (e812162c8), the same repair PMAT-1359 made; `pmat comply check --checks CB-2113,CB-2115` green locally |
 | mutant waiter never started | orchestrator | `pgrep -f "cargo build --bin pmat"` matched its own `sh -c` command line | rerun directly; no source was mutated while waiting |
 | andon line 0.8K = 56 crossed with the phase gate not yet PASS, and not fired | orchestrator | K=70 came from K̂=35 on the `pmat`-keyed rows; this ticket ran 4 phases, 3 dispatches, 2 quorums and 3 verify runs | finding: continued under the brief's merge mandate; recorded here, not waved through |
 
