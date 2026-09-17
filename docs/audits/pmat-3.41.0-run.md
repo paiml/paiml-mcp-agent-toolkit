@@ -253,3 +253,11 @@ Raw (D7 session receipt, verdict DONE, quorum agreed=true 3/3 on ae8efee2f, merg
 Same class, three times today: one target dir shared by things that believed they were alone — the operator's `cargo` shell function across clones (09:58Z), `scripts/gate.sh`'s hard-coded `./target/debug/pmat` (11:50Z), and now CI's per-PR mount across jobs.
 
 Decision: #1388's merge orphans PMAT-1305 (and PMAT-708) under CB-2115, and PR #1368 — armed for auto-merge since ~13:25Z, 40 pass / 4 pending — is strict-protected, so it must take master and will go red on `traceability` until those rows are terminal. 13:30Z launched lifecycle-4 (pid 3360656) to complete both and anything else live. Slots 3/3: D2, D4, lifecycle-4. disk: 320G free (82% used).
+
+## 2026-09-17T14:05Z — sessions in flight
+
+tree: run-log behind=0 against origin/master ce945d81e.
+- PR #1390 (chore(PMAT-1336): complete PMAT-1305 and PMAT-708 — master's two CB-21… armed=true):      25 pass      17 pending       4 skipping 
+- PR #1368 (build(make): declare `gate` — pmat had no gate of its own, so discover… armed=true):       3 pass       3 pending       3 skipping 
+- PR #1389 (fix(PMAT-1385): pmat work migrate writes under the repository lock; ev… armed=false):       1 fail      27 pass      14 pending       4 skipping 
+- Lifecycle-4 PR #1390 armed; D4 PR #1368 armed (waits on #1390 for `traceability`); D2 opened PR #1389. Slots 3/3. Queue: D0, D6.
