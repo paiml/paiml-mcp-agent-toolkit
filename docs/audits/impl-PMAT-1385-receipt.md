@@ -6,9 +6,9 @@
 |---|---|
 | ticket | PMAT-1385 (#1385, `kind:code` on the issue and on the roadmap row); `kind-gate.sh` exit 0 `kind=code`; `model-gate.sh` `model=opus-5 class=opus decision=admit basis=transcript` |
 | PR | #1389, branch `PMAT-1385-roadmap-unlocked-write-bypass` (renamed from `fix/roadmap-unlocked-write-bypass`) |
-| base | `origin/master` `8915fe3e6` at start; rebased onto `7c2aa59b8` (#1383) and then `7fa1be27d` (#1387); every measurement below carries its tree line |
-| `discover.json` sha256 | `f0f7bca7b761326e6c4143114800efaf4fdba26f37faaaf5ff042f705ad7a9b4` |
-| `gate_cmd` | `cargo test --workspace`, **`gate_cmd_fallback=true`**. The gates actually run were `pmat verify --format json` (this repository's CLAUDE.md) and the full lib suite under nextest |
+| base | `origin/master` `8915fe3e6` at start; rebased onto `7c2aa59b8` (#1383), then `7fa1be27d` (#1387), then `ef2a0b947` (#1368); every measurement below carries its tree line |
+| `discover.json` sha256 | `f0f7bca7b761326e6c4143114800efaf4fdba26f37faaaf5ff042f705ad7a9b4` at start; `25d0b9ce6d537adb5a31c8dbe24bbbea73d8455f225a97e36c2d3e84a65d8634` at the resume on `46a49e0f5` |
+| `gate_cmd` | at start `cargo test --workspace`, **`gate_cmd_fallback=true`**; the gates actually run were `pmat verify --format json` (this repository's CLAUDE.md) and the full lib suite under nextest. At the resume, after #1368, discovery reads `make gate`, `gate_cmd_fallback=false`, and `make gate` was run (see "Resume after the host crash") |
 | `required_check` | `ci / gate,docs build (docs.rs environment),feature-gate,pmat score,provable ladder` |
 | I-3 | `PASS transcript-gate: attempted=2 denied=0 stalled=0 running_peak=1 slots=3` (before the round-2 review dispatch) |
 
@@ -49,7 +49,10 @@ The phase 2 deviation from R-4 is a finding, not an oversight. The gate's allow-
 | ph1 delegate | grillme | 3 | FAIL / FAIL / FAIL | `1cabaeba-dec6-49d1-a04f-33786d283c10`, `05af913e-0ccf-4838-a9bc-2c02f48a06f3`, `fcb5e9c0-436c-45ac-a036-b0db07b28a13` (children=3) |
 | ph4 delegate, round 1 on `dbf8774ec` | quorum (grillme) | 3 | FAIL / PASS / PASS | `a68900f9-561c-4691-8d1d-da9bc6bdcb21`, `15a767d1-855a-46f0-b0b0-92f846475e01`, `3f0dc15d-e2d4-4f8f-a7f5-184ad3f14d96` (children=3) |
 | ph4 delegate, round 2 on `287746ab0` | quorum (grillme) | 3 | FAIL / PASS / PASS | `b180962a-f1b2-4af7-aa74-ee8c3b87c3ce`, `43046cca-dbdf-408d-a786-55a19556647a`, `3c2cb5d2-e522-49f5-8c37-f0001f6a36f2` (children=3) |
-| ph4 delegate, round 3 | quorum (grillme) | 3 | recorded in `docs/audits/quorum-PMAT-1385.json` | in the artifact |
+| ph4 delegate, round 3 on `bcda37008` | quorum (grillme) | 3 | PASS / PASS / PASS | `67d834d2-ec24-4876-b67e-8124208c2986`, `ac50ad60-6a8c-457c-942a-c899cc3e3e51`, `8c273191-dcaa-4d4e-9efb-51e055be09a2` |
+| ph4 delegate, round 4 on `8d948e6b4` (round 3 rebased onto #1390) | quorum (grillme) | 3 | PASS / PASS / PASS | `b321d4bd-9b1d-4c96-8ce5-7fa00b333d0f`, `973b0fa5-1635-4ea7-934e-e54b0d03d0b0`, `d7d7cbfa-0463-4dd2-8fe1-a29f8fde4dce` |
+| ph4 delegate, round 5 on `94ef6b2fc` (+ the `make gate` row) | quorum (grillme) | 3 | PASS / PASS / BLIND (void) | not recorded: the lane files lived under `$XDG_RUNTIME_DIR`, which the 15:30:04Z host crash wiped before an artifact was committed |
+| ph4 delegate, round 6 on the resumed head | quorum (grillme) | 3 | recorded in `docs/audits/quorum-PMAT-1385.json` | in the artifact |
 
 - Lanes: `gemini-3.1-pro-high`, `gemini-3.8-flash-high`, `gemini-3.7-flash-high`. Each model is measured from the lane's own log, and none is the author's family.
 - Slots: at most 1 live subagent at any time. Denials: 0. Stalls: 0.
@@ -98,6 +101,7 @@ Round 5 on `94ef6b2fc` was PASS, PASS, and one BLIND lane (exit 4: it never read
 | fix | `HEAD=7c0029e9b origin/master=8915fe3e6 behind=0` | 0; allow-list live | 4/4 GREEN |
 | after review round 1 | `HEAD=9553fd200 origin/master=7fa1be27d behind=0` | 0; allow-list live; 3037 files | 5/5 GREEN; the suite with the PMAT-1363 fragment tests is 59/59 |
 | after review round 2 | `HEAD=287746ab0 origin/master=7fa1be27d behind=0` + round-2 fixes | 0; allow-list live per kind | 5/5 GREEN; suite 60/60 |
+| resume, `make gate` | `HEAD=46a49e0f5 origin/master=ef2a0b947 behind=0` | 0; `roadmap-writer-gate` leg GREEN (15 required tests) | inside `lib-tests`: 21758 run, 21758 passed |
 
 ## Mutations (each applied, run, restored from git)
 
@@ -146,6 +150,22 @@ Round 5 on `94ef6b2fc` was PASS, PASS, and one BLIND lane (exit 4: it never read
 | CB-200 with this tree's binary | 1741 below A on a clean `origin/master` worktree and 1741 at HEAD. The delta is 0, and the red is pre-existing |
 | `pmat verify --format json` at `9553fd200` (this tree's binary) | format ok, satd ok, clippy ok, tests ok; complexity `not_applicable` ("no Rust files changed vs HEAD"; the pre-commit hook measured complexity on every commit); `ok: null` with `not_measured: [complexity]` |
 | `cargo test --lib -- roadmap_writer_gate work_migrate_ roadmap_fragments_` after review round 2 | 60 passed, 0 failed; `scripts/roadmap-writer-gate.sh --judge`: GREEN, 15 required tests |
+| `make gate` at `HEAD=46a49e0f5 origin/master=ef2a0b947 behind=0`, `CARGO_TARGET_DIR=/mnt/nvme-raid0/targets/pmat-D2 CARGO_BUILD_JOBS=8`, alone on this session | 29 legs run here: 28 PASS, 1 FAIL. `lib-tests` 21758/21758 (422 s), `clippy-all-targets`, `unrun-tests`, `reachability-ledger`, `pmat-score`, `pv-obligations` and `roadmap-writer-gate` (15 required tests) all PASS. The FAIL is `cb-2113-cb-2115`: CB-2113 passes ("all 13 non-merge commits in ef2a0b9..HEAD carry a Pmat-Ticket trailer naming an open roadmap item"), CB-2115 fails on master's 2 orphans, `ORPHAN-ROADMAP PMAT-1365` (#1365 closed; lifecycle PR #1392 still open) and `ORPHAN-GITHUB #1393` (opened 15:27:32Z with no row). Neither is this branch's; not carried |
+
+## Resume after the host crash
+
+The host hard-crashed at 15:30:04Z (journal boot -1 ends 17:30:04 CEST; boot 0 starts 17:31:50 CEST) and killed the session between the lock-test commit `46a49e0f5` and review round 6. The tree, `.pmat/d2/` and the isolated target dir survived; `$XDG_RUNTIME_DIR`, and with it round 5's lane files, did not.
+
+CI run 35240156274 on `46a49e0f5`, read job by job before anything else:
+
+| job | runner | verdict | evidence |
+|---|---|---|---|
+| `ci / lint` | intel-clean-room-3 (self-hosted, this host) | infrastructure, not a verdict | completed 15:40:08Z, after the reboot; its log is a 404 `BlobNotFound`; annotation "The self-hosted runner lost communication with the server" |
+| `ci / test` | intel-clean-room-9 (this host) | infrastructure | log 404, same annotation |
+| `ci / coverage` | intel-clean-room (this host) | infrastructure | failed at "Run coverage", log 404, same annotation |
+| `traceability` | GitHub-hosted | a real red, on master's rows | CB-2115: `ORPHAN-ROADMAP PMAT-1365` and `ORPHAN-GITHUB #1393`, the same 2 findings `make gate` reproduces locally |
+
+The superseded run is replaced by the run on the pushed head rather than re-run in place.
 
 ## Jidoka
 
@@ -156,6 +176,7 @@ Round 5 on `94ef6b2fc` was PASS, PASS, and one BLIND lane (exit 4: it never read
 | unrun-tests and orphan-files ledgers drifted | the generated ledgers | New tests and files change the rendered counts. Regenerated with this tree's binary, which adds no new unrun or orphan entries |
 | `traceability` red on the first push | master: open issue #1386 had no roadmap row (CB-2115 ORPHAN-GITHUB) | Not this branch. #1387 (PMAT-1336 lifecycle) registered it, and this branch was rebased onto it |
 | CB-200 red locally | pre-existing on master (1741 vs a baseline of 1688) | It is Unmeasurable in CI, which has no `.pmat/context.db`, and the local delta from this branch is 0 |
+| an unisolated `cargo test` at the resume | the orchestrator's own shell | A `grep -E` pattern that quoted `cargo test --lib -- roadmap_writer_gate …` in backticks was double-quoted, so zsh ran the backticks as command substitution. That compiled into the shared `/mnt/nvme-raid0/targets/paiml-mcp-agent-toolkit` for 2 minutes until the tool timeout killed it; no process was left, and the sibling sessions build into their own dirs. Mechanism: shell quoting, not the build rule. Patterns containing backticks are single-quoted from then on |
 
 ## Estimates
 
@@ -173,13 +194,19 @@ Round 5 on `94ef6b2fc` was PASS, PASS, and one BLIND lane (exit 4: it never read
 8. "PMAT-1363's row is still `planned` on master": true at `8915fe3e6`. #1383 completed it before this PR, so it was not carried.
 9. The ticket row: this branch filed PMAT-1385 with `pmat work add --github-issue 1385`. #1383 then registered the same row on master from the open issue, with identical bytes apart from `created`/`updated`, so this branch's row commit was dropped on rebase.
 10. "Label `kind:code` the way #1366 is shaped": #1366 has no GitHub label. Its roadmap row carries `kind:code`. Both the issue and the row carry it here.
-11. `timeout … command cargo` fails, because `command` is a shell builtin that `timeout` cannot exec. `timeout … cargo` execs the real binary and bypasses the zsh function too; `CARGO_TARGET_DIR=/mnt/nvme-raid0/targets/pmat-D2` was set on every invocation.
+11. `timeout … command cargo` fails, because `command` is a shell builtin that `timeout` cannot exec. `timeout … cargo` execs the real binary and bypasses the zsh function too; `CARGO_TARGET_DIR=/mnt/nvme-raid0/targets/pmat-D2` was set on every deliberate invocation (the one accidental run is in Jidoka).
+12. Crash-resume note: "its last CI run had real reds besides the runner loss: `ci / lint` and `traceability`". Only `traceability` was real. `ci / lint`, `ci / test` and `ci / coverage` all ran on this host's self-hosted runners, completed after the reboot, and carry the runner-lost annotation with no log.
+13. Crash-resume note: "until [#1392] merges master's CB-2115 has that one orphan". By 15:31Z it had two: `#1393` opened at 15:27:32Z with no roadmap row.
+14. The receipt said `.claude/agent-memory/` "was not created by this branch's commands". It is the `paiml-agy-delegate` subagent's project memory (`delegate-run-pitfalls.md`), written by the delegate this session dispatched. It stays uncommitted: it is agent state, not part of the diff.
+15. A 5.3 GB `target/` sat in the clone root (gitignored; last written 13:58 CEST by the pre-commit hook's build, before the crash) despite `CARGO_TARGET_DIR`. It was removed at the resume.
 
 ## Gaps
 
 - The delegate could not record the author model from a file; it was passed by flag.
-- `.claude/agent-memory/` appeared untracked in the clone during the session. It was not created by this branch's commands, and it is not committed.
+- `.claude/agent-memory/` is the delegate's memory, untracked and not committed (correction 14).
+- Round 5's lane files and conversation ids were lost with `$XDG_RUNTIME_DIR` in the crash; only the outcome recorded before the crash survives.
+- `traceability` stays red on master's own orphans (PMAT-1365, #1393) until the orchestrator's lifecycle work lands; `traceability` is not a required check.
 
 ## Verdict
 
-DONE on the code, the gate, the contract and review rounds 1 and 2's findings. Rounds 3 and 4 returned 3/3 PASS, on `bcda37008` and on its rebase `8d948e6b4`. Adding the `make gate` row changed the judged diff. Round 5 did not agree (one lane blind), and the lock-test change above changed the diff again, so merge waits for round 6 to return 3 PASS (`docs/audits/quorum-PMAT-1385.json`, `agreed=true`) on the head that merges, and for CI to go green.
+DONE on the code, the gate, the contract and review rounds 1 and 2's findings. Rounds 3 and 4 returned 3/3 PASS, on `bcda37008` and on its rebase `8d948e6b4`. Adding the `make gate` row changed the judged diff. Round 5 did not agree (one lane blind), and the lock-test change above changed the diff again, so merge waits for round 6 to return 3 PASS (`docs/audits/quorum-PMAT-1385.json`, `agreed=true`) on the head that merges, and for CI to go green. At the resume `make gate` ran on `46a49e0f5` with every leg this branch owns green; its one red is master's CB-2115.
