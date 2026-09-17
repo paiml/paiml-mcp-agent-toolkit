@@ -26,6 +26,29 @@ pub enum RoadmapCommands {
         path: PathBuf,
     },
 
+    /// Regenerate docs/roadmaps/roadmap.yaml from its base and docs/roadmaps/entries/<id>.yaml
+    /// (PMAT-1363). A fragment supersedes the base row with its id and lands at its
+    /// sorted slot. Idempotent and deterministic. Prints the aggregate by default.
+    /// Exit: 0 ok, 1 a violation, 2 an input that cannot be read.
+    Aggregate {
+        /// Write the aggregate back to the roadmap (under the repository's roadmap lock)
+        #[arg(long, conflicts_with = "check")]
+        write: bool,
+
+        /// Exit 1, naming the first differing row, when the roadmap is not what the
+        /// aggregator produces, or when re-aggregating would change it
+        #[arg(long)]
+        check: bool,
+
+        /// The roadmap to aggregate
+        #[arg(long, default_value = "docs/roadmaps/roadmap.yaml")]
+        roadmap: PathBuf,
+
+        /// Read fragments from here instead of `entries/` beside --roadmap
+        #[arg(long)]
+        entries: Option<PathBuf>,
+    },
+
     /// Initialize a new sprint in the roadmap
     Init {
         /// Sprint version (e.g., v2.6.0)

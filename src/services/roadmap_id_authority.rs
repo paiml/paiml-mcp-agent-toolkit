@@ -131,7 +131,19 @@ impl IdAuthority {
             commits.extend(non_empty_lines(&refs));
         }
 
+        // PMAT-1363: a ref's `entries/` spends ids too. In a repository that has
+        // opted in to fragments, a ticket added on another branch lives ONLY in
+        // that branch's `entries/<id>.yaml` until the post-merge aggregation, so
+        // reading the ref's roadmap.yaml alone is exactly the false LOW this
+        // function exists to prevent.
+        let entries_rel = repo
+            .roadmap_rel
+            .parent()
+            .map(|dir| dir.join("entries"))
+            .and_then(|dir| dir.to_str().map(ToString::to_string));
+
         let mut blobs: BTreeSet<String> = BTreeSet::new();
+        let mut trees: BTreeSet<String> = BTreeSet::new();
         for commit in &commits {
             let spec = format!("{commit}:{rel}");
             // `--quiet` so a ref that simply has no roadmap says nothing.
@@ -140,15 +152,38 @@ impl IdAuthority {
             {
                 blobs.extend(non_empty_lines(&blob));
             }
+            if let Some(entries) = &entries_rel {
+                let spec = format!("{commit}:{entries}");
+                if let Some(tree) =
+                    git_stdout(&repo.toplevel, &["rev-parse", "--verify", "--quiet", &spec])
+                {
+                    trees.extend(non_empty_lines(&tree));
+                }
+            }
         }
 
         let mut max: Option<u32> = None;
+        let mut spend = |found: u32| max = Some(max.map_or(found, |seen: u32| seen.max(found)));
         for blob in &blobs {
             let Some(text) = git_stdout(&repo.toplevel, &["cat-file", "-p", blob]) else {
                 continue;
             };
             if let Some(found) = roadmap_text::max_id_number(&text) {
-                max = Some(max.map_or(found, |seen: u32| seen.max(found)));
+                spend(found);
+            }
+        }
+        for tree in &trees {
+            let Some(names) = git_stdout(&repo.toplevel, &["ls-tree", "--name-only", tree]) else {
+                continue;
+            };
+            for name in non_empty_lines(&names) {
+                if let Some(found) = name
+                    .strip_suffix(".yaml")
+                    .and_then(|id| id.rsplit('-').next())
+                    .and_then(|digits| digits.parse::<u32>().ok())
+                {
+                    spend(found);
+                }
             }
         }
         max

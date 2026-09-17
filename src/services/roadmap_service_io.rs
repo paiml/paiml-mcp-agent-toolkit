@@ -65,6 +65,32 @@ impl RoadmapService {
         Ok(lock_file)
     }
 
+    /// Run `f` holding this roadmap's EXCLUSIVE lock — the same repository-wide
+    /// authority every `pmat work` writer takes.
+    ///
+    /// PMAT-1363: for writers that are not a method of this service, such as
+    /// `pmat roadmap aggregate --write`. The lock is keyed on the repository (the
+    /// git common dir), not on `roadmap.yaml`'s path, so it serialises writes to
+    /// `entries/` and to the aggregate alike.
+    ///
+    /// # Errors
+    ///
+    /// When the lock cannot be taken.
+    pub fn with_write_lock<T>(&self, f: impl FnOnce() -> T) -> Result<T> {
+        let _lock = self.acquire_write_lock()?;
+        Ok(f())
+    }
+
+    /// Run `f` holding this roadmap's SHARED lock, so no writer is mid-write.
+    ///
+    /// # Errors
+    ///
+    /// When the lock cannot be taken.
+    pub fn with_read_lock<T>(&self, f: impl FnOnce() -> T) -> Result<T> {
+        let _lock = self.acquire_read_lock()?;
+        Ok(f())
+    }
+
     /// Acquire shared lock for reading
     fn acquire_read_lock(&self) -> Result<File> {
         let lock_path = self.lock_file_path();
@@ -127,42 +153,180 @@ impl RoadmapService {
     }
 
     /// Load roadmap from file (with shared lock)
+    ///
+    /// PMAT-1363: in a repository that has opted in to `entries/`, what is loaded
+    /// is the base with every fragment aggregated over it — so `work list`,
+    /// `work status` and every `find_item` see a ticket the moment its fragment
+    /// exists, not after the next post-merge aggregation.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn load(&self) -> Result<Roadmap> {
         // Acquire shared lock (allows multiple concurrent readers)
         let _lock = self.acquire_read_lock()?;
 
-        if !self.roadmap_path.exists() {
-            // Return empty roadmap if file doesn't exist
+        // Return empty roadmap if file doesn't exist
+        let Some(contents) = self.read_view_unlocked()? else {
             return Ok(Roadmap::default());
-        }
-
-        let contents = fs::read_to_string(&self.roadmap_path)
-            .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
+        };
 
         self.parse_roadmap_yaml(&contents)
         // Lock released automatically when _lock goes out of scope
     }
 
     /// Save roadmap to file (with exclusive lock)
+    ///
+    /// PMAT-1363: in a repository that has opted in to `entries/`, this writes one
+    /// fragment per added or changed ticket and never opens `roadmap.yaml` for
+    /// write. See [`RoadmapService::write_roadmap_unlocked`].
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn save(&self, roadmap: &Roadmap) -> Result<()> {
         // Acquire exclusive lock (blocks all other readers and writers)
         let _lock = self.acquire_write_lock()?;
 
-        // Create parent directory if it doesn't exist
-        if let Some(parent) = self.roadmap_path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create directory: {:?}", parent))?;
+        self.write_roadmap_unlocked(roadmap)
+        // Lock released automatically when _lock goes out of scope
+    }
+
+    /// PMAT-1363: `entries/` beside the roadmap when the repository has opted in.
+    ///
+    /// The predicate is the one paiml/.github's shared `roadmap-fragment-parity`
+    /// gate uses — `[ -d docs/roadmaps/entries ]` — so pmat writes fragments in
+    /// exactly the repositories where that gate refuses a pull request that edits
+    /// `roadmap.yaml`, and nowhere else.
+    ///
+    /// # Errors
+    ///
+    /// When `entries/` exists but the base roadmap does not: there is nothing to
+    /// aggregate over, and silently creating a base would be a write to the one
+    /// file an opted-in repository forbids.
+    fn fragment_dir(&self) -> Result<Option<PathBuf>> {
+        let Some(entries) = crate::services::roadmap_fragments::entries_dir_for(&self.roadmap_path)
+        else {
+            return Ok(None);
+        };
+        if !self.roadmap_path.exists() {
+            anyhow::bail!(
+                "refusing to write: {} exists, so {} is a GENERATED aggregate, and there is no \
+                 base roadmap to aggregate over. Commit a base roadmap.yaml before adding \
+                 tickets (PMAT-1363).",
+                entries.display(),
+                self.roadmap_path.display()
+            );
+        }
+        Ok(Some(entries))
+    }
+
+    /// What every reader and every check sees: the base with `entries/`
+    /// aggregated over it in an opted-in repository, the base alone otherwise.
+    /// `None` when there is no base. The caller must hold a lock.
+    fn read_view_unlocked(&self) -> Result<Option<String>> {
+        if !self.roadmap_path.exists() {
+            return Ok(None);
+        }
+        let base = fs::read_to_string(&self.roadmap_path)
+            .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
+        let Some(entries) = crate::services::roadmap_fragments::entries_dir_for(&self.roadmap_path)
+        else {
+            return Ok(Some(base));
+        };
+        let fragments = crate::services::roadmap_fragments::read_fragments(&entries)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        crate::services::roadmap_fragments::aggregate(&base, &fragments)
+            .map(Some)
+            .map_err(|e| anyhow::anyhow!("{}: {e}", entries.display()))
+    }
+
+    /// PMAT-1363: persist a whole model in an opted-in repository WITHOUT opening
+    /// `roadmap.yaml` for write.
+    ///
+    /// The model is diffed against the current view (base ⊕ fragments): every
+    /// added or changed ticket becomes its own fragment, rendered exactly as
+    /// `work add` renders a row, and a ticket that exists only as a fragment and
+    /// is gone from the model has its fragment deleted. An unchanged ticket is not
+    /// touched at all, so the bytes the model does not carry survive (PMAT-679).
+    ///
+    /// Everything is checked before anything is written. Refused, with nothing
+    /// written: a change to the header (`roadmap_version`, `github_enabled`,
+    /// `github_repo`), which exists only in the generated file; removing a row the
+    /// base declares, which no fragment can express; a changed ticket whose id
+    /// cannot be a filename; and a model that declares one id twice.
+    fn write_roadmap_as_fragments(&self, entries: &Path, roadmap: &Roadmap) -> Result<()> {
+        use crate::services::roadmap_fragments as fragments;
+        use std::collections::{BTreeSet, HashMap};
+
+        let base = fs::read_to_string(&self.roadmap_path)
+            .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
+        let view = fragments::aggregate(
+            &base,
+            &fragments::read_fragments(entries).map_err(|e| anyhow::anyhow!("{e}"))?,
+        )
+        .map_err(|e| anyhow::anyhow!("{}: {e}", entries.display()))?;
+        let current = self.parse_roadmap_yaml(&view)?;
+
+        if current.roadmap_version != roadmap.roadmap_version
+            || current.github_enabled != roadmap.github_enabled
+            || current.github_repo != roadmap.github_repo
+        {
+            anyhow::bail!(
+                "refusing to change the roadmap header: in a repository with {} the header \
+                 exists only in {}, which is generated. Change it on the default branch, not \
+                 through a ticket (PMAT-1363).",
+                entries.display(),
+                self.roadmap_path.display()
+            );
         }
 
-        let yaml = serde_yaml_ng::to_string(roadmap)
-            .with_context(|| "Failed to serialize roadmap to YAML")?;
+        let mut wanted: BTreeSet<&str> = BTreeSet::new();
+        for item in &roadmap.roadmap {
+            if !wanted.insert(item.id.as_str()) {
+                anyhow::bail!("refusing to save: the roadmap declares {} twice", item.id);
+            }
+        }
+        let before: HashMap<&str, &RoadmapItem> =
+            current.roadmap.iter().map(|item| (item.id.as_str(), item)).collect();
+        let changed: Vec<&RoadmapItem> = roadmap
+            .roadmap
+            .iter()
+            .filter(|item| before.get(item.id.as_str()).copied() != Some(*item))
+            .collect();
+        let removed: Vec<&str> = current
+            .roadmap
+            .iter()
+            .map(|item| item.id.as_str())
+            .filter(|id| !wanted.contains(id))
+            .collect();
 
-        fs::write(&self.roadmap_path, yaml)
-            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
+        for item in &changed {
+            if !fragments::is_filename_safe(&item.id) {
+                anyhow::bail!(
+                    "refusing to save {:?}: an id that cannot be a filename cannot be a fragment, \
+                     and {} is generated here, so this ticket has no write path (PMAT-1363)",
+                    item.id,
+                    self.roadmap_path.display()
+                );
+            }
+        }
+        let base_ids: BTreeSet<String> = fragments::split_entries(&base)
+            .1
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        if let Some(id) = removed.iter().find(|id| base_ids.contains(**id)) {
+            anyhow::bail!(
+                "refusing to remove {id}: its row is in the generated {}; a fragment can \
+                 supersede a base row but cannot delete one (PMAT-1363)",
+                self.roadmap_path.display()
+            );
+        }
 
+        let indent = crate::services::roadmap_text::row_indent(&base);
+        for item in changed {
+            let block = crate::services::roadmap_text::render_item_block(item, indent);
+            fragments::write_fragment(entries, &item.id, &block)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+        }
+        for id in removed {
+            fragments::remove_fragment(entries, id).map_err(|e| anyhow::anyhow!("{e}"))?;
+        }
         Ok(())
-        // Lock released automatically when _lock goes out of scope
     }
 }

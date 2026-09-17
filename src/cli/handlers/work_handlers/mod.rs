@@ -69,6 +69,9 @@ mod work_add_append_only_tests;
 #[cfg(test)]
 #[path = "../../../tests/roadmap_fragments_tests.rs"]
 mod roadmap_fragments_tests;
+#[cfg(test)]
+#[path = "../../../tests/roadmap_fragments_wiring_tests.rs"]
+mod roadmap_fragments_wiring_tests;
 // PMAT-680: `work add` must mint from ONE authority per repository — the git
 // common dir's lock plus every ref's roadmap — so two checkouts of the same
 // repository cannot mint the same id. Registered here for the same reason as
