@@ -1,0 +1,182 @@
+{
+  "ticket": "PMAT-1399",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master and origin/master agree",
+  "head": "ad214bd9896da27a55ae1adf334425c8790b4533",
+  "diff_sha256": "56487bc99fb93a13a9be77f64abc5050159969b7de01e46dab677cf0023d0680",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 10533,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff precisely implements the release commit for pmat 3.41.0. Cargo.toml and Cargo.lock are bumped from 3.40.2 to 3.41.0. CHANGELOG.md gains the [3.41.0] section describing all requested tickets (#1364, #1382, #1368, #1388, #1389, #1391, #1394) and the two known hazards. The roadmap.yaml file is correctly appended with the PMAT-1399 ticket itself. No other changes are present.",
+      "findings": [],
+      "raw_bytes": 2026,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Independent review (Lane 2 of 3) for PMAT-1399 (release: pmat 3.41.0). The diff against origin/master...HEAD was evaluated strictly against the refutation doctrine and the acceptance criteria of PMAT-1399.\n\n1. Diff Scope:\n- Exactly 4 files are modified: Cargo.toml, Cargo.lock, CHANGELOG.md, docs/roadmaps/roadmap.yaml (+121 lines, -2 lines).\n- Nothing else was modified. All underlying feature, bugfix, and contract PRs (#1364, #1382, #1368, #1388, #1389, #1391, #1394) and lifecycle PRs were merged into origin/master prior to cutting release/3.41.0.\n\n2. Criteria Verification:\n- Cargo.toml version updated 3.40.2 -> 3.41.0.\n- Cargo.lock pmat package version bumped to match; `cargo metadata --locked` succeeds.\n- CHANGELOG.md gains [3.41.0] - 2026-09-17 describing all 7 target PRs and the two known hazards verbatim as required.\n- `scripts/gate.sh --list` confirmed 48 rows (32 run locally, 16 CI-only); `scripts/gate-control.sh` passes GREEN.\n- Issue closure contract (`contracts/pmat-issue-closure-v1.yaml`) has 8 obligations, verified clean by `scripts/pv-obligation-gate.py`.\n- No tests assert the opposite of the ticket, no gates are weakened, no unbacked claims were made, and no out-of-scope changes exist.\n- Note: $(git rev-parse --git-dir)/paiml-lane-witness was not present in this review worktree.\n\nVerdict: PASS.",
+      "findings": [
+        {
+          "claim": "Cargo.toml version bumped from 3.40.2 to 3.41.0 as specified in PMAT-1399 acceptance criteria.",
+          "file": "Cargo.toml",
+          "grounding": "cited",
+          "line": 4
+        },
+        {
+          "claim": "The pmat package entry in Cargo.lock bumped from 3.40.2 to 3.41.0 to match; cargo metadata --locked verified valid with exit code 0.",
+          "file": "Cargo.lock",
+          "grounding": "measured",
+          "line": 4989
+        },
+        {
+          "claim": "CHANGELOG.md gains [3.41.0] - 2026-09-17 accurately describing #1364, #1382, #1368, #1388, #1389, #1391, and #1394, plus the two stated known hazards (impl-estimates.jsonl merge=union rebase hazard and roadmap aggregate lock requirement).",
+          "file": "CHANGELOG.md",
+          "grounding": "cited",
+          "line": 10
+        },
+        {
+          "claim": "Added PMAT-1399 task to docs/roadmaps/roadmap.yaml; syntax verified valid with python yaml parser.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "measured",
+          "line": 7039
+        },
+        {
+          "claim": "make gate and scripts/gate.sh table verified via gate.sh --list (48 rows, 32 run here, 16 CI-only; every required context covered); scripts/gate-control.sh passed GREEN across all arms.",
+          "file": "scripts/gate.sh",
+          "grounding": "measured",
+          "line": 61
+        },
+        {
+          "claim": "Verified contracts/pmat-issue-closure-v1.yaml (8 obligations) passes via scripts/pv-obligation-gate.py with 0 problems, and scripts/pr-body-closing-lint.sh --self-test passes all fixtures.",
+          "file": "contracts/pmat-issue-closure-v1.yaml",
+          "grounding": "measured",
+          "line": 95
+        }
+      ],
+      "raw_bytes": 6811,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "### Verification Summary for PMAT-1399 (Release 3.41.0)\n\nThe diff origin/master...HEAD was audited against ticket **PMAT-1399** and all acceptance criteria:\n\n1. **Version Bump**:\n   - `Cargo.toml`: bumped version from `3.40.2` to `3.41.0`.\n   - `Cargo.lock`: updated package `pmat` entry to `3.41.0`. `cargo metadata --locked` succeeds.\n\n2. **CHANGELOG.md**:\n   - Added section `[3.41.0] - 2026-09-17`.\n   - Accurately details merged capabilities and fixes:\n     - Roadmap fragments & `pmat roadmap aggregate` (#1364)\n     - `pmat work estimate record` and `check` (#1382)\n     - `make gate` table & runner (#1368)\n     - `pmat work edit --notes` (#1391)\n     - Target directory isolation for dead-code analyzer (#1305, #1388)\n     - `pmat work migrate` repository flock enforcement (#1389)\n     - CB-200 baseline recovery from 1741 to 1680 in required CI job (#1266, #1394)\n     - Unasked GitHub issue closure prevention contract & lints (#1391)\n     - Known hazards documented (impl-estimates.jsonl `merge=union`, and lock requirements for `pmat roadmap aggregate`).\n\n3. **Roadmap Entry**:\n   - `docs/roadmaps/roadmap.yaml`: added `PMAT-1399` task entry corresponding to GitHub issue #1399 with exact acceptance criteria.\n\n4. **Scope & Quality Gates**:\n   - The diff contains only the four expected release metadata files (`Cargo.toml`, `Cargo.lock`, `CHANGELOG.md`, `docs/roadmaps/roadmap.yaml`).\n   - No gates were weakened, no forbidden changes were introduced, and all relevant quality and traceability controls (`gate-control`, `fmt`, `clippy-all-targets`, `reusable-pin-drift`, `roadmap-validate`, `traceability-control`, `tdg-ratchet`, `roadmap-writer-gate`, `issue-closure`) pass.\n\n**Verdict: PASS**",
+      "findings": [],
+      "raw_bytes": 5022,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "CHANGELOG.md",
+      "line": 10,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "CHANGELOG.md gains [3.41.0] - 2026-09-17 accurately describing #1364, #1382, #1368, #1388, #1389, #1391, and #1394, plus the two stated known hazards (impl-estimates.jsonl merge=union rebase hazard and roadmap aggregate lock requirement)."
+      ]
+    },
+    {
+      "file": "Cargo.lock",
+      "line": 4989,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The pmat package entry in Cargo.lock bumped from 3.40.2 to 3.41.0 to match; cargo metadata --locked verified valid with exit code 0."
+      ]
+    },
+    {
+      "file": "Cargo.toml",
+      "line": 4,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Cargo.toml version bumped from 3.40.2 to 3.41.0 as specified in PMAT-1399 acceptance criteria."
+      ]
+    },
+    {
+      "file": "contracts/pmat-issue-closure-v1.yaml",
+      "line": 95,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Verified contracts/pmat-issue-closure-v1.yaml (8 obligations) passes via scripts/pv-obligation-gate.py with 0 problems, and scripts/pr-body-closing-lint.sh --self-test passes all fixtures."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 7039,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Added PMAT-1399 task to docs/roadmaps/roadmap.yaml; syntax verified valid with python yaml parser."
+      ]
+    },
+    {
+      "file": "scripts/gate.sh",
+      "line": 61,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "make gate and scripts/gate.sh table verified via gate.sh --list (48 rows, 32 run here, 16 CI-only; every required context covered); scripts/gate-control.sh passed GREEN across all arms."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}
