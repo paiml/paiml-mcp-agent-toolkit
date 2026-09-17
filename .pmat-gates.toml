@@ -109,7 +109,17 @@ exclude = [
 #
 # A baseline may only go down, and banking a beaten one is not optional: slack
 # is headroom a regression hides in.
-baseline = 1688
+#
+# 2026-09-17, LOWERED 1688 -> 1680 (PMAT-636), and all of it is code that was
+# rewritten. Master had drifted to 1741 (+53) while CI read green, because no
+# required job ran CB-200 and `cargo test --lib` takes its no-index branch. The
+# +53 is new debt, not grader drift: ONE binary (pmat at ce945d81e) counted 1688
+# on 683d6994d, the commit that banked it, and 1741 on ce945d81e, over cold
+# indexes of clean clones. 61 definitions were brought up to grade A by
+# behaviour-preserving extractions and 0 fell below it, and CB-200 itself,
+# built from the branch, measured 1680. The `tdg-ratchet` job in ci.yml now
+# re-measures this on every pull request.
+baseline = 1680
 
 [entropy]
 # Entropy analysis configuration (#227)
