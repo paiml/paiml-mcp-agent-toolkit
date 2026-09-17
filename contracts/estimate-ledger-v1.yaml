@@ -90,6 +90,10 @@ proof_obligations:
     formal: "check_ledger_text(committed, None).violations = ∅ ∧ .keys = [paiml-mcp-agent-toolkit]"
     applies_to: check_ledger_text
   - type: postcondition
+    property: "the writer is reachable from the CLI without disturbing the global --mode flag"
+    formal: "parse(pmat work estimate record --exec-mode m …) = Record{exec_mode: m} ∧ Cli.mode = None unless --mode is given"
+    applies_to: dispatch_work_estimate
+  - type: postcondition
     property: "the check's pool classification uses the reader's rule and reason strings"
     formal: "classify_row(l) ∈ {Ok(poolable), Ok(unmeasured), Err(unit-not-turn), Err(range-phase)} as estimate.sh classifies l"
     applies_to: classify_row
@@ -160,6 +164,11 @@ falsification_tests:
     prediction: "the named test fails when this condition holds"
     test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_check_classifies_the_pool
     if_fails: "P1 — two readers of one ledger disagree"
+  - id: f_cli_parse
+    rule: "`pmat work estimate record` does not parse, or its execution-mode arg shadows pmat's global --mode (every record call panicked with exit 101 before b994265b7)"
+    prediction: "the named test fails when this condition holds (mutant M7, id = mode, observed RED)"
+    test: src/cli/handlers/work_estimate_ledger_tests.rs::estimate_ledger_record_parses_and_leaves_the_global_mode_flag_alone
+    if_fails: "P0 — the one writer cannot be invoked"
   - id: f_committed
     rule: "the committed docs/audits/impl-estimates.jsonl carries a row the writer would refuse, or more than one key"
     prediction: "the named test fails when this condition holds (observed RED at aef89f37d: 18 unit-less rows and 2 keys; GREEN at 4c10236c5)"
