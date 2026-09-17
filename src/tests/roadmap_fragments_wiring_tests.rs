@@ -79,7 +79,7 @@ fn roadmap_fragments_work_add_writes_a_fragment_and_leaves_the_aggregate_untouch
     let id = svc.add_item_with_next_id(an_item).expect("add");
 
     assert_eq!(
-        std::fs::read_to_string(&path).unwrap(),
+        std::fs::read_to_string(&path).expect("read the roadmap"),
         BASE,
         "roadmap.yaml must be byte-identical"
     );
@@ -98,7 +98,7 @@ fn roadmap_fragments_work_add_still_appends_when_the_repo_has_not_migrated() {
     let id = RoadmapService::new(&path)
         .add_item_with_next_id(an_item)
         .expect("add");
-    let after = std::fs::read_to_string(&path).unwrap();
+    let after = std::fs::read_to_string(&path).expect("read the roadmap");
     assert!(
         after.starts_with(BASE),
         "the append must preserve every prior byte (PMAT-679)"
@@ -118,7 +118,10 @@ fn roadmap_fragments_work_add_with_a_caller_supplied_id_also_writes_a_fragment()
     RoadmapService::new(&path)
         .add_item_with_id("PMAT-1363", an_item)
         .expect("add with id");
-    assert_eq!(std::fs::read_to_string(&path).unwrap(), BASE);
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read the roadmap"),
+        BASE
+    );
     assert_eq!(fragment_names(&path), ["PMAT-1363.yaml"]);
 }
 
@@ -143,14 +146,20 @@ fn roadmap_fragments_work_add_refuses_an_id_that_is_not_filename_safe_prefix_n()
         fragment_names(&path).is_empty(),
         "a refused id writes nothing at all"
     );
-    assert_eq!(std::fs::read_to_string(&path).unwrap(), BASE);
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read the roadmap"),
+        BASE
+    );
 
     // Unconditional: a repository that has not opted in today migrates tomorrow.
     let (_plain, plain) = fixture(false);
     assert!(RoadmapService::new(&plain)
         .add_item_with_id("PMAT-7 x", an_item)
         .is_err());
-    assert_eq!(std::fs::read_to_string(&plain).unwrap(), BASE);
+    assert_eq!(
+        std::fs::read_to_string(&plain).expect("read the roadmap"),
+        BASE
+    );
 }
 
 #[test]
@@ -179,7 +188,7 @@ fn roadmap_fragments_save_writes_only_the_changed_tickets_as_fragments() {
     svc.save(&roadmap).expect("save");
 
     assert_eq!(
-        std::fs::read_to_string(&path).unwrap(),
+        std::fs::read_to_string(&path).expect("read the roadmap"),
         BASE,
         "roadmap.yaml untouched"
     );
@@ -190,7 +199,10 @@ fn roadmap_fragments_save_writes_only_the_changed_tickets_as_fragments() {
     );
     let reloaded = svc.load().expect("reload");
     assert_eq!(
-        reloaded.find_item("PMAT-005").unwrap().status,
+        reloaded
+            .find_item("PMAT-005")
+            .expect("the ticket is present")
+            .status,
         ItemStatus::InProgress
     );
     assert_eq!(reloaded, roadmap, "what was saved is what is loaded");
@@ -204,12 +216,15 @@ fn roadmap_fragments_upsert_and_edit_write_fragments_too() {
     svc.upsert_item(an_item("PMAT-002".into())).expect("upsert");
     svc.upsert_item_checked(an_item("PMAT-003".into()))
         .expect("upsert checked");
-    let mut edited = svc.find_item("PMAT-001").unwrap().expect("present");
+    let mut edited = svc
+        .find_item("PMAT-001")
+        .expect("the roadmap loads")
+        .expect("present");
     edited.title = "edited".into();
     svc.replace_item_raw("PMAT-001", &edited).expect("edit");
 
     assert_eq!(
-        std::fs::read_to_string(&path).unwrap(),
+        std::fs::read_to_string(&path).expect("read the roadmap"),
         BASE,
         "roadmap.yaml untouched"
     );
@@ -225,7 +240,9 @@ fn roadmap_fragments_upsert_and_edit_write_fragments_too() {
         "sorted slots"
     );
     assert_eq!(
-        view.find_item("PMAT-001").unwrap().title,
+        view.find_item("PMAT-001")
+            .expect("the ticket is present")
+            .title,
         "edited",
         "the fragment supersedes"
     );
@@ -244,7 +261,10 @@ fn roadmap_fragments_remove_deletes_a_fragment_and_refuses_a_base_row() {
         .remove_item("PMAT-001")
         .expect_err("a base row cannot be removed by a fragment");
     assert!(err.to_string().contains("cannot delete one"), "{err}");
-    assert_eq!(std::fs::read_to_string(&path).unwrap(), BASE);
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read the roadmap"),
+        BASE
+    );
     assert!(
         fragment_names(&path).is_empty(),
         "the refusal wrote nothing"
@@ -295,16 +315,23 @@ fn roadmap_fragments_work_list_and_status_read_base_plus_fragments() {
     let ids: Vec<&str> = roadmap.roadmap.iter().map(|i| i.id.as_str()).collect();
     assert_eq!(ids, ["PMAT-001", "PMAT-003", "PMAT-005"]);
     assert_eq!(
-        svc.find_item("PMAT-003").unwrap().unwrap().title,
+        svc.find_item("PMAT-003")
+            .expect("the roadmap loads")
+            .expect("the ticket is present")
+            .title,
         "only a fragment"
     );
     assert_eq!(
-        svc.find_item("PMAT-005").unwrap().unwrap().title,
+        svc.find_item("PMAT-005")
+            .expect("the roadmap loads")
+            .expect("the ticket is present")
+            .title,
         "superseded by a fragment"
     );
 
     // And a malformed fragment fails the read loudly rather than vanishing.
-    std::fs::write(entries(&path).join("PMAT-007.yaml"), "- id: PMAT-008\n").unwrap();
+    std::fs::write(entries(&path).join("PMAT-007.yaml"), "- id: PMAT-008\n")
+        .expect("write the fixture");
     let err = svc
         .load()
         .expect_err("a fragment naming another id is refused");
@@ -313,46 +340,70 @@ fn roadmap_fragments_work_list_and_status_read_base_plus_fragments() {
 
 // --------------------------------------------------------------------- lock
 
-/// Hold the repository's roadmap lock from OUTSIDE the service — the way a second
-/// `pmat` process would — and prove `write` cannot land a fragment until released.
-fn assert_blocks_on_the_lock(
-    write: impl FnOnce(PathBuf) -> anyhow::Result<()> + Send + 'static,
-    fragment: &str,
-) {
-    let (_dir, path) = fixture(true);
-    let lock_path = IdAuthority::discover(&path).lock_path;
-    let holder = OpenOptions::new()
+/// How a second `pmat` process holds the repository's roadmap lock.
+#[derive(Clone, Copy, Debug)]
+enum Holder {
+    /// A writer mid-write.
+    Exclusive,
+    /// A reader mid-read (`pmat work list`). A writer that took only the SHARED lock
+    /// would proceed past this holder, so it is the one that tells shared from
+    /// exclusive — an exclusive holder blocks both.
+    Shared,
+}
+
+/// Take the repository's roadmap lock from OUTSIDE the service, the way a second
+/// `pmat` process would.
+fn hold_the_lock(path: &Path, holder: Holder) -> (std::fs::File, PathBuf) {
+    let lock_path = IdAuthority::discover(path).lock_path;
+    let file = OpenOptions::new()
         .create(true)
         .read(true)
         .write(true)
         .truncate(false)
         .open(&lock_path)
         .expect("open lock");
-    holder.lock_exclusive().expect("take lock");
+    match holder {
+        Holder::Exclusive => file.lock_exclusive().expect("take exclusive lock"),
+        Holder::Shared => FileExt::lock_shared(&file).expect("take shared lock"),
+    }
+    (file, lock_path)
+}
 
-    let target = path.clone();
-    let writer = std::thread::spawn(move || write(target));
-    std::thread::sleep(Duration::from_millis(500));
-    assert!(
-        !entries(&path).join(fragment).exists(),
-        "{fragment} was written while another writer held {} — fragment writes are unlocked",
-        lock_path.display()
-    );
-    assert!(
-        !writer.is_finished(),
-        "the writer returned without waiting for the lock"
-    );
+/// Prove `write` cannot land `fragment` while another process holds the lock,
+/// exclusively or shared, and lands it once released.
+fn assert_blocks_on_the_lock(
+    write: impl Fn(PathBuf) -> anyhow::Result<()> + Send + Sync + Clone + 'static,
+    fragment: &str,
+) {
+    for holder in [Holder::Exclusive, Holder::Shared] {
+        let (_dir, path) = fixture(true);
+        let (held, lock_path) = hold_the_lock(&path, holder);
 
-    FileExt::unlock(&holder).expect("release");
-    drop(holder);
-    writer
-        .join()
-        .expect("writer thread")
-        .expect("the write succeeds once the lock is free");
-    assert!(
-        entries(&path).join(fragment).exists(),
-        "{fragment} after release"
-    );
+        let target = path.clone();
+        let write = write.clone();
+        let writer = std::thread::spawn(move || write(target));
+        std::thread::sleep(Duration::from_millis(500));
+        assert!(
+            !entries(&path).join(fragment).exists(),
+            "{fragment} was written while another process held {} ({holder:?}) — fragment writes are not exclusive",
+            lock_path.display()
+        );
+        assert!(
+            !writer.is_finished(),
+            "the writer returned without waiting for the {holder:?} lock"
+        );
+
+        FileExt::unlock(&held).expect("release");
+        drop(held);
+        writer
+            .join()
+            .expect("writer thread")
+            .expect("the write succeeds once the lock is free");
+        assert!(
+            entries(&path).join(fragment).exists(),
+            "{fragment} after releasing the {holder:?} lock"
+        );
+    }
 }
 
 #[test]
@@ -373,6 +424,40 @@ fn roadmap_fragments_a_save_waits_for_the_repository_lock() {
         |path| RoadmapService::new(path).upsert_item(an_item("PMAT-008".into())),
         "PMAT-008.yaml",
     );
+}
+
+#[test]
+fn roadmap_fragments_aggregate_write_waits_for_the_repository_lock() {
+    // `pmat roadmap aggregate --write` is the one writer of the aggregate itself.
+    // Against a writer it must not read a half-landed fragment set; against a
+    // reader it must not truncate roadmap.yaml under a `pmat work list`.
+    for holder in [Holder::Exclusive, Holder::Shared] {
+        let (_dir, path) = fixture(true);
+        write_fragment_file(&path, "PMAT-003", "third");
+        let (held, lock_path) = hold_the_lock(&path, holder);
+
+        let target = path.clone();
+        let writer = std::thread::spawn(move || run_aggregate(&target, None, AggregateMode::Write));
+        std::thread::sleep(Duration::from_millis(500));
+        assert_eq!(
+            std::fs::read_to_string(&path).expect("read the roadmap"),
+            BASE,
+            "aggregate --write rewrote the roadmap while another process held {} ({holder:?})",
+            lock_path.display()
+        );
+        assert!(
+            !writer.is_finished(),
+            "aggregate --write returned without waiting for the {holder:?} lock"
+        );
+
+        FileExt::unlock(&held).expect("release");
+        drop(held);
+        let report = writer.join().expect("writer thread");
+        assert_eq!(report.code, 0, "{}", report.stderr);
+        assert!(std::fs::read_to_string(&path)
+            .expect("read the roadmap")
+            .contains("- id: PMAT-003"));
+    }
 }
 
 #[test]
@@ -404,7 +489,10 @@ fn roadmap_fragments_concurrent_fragment_writers_lose_nothing() {
         .iter()
         .filter(|i| i.id.as_str() >= "PMAT-010")
         .all(|i| i.status == ItemStatus::InProgress));
-    assert_eq!(std::fs::read_to_string(&path).unwrap(), BASE);
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read the roadmap"),
+        BASE
+    );
 }
 
 // ---------------------------------------------------------------------- CLI
@@ -432,7 +520,7 @@ fn roadmap_fragments_aggregate_command_prints_writes_and_checks() {
     for _ in 0..3 {
         let w = run_aggregate(&path, None, AggregateMode::Write);
         assert_eq!(w.code, 0, "{}", w.stderr);
-        runs.push(std::fs::read_to_string(&path).unwrap());
+        runs.push(std::fs::read_to_string(&path).expect("read the roadmap"));
     }
     assert!(
         runs[0] == runs[1] && runs[1] == runs[2],
@@ -450,7 +538,8 @@ fn roadmap_fragments_aggregate_command_prints_writes_and_checks() {
     // (A hand edit of a base-only row is invisible to aggregation BY CONSTRUCTION —
     // the base is its input — which is why the parity gate judges the pull
     // request's diff: a PR that touches roadmap.yaml at all is refused there.)
-    std::fs::write(&path, runs[0].replace("title: third", "title: hand-edited")).unwrap();
+    std::fs::write(&path, runs[0].replace("title: third", "title: hand-edited"))
+        .expect("write the fixture");
     let edited = run_aggregate(&path, None, AggregateMode::Check);
     assert_eq!(edited.code, 1, "{}", edited.stderr);
     assert!(
@@ -463,7 +552,8 @@ fn roadmap_fragments_aggregate_command_prints_writes_and_checks() {
 #[test]
 fn roadmap_fragments_aggregate_command_exit_codes_distinguish_violation_from_unreadable() {
     let (dir, path) = fixture(true);
-    std::fs::write(entries(&path).join("PMAT-003.yaml"), "- id: PMAT-004\n").unwrap();
+    std::fs::write(entries(&path).join("PMAT-003.yaml"), "- id: PMAT-004\n")
+        .expect("write the fixture");
     let malformed = run_aggregate(&path, None, AggregateMode::Check);
     assert_eq!(malformed.code, 1, "{}", malformed.stderr);
 
@@ -477,7 +567,7 @@ fn roadmap_fragments_aggregate_command_exit_codes_distinguish_violation_from_unr
 
     // --entries moves the fragment source; --roadmap alone moves both.
     let other = dir.path().join("elsewhere");
-    std::fs::create_dir_all(&other).unwrap();
+    std::fs::create_dir_all(&other).expect("create the directory");
     let explicit = run_aggregate(&path, Some(&other), AggregateMode::Check);
     assert_eq!(explicit.code, 0, "{}", explicit.stderr);
 }
@@ -508,19 +598,19 @@ fn parse_the_aggregate_subcommand() {
         "r.yaml",
     ])
     .expect("parses");
-    match cli.command {
-        Commands::Roadmap(RoadmapCommands::Aggregate {
-            write,
-            check,
-            roadmap,
-            entries,
-        }) => {
-            assert!(!write && check);
-            assert_eq!(roadmap, PathBuf::from("r.yaml"));
-            assert_eq!(entries, None);
-        }
-        other => panic!("parsed as {other:?}"),
-    }
+    assert!(
+        matches!(
+            &cli.command,
+            Commands::Roadmap(RoadmapCommands::Aggregate {
+                write: false,
+                check: true,
+                entries: None,
+                roadmap,
+            }) if roadmap == &PathBuf::from("r.yaml")
+        ),
+        "parsed as {:?}",
+        cli.command
+    );
     assert!(
         Cli::try_parse_from(["pmat", "roadmap", "aggregate", "--write", "--check"]).is_err(),
         "--write and --check are exclusive"

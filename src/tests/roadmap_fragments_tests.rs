@@ -44,12 +44,16 @@ fn frag(id: &str, body: &str) -> (String, String) {
 #[test]
 fn roadmap_fragments_case_01_no_fragments_reproduce_the_base_byte_for_byte() {
     // THE LOSSLESS ROW. If this is not byte-exact the migration is not a migration.
-    assert_eq!(aggregate(BASE, &[]).unwrap(), BASE);
+    assert_eq!(
+        aggregate(BASE, &[]).expect("aggregate accepts these fragments"),
+        BASE
+    );
 }
 
 #[test]
 fn roadmap_fragments_case_02_a_numeral_between_two_lands_at_its_sorted_slot() {
-    let out = aggregate(BASE, &[frag("PMAT-200", "title: b")]).unwrap();
+    let out = aggregate(BASE, &[frag("PMAT-200", "title: b")])
+        .expect("aggregate accepts these fragments");
     assert_eq!(
         ids(&out),
         ["PMAT-100", "PMAT-200", "PMAT-300", "LEGACY-THING"]
@@ -58,19 +62,22 @@ fn roadmap_fragments_case_02_a_numeral_between_two_lands_at_its_sorted_slot() {
 
 #[test]
 fn roadmap_fragments_case_03_a_numeral_after_all_of_its_prefix_is_appended() {
-    let out = aggregate(BASE, &[frag("PMAT-400", "title: d")]).unwrap();
+    let out = aggregate(BASE, &[frag("PMAT-400", "title: d")])
+        .expect("aggregate accepts these fragments");
     assert_eq!(ids(&out).last().map(String::as_str), Some("PMAT-400"));
 }
 
 #[test]
 fn roadmap_fragments_case_04_an_unseen_prefix_is_appended() {
-    let out = aggregate(BASE, &[frag("APEX-1", "title: new prefix")]).unwrap();
+    let out = aggregate(BASE, &[frag("APEX-1", "title: new prefix")])
+        .expect("aggregate accepts these fragments");
     assert_eq!(ids(&out).last().map(String::as_str), Some("APEX-1"));
 }
 
 #[test]
 fn roadmap_fragments_case_05_a_legacy_id_is_appended() {
-    let out = aggregate(BASE, &[frag("FREEFORM", "title: legacy")]).unwrap();
+    let out = aggregate(BASE, &[frag("FREEFORM", "title: legacy")])
+        .expect("aggregate accepts these fragments");
     assert_eq!(ids(&out).last().map(String::as_str), Some("FREEFORM"));
 }
 
@@ -78,7 +85,8 @@ fn roadmap_fragments_case_05_a_legacy_id_is_appended() {
 fn roadmap_fragments_case_06_numerals_compare_numerically_not_as_strings() {
     // 90 < 100 as numbers, "100" < "90" as strings. A string compare passes case 02
     // and fails this one, which is why both exist.
-    let out = aggregate(BASE, &[frag("PMAT-90", "title: ninety")]).unwrap();
+    let out = aggregate(BASE, &[frag("PMAT-90", "title: ninety")])
+        .expect("aggregate accepts these fragments");
     assert_eq!(ids(&out)[0], "PMAT-90");
 }
 
@@ -87,7 +95,8 @@ fn roadmap_fragments_case_07_a_fragment_supersedes_the_base_row_of_its_id() {
     // This is what makes entries/ the ONLY edit path for an existing id, which is in
     // turn what lets a gate forbid every write to roadmap.yaml. Refusing it as a
     // duplicate re-opens the base as an edit surface.
-    let out = aggregate(BASE, &[frag("PMAT-100", "title: superseded")]).unwrap();
+    let out = aggregate(BASE, &[frag("PMAT-100", "title: superseded")])
+        .expect("aggregate accepts these fragments");
     assert_eq!(ids(&out), ["PMAT-100", "PMAT-300", "LEGACY-THING"]);
     assert!(
         out.contains("superseded") && !out.contains("title: a\n"),
@@ -111,8 +120,11 @@ fn roadmap_fragments_case_09_aggregate_is_idempotent() {
     // The post-merge aggregation runs on the default branch; a generator that is not
     // a pure function of (base, fragments) churns a commit on every merge.
     let f = vec![frag("PMAT-200", "title: b")];
-    let once = aggregate(BASE, &f).unwrap();
-    assert_eq!(aggregate(&once, &f).unwrap(), once);
+    let once = aggregate(BASE, &f).expect("aggregate accepts these fragments");
+    assert_eq!(
+        aggregate(&once, &f).expect("aggregate accepts these fragments"),
+        once
+    );
 }
 
 #[test]
@@ -120,8 +132,8 @@ fn roadmap_fragments_case_10_fragment_input_order_does_not_change_the_bytes() {
     let two = vec![frag("PMAT-150", "t: x"), frag("PMAT-250", "t: y")];
     let reversed: Vec<_> = two.iter().rev().cloned().collect();
     assert_eq!(
-        aggregate(BASE, &two).unwrap(),
-        aggregate(BASE, &reversed).unwrap()
+        aggregate(BASE, &two).expect("aggregate accepts these fragments"),
+        aggregate(BASE, &reversed).expect("aggregate accepts these fragments")
     );
 
     // Stronger than the reference's row, and deliberately: two APPENDED ids are
@@ -129,8 +141,8 @@ fn roadmap_fragments_case_10_fragment_input_order_does_not_change_the_bytes() {
     let legacy = vec![frag("ZULU", "t: z"), frag("ALPHA", "t: a")];
     let legacy_rev: Vec<_> = legacy.iter().rev().cloned().collect();
     assert_eq!(
-        aggregate(BASE, &legacy).unwrap(),
-        aggregate(BASE, &legacy_rev).unwrap()
+        aggregate(BASE, &legacy).expect("aggregate accepts these fragments"),
+        aggregate(BASE, &legacy_rev).expect("aggregate accepts these fragments")
     );
 }
 
@@ -140,7 +152,7 @@ fn roadmap_fragments_case_11_two_fragments_each_land_at_their_own_slot() {
         BASE,
         &[frag("PMAT-150", "title: x"), frag("PMAT-250", "title: y")],
     )
-    .unwrap();
+    .expect("aggregate accepts these fragments");
     assert_eq!(
         ids(&out),
         [
@@ -159,14 +171,19 @@ fn roadmap_fragments_case_12_mutation_append_only_placement_is_caught() {
     // monkeypatches insertion_index; here the placement rule is injected, so the
     // REAL aggregation runs with the mutant and case 02's expectation must fail.
     let fragments = [frag("PMAT-200", "title: b")];
-    let mutated = aggregate_with(BASE, &fragments, |entries, _| entries.len()).unwrap();
+    let mutated = aggregate_with(BASE, &fragments, |entries, _| entries.len())
+        .expect("aggregate accepts these fragments");
     assert_ne!(
         ids(&mutated),
         ["PMAT-100", "PMAT-200", "PMAT-300", "LEGACY-THING"],
         "mutant survived — case 02 proves nothing"
     );
-    let real = aggregate_with(BASE, &fragments, insertion_index).unwrap();
-    assert_eq!(real, aggregate(BASE, &fragments).unwrap());
+    let real = aggregate_with(BASE, &fragments, insertion_index)
+        .expect("aggregate accepts these fragments");
+    assert_eq!(
+        real,
+        aggregate(BASE, &fragments).expect("aggregate accepts these fragments")
+    );
 }
 
 #[test]
@@ -247,10 +264,10 @@ fn roadmap_fragments_numerals_have_no_ceiling() {
     let big = "PMAT-123456789012345678901234567890";
     let bigger = "PMAT-123456789012345678901234567891";
     let base = format!("roadmap:\n- id: {bigger}\n  t: b\n");
-    let out = aggregate(&base, &[frag(big, "t: a")]).unwrap();
+    let out = aggregate(&base, &[frag(big, "t: a")]).expect("aggregate accepts these fragments");
     assert_eq!(ids(&out), [big, bigger]);
-    let (_, zero_padded) = parse_id("PMAT-0090").unwrap();
-    let (_, plain) = parse_id("PMAT-90").unwrap();
+    let (_, zero_padded) = parse_id("PMAT-0090").expect("a PREFIX-N id");
+    let (_, plain) = parse_id("PMAT-90").expect("a PREFIX-N id");
     assert_eq!(zero_padded, plain);
 }
 
@@ -318,10 +335,11 @@ fn roadmap_fragments_split_reads_rows_at_the_row_indent_and_nothing_nested() {
         col2,
         &[("PMAT-2".into(), "  - id: PMAT-2\n    title: b\n".into())],
     )
-    .unwrap();
+    .expect("aggregate accepts these fragments");
     assert_eq!(ids(&out), ["PMAT-1", "PMAT-2", "PMAT-3"]);
     assert_eq!(
-        serde_yaml_ng::from_str::<serde_yaml_ng::Value>(&out).unwrap()["roadmap"]
+        serde_yaml_ng::from_str::<serde_yaml_ng::Value>(&out)
+            .expect("the aggregate parses as YAML")["roadmap"]
             .as_sequence()
             .map(Vec::len),
         Some(3)
@@ -379,16 +397,20 @@ fn roadmap_fragments_an_empty_flow_sequence_base_still_yields_valid_yaml() {
     // The reference emits `roadmap: []\n- id: …`, which does not parse.
     let base = "roadmap_version: '1.0'\nroadmap: []\n";
     let f = vec![frag("PMAT-1", "title: first")];
-    let once = aggregate(base, &f).unwrap();
+    let once = aggregate(base, &f).expect("aggregate accepts these fragments");
     let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&once).expect("must parse");
     assert_eq!(parsed["roadmap"].as_sequence().map(Vec::len), Some(1));
-    assert_eq!(aggregate(&once, &f).unwrap(), once, "and it is idempotent");
+    assert_eq!(
+        aggregate(&once, &f).expect("aggregate accepts these fragments"),
+        once,
+        "and it is idempotent"
+    );
 }
 
 #[test]
 fn roadmap_fragments_first_difference_names_the_row() {
     let f = vec![frag("PMAT-200", "title: b")];
-    let out = aggregate(BASE, &f).unwrap();
+    let out = aggregate(BASE, &f).expect("aggregate accepts these fragments");
     assert_eq!(first_difference(&out, &out), None);
     assert_eq!(first_difference(&out, BASE).as_deref(), Some("PMAT-200"));
     let edited = BASE.replace("title: c", "title: C");
@@ -413,7 +435,11 @@ fn roadmap_fragments_round_trip_a_real_roadmap_byte_for_byte() {
     assert!(entries.len() > 100, "split found {} rows", entries.len());
     let rebuilt: String = preamble + &entries.iter().map(|(_, b)| b.as_str()).collect::<String>();
     assert_eq!(rebuilt, raw, "split/join is not byte-exact");
-    assert_eq!(aggregate(&raw, &[]).unwrap(), raw, "aggregate(x, []) != x");
+    assert_eq!(
+        aggregate(&raw, &[]).expect("aggregate accepts these fragments"),
+        raw,
+        "aggregate(x, []) != x"
+    );
 }
 
 #[test]
@@ -431,21 +457,22 @@ fn roadmap_fragments_three_consecutive_aggregations_of_real_data_are_byte_identi
         .collect();
     assert!(fragments.len() > 10, "{} fragments", fragments.len());
 
-    let first = aggregate(&raw, &fragments).unwrap();
-    let second = aggregate(&raw, &fragments).unwrap();
-    let third = aggregate(&raw, &fragments).unwrap();
+    let first = aggregate(&raw, &fragments).expect("aggregate accepts these fragments");
+    let second = aggregate(&raw, &fragments).expect("aggregate accepts these fragments");
+    let third = aggregate(&raw, &fragments).expect("aggregate accepts these fragments");
     assert!(
         first == second && second == third,
         "three runs over one input differ"
     );
     assert_eq!(
-        aggregate(&first, &fragments).unwrap(),
+        aggregate(&first, &fragments).expect("aggregate accepts these fragments"),
         first,
         "not idempotent on real data"
     );
     assert_ne!(first, raw, "the fragments must have changed something");
 
-    let before: crate::models::roadmap::Roadmap = serde_yaml_ng::from_str(&raw).unwrap();
+    let before: crate::models::roadmap::Roadmap =
+        serde_yaml_ng::from_str(&raw).expect("this repository's roadmap parses");
     let after: crate::models::roadmap::Roadmap = serde_yaml_ng::from_str(&first)
         .expect("the aggregate of real data must parse as a roadmap");
     assert_eq!(
