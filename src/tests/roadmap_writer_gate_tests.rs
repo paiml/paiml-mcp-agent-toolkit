@@ -68,8 +68,8 @@ fn roadmap_writer_gate_catches_the_migrate_shape() {
         }
         fn write_migration(roadmap_path: &std::path::Path, new_content: &str) {
             let backup_path = roadmap_path.with_extension("yaml.bak");
-            std::fs::write(&backup_path, "old").unwrap();
-            std::fs::write(roadmap_path, new_content).unwrap();
+            std::fs::write(&backup_path, "old").ok();
+            std::fs::write(roadmap_path, new_content).ok();
         }
     "#;
     let found = sinks(&[("src/a.rs", src)]);
@@ -92,7 +92,7 @@ fn roadmap_writer_gate_a_renamed_binding_is_still_caught() {
             put(&qq, "x");
         }
         fn put(yy: &std::path::Path, body: &str) {
-            std::fs::write(yy, body).unwrap();
+            std::fs::write(yy, body).ok();
         }
     "#;
     assert_eq!(functions(&[("src/a.rs", src)]), vec!["put".to_string()]);
@@ -105,23 +105,23 @@ fn roadmap_writer_gate_follows_consts_returns_fields_and_clap_defaults() {
         struct Svc { target: std::path::PathBuf }
         impl Svc {
             fn new<P: AsRef<std::path::Path>>(p: P) -> Self { Self { target: p.as_ref().to_path_buf() } }
-            fn flush(&self) { std::fs::File::create(&self.target).unwrap(); }
+            fn flush(&self) { std::fs::File::create(&self.target).ok(); }
         }
         fn make() -> Svc { Svc::new(DEFAULT_ROADMAP_PATH) }
         fn roadmap_file(root: &std::path::Path) -> std::path::PathBuf { root.join("roadmap.yaml") }
         fn via_return(root: &std::path::Path) {
-            std::fs::OpenOptions::new().write(true).open(roadmap_file(root)).unwrap();
+            std::fs::OpenOptions::new().write(true).open(roadmap_file(root)).ok();
         }
         enum Cmd {
             Sync { #[arg(long, default_value = "docs/roadmaps/roadmap.yaml")] roadmap: std::path::PathBuf },
             Fix { #[arg(long, default_value = "ROADMAP.md")] roadmap: std::path::PathBuf },
         }
         fn dispatch(cmd: Cmd) {
-            match cmd { Cmd::Sync { roadmap: out } => { std::fs::rename("staging", &out).unwrap(); } _ => {} }
+            match cmd { Cmd::Sync { roadmap: out } => { std::fs::rename("staging", &out).ok(); } _ => {} }
         }
         fn markdown(cmd: Cmd) {
             // Same field NAME, different subcommand, default ROADMAP.md: not a roadmap write.
-            if let Cmd::Fix { roadmap } = cmd { std::fs::write(&roadmap, "- [x]").unwrap(); }
+            if let Cmd::Fix { roadmap } = cmd { std::fs::write(&roadmap, "- [x]").ok(); }
         }
         fn fragment_dir(roadmap: &std::path::Path) -> Option<std::path::PathBuf> {
             let dir = roadmap.parent()?.join("entries");
@@ -129,10 +129,10 @@ fn roadmap_writer_gate_follows_consts_returns_fields_and_clap_defaults() {
         }
         fn fragment(root: &std::path::Path) {
             let Some(entries) = fragment_dir(&root.join(DEFAULT_ROADMAP_PATH)) else { return };
-            let target = Some("X-1.yaml").map(|name| entries.join(name)).unwrap();
-            std::fs::remove_file(target).unwrap();
+            let target = Some("X-1.yaml").map(|name| entries.join(name)).unwrap_or_default();
+            std::fs::remove_file(target).ok();
         }
-        fn formatted(root: &str) { std::fs::write(format!("{root}/docs/roadmaps/entries/X-1.yaml"), "").unwrap(); }
+        fn formatted(root: &str) { std::fs::write(format!("{root}/docs/roadmaps/entries/X-1.yaml"), "").ok(); }
     "#;
     let mut found = functions(&[("src/a.rs", src)]);
     found.sort();
@@ -154,14 +154,14 @@ fn roadmap_writer_gate_sees_every_sink_kind() {
         use std::fs::{self, write as put};
         fn all(root: &std::path::Path) {
             let p = root.join("docs/roadmaps");
-            fs::copy("a", p.join("b")).unwrap();
-            fs::hard_link("a", p.join("c")).unwrap();
-            fs::remove_file(p.join("d")).unwrap();
-            fs::remove_dir_all(p.join("e")).unwrap();
-            put(p.join("f"), "").unwrap();
-            std::os::unix::fs::symlink("a", p.join("g")).unwrap();
-            tmp.persist(p.join("h")).unwrap();
-            std::fs::File::create_new(p.join("i")).unwrap();
+            fs::copy("a", p.join("b")).ok();
+            fs::hard_link("a", p.join("c")).ok();
+            fs::remove_file(p.join("d")).ok();
+            fs::remove_dir_all(p.join("e")).ok();
+            put(p.join("f"), "").ok();
+            std::os::unix::fs::symlink("a", p.join("g")).ok();
+            tmp.persist(p.join("h")).ok();
+            std::fs::File::create_new(p.join("i")).ok();
         }
     "#;
     let mut kinds: Vec<&str> = sinks(&[("src/a.rs", src)]).iter().map(|s| s.kind).collect();
@@ -185,15 +185,15 @@ fn roadmap_writer_gate_sees_every_sink_kind() {
 fn roadmap_writer_gate_is_silent_on_unrelated_reads_and_tests() {
     let src = r#"
         fn unrelated(root: &std::path::Path) {
-            std::fs::write(root.join(".pmat/metrics.json"), "{}").unwrap();
-            let text = std::fs::read_to_string(root.join("docs/roadmaps/roadmap.yaml")).unwrap();
-            std::fs::write(root.join("report.md"), text).unwrap();
-            std::fs::OpenOptions::new().read(true).open(root.join("docs/roadmaps/roadmap.yaml")).unwrap();
+            std::fs::write(root.join(".pmat/metrics.json"), "{}").ok();
+            let text = std::fs::read_to_string(root.join("docs/roadmaps/roadmap.yaml")).unwrap_or_default();
+            std::fs::write(root.join("report.md"), text).ok();
+            std::fs::OpenOptions::new().read(true).open(root.join("docs/roadmaps/roadmap.yaml")).ok();
         }
         #[cfg(test)]
         mod tests {
             #[test]
-            fn fixture() { std::fs::write("docs/roadmaps/roadmap.yaml", "").unwrap(); }
+            fn fixture() { std::fs::write("docs/roadmaps/roadmap.yaml", "").ok(); }
         }
     "#;
     assert_eq!(functions(&[("src/a.rs", src)]), Vec::<String>::new());
@@ -205,7 +205,7 @@ fn roadmap_writer_gate_crosses_files() {
         pub fn run(project: &std::path::Path) { crate::b::save_text(&project.join("docs/roadmaps/roadmap.yaml")); }
     "#;
     let b = r#"
-        pub fn save_text(where_to: &std::path::Path) { std::fs::write(where_to, "").unwrap(); }
+        pub fn save_text(where_to: &std::path::Path) { std::fs::write(where_to, "").ok(); }
     "#;
     assert_eq!(
         functions(&[("src/a.rs", a), ("src/b.rs", b)]),
@@ -355,8 +355,7 @@ fn path_attribute(attrs: &[syn::Attribute]) -> Option<String> {
 fn tree_sinks() -> (usize, Vec<Sink>) {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let sources = production_sources(&root);
-    let found =
-        tainted_sinks(&sources).unwrap_or_else(|e| panic!("the gate could not read the tree: {e}"));
+    let found = tainted_sinks(&sources).expect("the gate reads every compiled file");
     (sources.len(), found)
 }
 

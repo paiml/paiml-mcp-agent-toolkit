@@ -50,7 +50,9 @@ fn migrate(project: &Path, dry_run: bool, backup: bool) -> anyhow::Result<()> {
 }
 
 fn read(path: &Path) -> String {
-    std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+    std::fs::read_to_string(path)
+        .map_err(|e| format!("read {}: {e}", path.display()))
+        .expect("a fixture file is readable")
 }
 
 #[test]
@@ -59,7 +61,10 @@ fn work_migrate_waits_for_the_repository_lock() {
         let base = format!("{HEADER}roadmap:\n- id: PMAT-001\n  title: first\n  status: done\n");
         let (_dir, project, roadmap) = project(&base, with_entries);
         let written = if with_entries {
-            roadmap.parent().unwrap().join("entries/PMAT-001.yaml")
+            roadmap
+                .parent()
+                .expect("the roadmap has a directory")
+                .join("entries/PMAT-001.yaml")
         } else {
             roadmap.clone()
         };
@@ -132,7 +137,10 @@ fn work_migrate_in_fragment_mode_never_opens_the_aggregate() {
          - id: PMAT-005\n  title: fifth\n  status: planned\n- id: PMAT-007\n  title: seventh\n  status: planned\n"
     );
     let (_dir, project, roadmap) = project(&base, true);
-    let entries = roadmap.parent().unwrap().join("entries");
+    let entries = roadmap
+        .parent()
+        .expect("the roadmap has a directory")
+        .join("entries");
     // A fragment superseding PMAT-005 with a legacy spelling of its own.
     std::fs::write(
         entries.join("PMAT-005.yaml"),
@@ -183,13 +191,17 @@ fn work_migrate_in_fragment_mode_never_opens_the_aggregate() {
 
 #[test]
 fn work_migrate_in_fragment_mode_refuses_before_writing_anything() {
-    // PMAT-002 needs a superseding fragment it cannot have: its id is not a filename.
+    // `bad id` needs a superseding fragment it cannot have: its id is not a filename,
+    // and PMAT-001, earlier in the file, must not land a fragment on its way there.
     let base = format!(
         "{HEADER}roadmap:\n- id: PMAT-001\n  title: first\n  status: done\n\
          - id: bad id\n  title: second\n  status: done\n"
     );
     let (_dir, project, roadmap) = project(&base, true);
-    let entries = roadmap.parent().unwrap().join("entries");
+    let entries = roadmap
+        .parent()
+        .expect("the roadmap has a directory")
+        .join("entries");
 
     let err = migrate(&project, false, true).expect_err("an unwritable row is refused");
 

@@ -63,32 +63,41 @@ impl RoadmapService {
         }
         let lock = self.acquire_write_lock()?;
         let (mut report, plan) = self.plan_text_migration(&transform)?;
-        match plan {
-            MigrationPlan::Whole { original, migrated } if migrated != original => {
-                if backup {
-                    let backup_path = self.roadmap_path.with_extension("yaml.bak");
-                    lock.write(&backup_path, &original)
-                        .with_context(|| format!("Failed to write backup: {:?}", backup_path))?;
-                    report.written.push(backup_path);
-                }
-                lock.write(&self.roadmap_path, &migrated).with_context(|| {
-                    format!("Failed to write roadmap file: {:?}", self.roadmap_path)
-                })?;
-                report.written.push(self.roadmap_path.clone());
+        report.written = match plan {
+            MigrationPlan::Whole { original, migrated } => {
+                self.write_whole_migration(&lock, &original, &migrated, backup)?
             }
-            MigrationPlan::Whole { .. } => {}
             MigrationPlan::Fragments { entries, rows } => {
-                for (id, block) in rows {
-                    let path = crate::services::roadmap_fragments::write_fragment(
-                        &lock, &entries, &id, &block,
-                    )
-                    .map_err(|e| anyhow::anyhow!("{e}"))?;
-                    report.written.push(path);
-                }
+                write_fragment_migration(&lock, &entries, &rows)?
             }
-        }
+        };
         Ok(report)
         // Lock released automatically
+    }
+
+    /// Whole-file mode: the backup (when asked) and the migrated roadmap, or nothing
+    /// when the transform changed nothing.
+    fn write_whole_migration(
+        &self,
+        lock: &RoadmapWriteLock,
+        original: &str,
+        migrated: &str,
+        backup: bool,
+    ) -> Result<Vec<PathBuf>> {
+        if migrated == original {
+            return Ok(Vec::new());
+        }
+        let mut written = Vec::new();
+        if backup {
+            let backup_path = self.roadmap_path.with_extension("yaml.bak");
+            lock.write(&backup_path, original)
+                .with_context(|| format!("Failed to write backup: {:?}", backup_path))?;
+            written.push(backup_path);
+        }
+        lock.write(&self.roadmap_path, migrated)
+            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
+        written.push(self.roadmap_path.clone());
+        Ok(written)
     }
 
     /// Read and transform, writing nothing. The caller holds a lock.
@@ -140,29 +149,14 @@ impl RoadmapService {
             );
         }
 
-        let held: BTreeSet<&str> = current.iter().map(|(id, _)| id.as_str()).collect();
-        let unheld_base = base_rows.iter().filter(|(id, _)| !held.contains(id.as_str()));
-        let mut changes: Vec<String> = Vec::new();
-        let mut rows: Vec<(String, String)> = Vec::new();
-        for (id, block) in current.iter().chain(unheld_base) {
-            let (migrated, found) = transform(block);
-            if migrated == *block {
-                continue;
-            }
-            if rows.iter().any(|(seen, _)| seen == id) {
-                anyhow::bail!(
+        let (changes, rows) = changed_rows(&current, &base_rows, transform)
+            .map_err(|id| {
+                anyhow::anyhow!(
                     "refusing to migrate {id}: {} declares it twice, and one fragment can \
                      carry only one row (PMAT-1385)",
                     self.roadmap_path.display()
-                );
-            }
-            for change in found {
-                if !changes.contains(&change) {
-                    changes.push(change);
-                }
-            }
-            rows.push((id.clone(), migrated));
-        }
+                )
+            })?;
 
         let indent = crate::services::roadmap_text::row_indent(&base);
         for (id, block) in &rows {
@@ -186,4 +180,51 @@ impl RoadmapService {
         };
         Ok((report, MigrationPlan::Fragments { entries, rows }))
     }
+}
+
+/// `(changes, [(id, migrated block)])`: what a fragment-mode migration will write.
+type ChangedRows = (Vec<String>, Vec<(String, String)>);
+
+/// Fragment mode: every row the transform changes, as `(changes, [(id, migrated
+/// block)])` — fragments first, then the base rows no fragment supersedes. `Err(id)`
+/// when one id would need two fragments.
+fn changed_rows(
+    current: &[(String, String)],
+    base_rows: &[(String, String)],
+    transform: &impl Fn(&str) -> (String, Vec<String>),
+) -> std::result::Result<ChangedRows, String> {
+    let held: BTreeSet<&str> = current.iter().map(|(id, _)| id.as_str()).collect();
+    let unheld_base = base_rows.iter().filter(|(id, _)| !held.contains(id.as_str()));
+    let mut changes: Vec<String> = Vec::new();
+    let mut rows: Vec<(String, String)> = Vec::new();
+    for (id, block) in current.iter().chain(unheld_base) {
+        let (migrated, found) = transform(block);
+        if migrated == *block {
+            continue;
+        }
+        if rows.iter().any(|(seen, _)| seen == id) {
+            return Err(id.clone());
+        }
+        for change in found {
+            if !changes.contains(&change) {
+                changes.push(change);
+            }
+        }
+        rows.push((id.clone(), migrated));
+    }
+    Ok((changes, rows))
+}
+
+/// Fragment mode: write every migrated row as its fragment, in plan order.
+fn write_fragment_migration(
+    lock: &RoadmapWriteLock,
+    entries: &Path,
+    rows: &[(String, String)],
+) -> Result<Vec<PathBuf>> {
+    rows.iter()
+        .map(|(id, block)| {
+            crate::services::roadmap_fragments::write_fragment(lock, entries, id, block)
+                .map_err(|e| anyhow::anyhow!("{e}"))
+        })
+        .collect()
 }
