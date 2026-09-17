@@ -33,3 +33,18 @@ Fixed with `pmat work sync --direction github-to-yaml`; the dry-run planned exac
 Also closed in the same sweep, without a roadmap row: **#1378**, filed by github-actions at 22:32Z ("3.40.2 is declared in Cargo.toml but not fully released") between #1376's merge and the tag. It was closed with the release evidence — `make release-check` on master now exits 0: 3.40.2 tagged, released and on crates.io.
 
 After both, `pmat work sync --check-only` reads coherent.
+
+## 2026-09-17 — PMAT-1381, an open issue with no row
+
+Issue #1381 was opened at 2026-09-16T14:42:59Z and is still OPEN, but master (441d198e7) has no row for it. This is the other half of the bijection: the entries above complete rows whose issues closed, and this one registers a row for an issue that opened. CB-2115 reported `ORPHAN-GITHUB #1381`, and `pmat work sync --check-only` exited 1 with that as its only finding (114 open items, 115 open issues). Because `ci.yml`'s required `gate` needs `traceability`, every PR to master was red. The row landed inside PMAT-1365's PR #1368, and a review lane failed it there as outside that ticket's scope. So it lands here on its own.
+
+Two writers were tried on scratch copies of the roadmap first:
+
+- `pmat work sync --direction github-to-yaml` planned one action, `create-item #1381 → GH-1381`. It writes id `GH-1381`, sets `created`/`updated` to the wall clock with nanoseconds, and leaves `labels: []`.
+- `pmat work add --github-issue 1381 -t kind:code "<issue title>"` mints `PMAT-1381` and binds `github_issue: 1381`. Its help calls this the collision-proof path and says to prefer it whenever an issue exists. The #1360 rows (PMAT-1356 … PMAT-1373) have the same `PMAT-<issue>` shape.
+
+The second writer was used. Measured diff: `docs/roadmaps/roadmap.yaml` gains 17 lines, plus this receipt section.
+
+It is not byte-identical to the row on the operator's unmerged branch `PMAT-1381-row` (242755717), which is the same row PMAT-1365's branch carries. Of the 17 lines, 15 match. The other two are `created` and `updated`: the writer stamps the time it ran, `2026-09-17T07:48:16Z`, while that row uses the issue's creation time, `2026-09-16T14:42:59Z`. Neither writer can produce the issue's time, and making the lines match by hand would be a hand edit. So when either branch merges after this one, those two lines will conflict, and the fix is to keep master's row. The deviation is put to the review quorum; its verdict is `docs/audits/quorum-PMAT-1336.json`.
+
+After the write, `pmat work sync --check-only` reads coherent (115 matched, 0 findings), CB-2115 passes, and `pmat work validate --check-base origin/master` passes, with one warning that PMAT-1381 has no acceptance criteria. The row is only registered: #1381 stays open (keeps-open #1381).

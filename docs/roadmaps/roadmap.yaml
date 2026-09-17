@@ -6942,3 +6942,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1381
+  github_issue: 1381
+  item_type: task
+  title: 'pmat work complete: ticket-scoped completion checks — repo-wide falsifications report, don''t block'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-17T07:48:16Z
+  updated: 2026-09-17T07:48:16Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
