@@ -100,21 +100,8 @@ fn coverage_cache_guard(
     // ancestor of it — a report from another branch, or from nowhere, is not
     // about this tree.
     let hash = cache.get("git_hash").and_then(|h| h.as_str()).unwrap_or("");
-    match git_is_head_or_ancestor(project_path, hash) {
-        Some(true) => {}
-        Some(false) => {
-            return Some(format!(
-                "git_hash: the report's commit {hash} is not HEAD or an ancestor of HEAD in {}",
-                project_path.display()
-            ))
-        }
-        None => {
-            return Some(format!(
-                "git_hash: {} is not a git checkout (or `git` is unavailable), so the report's \
-                 commit {hash} cannot be placed relative to this tree",
-                project_path.display()
-            ))
-        }
+    if let Some(reason) = git_hash_guard(project_path, hash) {
+        return Some(reason);
     }
     // Guard 2: the report must be newer than the newest tracked source file.
     let cache_mtime = std::fs::metadata(cache_path).and_then(|m| m.modified()).ok();
@@ -153,6 +140,23 @@ fn coverage_cache_guard(
         ));
     }
     None
+}
+
+/// Guard 1 on its own: why the report's commit `hash` is not HEAD or an
+/// ancestor of it in `project_path`, or `None` when it is.
+fn git_hash_guard(project_path: &Path, hash: &str) -> Option<String> {
+    match git_is_head_or_ancestor(project_path, hash) {
+        Some(true) => None,
+        Some(false) => Some(format!(
+            "git_hash: the report's commit {hash} is not HEAD or an ancestor of HEAD in {}",
+            project_path.display()
+        )),
+        None => Some(format!(
+            "git_hash: {} is not a git checkout (or `git` is unavailable), so the report's \
+             commit {hash} cannot be placed relative to this tree",
+            project_path.display()
+        )),
+    }
 }
 
 /// `Some(true)` if `hash` is HEAD or an ancestor of HEAD; `None` when the
