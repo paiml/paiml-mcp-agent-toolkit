@@ -9,14 +9,15 @@
 //!
 //! These tests are the half that does: `cargo test --lib` runs inside `ci / gate`. They
 //! re-read the table with this crate's own YAML parser — an independent reading, not a
-//! second runner — and pin the four things a later edit could remove while every other
+//! second runner — and pin the five things a later edit could remove while every other
 //! test stayed green:
 //!
 //!   1. the Makefile target exists and runs the table;
 //!   2. every required context has a row, and every CI-only row says why;
 //!   3. every `step` row still names exactly one runnable step in its workflow;
 //!   4. no CI-only row blames cost for a check that runs nothing but the pmat binary,
-//!      which `make gate` already builds (its `build-pmat` leg).
+//!      which `make gate` already builds (its `build-pmat` leg);
+//!   5. no CI-only row blames a credential that is a GitHub token `gh auth token` supplies.
 //!
 //! Contract: `contracts/make-gate-v1.yaml`.
 
@@ -272,19 +273,16 @@ fn runs_only_pmat(job: &Value) -> bool {
     runs_pmat
 }
 
-/// `unrun-tests` and `reachability-ledger` were CI-only rows reading "cost: a release build
-/// of pmat". Neither CI job does anything but build pmat and run one of its subcommands,
-/// and the gate already builds pmat: on the debug binary the two checks take 14s and 1.5s.
-/// The reason was never measured, and the reachability leg went red in CI on this branch's
-/// own new file while `make gate` read green (PR #1368, feature-gate on 1d8c64f40).
-#[test]
-fn no_ci_only_cost_row_hides_a_check_that_only_runs_pmat() {
+/// The CI jobs behind every CI-only row of `category` whose workflow is in this tree, as
+/// `(leg, "<workflow> job `<job>`", job)`. A row's source is `<workflow> <job id> ...`.
+/// Rows whose workflow lives elsewhere (sovereign-ci.yml is in paiml/.github) are skipped;
+/// a row naming an in-tree workflow but no job in it fails.
+fn ci_only_jobs(category: &str) -> Vec<(String, String, Value)> {
     let script = read(SCRIPT);
-    let mut resolved = 0;
-    let mut hiding = Vec::new();
+    let mut jobs = Vec::new();
     for r in rows(&script)
         .iter()
-        .filter(|r| r.kind == "ci-only" && r.note.starts_with("cost:"))
+        .filter(|r| r.kind == "ci-only" && r.note.split_once(':').map(|c| c.0) == Some(category))
     {
         let mut words = r.source.split_whitespace();
         let (wf, job) = (words.next().unwrap_or(""), words.next().unwrap_or(""));
@@ -293,30 +291,95 @@ fn no_ci_only_cost_row_hides_a_check_that_only_runs_pmat() {
         } else {
             format!(".github/workflows/{wf}")
         };
-        // sovereign-ci.yml lives in paiml/.github, not in this tree: nothing to read.
         let Ok(text) = fs::read_to_string(repo_root().join(&wf)) else {
             continue;
         };
         let doc = serde_yaml_ng::from_str::<Value>(&text).unwrap_or_default();
-        let job_v = doc.get("jobs").and_then(|j| j.get(job));
+        let job_v = doc.get("jobs").and_then(|j| j.get(job)).cloned();
         assert!(
             job_v.is_some(),
             "CI-only row `{}`: source `{}` names no job `{job}` in {wf}",
             r.leg,
             r.source
         );
-        resolved += 1;
-        if job_v.is_some_and(runs_only_pmat) {
-            hiding.push(format!("{} ({wf} job `{job}`)", r.leg));
-        }
+        jobs.push((
+            r.leg.clone(),
+            format!("{wf} job `{job}`"),
+            job_v.unwrap_or_default(),
+        ));
     }
+    jobs
+}
+
+/// `unrun-tests` and `reachability-ledger` were CI-only rows reading "cost: a release build
+/// of pmat". Neither CI job does anything but build pmat and run one of its subcommands,
+/// and the gate already builds pmat: on the debug binary the two checks take 14s and 1.5s.
+/// The reason was never measured, and the reachability leg went red in CI on this branch's
+/// own new file while `make gate` read green (PR #1368, feature-gate on 1d8c64f40).
+#[test]
+fn no_ci_only_cost_row_hides_a_check_that_only_runs_pmat() {
+    let jobs = ci_only_jobs("cost");
     assert!(
-        resolved >= 5,
-        "only {resolved} CI-only cost rows resolved to a job in this tree — the source parser is broken"
+        jobs.len() >= 5,
+        "only {} CI-only cost rows resolved to a job in this tree — the source parser is broken",
+        jobs.len()
     );
+    let hiding: Vec<String> = jobs
+        .iter()
+        .filter(|(_, _, job)| runs_only_pmat(job))
+        .map(|(leg, at, _)| format!("{leg} ({at})"))
+        .collect();
     assert!(
         hiding.is_empty(),
         "CI-only rows blame cost for a CI job that only builds and runs pmat, which `make gate` \
          already builds (leg build-pmat) — make each a cmd row running `cargo run --locked --bin pmat --`: {hiding:?}"
+    );
+}
+
+/// True when a step of `job`, or the job itself, hands a GitHub token to its commands.
+fn reads_github_with_a_token(job: &Value) -> bool {
+    let has_token = |v: &Value| {
+        v.get("env")
+            .is_some_and(|e| e.get("GH_TOKEN").is_some() || e.get("GITHUB_TOKEN").is_some())
+    };
+    has_token(job)
+        || job
+            .get("steps")
+            .and_then(Value::as_sequence)
+            .is_some_and(|s| s.iter().any(has_token))
+}
+
+/// `cb-2115` was CI-only on "credential: the workflow's GH_TOKEN", and traceability went red
+/// on PR #1368 while `make gate` read green; with `gh auth token` it runs here in ~7s.
+/// `dependabot-alerts-live` blamed the DEPENDABOT_TOKEN secret and runs here in 0.65s. A GitHub
+/// token is a credential every clone that can push already holds, so it is no reason to leave a
+/// check unrun: the leg takes it from `$GH_TOKEN`, else `gh auth token`, and fails without one.
+#[test]
+fn no_ci_only_credential_row_blames_a_github_token_gh_already_holds() {
+    let ci =
+        serde_yaml_ng::from_str::<Value>(&read(".github/workflows/ci.yml")).unwrap_or_default();
+    let job = |id: &str| {
+        ci.get("jobs")
+            .and_then(|j| j.get(id))
+            .cloned()
+            .unwrap_or_default()
+    };
+    assert!(
+        reads_github_with_a_token(&job("traceability")),
+        "control: ci.yml traceability hands CB-2115 a GH_TOKEN, and the detector no longer sees it"
+    );
+    assert!(
+        !reads_github_with_a_token(&job("windows-check")),
+        "control: ci.yml windows-check uses no GitHub token, and the detector says it does"
+    );
+    let blaming: Vec<String> = ci_only_jobs("credential")
+        .iter()
+        .filter(|(_, _, job)| reads_github_with_a_token(job))
+        .map(|(leg, at, _)| format!("{leg} ({at})"))
+        .collect();
+    assert!(
+        blaming.is_empty(),
+        "CI-only rows blame a credential that is a GitHub token — run each as a cmd leg with \
+         GH_TOKEN=\"${{GH_TOKEN:-$(gh auth token)}}\", failing without one: {blaming:?}"
     );
 }
