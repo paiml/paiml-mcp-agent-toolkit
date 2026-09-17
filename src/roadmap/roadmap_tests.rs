@@ -296,7 +296,13 @@ mod tests {
     }
 
     // Test configuration defaults
+    //
+    // `default_roadmap_path()` reads the process-global PMAT_ROADMAP_PATH, which
+    // `tests_spec_and_work.rs` sets under `#[serial(env_vars)]`. A reader outside
+    // that group raced it: this test failed under `cargo test --lib roadmap` and
+    // passed alone (measured on PMAT-1363). Readers join the group too.
     #[test]
+    #[serial_test::serial(env_vars)]
     fn test_roadmap_config_defaults() {
         let config = RoadmapConfig::default();
 

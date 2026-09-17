@@ -1,0 +1,426 @@
+{
+  "ticket": "PMAT-1363",
+  "lane": "quorum",
+  "mode": "grillme",
+  "executor": "agy",
+  "width": 3,
+  "agy_version": "1.2.5",
+  "schema": "~/.claude/skills/paiml-implement/agy/quorum-lane-schema.json",
+  "not_before": 1789632661,
+  "conversations": [
+    "06f59625-9e1a-4e0d-9878-bbf74f2ae446",
+    "ba82b1f0-6fb4-4d0b-abcd-e1866f9de704",
+    "1592bc60-1a80-4f39-babb-a33832f1f1fd"
+  ],
+  "child_conversations": 3,
+  "fanout": {
+    "printed": "children=3 method=lane-files label=consensus",
+    "children": 3,
+    "method": "lane-files",
+    "label": "consensus",
+    "note": "fanout.sh was run before lane-reduce.json was written into out_dir, so the lane-*.json glob counted only the 3 lane files"
+  },
+  "results": [
+    {
+      "lane": 1,
+      "exit": 0,
+      "file": "$XDG_RUNTIME_DIR/paiml-implement/agy/PMAT-1363/8e37eea6-0238-4519-9973-f7a688513fb0/ph4b/lane-1.json",
+      "conversation_id": "06f59625-9e1a-4e0d-9878-bbf74f2ae446",
+      "num_turns": 1,
+      "duration_seconds": 357.598567107,
+      "verdict": "PASS",
+      "summary": "I have completed a thorough review of PR #1364 (PMAT-1363) at HEAD eef6881f8. \n\n1. **Last-dash rule vs parse_id:** Minted IDs are strictly `PREFIX-N` with `PREFIX` containing no dashes. The last-dash rule (`rsplit('-').next()`) applied to a `PREFIX-N` string correctly yields `N`. The ID authority calculation takes the max over all `id_number` results, guaranteeing `MAX >= N`. The minted ID is `PREFIX-(MAX+1)`, meaning the new `N` is strictly greater than any existing `N` for that exact shape. A collision is mathematically impossible.\n2. **Refactors:** I compared every requested refactor against its pre-refactor form in `e4a1e999c`.\n   - `parse_id`/`leading_numeral`: I wrote a fuzzer testing permutations of characters and found zero inputs where the outputs differ. Checking the first byte for ASCII alphanumeric equivalence is identical to checking the first `char`.\n   - `check_fragment`/`fragment_shape`/`first_row_declares`: State progression of the `lines` iterator is preserved. Coercing `String` to `Option<&str>` for string comparison and formatting behaves identically.\n   - `write_roadmap_as_fragments`: `ids` BTreeSet behaves exactly the same as `wanted`. \n   - `persist_new_row`: Same logic, passing `&item.id` instead of `id` is identical since `item.id == id`.\n   - `titles_by_id`: Early return logic precisely matches the original `if-else` flow.\n   - `aggregate.rs`: Breaking `aggregate_locked` into `refusal`/`emit` propagates identical `AggregateReport` instances.\n3. **Correctness/Bugs:** The atomic replacement via `staging` file rename is safe and POSIX compliant. In `execute()`, the repository lock drops perfectly via RAII out of scope BEFORE `process::exit` is invoked. No concrete failure scenario could be found.\n\nAll concerns are refuted. The PR is solid.",
+      "findings": [
+        {
+          "claim": "keeping the last-dash rule (rather than parse_id) can let work add mint an id string that already exists",
+          "file": "src/services/roadmap_text.rs",
+          "fix": "none needed, refuted",
+          "grounding": "asserted",
+          "line": 248
+        },
+        {
+          "claim": "Refactors in parse_id/leading_numeral alter behavior on some inputs",
+          "file": "src/services/roadmap_fragments.rs",
+          "fix": "none needed, refuted",
+          "grounding": "measured",
+          "line": 751
+        },
+        {
+          "claim": "Refactors in check_fragment/fragment_shape/first_row_declares alter behavior",
+          "file": "src/services/roadmap_fragments.rs",
+          "fix": "none needed, refuted",
+          "grounding": "asserted",
+          "line": 265
+        },
+        {
+          "claim": "Refactors in write_roadmap_as_fragments alter behavior",
+          "file": "src/services/roadmap_service_io.rs",
+          "fix": "none needed, refuted",
+          "grounding": "asserted",
+          "line": 249
+        },
+        {
+          "claim": "Refactors in persist_new_row alter behavior",
+          "file": "src/services/roadmap_service_operations.rs",
+          "fix": "none needed, refuted",
+          "grounding": "asserted",
+          "line": 229
+        },
+        {
+          "claim": "Refactors in titles_by_id alter behavior",
+          "file": "src/services/roadmap_text.rs",
+          "fix": "none needed, refuted",
+          "grounding": "asserted",
+          "line": 661
+        },
+        {
+          "claim": "Correctness bugs with concrete failure scenarios exist in the PR diff",
+          "file": "src/roadmap/aggregate.rs",
+          "fix": "none needed, refuted",
+          "grounding": "asserted",
+          "line": 509
+        }
+      ],
+      "model": "gemini-3.1-pro-high"
+    },
+    {
+      "lane": 2,
+      "exit": 0,
+      "file": "$XDG_RUNTIME_DIR/paiml-implement/agy/PMAT-1363/8e37eea6-0238-4519-9973-f7a688513fb0/ph4b/lane-2.json",
+      "conversation_id": "ba82b1f0-6fb4-4d0b-abcd-e1866f9de704",
+      "num_turns": 1,
+      "duration_seconds": 318.634851908,
+      "verdict": "PASS",
+      "summary": "Re-review of PR #1364 (ticket PMAT-1363) at commit eef6881f8. All previous review findings have been resolved with high rigor: (1) Single ID reader roadmap_text::id_number is shared by rows (max_id_number) and fragments (max_fragment_id_in_tree); keeping the last-dash rule cannot mint an already-existing ID because minted IDs are strictly PREFIX-N with no dash in prefix, for which rsplit('-') and parse_id split on the exact same dash, guaranteeing next > max >= N. Multi-dash legacy IDs contain >= 2 dashes and cannot match the single-dash minted shape. (2) write_aggregate writes atomically via replace_atomically (stage beside .tmp, rename). (3) All refactored functions (parse_id/leading_numeral, check_fragment/fragment_shape/first_row_declares, write_roadmap_as_fragments/refuse_header_change/refuse_unwritable/fragment_changes, persist_new_row, aggregate_locked/refusal/emit, and titles_by_id/open_row/claim_title) were checked line-by-line against e4a1e999c; zero behavioural discrepancies exist on any input. All 44 fragment tests and 50 work_add/roadmap_id tests pass. No correctness bugs found. Verdict is PASS.",
+      "findings": [
+        {
+          "claim": "Both max_id_number and max_fragment_id_in_tree now route through roadmap_text::id_number, ensuring identical ID accounting across roadmap rows and fragment names. Keeping the last-dash rule cannot cause work add to mint an already existing ID string because minted IDs strictly take the form PREFIX-N (where PREFIX has no dash), and on any string of this form rsplit('-') and parse_id split at the exact same dash, yielding max >= N and next >= N + 1 > N. Multi-dash legacy strings contain at least two dashes and cannot match the single-dash minted format.",
+          "file": "src/services/roadmap_text.rs",
+          "grounding": "measured",
+          "line": 238
+        },
+        {
+          "claim": "write_aggregate writes via replace_atomically (write to .{name}.aggregate.tmp and rename), ensuring atomic updates and eliminating the risk of readers observing truncated intermediate state or uncleaned staging files.",
+          "file": "src/roadmap/aggregate.rs",
+          "grounding": "measured",
+          "line": 217
+        },
+        {
+          "claim": "The refactor extracting leading_numeral from parse_id and splitting check_fragment into fragment_shape and first_row_declares is strictly behaviour-preserving across all inputs.",
+          "file": "src/services/roadmap_fragments.rs",
+          "grounding": "measured",
+          "line": 116
+        },
+        {
+          "claim": "The refactor extracting refuse_header_change, refuse_unwritable, and fragment_changes from write_roadmap_as_fragments is strictly behaviour-preserving across all inputs.",
+          "file": "src/services/roadmap_service_io.rs",
+          "grounding": "measured",
+          "line": 251
+        },
+        {
+          "claim": "The extraction of persist_new_row unifies both add_item_with_next_id and add_item_with_id to consistently route through write_fragment when docs/roadmaps/entries/ exists and append_item when it does not, with zero behavioral deviation from e4a1e999c.",
+          "file": "src/services/roadmap_service_operations.rs",
+          "grounding": "measured",
+          "line": 239
+        },
+        {
+          "claim": "The refactor decomposing aggregate_locked into refusal and emit cleanly partitions exit codes (code 2 for I/O errors, code 1 for contract violations) and execution arms while preserving exact reporting strings and exit codes.",
+          "file": "src/roadmap/aggregate.rs",
+          "grounding": "measured",
+          "line": 100
+        },
+        {
+          "claim": "The refactor extracting open_row and claim_title from titles_by_id preserves exact row parsing order, indentation matching, and scalar cleaning.",
+          "file": "src/services/roadmap_text.rs",
+          "grounding": "measured",
+          "line": 663
+        },
+        {
+          "claim": "The roadmap-fragments-v1 contract defines 8 formal proof obligations and 8 falsification tests that rigorously specify pure function properties, sorted placement, byte parity against the Python reference, filename safety, fragment writing, reader views, lock exclusivity, and ID minting preconditions.",
+          "file": "contracts/roadmap-fragments-v1.yaml",
+          "grounding": "cited",
+          "line": 1
+        }
+      ],
+      "model": "gemini-3.8-flash-high"
+    },
+    {
+      "lane": 3,
+      "exit": 0,
+      "file": "$XDG_RUNTIME_DIR/paiml-implement/agy/PMAT-1363/8e37eea6-0238-4519-9973-f7a688513fb0/ph4b/lane-3.json",
+      "conversation_id": "1592bc60-1a80-4f39-babb-a33832f1f1fd",
+      "num_turns": 1,
+      "duration_seconds": 355.515454788,
+      "verdict": "PASS",
+      "summary": "Comprehensive Grill-me audit of PR #1364 at HEAD eef6881f8: (1) Verified roadmap_text::id_number unification across row parsing and fragment authority; proved the last-dash rule cannot mint an existing ID because minted IDs are strictly PREFIX-N with no dash in the prefix and numeric value > max(id_number(S)). (2) Verified write_aggregate atomic staging and rename with zero leftover temp files. (3) Verified all requested refactors against e4a1e999c are strictly behaviour-preserving with no divergent inputs. (4) Executed test suite (44/44 roadmap_fragments tests and 177/177 roadmap test suite passed). Verdict: PASS.",
+      "findings": [
+        {
+          "claim": "The ID authority and raw roadmap scanner now share a single ID number parser (roadmap_text::id_number), preventing allocation desynchronization between roadmap rows and fragment file names across git branches.",
+          "file": "src/services/roadmap_text.rs",
+          "fix": "None required; verified unified parser across roadmap_id_authority and roadmap_text.",
+          "grounding": "measured",
+          "line": 248
+        },
+        {
+          "claim": "write_aggregate uses replace_atomically to stage and rename roadmap.yaml within the same directory, guaranteeing atomic updates without leaving temporary staging files.",
+          "file": "src/roadmap/aggregate.rs",
+          "fix": "None required; verified replace_atomically and cleanup on error.",
+          "grounding": "measured",
+          "line": 217
+        },
+        {
+          "claim": "Refactors of parse_id/leading_numeral and check_fragment/fragment_shape/first_row_declares in roadmap_fragments.rs are strictly behaviour-preserving compared to e4a1e999c across all inputs.",
+          "file": "src/services/roadmap_fragments.rs",
+          "fix": "None required; verified equivalence against e4a1e999c.",
+          "grounding": "measured",
+          "line": 116
+        },
+        {
+          "claim": "persist_new_row unifies fragment persistence for both sequential and caller-supplied (GitHub issue/explicit) work add paths, ensuring roadmap.yaml is never written in opted-in repositories.",
+          "file": "src/services/roadmap_service_operations.rs",
+          "fix": "None required; verified persist_new_row logic and test suite pass.",
+          "grounding": "measured",
+          "line": 239
+        }
+      ],
+      "model": "gemini-3.7-flash-high"
+    }
+  ],
+  "consensus": "Consensus PASS, 3 of 3 (lanes 1, 2, 3; lane-reduce exit 0, agreed=true, partial=false, dissent=[]). None of the three lanes found a bug. (1) Last-dash rule: dedup src/services/roadmap_text.rs:248 (lanes 1, 3) and :238 (lane 2) say work add cannot mint an id that already exists, because a minted id is PREFIX-N with no dash in PREFIX and the next number is greater than every existing one. No lane built a colliding input. Lane 1's row states the hypothesis it rejected ('keeping the last-dash rule ... can let work add mint an id string that already exists', fix 'none needed, refuted'), so dedup's lanes_agreeing [1,3] is agreement that there is NO collision. (2) replace_atomically: dedup src/roadmap/aggregate.rs:217 (lanes 2, 3) say write_aggregate stages beside the target and renames. (3) Refactors: dedup roadmap_fragments.rs:116 (lanes 2, 3) and roadmap_service_operations.rs:239 (lanes 2, 3) say they preserve behaviour. Rows backed by only one lane: roadmap_service_io.rs:251 (lane 2), aggregate.rs:100 refusal/emit (lane 2), roadmap_text.rs:663 open_row/claim_title (lane 2), and lane 1's rejected-hypothesis rows at roadmap_fragments.rs:265, :751, roadmap_service_io.rs:249, roadmap_service_operations.rs:229, roadmap_text.rs:661 and aggregate.rs:509. No lane named any input on which the old and new code differ.",
+  "lane_reduce_artifact": "$XDG_RUNTIME_DIR/paiml-implement/agy/PMAT-1363/8e37eea6-0238-4519-9973-f7a688513fb0/ph4b/lane-reduce.json",
+  "lane_reduce_artifact_sha256": "f6af1b29b8993a91047741d9e2d99dd87db671049982d284c32f0afa5853c37e",
+  "lane_reduce": {
+    "dedup": [
+      {
+        "file": "contracts/roadmap-fragments-v1.yaml",
+        "line": 1,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "The roadmap-fragments-v1 contract defines 8 formal proof obligations and 8 falsification tests that rigorously specify pure function properties, sorted placement, byte parity against the Python reference, filename safety, fragment writing, reader views, lock exclusivity, and ID minting preconditions."
+        ]
+      },
+      {
+        "file": "src/roadmap/aggregate.rs",
+        "line": 100,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "The refactor decomposing aggregate_locked into refusal and emit cleanly partitions exit codes (code 2 for I/O errors, code 1 for contract violations) and execution arms while preserving exact reporting strings and exit codes."
+        ]
+      },
+      {
+        "file": "src/roadmap/aggregate.rs",
+        "line": 217,
+        "lanes_agreeing": [
+          2,
+          3
+        ],
+        "claims": [
+          "write_aggregate uses replace_atomically to stage and rename roadmap.yaml within the same directory, guaranteeing atomic updates without leaving temporary staging files.",
+          "write_aggregate writes via replace_atomically (write to .{name}.aggregate.tmp and rename), ensuring atomic updates and eliminating the risk of readers observing truncated intermediate state or uncleaned staging files."
+        ]
+      },
+      {
+        "file": "src/roadmap/aggregate.rs",
+        "line": 509,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "Correctness bugs with concrete failure scenarios exist in the PR diff"
+        ]
+      },
+      {
+        "file": "src/services/roadmap_fragments.rs",
+        "line": 116,
+        "lanes_agreeing": [
+          2,
+          3
+        ],
+        "claims": [
+          "Refactors of parse_id/leading_numeral and check_fragment/fragment_shape/first_row_declares in roadmap_fragments.rs are strictly behaviour-preserving compared to e4a1e999c across all inputs.",
+          "The refactor extracting leading_numeral from parse_id and splitting check_fragment into fragment_shape and first_row_declares is strictly behaviour-preserving across all inputs."
+        ]
+      },
+      {
+        "file": "src/services/roadmap_fragments.rs",
+        "line": 265,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "Refactors in check_fragment/fragment_shape/first_row_declares alter behavior"
+        ]
+      },
+      {
+        "file": "src/services/roadmap_fragments.rs",
+        "line": 751,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "Refactors in parse_id/leading_numeral alter behavior on some inputs"
+        ]
+      },
+      {
+        "file": "src/services/roadmap_service_io.rs",
+        "line": 249,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "Refactors in write_roadmap_as_fragments alter behavior"
+        ]
+      },
+      {
+        "file": "src/services/roadmap_service_io.rs",
+        "line": 251,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "The refactor extracting refuse_header_change, refuse_unwritable, and fragment_changes from write_roadmap_as_fragments is strictly behaviour-preserving across all inputs."
+        ]
+      },
+      {
+        "file": "src/services/roadmap_service_operations.rs",
+        "line": 229,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "Refactors in persist_new_row alter behavior"
+        ]
+      },
+      {
+        "file": "src/services/roadmap_service_operations.rs",
+        "line": 239,
+        "lanes_agreeing": [
+          2,
+          3
+        ],
+        "claims": [
+          "The extraction of persist_new_row unifies both add_item_with_next_id and add_item_with_id to consistently route through write_fragment when docs/roadmaps/entries/ exists and append_item when it does not, with zero behavioral deviation from e4a1e999c.",
+          "persist_new_row unifies fragment persistence for both sequential and caller-supplied (GitHub issue/explicit) work add paths, ensuring roadmap.yaml is never written in opted-in repositories."
+        ]
+      },
+      {
+        "file": "src/services/roadmap_text.rs",
+        "line": 238,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "Both max_id_number and max_fragment_id_in_tree now route through roadmap_text::id_number, ensuring identical ID accounting across roadmap rows and fragment names. Keeping the last-dash rule cannot cause work add to mint an already existing ID string because minted IDs strictly take the form PREFIX-N (where PREFIX has no dash), and on any string of this form rsplit('-') and parse_id split at the exact same dash, yielding max >= N and next >= N + 1 > N. Multi-dash legacy strings contain at least two dashes and cannot match the single-dash minted format."
+        ]
+      },
+      {
+        "file": "src/services/roadmap_text.rs",
+        "line": 248,
+        "lanes_agreeing": [
+          1,
+          3
+        ],
+        "claims": [
+          "The ID authority and raw roadmap scanner now share a single ID number parser (roadmap_text::id_number), preventing allocation desynchronization between roadmap rows and fragment file names across git branches.",
+          "keeping the last-dash rule (rather than parse_id) can let work add mint an id string that already exists"
+        ]
+      },
+      {
+        "file": "src/services/roadmap_text.rs",
+        "line": 661,
+        "lanes_agreeing": [
+          1
+        ],
+        "claims": [
+          "Refactors in titles_by_id alter behavior"
+        ]
+      },
+      {
+        "file": "src/services/roadmap_text.rs",
+        "line": 663,
+        "lanes_agreeing": [
+          2
+        ],
+        "claims": [
+          "The refactor extracting open_row and claim_title from titles_by_id preserves exact row parsing order, indentation matching, and scalar cleaning."
+        ]
+      }
+    ],
+    "uncovered": [],
+    "dissent": [],
+    "partial_reasons": [],
+    "coverage_source": "lanes",
+    "author": {
+      "model": "opus-5",
+      "family": "claude",
+      "source": "flag"
+    },
+    "lanes": [
+      {
+        "lane": 1,
+        "verdict": "PASS",
+        "verdict_source": "structured_output",
+        "grounding_check": "parity",
+        "model": "gemini-3.1-pro-high",
+        "model_measured": "gemini-3.1-pro-high",
+        "model_source": "measured",
+        "family": "gemini"
+      },
+      {
+        "lane": 2,
+        "verdict": "PASS",
+        "verdict_source": "structured_output",
+        "grounding_check": "parity",
+        "model": "gemini-3.8-flash-high",
+        "model_measured": "gemini-3.8-flash-high",
+        "model_source": "measured",
+        "family": "gemini"
+      },
+      {
+        "lane": 3,
+        "verdict": "PASS",
+        "verdict_source": "structured_output",
+        "grounding_check": "parity",
+        "model": "gemini-3.7-flash-high",
+        "model_measured": "gemini-3.7-flash-high",
+        "model_source": "measured",
+        "family": "gemini"
+      }
+    ]
+  },
+  "isolation": {
+    "lane_1": [
+      "agy-lane: lane clone <repo_root>/.claude/worktrees/lane-eef6881f8-1650369 (from eef6881f8; sandboxed, self-contained)",
+      "agy-lane: tree witness verified: the lane read its workspace",
+      "agy-lane: lane clone <repo_root>/.claude/worktrees/lane-eef6881f8-1650369 KEPT: a writes=false lane wrote into it (10 paths: compare_parse_id,compare_parse_id.rs,diff.txt)"
+    ],
+    "lane_2": [
+      "agy-lane: lane clone <repo_root>/.claude/worktrees/lane-eef6881f8-1650380 (from eef6881f8; sandboxed, self-contained)",
+      "agy-lane: tree witness verified: the lane read its workspace",
+      "agy-lane: lane clone <repo_root>/.claude/worktrees/lane-eef6881f8-1650380 removed (the lane left it byte-identical)"
+    ],
+    "lane_3": [
+      "agy-lane: lane clone <repo_root>/.claude/worktrees/lane-eef6881f8-1650395 (from eef6881f8; sandboxed, self-contained)",
+      "agy-lane: tree witness verified: the lane read its workspace",
+      "agy-lane: lane clone <repo_root>/.claude/worktrees/lane-eef6881f8-1650395 removed (the lane left it byte-identical)"
+    ],
+    "concurrent_scope": "none declared; the script printed no --concurrent-scope line and checked the whole checkout",
+    "lanes_pids": "exit 2 0 / exit 1 0 / exit 3 0 / end; no exit 3 (isolation violation) and no exit 4 (blind)",
+    "shared_checkout_after": "HEAD eef6881f89029d48b95fbd31aa90eaefb5034688, git status --porcelain empty"
+  },
+  "open_questions": [
+    "FINDING: lane 1, a writes=false lane, wrote 10 untracked paths into its own clone, so agy-lane.sh KEPT it at <repo_root>/.claude/worktrees/lane-eef6881f8-1650369: compare_parse_id, compare_parse_id.rs, diff.txt, fuzz_parse_id, fuzz_parse_id.rs, old_aggregate.rs, old_roadmap_fragments.rs, old_roadmap_service_io.rs, old_roadmap_service_operations.rs, old_roadmap_text.rs. They stayed inside the clone: the lane exited 0 and the shared checkout is still clean at eef6881f8. lane-reduce does not mark the lane partial for this, so its PASS counts. The delegate did not delete the clone. This is the second dispatch in a row where the lane-1 slot (gemini-3.1-pro-high) wrote into its clone; ph4 left diff.txt, test_id and test_id.rs.",
+    "Lane 1 labels its parse_id/leading_numeral row (roadmap_fragments.rs:751) measured. The fuzz_parse_id and compare_parse_id programs it left in its clone back that up, but the delegate did not re-run them. Lane 1's other 6 rows are labelled asserted.",
+    "Lane 2 labels 7 of 8 rows measured, including read-only equivalence claims ('checked line-by-line') whose evidence is reading, which would be cited. It also claims 44 fragment tests and 50 work_add/roadmap_id tests pass. Its clone was byte-identical and removed, so nothing remains to inspect. Lane 3 labels all 4 rows measured and claims 44/44 roadmap_fragments and 177/177 roadmap tests pass. The delegate re-ran none of this. grounding_check is parity on all 3 lanes, so the labels were not coerced; they are exactly what each lane chose.",
+    "Uneven per-item coverage (no --brief items.json was given, so lane-reduce's uncovered=[] and coverage_source=lanes measure nothing against the brief). Finding rows per lane: aggregate_locked/refusal/emit has a row only from lane 2 (lane 1 mentions it in its summary; lane 3 has neither). write_roadmap_as_fragments/refuse_header_change/refuse_unwritable/fragment_changes has rows from lanes 1 and 2. titles_by_id/open_row/claim_title has rows from lanes 1 and 2. Lane 3's summary says it checked 'all requested refactors' but it has rows for only 4 items.",
+    "Lane 1's finding rows state the hypotheses it REJECTED, not defects (every fix is 'none needed, refuted'). So dedup rows such as roadmap_text.rs:248 put a lane-1 hypothesis ('can let work add mint an id string that already exists') next to lane 3's positive claim in lanes_agreeing [1,3]. Read that row as agreement that no collision exists.",
+    "The author model was taken from the brief (opus-5, family claude, lane-reduce source=flag): the measured file $XDG_RUNTIME_DIR/paiml-implement/model-8e37eea6-0238-4519-9973-f7a688513fb0 does not exist, although pid-2508652 names that session. All 3 lanes are gemini-family with 3 distinct ids, and model_source=measured from each lane-<i>.log.",
+    "Pre-existing, left alone as instructed: <repo_root>/.claude/worktrees/lane-64042b343-234543 and <repo_root>/.claude/worktrees/lane-e4a1e999c-1674704.",
+    "The prompt was stored verbatim at $XDG_RUNTIME_DIR/paiml-implement/agy/PMAT-1363/8e37eea6-0238-4519-9973-f7a688513fb0/ph4b-prompt.txt, outside repo_root, and passed unchanged. It names no absolute repo_root (grep count 0). No memory file was written."
+  ],
+  "partial": false
+}
