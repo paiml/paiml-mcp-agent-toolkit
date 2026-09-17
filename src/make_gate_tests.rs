@@ -9,12 +9,14 @@
 //!
 //! These tests are the half that does: `cargo test --lib` runs inside `ci / gate`. They
 //! re-read the table with this crate's own YAML parser — an independent reading, not a
-//! second runner — and pin the three things a later edit could remove while every other
+//! second runner — and pin the four things a later edit could remove while every other
 //! test stayed green:
 //!
 //!   1. the Makefile target exists and runs the table;
 //!   2. every required context has a row, and every CI-only row says why;
-//!   3. every `step` row still names exactly one runnable step in its workflow.
+//!   3. every `step` row still names exactly one runnable step in its workflow;
+//!   4. no CI-only row blames cost for a check that runs nothing but the pmat binary,
+//!      which `make gate` already builds (its `build-pmat` leg).
 //!
 //! Contract: `contracts/make-gate-v1.yaml`.
 
@@ -220,4 +222,101 @@ fn every_step_leg_names_one_runnable_step_in_its_workflow() {
             r.leg
         );
     }
+}
+
+/// Setup actions a CI job may use without doing any checking of its own.
+const SETUP_ACTIONS: &[&str] = &[
+    "actions/checkout@",
+    "dtolnay/rust-toolchain@",
+    "Swatinem/rust-cache@",
+];
+
+/// True when `job` does nothing but build pmat and run it: every `uses:` step is setup,
+/// every `run:` step is a one-line `cargo build … --bin pmat` or `cargo run … --bin pmat -- …`
+/// with no `env:`/`if:`, at least one of them runs it, and the job sets no env or matrix.
+fn runs_only_pmat(job: &Value) -> bool {
+    if ["env", "strategy", "services", "container"]
+        .iter()
+        .any(|k| job.get(*k).is_some())
+    {
+        return false;
+    }
+    let steps = job
+        .get("steps")
+        .and_then(Value::as_sequence)
+        .cloned()
+        .unwrap_or_default();
+    let mut runs_pmat = false;
+    for step in &steps {
+        if let Some(uses) = step.get("uses").and_then(Value::as_str) {
+            if !SETUP_ACTIONS.iter().any(|a| uses.starts_with(a)) {
+                return false;
+            }
+            continue;
+        }
+        let run = step.get("run").and_then(Value::as_str).unwrap_or("").trim();
+        if run.is_empty()
+            || run.contains('\n')
+            || step.get("env").is_some()
+            || step.get("if").is_some()
+        {
+            return false;
+        }
+        let builds = run.starts_with("cargo build ") && run.contains(" --bin pmat");
+        let runs = run.starts_with("cargo run ") && run.contains(" --bin pmat -- ");
+        if !builds && !runs {
+            return false;
+        }
+        runs_pmat |= runs;
+    }
+    runs_pmat
+}
+
+/// `unrun-tests` and `reachability-ledger` were CI-only rows reading "cost: a release build
+/// of pmat". Neither CI job does anything but build pmat and run one of its subcommands,
+/// and the gate already builds pmat: on the debug binary the two checks take 14s and 1.5s.
+/// The reason was never measured, and the reachability leg went red in CI on this branch's
+/// own new file while `make gate` read green (PR #1368, feature-gate on 1d8c64f40).
+#[test]
+fn no_ci_only_cost_row_hides_a_check_that_only_runs_pmat() {
+    let script = read(SCRIPT);
+    let mut resolved = 0;
+    let mut hiding = Vec::new();
+    for r in rows(&script)
+        .iter()
+        .filter(|r| r.kind == "ci-only" && r.note.starts_with("cost:"))
+    {
+        let mut words = r.source.split_whitespace();
+        let (wf, job) = (words.next().unwrap_or(""), words.next().unwrap_or(""));
+        let wf = if wf.contains('/') {
+            wf.to_string()
+        } else {
+            format!(".github/workflows/{wf}")
+        };
+        // sovereign-ci.yml lives in paiml/.github, not in this tree: nothing to read.
+        let Ok(text) = fs::read_to_string(repo_root().join(&wf)) else {
+            continue;
+        };
+        let doc = serde_yaml_ng::from_str::<Value>(&text).unwrap_or_default();
+        let job_v = doc.get("jobs").and_then(|j| j.get(job));
+        assert!(
+            job_v.is_some(),
+            "CI-only row `{}`: source `{}` names no job `{job}` in {wf}",
+            r.leg,
+            r.source
+        );
+        resolved += 1;
+        if job_v.is_some_and(runs_only_pmat) {
+            hiding.push(format!("{} ({wf} job `{job}`)", r.leg));
+        }
+    }
+    assert!(
+        resolved >= 5,
+        "only {resolved} CI-only cost rows resolved to a job in this tree — the source parser is broken"
+    );
+    assert!(
+        hiding.is_empty(),
+        "CI-only rows blame cost for a CI job that only builds and runs pmat, which `make gate` \
+         already builds (leg build-pmat) — make each a cmd row on ./target/debug/pmat: {hiding:?}"
+    );
 }
