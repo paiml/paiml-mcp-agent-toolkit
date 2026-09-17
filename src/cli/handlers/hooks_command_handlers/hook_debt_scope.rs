@@ -232,10 +232,10 @@ pub fn diff_scoped_verdict(
     thresholds: DebtThresholds,
 ) -> Result<DebtVerdict> {
     let new_functions = measure_source(new_source)?;
-    let old_functions = match old_source {
-        Some(text) => measure_source(text)?,
-        None => Vec::new(),
-    };
+    let old_functions = old_source
+        .map(measure_source)
+        .transpose()?
+        .unwrap_or_default();
     let ranges = parse_touched_ranges(diff);
 
     let mut growths = Vec::new();
