@@ -121,6 +121,9 @@ impl CommandDispatcher {
             WorkCommands::Triage { command } => {
                 crate::cli::handlers::work_ledger::dispatch_work_triage(command).await
             }
+            WorkCommands::Estimate { command } => {
+                crate::cli::handlers::work_ledger::dispatch_work_estimate(command).await
+            }
             WorkCommands::Event {
                 id,
                 event_type,
