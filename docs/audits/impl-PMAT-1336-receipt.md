@@ -44,8 +44,18 @@ Before this PR could merge, #1382 (PMAT-1366) merged at e89a827f7 with a PMAT-13
 
 `pmat verify --format json` on d22870740 returned `ok: false`. Format, satd and clippy passed; complexity was not measured. The tests stage failed on one lib test out of 21,661: `services::tdg_baseline::tests::the_committed_baseline_is_the_measured_count` counts 1742 definitions below grade A against a baseline of 1688. That test counts over the local `.pmat/context.db` index. It is open issue #1266, which records it as unmeasurable in CI, and this branch did not cause it: the branch changes no `src/` file.
 
-## 2026-09-17 — PMAT-1366, closed by #1382 and left `planned`
+## 2026-09-17 — PMAT-1366, closed by #1382 (completed first by #1364)
 
-#1382 merged at e89a827f7 and closed issue #1366 at 2026-09-17T08:55:11Z, leaving the `PMAT-1366` row `planned`. This is the same lifecycle gap as the entries above. `pmat work sync --check-only` on master's roadmap then reported `ORPHAN-ROADMAP PMAT-1366` as its only finding.
+#1382 merged at e89a827f7 and closed issue #1366 at 2026-09-17T08:55:11Z, leaving the `PMAT-1366` row `planned`. On this branch, 0533e9b1d completed it with `pmat work sync --direction github-to-yaml`; the dry-run planned exactly one `close-item PMAT-1366 #1366 → Completed`. Review round 3 on dcad45735 passed 3/3.
 
-Fixed with `pmat work sync --direction github-to-yaml`. Its dry-run planned exactly one action, `close-item PMAT-1366 #1366 → Completed`. Diff: that row's `status` and `updated` lines (4 changed lines), plus this receipt section. After it, `pmat work sync --check-only` reads coherent.
+Before this PR could merge, #1364 (PMAT-1363) merged at 8915fe3e6 and set the PMAT-1366 row to `completed` itself. The merge commit 258c558ff resolved the conflict by taking master's `docs/roadmaps/roadmap.yaml` unchanged, so this PR adds no PMAT-1366 bytes.
+
+## 2026-09-17 — PMAT-1385, an open issue with no row
+
+Issue #1385 was opened at 2026-09-17T09:57:46Z with the label `kind:code`. Master 8915fe3e6 had no row for it, so `pmat work sync --check-only` reported `ORPHAN-GITHUB #1385`. Fixed in 475abd957 with `pmat work add --github-issue 1385 -t kind:code "<issue title>"`, the writer used for PMAT-1381 above, with the label copied from the issue. The diff is a 17-line row, `PMAT-1385` bound to `github_issue: 1385`. The issue stays open (keeps-open #1385).
+
+## 2026-09-17 — PMAT-1363, closed by #1364 and left `planned`
+
+#1364 merged at 8915fe3e6 and closed issue #1363 at 2026-09-17T09:51:56Z. It completed PMAT-1366 but left the `PMAT-1363` row `planned`, so `pmat work sync --check-only` reported `ORPHAN-ROADMAP PMAT-1363`. Fixed in b5b664ae5 with `pmat work sync --direction github-to-yaml`: once PMAT-1385 was registered, its plan was exactly one `close-item PMAT-1363 #1363 → Completed`. The diff is that row's `status` and `updated` lines.
+
+After both, `pmat work sync --check-only` reads coherent.
