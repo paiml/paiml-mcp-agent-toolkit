@@ -470,3 +470,7 @@ tree: run-log behind=3 against origin/master 03f893a4a. Host up 7 hours, 39 minu
 
 tree: run-log rebased, behind=0 against origin/master ecd97c6bc; tag v3.41.0 → ecd97c6bc.
 - `release.yml` run 35286438196 started 23:21:02Z on v3.41.0 — the first tag since v3.39.0 with a 90/75-minute clean-room budget. Publish waits on its `gate / cpu-gates`.
+
+## 2026-09-17T23:59Z — CI clean room running 38 min so far (was killed at 30 on every prior tag)
+
+tree: run-log behind=0. release run 35286438196: create-release success, gate/lint-gate success, gate/cpu-gates in_progress since 23:21:21Z, gpu-gates skipped. Host up 8 hours, 27 minutes. REL-3.41.0 session LIVE, waiting on the same job before publishing.
