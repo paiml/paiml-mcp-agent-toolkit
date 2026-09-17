@@ -449,3 +449,9 @@ tree: run-log HEAD behind=0 against origin/master b3df4a402.
 
 tree: run-log behind=0 against origin/master b3df4a402. Host up 5 hours, 53 minutes.
 - REL-3.41.0: LIVE; re-measured the two hazards it will document, drafted the CHANGELOG, and is waiting for lifecycle PR #1398 (45 pass / 1 pending, armed) before cutting so its own `traceability` starts green. Slots 1/3.
+
+## 2026-09-17T21:54Z — #1398 MERGED; release session at the LOCAL clean room
+
+tree: run-log behind=3 against origin/master 03f893a4a. Host up 6 hours, 22 minutes, load 1.61, 2.79, 5.15.
+- Lifecycle-9 #1398 merged; master's bijection is coherent with PMAT-636 and PMAT-900001 terminal.
+- REL-3.41.0: branch head ad214bd98 (the cut commit); it has run `make validate-book`, read the clean-room Makefile's `_copy-source`/`_run-gates`, built a detached source tree and started the local clean room (~35 min expected). The orchestrator runs nothing heavy meanwhile.
