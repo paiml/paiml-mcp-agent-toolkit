@@ -254,6 +254,25 @@ pub fn measure_against(project_path: &Path, base: Option<&str>) -> Result<Measur
     }
 }
 
+/// `(commits, trailered)` over `git log` lines of `\x1f`-separated hash,
+/// subject and trailer values: every non-blank line is a commit, and it is
+/// trailered when its third field names at least one non-empty ticket id.
+fn count_trailered(log: &str) -> (usize, usize) {
+    let mut commits = 0;
+    let mut trailered = 0;
+    for line in log.split('\n').filter(|l| !l.trim().is_empty()) {
+        commits += 1;
+        let names_a_ticket = line
+            .split('\x1f')
+            .nth(2)
+            .is_some_and(|tr| tr.split(',').any(|id| !id.trim().is_empty()));
+        if names_a_ticket {
+            trailered += 1;
+        }
+    }
+    (commits, trailered)
+}
+
 fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
     let since = run_git(
         project_path,
@@ -276,30 +295,7 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
             &range_arg,
         ],
     )?;
-    let mut commits = 0;
-    let mut trailered = 0;
-    if !commits_out.is_empty() {
-        for line in commits_out.split('\n') {
-            if line.trim().is_empty() {
-                continue;
-            }
-            commits += 1;
-            let parts: Vec<&str> = line.split('\x1f').collect();
-            if parts.len() >= 3 {
-                let tr = parts[2].trim();
-                if !tr.is_empty() {
-                    let ids: Vec<&str> = tr
-                        .split(',')
-                        .map(|s| s.trim())
-                        .filter(|s| !s.is_empty())
-                        .collect();
-                    if !ids.is_empty() {
-                        trailered += 1;
-                    }
-                }
-            }
-        }
-    }
+    let (commits, trailered) = count_trailered(&commits_out);
 
     Ok(Measurement {
         range: Range::DefaultBranch { since },

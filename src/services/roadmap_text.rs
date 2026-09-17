@@ -410,39 +410,43 @@ pub fn append_item(raw: &str, block: &str) -> String {
             out.push_str(&raw[span.1..]);
             out
         }
-        Some((key_span, false)) => {
-            // Quorum lane 1 on PR #1201: when a top-level key FOLLOWS the
-            // sequence, the row must land at the end of the sequence, not at
-            // EOF inside that key's mapping. With `roadmap:` last (what pmat
-            // writes) this is exactly `raw + block`.
-            let spans = line_spans(raw);
-            let indent = row_indent(raw);
-            let key_index = spans.iter().position(|&s| s == key_span).unwrap_or(0);
-            match sequence_boundary(raw, &spans, indent, key_index + 1) {
-                None => append_at_end(raw, block),
-                Some(boundary) => {
-                    let last_start = top_level_rows(raw, &spans, indent)
-                        .iter()
-                        .map(|(index, _)| *index)
-                        .rfind(|&index| index < boundary);
-                    let end = last_start.map_or(key_index, |start| {
-                        last_line_of_row(raw, &spans, start, boundary, indent)
-                    });
-                    let head = &raw[..spans[end].1];
-                    let mut out = String::with_capacity(raw.len() + block.len() + 1);
-                    out.push_str(head);
-                    if !head.ends_with('\n') {
-                        out.push('\n');
-                    }
-                    out.push_str(block);
-                    out.push_str(&raw[spans[end].1..]);
-                    out
-                }
-            }
-        }
+        Some((key_span, false)) => append_to_sequence(raw, key_span, block),
         None => {
             let mut out = append_at_end(raw, "roadmap:\n");
             out.push_str(block);
+            out
+        }
+    }
+}
+
+/// Insert `block` after the last row of the block sequence opened by the
+/// `roadmap:` key on the line at `key_span`.
+fn append_to_sequence(raw: &str, key_span: (usize, usize), block: &str) -> String {
+    // Quorum lane 1 on PR #1201: when a top-level key FOLLOWS the
+    // sequence, the row must land at the end of the sequence, not at
+    // EOF inside that key's mapping. With `roadmap:` last (what pmat
+    // writes) this is exactly `raw + block`.
+    let spans = line_spans(raw);
+    let indent = row_indent(raw);
+    let key_index = spans.iter().position(|&s| s == key_span).unwrap_or(0);
+    match sequence_boundary(raw, &spans, indent, key_index + 1) {
+        None => append_at_end(raw, block),
+        Some(boundary) => {
+            let last_start = top_level_rows(raw, &spans, indent)
+                .iter()
+                .map(|(index, _)| *index)
+                .rfind(|&index| index < boundary);
+            let end = last_start.map_or(key_index, |start| {
+                last_line_of_row(raw, &spans, start, boundary, indent)
+            });
+            let head = &raw[..spans[end].1];
+            let mut out = String::with_capacity(raw.len() + block.len() + 1);
+            out.push_str(head);
+            if !head.ends_with('\n') {
+                out.push('\n');
+            }
+            out.push_str(block);
+            out.push_str(&raw[spans[end].1..]);
             out
         }
     }

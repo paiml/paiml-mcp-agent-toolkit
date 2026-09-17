@@ -319,11 +319,13 @@ fn suppressed_as_generated(
     }
 }
 
-pub fn find_replicated_divergence(
-    lines: &[ClaimLine],
+/// Group the claim lines — one per (file, line), generated files suppressed —
+/// by their numeral-blanked template, counting candidates and templated lines.
+fn cohorts_by_template<'a>(
+    lines: &'a [ClaimLine],
     cfg: &CohortConfig,
-) -> (Vec<ReplicatedDivergence>, CohortCensus) {
-    let mut census = CohortCensus::default();
+    census: &mut CohortCensus,
+) -> BTreeMap<String, Vec<&'a ClaimLine>> {
     let mut cohorts: BTreeMap<String, Vec<&ClaimLine>> = BTreeMap::new();
 
     let mut ordered: Vec<&ClaimLine> = lines.iter().collect();
@@ -332,7 +334,7 @@ pub fn find_replicated_divergence(
     census.candidate_lines = ordered.len();
 
     for line in ordered {
-        if suppressed_as_generated(line, cfg, &mut census) {
+        if suppressed_as_generated(line, cfg, census) {
             continue;
         }
         let template = blank_numerals(&line.context);
@@ -342,6 +344,15 @@ pub fn find_replicated_divergence(
         census.templated_lines += 1;
         cohorts.entry(template).or_default().push(line);
     }
+    cohorts
+}
+
+pub fn find_replicated_divergence(
+    lines: &[ClaimLine],
+    cfg: &CohortConfig,
+) -> (Vec<ReplicatedDivergence>, CohortCensus) {
+    let mut census = CohortCensus::default();
+    let cohorts = cohorts_by_template(lines, cfg, &mut census);
 
     let mut findings = Vec::new();
     for (template, sites) in cohorts {

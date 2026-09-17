@@ -254,13 +254,7 @@ impl Finding {
                 reason,
                 ..
             } => {
-                let issue = github_issue.map_or_else(|| "?".to_string(), |n| format!("#{n}"));
-                let why = match reason {
-                    OrphanReason::NoIssue => "no issue".to_string(),
-                    OrphanReason::IssueClosed => format!("{issue} is closed"),
-                    OrphanReason::IssueAbsent => format!("{issue} does not exist on GitHub"),
-                    OrphanReason::IssueExcluded => format!("{issue} is labelled no-roadmap"),
-                };
+                let why = Self::orphan_reason_text(*reason, *github_issue);
                 format!("ORPHAN-ROADMAP {id}: {why}")
             }
             Finding::OrphanGithub { number, title, .. } => {
@@ -277,6 +271,18 @@ impl Finding {
                 "DRIFT {id} <-> #{number} {}: roadmap {roadmap:?} vs GitHub {github:?} ({age_minutes} min, past the grace window)",
                 field.name()
             ),
+        }
+    }
+
+    /// Why an item is an orphan, naming its issue as `#n` (or `?` when it has
+    /// none).
+    fn orphan_reason_text(reason: OrphanReason, github_issue: Option<u64>) -> String {
+        let issue = github_issue.map_or_else(|| "?".to_string(), |n| format!("#{n}"));
+        match reason {
+            OrphanReason::NoIssue => "no issue".to_string(),
+            OrphanReason::IssueClosed => format!("{issue} is closed"),
+            OrphanReason::IssueAbsent => format!("{issue} does not exist on GitHub"),
+            OrphanReason::IssueExcluded => format!("{issue} is labelled no-roadmap"),
         }
     }
 

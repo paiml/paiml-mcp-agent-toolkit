@@ -122,17 +122,24 @@ fn c1_self_breach(ms: &[Mention], census: &mut Census) -> Vec<Finding> {
         if !annotate::assertive(&m.annot) {
             continue;
         }
-        for obs in annotate::observations(&m.annot) {
-            let unit = observed_unit(m, &obs.unit);
-            let observed = extract::to_canon(obs.value, &unit, m.dim);
-            match breach(pol, &observed, &m.canon) {
-                Breach::All => out.push(c1_finding(m, pol, &obs)),
-                Breach::Partial => census.suppressed_unit_ambiguity += 1,
-                Breach::None => {}
-            }
-        }
+        c1_judge_observations(m, pol, census, &mut out);
     }
     out
+}
+
+/// Judge each value `m`'s annotation observes against its `pol` limit: a
+/// breach under every unit reading is a finding, a breach under only some is
+/// counted as unit-ambiguous.
+fn c1_judge_observations(m: &Mention, pol: Polarity, census: &mut Census, out: &mut Vec<Finding>) {
+    for obs in annotate::observations(&m.annot) {
+        let unit = observed_unit(m, &obs.unit);
+        let observed = extract::to_canon(obs.value, &unit, m.dim);
+        match breach(pol, &observed, &m.canon) {
+            Breach::All => out.push(c1_finding(m, pol, &obs)),
+            Breach::Partial => census.suppressed_unit_ambiguity += 1,
+            Breach::None => {}
+        }
+    }
 }
 
 fn c1_finding(m: &Mention, pol: Polarity, obs: &annotate::Observation) -> Finding {
@@ -448,19 +455,34 @@ fn c5_named_xref(ms: &[Mention], census: &mut Census) -> Vec<Finding> {
         if text.trim().is_empty() {
             continue;
         }
-        for xref in annotate::xrefs(&text) {
-            match resolve(ms, &index, i, &xref) {
-                Resolved::One(t) => {
-                    if ms[t].dim == m.dim && !extract::any_close(&m.canon, &ms[t].canon) {
-                        out.push(c5_finding(m, &ms[t], &xref));
-                    }
-                }
-                Resolved::Ambiguous => census.suppressed_unresolved_xref += 1,
-                Resolved::Ignored => {}
-            }
-        }
+        c5_judge_xrefs(ms, &index, i, &text, census, &mut out);
     }
     out
+}
+
+/// Resolve each cross-reference in mention `i`'s `text`: a unique target of the
+/// same dimension whose value is not close is a finding; an ambiguous name is
+/// counted, never guessed at.
+fn c5_judge_xrefs(
+    ms: &[Mention],
+    index: &BTreeMap<String, Vec<usize>>,
+    i: usize,
+    text: &str,
+    census: &mut Census,
+    out: &mut Vec<Finding>,
+) {
+    let m = &ms[i];
+    for xref in annotate::xrefs(text) {
+        match resolve(ms, index, i, &xref) {
+            Resolved::One(t) => {
+                if ms[t].dim == m.dim && !extract::any_close(&m.canon, &ms[t].canon) {
+                    out.push(c5_finding(m, &ms[t], &xref));
+                }
+            }
+            Resolved::Ambiguous => census.suppressed_unresolved_xref += 1,
+            Resolved::Ignored => {}
+        }
+    }
 }
 
 fn build_index(ms: &[Mention]) -> BTreeMap<String, Vec<usize>> {
@@ -482,6 +504,26 @@ enum Resolved {
     Ignored,
 }
 
+/// The mentions among `candidates` that `xref` (made at mention `from`) can
+/// name: in the file it names, if it names one, and never its own line.
+fn xref_targets(
+    ms: &[Mention],
+    candidates: &[usize],
+    from: usize,
+    xref: &annotate::Xref,
+) -> Vec<usize> {
+    let here = (&ms[from].file, ms[from].line);
+    candidates
+        .iter()
+        .copied()
+        .filter(|c| match xref.file.as_deref() {
+            Some(f) => basename(f) == basename(&ms[*c].file),
+            None => true,
+        })
+        .filter(|c| !(&ms[*c].file == here.0 && ms[*c].line == here.1))
+        .collect()
+}
+
 fn resolve(
     ms: &[Mention],
     index: &BTreeMap<String, Vec<usize>>,
@@ -498,16 +540,7 @@ fn resolve(
     if extract::norm_key(key).len() < 2 && xref.file.is_none() {
         return Resolved::Ignored;
     }
-    let here = (&ms[from].file, ms[from].line);
-    let matching: Vec<usize> = candidates
-        .iter()
-        .copied()
-        .filter(|c| match xref.file.as_deref() {
-            Some(f) => basename(f) == basename(&ms[*c].file),
-            None => true,
-        })
-        .filter(|c| !(&ms[*c].file == here.0 && ms[*c].line == here.1))
-        .collect();
+    let matching = xref_targets(ms, candidates, from, xref);
     let distinct: BTreeSet<(&str, usize)> = matching
         .iter()
         .map(|c| (ms[*c].file.as_str(), ms[*c].line))

@@ -641,8 +641,18 @@ edition = "2021"
         .await
         .context("the cargo clippy worker thread panicked")?;
 
-        let output = match spawned {
-            Ok(Some(output)) => output,
+        let output = Self::completed_clippy_run(spawned)?;
+
+        interpret_clippy_output(&output)
+    }
+
+    /// The output of a clippy run that finished; a killed run and a failed
+    /// spawn are errors naming what went wrong, never output to classify.
+    fn completed_clippy_run(
+        spawned: std::io::Result<Option<std::process::Output>>,
+    ) -> Result<std::process::Output> {
+        match spawned {
+            Ok(Some(output)) => Ok(output),
             // The deadline passed and the child was killed, so whatever it had
             // written so far is a partial run, not a verdict to classify.
             Ok(None) => anyhow::bail!(
@@ -658,12 +668,8 @@ edition = "2021"
                 "the quality proxy's lint stage did not run: `cargo` is not on PATH ({e}). \
                  This is a missing tool, not a finding about the code under review."
             ),
-            Err(e) => {
-                return Err(e).context("failed to spawn `cargo clippy` for the quality proxy")
-            }
-        };
-
-        interpret_clippy_output(&output)
+            Err(e) => Err(e).context("failed to spawn `cargo clippy` for the quality proxy"),
+        }
     }
 
     async fn format_rust_code(&self, content: &str) -> Result<String> {

@@ -223,6 +223,45 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     output
 }
 
+/// One offender line, `<name> (<file>:<line>) - <Metric> <value> > <limit>`;
+/// `None` for anything but a [`Violation::Error`].
+fn format_offender_line(violation: &Violation) -> Option<String> {
+    use crate::cli::colors as c;
+
+    let Violation::Error {
+        rule,
+        value,
+        threshold,
+        file,
+        line,
+        function,
+        ..
+    } = violation
+    else {
+        return None;
+    };
+    // The rule id is `cyclomatic-complexity` / `cognitive-complexity`; the
+    // metric name is the readable half. Unknown rules print their own id
+    // rather than being silently relabelled.
+    let metric = match rule.as_str() {
+        "cyclomatic-complexity" => "Cyclomatic",
+        "cognitive-complexity" => "Cognitive",
+        other => other,
+    };
+    let display_path = file.strip_prefix("./").unwrap_or(file);
+    // A violation with no function name is a file-level rule; say so rather
+    // than printing an empty name, which reads as a nameless function.
+    let who = function.as_deref().unwrap_or("<file-level>");
+    Some(format!(
+        "  {} {} - {} {} > {}\n",
+        c::path(who),
+        c::dim(&format!("({display_path}:{line})")),
+        metric,
+        c::number(&value.to_string()),
+        c::number(&threshold.to_string())
+    ))
+}
+
 /// The lines that name WHO tripped the threshold.
 ///
 /// #1033: this summary used to report the violation COUNTS and nothing else,
@@ -255,39 +294,12 @@ fn format_offenders(violations: &[Violation]) -> String {
     }
 
     let mut out = String::new();
-    for violation in errors.iter().take(MAX_SHOWN) {
-        let Violation::Error {
-            rule,
-            value,
-            threshold,
-            file,
-            line,
-            function,
-            ..
-        } = violation
-        else {
-            continue;
-        };
-        // The rule id is `cyclomatic-complexity` / `cognitive-complexity`; the
-        // metric name is the readable half. Unknown rules print their own id
-        // rather than being silently relabelled.
-        let metric = match rule.as_str() {
-            "cyclomatic-complexity" => "Cyclomatic",
-            "cognitive-complexity" => "Cognitive",
-            other => other,
-        };
-        let display_path = file.strip_prefix("./").unwrap_or(file);
-        // A violation with no function name is a file-level rule; say so rather
-        // than printing an empty name, which reads as a nameless function.
-        let who = function.as_deref().unwrap_or("<file-level>");
-        out.push_str(&format!(
-            "  {} {} - {} {} > {}\n",
-            c::path(who),
-            c::dim(&format!("({display_path}:{line})")),
-            metric,
-            c::number(&value.to_string()),
-            c::number(&threshold.to_string())
-        ));
+    for line in errors
+        .iter()
+        .take(MAX_SHOWN)
+        .filter_map(|v| format_offender_line(v))
+    {
+        out.push_str(&line);
     }
     if errors.len() > MAX_SHOWN {
         out.push_str(&format!(
