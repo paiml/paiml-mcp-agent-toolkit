@@ -3731,7 +3731,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-02T17:02:05Z
-  updated: 2026-09-10T18:18:08.278327787+00:00
+  updated: 2026-09-17T14:07:01Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3739,6 +3739,7 @@ roadmap:
   estimated_effort: null
   labels:
   - deferred:3.41.0
+  - kind:code
   notes: null
 - id: PMAT-637
   github_issue: null
