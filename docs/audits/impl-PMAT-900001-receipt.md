@@ -199,7 +199,35 @@ close outside a `Closes #N` line, and a call-site gate with planted-defect arms 
 
 ## Session 2 — dispatch ledger, quorum, issue, merge
 
-QUORUM_AND_MERGE_PENDING
+| dispatch | mode | executor | result |
+|---|---|---|---|
+| diff quorum round 1 on b36d579dc (diff_sha256 eb7be0ce…) | `quorum-review.sh --base origin/master --ticket PMAT-900001 --pr 1391 --author-model claude-opus-5`, width 3, writes=false | agy lanes: gemini-3.1-pro-high `2e151ff0-07cc-45f4-9005-d2bbdad4f762` **FAIL** · gemini-3.8-flash-high `9cee6cc3-0a07-4b55-9aa5-dd57f18d9363` PASS · gemini-3.7-flash-high `b15c53bb-abaf-49a2-8fea-e03bd5ac82e6` PASS (model_measured equals the declared model on all three) | NOT AGREED. The single finding (lane 1, cited `src/cli/commands/work_commands_work.rs:157`): `--notes` is not asked for by the ticket |
+
+Claude subagents this session: 0 (slots used 0 of 3, denials 0, stalls 0). The quorum ran through
+`quorum-review.sh` from the orchestrator's own turn and not through the delegate. The merge helper reads that
+script's artifact, and one script call cost fewer turns than briefing a delegate. This is a named deviation from §6.3.
+
+**Round 1 FAIL, answered with evidence and a fix, not an override.** Lane 1 is right that the ticket row did not
+name the capability. The row's acceptance criteria, written in session 1, left out item 4 of the operator's brief,
+which reads verbatim: "PMAT-1369 cross-reference to aprender#3397/#3398/#3399 — `pmat work edit` cannot write notes,
+so either add that capability RED→GREEN if it is small, or record the cross-reference where the sanctioned writer
+CAN put it and say which; never hand-edit roadmap.yaml". Commit `chore(PMAT-900001): the ticket row names brief item 4`
+adds that item to the row through `pmat work edit -d`, keeping the old criterion text verbatim. The capability stays.
+
+**Order of the last steps.** `pmat-merge` accepts a verdict only for the head, for its parent when the head commit
+adds only the verdict, or for an identical judged diff. Binding the issue rewrites `github_issue:` and changes the
+diff. So the issue was bound after round 1 and before round 2, on a PR whose checks were all green except
+`traceability`. That job's code steps passed in CI (issue-closure-gate self-test and PASS on a cold index, PR-body
+lint PASS). Its one red step was CB-2115: ORPHAN-ROADMAP PMAT-900001 (unbound by design) and ORPHAN-GITHUB #1393
+(master's). Round 2 judges the final diff.
+
+**Issue.** `pmat work sync --direction yaml-to-github` planned 2 actions: `create-issue PMAT-900001`, and `skip #1393`
+("the fix is on the roadmap side"). It opened **#1395** and wrote `github_issue: 1395`. The issue's title and body
+pass `pr-body-closing-lint --file`. The PR references the issue as `Refs #1395`, not with a Closes line. Closing
+it on merge would leave the row `planned` against a closed issue, the ORPHAN-ROADMAP that 1cdffdcca recorded. The
+row and the issue are completed together by a later lifecycle PR, as this repository does.
+
+QUORUM2_AND_MERGE_PENDING
 
 ## Gaps
 
