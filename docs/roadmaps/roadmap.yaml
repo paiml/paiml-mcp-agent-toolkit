@@ -7018,3 +7018,19 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-1393
+  github_issue: 1393
+  item_type: task
+  title: 'pre-commit hook: the complexity check ignores a repo''s recorded complexity baseline, so ANY edit to a file holding a baselined offender is refused'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-17T17:06:29Z
+  updated: 2026-09-17T17:06:29Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
