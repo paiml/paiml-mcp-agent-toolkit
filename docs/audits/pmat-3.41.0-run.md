@@ -271,3 +271,9 @@ Raw (D4 session seven, 68 turns): PR #1368 armed via `pmat-merge` on head b13eb5
 Decisions:
 - When #1390 merges, strict protection leaves #1368 one merge behind. Taking master into an armed branch is orchestration (a pure cascade: the reviewed diff is unchanged, which `pmat-merge` checks by hash), so I will do it myself with `gh pr update-branch 1368` rather than spend a session; if the helper disarms, a session re-runs the round.
 - 14:06Z launched D6 PMAT-636 / #1266 (clone `.wt/PMAT-636`, pid 1468871): same-binary cold-index measurement on both trees and the set difference first; never raise the baseline; make a required CI job able to see the count. Slots 3/3: D2 (PR #1389), lifecycle-4 (PR #1390), D6. Queue: D0 (needs #1368's extension point on master).
+
+## 2026-09-17T14:24Z — lifecycle-4 MERGED (#1390, 85b798e0d); #1368 cascaded by the orchestrator
+
+tree: run-log rebased, behind=0 against origin/master 85b798e0d.
+
+Raw: #1390 merged 14:23:18Z (launch→merge 53 min). `gh pr update-branch 1368` → "PR branch updated", new head 85cac5210, `autoMergeRequest` still set (armed=true), mergeStateStatus BLOCKED while CI runs. The cascade adds only master's roadmap/audit changes; the reviewed diff is unchanged. If a rendered ledger drifts on this head, CI's non-required ledger checks will say so and a session re-renders.
