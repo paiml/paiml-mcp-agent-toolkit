@@ -1,0 +1,231 @@
+{
+  "ticket": "PMAT-1305",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 166 commit(s); judged against origin/master",
+  "head": "ae8efee2f9d0c9f36ad785bec1d0e0d2f43abc07",
+  "diff_sha256": "958beae2af546db9e44bb57ae15eac884c64b818d5d20eb6dd3333f4cb57bf0c",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 73087,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff successfully addresses the flaky test in PMAT-1305 by isolating the cargo check target directory per workspace root. The implementation correctly calculates a stable FNV-1a hash of the canonical workspace root path to prevent fingerprint collisions across same-named crates sharing an inherited CARGO_TARGET_DIR. All receipt claims are backed by the diff, no gates are weakened, and the planted test accurately asserts the fix.",
+      "findings": [
+        {
+          "claim": "The workspace root key is computed using FNV-1a over the canonical path, producing a stable key resistant to toolchain changes and symlink variations.",
+          "file": "src/services/cargo_dead_code_analyzer/target_isolation.rs",
+          "grounding": "measured",
+          "line": 48
+        },
+        {
+          "claim": "The planted test successfully reproduces the #1305 flake condition by enforcing a shared target directory and backdating the broken source, proving the vulnerability in plain cargo check and validating the analyzer's fix.",
+          "file": "src/cli/analysis_utilities/quality_checks_part1_dead_code.rs",
+          "grounding": "cited",
+          "line": 254
+        },
+        {
+          "claim": "The analyzer's cargo check command correctly appends the --target-dir argument using the isolated directory, ensuring cargo writes and reads fingerprints in a root-exclusive path.",
+          "file": "src/services/cargo_dead_code_analyzer/analysis.rs",
+          "grounding": "cited",
+          "line": 312
+        }
+      ],
+      "raw_bytes": 4881,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "PMAT-1305 review (Lane 2 of 3): PASS. The diff correctly fixes the CI flake where cargo check replayed fingerprints from a shared target directory for uncompilable crates. It introduces workspace root target isolation via `--target-dir <resolved_target>/pmat-dead-code/<name>-<fnv1a64>`, verifiable contracts, clean reproduction harnesses, and robust tests that fail under mutation and pass under the fix. No gates are weakened and no extraneous changes were introduced.",
+      "findings": [
+        {
+          "claim": "Cargo check invocation in CargoDeadCodeAnalyzer passes --target-dir with isolated_target_dir(&self.cargo_root) to prevent artifact/fingerprint sharing across workspace roots.",
+          "file": "src/services/cargo_dead_code_analyzer/analysis.rs",
+          "grounding": "cited",
+          "line": 311
+        },
+        {
+          "claim": "isolated_target_dir keys the isolation path on the canonical workspace root using 64-bit FNV-1a inside the resolved cargo metadata target_directory.",
+          "file": "src/services/cargo_dead_code_analyzer/target_isolation.rs",
+          "grounding": "cited",
+          "line": 27
+        },
+        {
+          "claim": "Target isolation unit tests (target_isolation_tests) pass all 6 tests on the fix (6 passed, 0 failed), and the_cargo_check_command_names_the_isolated_target_dir fails under the mutant patch docs/audits/mutants/PMAT-1305-inherited-target-dir.patch.",
+          "file": "src/services/cargo_dead_code_analyzer/target_isolation_tests.rs",
+          "grounding": "measured",
+          "line": 116
+        },
+        {
+          "claim": "a_broken_crate_sharing_a_target_dir_with_a_same_named_crate_is_not_measured passes with and without ambient CARGO_TARGET_DIR (5 passed, 0 failed in dead_code_outcome_tests).",
+          "file": "src/cli/analysis_utilities/quality_checks_part1_dead_code.rs",
+          "grounding": "measured",
+          "line": 271
+        },
+        {
+          "claim": "Contract dead-code-target-isolation-v1.yaml passes pv validate, pv lint --severity error, and scripts/pv-obligation-gate.py reports 0 problems over 38 contracts.",
+          "file": "contracts/dead-code-target-isolation-v1.yaml",
+          "grounding": "measured",
+          "line": 52
+        },
+        {
+          "claim": "repro-pmat-1305-shared-target-race.sh is bash -n and shellcheck -S error clean, and reproduces 0 red iterations on the fix across single, free, and aligned modes.",
+          "file": "scripts/repro-pmat-1305-shared-target-race.sh",
+          "grounding": "measured",
+          "line": 24
+        }
+      ],
+      "raw_bytes": 6614,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff for PMAT-1305 cleanly and correctly solves the flaky test defect where same-named crates sharing a target directory caused cargo check to replay clean diagnostics for broken crates.\n\nKey verifications:\n1. Target Isolation: `isolated_target_dir` keys subdirectories under `<resolved-target-dir>/pmat-dead-code/` using a 32-char name prefix and the 64-bit FNV-1a hash of the canonicalized workspace root path.\n2. Tests & Falsification: All 6 contract falsification unit tests (DCTI-F-001..F-004, F-006) and the deterministic planted test pass. Applying the mutant patch (`PMAT-1305-inherited-target-dir.patch`) failed as predicted.\n3. Reproduction Harness: `scripts/repro-pmat-1305-shared-target-race.sh` ran cleanly and reported 0 red runs under aligned and single modes.\n4. Contract & Gates: `pv validate`, `pv status` (5 proof obligations, 6 falsification tests), `pv lint`, `scripts/pv-obligation-gate.py` (0 problems over 38 contracts), `cargo fmt --check`, and `pmat quality-gate` all verified.\n5. Receipt Claims: All metrics, file diffs, ledger counts (+7 tests), and estimate entries were measured and confirmed accurate. No gates were weakened and no forbidden changes were introduced.",
+      "findings": [],
+      "raw_bytes": 4680,
+      "err_bytes": 79,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "contracts/dead-code-target-isolation-v1.yaml",
+      "line": 52,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Contract dead-code-target-isolation-v1.yaml passes pv validate, pv lint --severity error, and scripts/pv-obligation-gate.py reports 0 problems over 38 contracts."
+      ]
+    },
+    {
+      "file": "scripts/repro-pmat-1305-shared-target-race.sh",
+      "line": 24,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "repro-pmat-1305-shared-target-race.sh is bash -n and shellcheck -S error clean, and reproduces 0 red iterations on the fix across single, free, and aligned modes."
+      ]
+    },
+    {
+      "file": "src/cli/analysis_utilities/quality_checks_part1_dead_code.rs",
+      "line": 254,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The planted test successfully reproduces the #1305 flake condition by enforcing a shared target directory and backdating the broken source, proving the vulnerability in plain cargo check and validating the analyzer's fix."
+      ]
+    },
+    {
+      "file": "src/cli/analysis_utilities/quality_checks_part1_dead_code.rs",
+      "line": 271,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "a_broken_crate_sharing_a_target_dir_with_a_same_named_crate_is_not_measured passes with and without ambient CARGO_TARGET_DIR (5 passed, 0 failed in dead_code_outcome_tests)."
+      ]
+    },
+    {
+      "file": "src/services/cargo_dead_code_analyzer/analysis.rs",
+      "line": 311,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Cargo check invocation in CargoDeadCodeAnalyzer passes --target-dir with isolated_target_dir(&self.cargo_root) to prevent artifact/fingerprint sharing across workspace roots."
+      ]
+    },
+    {
+      "file": "src/services/cargo_dead_code_analyzer/analysis.rs",
+      "line": 312,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The analyzer's cargo check command correctly appends the --target-dir argument using the isolated directory, ensuring cargo writes and reads fingerprints in a root-exclusive path."
+      ]
+    },
+    {
+      "file": "src/services/cargo_dead_code_analyzer/target_isolation.rs",
+      "line": 27,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "isolated_target_dir keys the isolation path on the canonical workspace root using 64-bit FNV-1a inside the resolved cargo metadata target_directory."
+      ]
+    },
+    {
+      "file": "src/services/cargo_dead_code_analyzer/target_isolation.rs",
+      "line": 48,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The workspace root key is computed using FNV-1a over the canonical path, producing a stable key resistant to toolchain changes and symlink variations."
+      ]
+    },
+    {
+      "file": "src/services/cargo_dead_code_analyzer/target_isolation_tests.rs",
+      "line": 116,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Target isolation unit tests (target_isolation_tests) pass all 6 tests on the fix (6 passed, 0 failed), and the_cargo_check_command_names_the_isolated_target_dir fails under the mutant patch docs/audits/mutants/PMAT-1305-inherited-target-dir.patch."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}
