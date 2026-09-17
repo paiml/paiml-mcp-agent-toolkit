@@ -663,3 +663,12 @@ mod broken_tests_quarantine_tests;
 // `cargo test --lib -- dependency_policy`.
 #[cfg(test)]
 mod dependency_policy_tests;
+
+// PMAT-1365: `make gate` is declared, and its table cannot quietly stop covering the
+// required status checks. Registered here for the same reason as the modules above —
+// `autotests = false`, so an unregistered test file is silently never compiled, and the
+// one half of the gate's falsifier that `ci / gate` reaches would reach nothing. Gated on
+// `standard-deps` because it reads the workflows with serde_yaml_ng.
+// `cargo test --lib -- make_gate_tests`.
+#[cfg(all(test, feature = "standard-deps"))]
+mod make_gate_tests;

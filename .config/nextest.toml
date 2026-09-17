@@ -57,3 +57,17 @@ fail-fast = false
 # E2E and coverage-boost tests spawn cargo subprocesses — need more time in CI
 filter = 'test(/e2e/) | test(/coverage_boost/) | test(/calculator/)'
 slow-timeout = { period = "300s", terminate-after = 3 }
+
+[profile.gate]
+# PMAT-1365. `make gate` (scripts/gate.sh, leg lib-tests) runs the lib suite under
+# this profile. The required check it stands in for, `ci / gate`, runs
+# `cargo test --lib`, which kills no test. The default profile kills at 120s, and
+# under the whole suite's load it killed 16 tests that pass alone in under 90s
+# (measured: the metrics_ratchet drive tests, the quality_proxy property tests,
+# two roadmap_service property tests, test_handle_analyze_tdg_file) — a red that
+# the required check never shows, which is the kind of gate somebody disables.
+# So a test is reported slow at 60s and killed only at 10 minutes: a hang bound,
+# not a speed budget. The default profile's default-filter still applies (the two
+# PMAT-1314 tests that hang under nextest); gate.sh prints that difference.
+slow-timeout = { period = "60s", terminate-after = 10 }
+fail-fast = false
