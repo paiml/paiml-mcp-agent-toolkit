@@ -23,19 +23,23 @@
 # The verdict is judged, not comply's exit code: comply exits 0 on the Warn a held baseline
 # reports, and exit codes cannot tell OVER from NOT MEASURED.
 #
-# Usage: scripts/cb200-ratchet-gate.sh --pmat BIN [--root DIR]   measure DIR (default: .)
+# Usage: scripts/cb200-ratchet-gate.sh PMAT [--root DIR]   measure DIR (default: .)
+#        scripts/cb200-ratchet-gate.sh PMAT --control      reach every verdict above, planted, and
+#                                                          require each one
 #        scripts/cb200-ratchet-gate.sh --classify REPORT --gates FILE
-#                                                    judge a saved `comply check --format json`
-#        scripts/cb200-ratchet-gate.sh --control --pmat BIN
-#                                                    reach every verdict above, planted, and
-#                                                    require each one
+#                                                          judge a saved `comply check --format json`
+#   PMAT is the pmat built from the tree being judged, and it comes first: scripts/gate.sh's
+#   control (arm 12) stubs the scripts a pmat leg calls with `exec "$1"`.
 # Exit: 0 PASS (--control: every arm held) · 1 any other verdict (--control: an arm broke) · 2 usage
 set -uo pipefail
 
 MODE=measure PMAT="" ROOT=. REPORT="" GATES=""
+case "${1:-}" in
+  ""|-*) ;;
+  *) PMAT=$1; shift ;;
+esac
 while [ $# -gt 0 ]; do
   case "$1" in
-    --pmat) PMAT="${2:-}"; shift 2 ;;
     --root) ROOT="${2:-}"; shift 2 ;;
     --classify) MODE=classify; REPORT="${2:-}"; shift 2 ;;
     --gates) GATES="${2:-}"; shift 2 ;;
@@ -126,8 +130,8 @@ measure() {
 }
 
 require_pmat() {
-  [ -n "$PMAT" ] || { echo "cb200-ratchet-gate.sh: --pmat BIN is required (the pmat built from the tree it judges)" >&2; exit 2; }
-  [ -x "$PMAT" ] || { echo "cb200-ratchet-gate.sh: --pmat '$PMAT' is not an executable" >&2; exit 2; }
+  [ -n "$PMAT" ] || { echo "cb200-ratchet-gate.sh: PMAT, the pmat built from the tree it judges, must be the first argument" >&2; exit 2; }
+  [ -x "$PMAT" ] || { echo "cb200-ratchet-gate.sh: PMAT '$PMAT' is not an executable" >&2; exit 2; }
 }
 
 # ── control ─────────────────────────────────────────────────────────────────────────────────

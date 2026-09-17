@@ -180,9 +180,9 @@ jobs:
       - name: build pmat from this tree
         run: cargo build --bin pmat --locked
       - name: control — every CB-200 verdict is reachable, and a planted below-A definition is refused
-        run: bash scripts/cb200-ratchet-gate.sh --control --pmat ./target/debug/pmat
+        run: bash scripts/cb200-ratchet-gate.sh ./target/debug/pmat --control
       - name: CB-200 is measured and equals the recorded baseline
-        run: bash scripts/cb200-ratchet-gate.sh --pmat ./target/debug/pmat
+        run: bash scripts/cb200-ratchet-gate.sh ./target/debug/pmat
 
   # PMAT-719 (goal-mode.md §7.1, step 2 of §11): the first CB rule wired into
   # the required `gate` context OUTSIDE the `Ladder gate — pmat comply` step,

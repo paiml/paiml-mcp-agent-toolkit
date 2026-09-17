@@ -500,12 +500,13 @@ fn the_tdg_ratchet_job_reaches_the_required_gate_check() {
                 .collect()
         })
         .unwrap_or_default();
+    let gate_script = |r: &String| r.contains("scripts/cb200-ratchet-gate.sh ./target/debug/pmat");
     let control = runs
         .iter()
-        .position(|r| r.contains("scripts/cb200-ratchet-gate.sh --control"));
+        .position(|r| gate_script(r) && r.contains("--control"));
     let measure = runs
         .iter()
-        .position(|r| r.contains("scripts/cb200-ratchet-gate.sh --pmat"));
+        .position(|r| gate_script(r) && !r.contains("--control"));
     assert!(
         control.is_some() && measure.is_some() && control < measure,
         "ci.yml tdg-ratchet must run the gate's control, then its measurement; its run steps are {runs:?}"

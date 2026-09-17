@@ -104,27 +104,27 @@ falsification_tests:
   - id: measured_equals_baseline
     rule: "a report at the baseline passes; one over it and one under it fail, named OVER and BEATEN"
     prediction: "arms 1 HELD, 2 OVER, 3 BEATEN GREEN"
-    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh target/debug/pmat --control"
     if_fails: "the ratchet admits new debt, or lets a beaten baseline stand as headroom"
   - id: unmeasured_is_a_failure
     rule: "a skipped verdict, a 'Not measured' verdict and a report with no CB-200 verdict each fail as NOT MEASURED"
     prediction: "arms 4 SKIPPED, 5 UNMEASURED, 6 ABSENT GREEN"
-    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh target/debug/pmat --control"
     if_fails: "the gate repeats the defect it replaces: a measurement that did not happen reads as a pass"
   - id: stale_is_a_failure
     rule: "a verdict carrying the stale-index note fails as STALE"
     prediction: "arm 7 STALE GREEN"
-    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh target/debug/pmat --control"
     if_fails: "a count of an older tree, which can only under-count, holds the ratchet"
   - id: the_two_baseline_readers_agree
     rule: "a verdict naming a baseline other than .pmat-gates.toml's fails as DISAGREE"
     prediction: "arm 8 DISAGREE GREEN"
-    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh target/debug/pmat --control"
     if_fails: "the gate judges a number nothing in the tree records"
   - id: a_planted_below_a_definition_is_refused
     rule: "the real pmat over one planted below-A definition is OVER at baseline 0 and PASS at baseline 1"
     prediction: "arms 9 PLANTED-OVER and 10 PLANTED-HELD GREEN (planted_below_a grades B-, complexity 18)"
-    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh target/debug/pmat --control"
     if_fails: "the gate cannot tell a tree with new debt from one without, and its green carries no information"
   - id: the_ratchet_reaches_the_required_check
     rule: "removing tdg-ratchet from gate's needs or result loop, the control or measurement step, or a make gate row fails the lib test"
@@ -139,13 +139,13 @@ qa_gate:
   name: CB-200 ratchet measured in CI
   description: >
     Shell and workflow wiring, so the obligations are carried by executable controls rather
-    than Lean or Kani. scripts/cb200-ratchet-gate.sh --control plants every verdict, two of
+    than Lean or Kani. scripts/cb200-ratchet-gate.sh PMAT --control plants every verdict, two of
     them through the real pmat; the lib test re-reads ci.yml and scripts/gate.sh under
     cargo test --lib. ci.yml tdg-ratchet runs the control before the measurement.
   checks:
     - validation
     - falsification
   pass_criteria: >
-    scripts/cb200-ratchet-gate.sh --control exits 0 with arms 1-10 GREEN;
+    scripts/cb200-ratchet-gate.sh PMAT --control exits 0 with arms 1-10 GREEN;
     cargo test --lib make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check passes;
-    scripts/cb200-ratchet-gate.sh --pmat <the pmat built from the tree> exits 0 (PASS).
+    scripts/cb200-ratchet-gate.sh <the pmat built from the tree> exits 0 (PASS).
