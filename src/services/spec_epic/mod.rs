@@ -187,11 +187,7 @@ impl ParseState {
 
         if self.in_vendors_block {
             if let Some(item) = trimmed.strip_prefix("- ") {
-                let v = strip_inline_comment(item)
-                    .trim()
-                    .trim_matches('\'')
-                    .trim_matches('"');
-                self.vendors_val.push(v.to_string());
+                self.vendors_val.push(scalar(item));
                 return Ok(());
             }
             // Any other line ends the block: every arm below resets the flag
@@ -205,14 +201,21 @@ impl ParseState {
             self.in_vendors_block = false;
             self.status_val = Some(scalar(rest));
         } else if let Some(rest) = line.strip_prefix("vendors:") {
-            let val = strip_inline_comment(rest).trim();
-            if val.is_empty() {
-                self.in_vendors_block = true;
-            } else {
-                self.vendors_val = parse_vendors(val)?;
-            }
+            self.read_vendors_key(rest)?;
         } else {
             self.in_vendors_block = false;
+        }
+        Ok(())
+    }
+
+    /// The value after `vendors:`: an inline list is parsed in place; no value
+    /// opens a block of `- name` lines.
+    fn read_vendors_key(&mut self, rest: &str) -> Result<(), FrontMatterError> {
+        let val = strip_inline_comment(rest).trim();
+        if val.is_empty() {
+            self.in_vendors_block = true;
+        } else {
+            self.vendors_val = parse_vendors(val)?;
         }
         Ok(())
     }
@@ -417,44 +420,34 @@ pub fn parse_specs(specs: &[SpecInput]) -> Parsed {
 /// that fails — absent, closed, not labelled `epic`, sub-issue count not in
 /// the snapshot, no sub-issue — in path order.
 pub fn bind_epics(parsed: &Parsed, snapshot: &GithubSnapshot) -> Vec<SpecFinding> {
-    let mut findings = Vec::new();
+    parsed
+        .active()
+        .filter_map(|(path, fm)| {
+            fm.epic
+                .and_then(|number| epic_finding(path, number, snapshot))
+        })
+        .collect()
+}
 
-    for (path, fm) in parsed.active() {
-        if let Some(number) = fm.epic {
-            let issue = snapshot.issues.iter().find(|i| i.number == number);
-            match issue {
-                None => findings.push(SpecFinding::EpicAbsent {
-                    spec: path.clone(),
-                    number,
-                }),
-                Some(issue) => {
-                    if issue.state == IssueState::Closed {
-                        findings.push(SpecFinding::EpicClosed {
-                            spec: path.clone(),
-                            number,
-                        });
-                    } else if !issue.labels.contains(&EPIC_LABEL.to_string()) {
-                        findings.push(SpecFinding::NotAnEpic {
-                            spec: path.clone(),
-                            number,
-                        });
-                    } else if issue.sub_issues.is_none() {
-                        findings.push(SpecFinding::SubIssuesUnmeasured {
-                            spec: path.clone(),
-                            number,
-                        });
-                    } else if issue.sub_issues == Some(0) {
-                        findings.push(SpecFinding::NoSubIssues {
-                            spec: path.clone(),
-                            number,
-                        });
-                    }
-                }
-            }
-        }
+/// The first clause epic `#number` fails for `spec` as `snapshot` shows it —
+/// absent, closed, not labelled `epic`, sub-issues unmeasured, none — or
+/// `None` when it passes them all.
+fn epic_finding(spec: &str, number: u64, snapshot: &GithubSnapshot) -> Option<SpecFinding> {
+    let spec = spec.to_string();
+    let Some(issue) = snapshot.issues.iter().find(|i| i.number == number) else {
+        return Some(SpecFinding::EpicAbsent { spec, number });
+    };
+    if issue.state == IssueState::Closed {
+        Some(SpecFinding::EpicClosed { spec, number })
+    } else if !issue.labels.contains(&EPIC_LABEL.to_string()) {
+        Some(SpecFinding::NotAnEpic { spec, number })
+    } else if issue.sub_issues.is_none() {
+        Some(SpecFinding::SubIssuesUnmeasured { spec, number })
+    } else if issue.sub_issues == Some(0) {
+        Some(SpecFinding::NoSubIssues { spec, number })
+    } else {
+        None
     }
-
-    findings
 }
 
 #[cfg(test)]
