@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+pub mod aggregate; // PMAT-1363: roadmap.yaml as the aggregate of entries/<id>.yaml
 pub mod commands;
 pub mod generator;
 pub mod parser;

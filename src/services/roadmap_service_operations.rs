@@ -8,29 +8,18 @@ impl RoadmapService {
         // Acquire exclusive lock for entire read-modify-write operation
         let _lock = self.acquire_write_lock()?;
 
-        // Load roadmap (no lock needed - we already have exclusive lock)
-        let mut roadmap = if self.roadmap_path.exists() {
-            let contents = fs::read_to_string(&self.roadmap_path)
-                .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
-            self.parse_roadmap_yaml(&contents)?
-        } else {
-            Roadmap::default()
+        // Load roadmap (no lock needed - we already have exclusive lock).
+        // PMAT-1363: the view — base ⊕ entries/ in an opted-in repository.
+        let mut roadmap = match self.read_view_unlocked()? {
+            Some(contents) => self.parse_roadmap_yaml(&contents)?,
+            None => Roadmap::default(),
         };
 
         // Modify
         roadmap.upsert_item(item);
 
         // Save (no lock needed - we already have exclusive lock)
-        if let Some(parent) = self.roadmap_path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create directory: {:?}", parent))?;
-        }
-        let yaml = serde_yaml_ng::to_string(&roadmap)
-            .with_context(|| "Failed to serialize roadmap to YAML")?;
-        fs::write(&self.roadmap_path, yaml)
-            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
-
-        Ok(())
+        self.write_roadmap_unlocked(&roadmap)
         // Lock released automatically
     }
 
@@ -51,12 +40,9 @@ impl RoadmapService {
     pub fn upsert_item_checked(&self, item: RoadmapItem) -> Result<()> {
         let _lock = self.acquire_write_lock()?;
 
-        let raw = if self.roadmap_path.exists() {
-            fs::read_to_string(&self.roadmap_path)
-                .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?
-        } else {
-            String::new()
-        };
+        // PMAT-1363: judged on the view, so a duplicate a fragment introduces is
+        // refused exactly as one in the base is.
+        let raw = self.read_view_unlocked()?.unwrap_or_default();
         let mut roadmap = if raw.trim().is_empty() {
             Roadmap::default()
         } else {
@@ -115,13 +101,10 @@ impl RoadmapService {
         let authority = self.id_authority();
         let mut lock = Self::acquire_write_lock_at(&authority.lock_path)?;
 
-        // (a) the RAW text, which is also what the allocator scans.
-        let raw = if self.roadmap_path.exists() {
-            fs::read_to_string(&self.roadmap_path)
-                .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?
-        } else {
-            String::new()
-        };
+        // (a) the RAW text, which is also what the allocator scans. PMAT-1363:
+        // base ⊕ entries/ in an opted-in repository, so an id spent by a fragment
+        // is spent.
+        let raw = self.read_view_unlocked()?.unwrap_or_default();
 
         // (b) strict parse FIRST: a broken roadmap must not be appended to,
         // and must not consume an id either. The parsed model is thrown away
@@ -169,14 +152,7 @@ impl RoadmapService {
         let item = build(id.clone());
         match parsed {
             Some(_) => {
-                let block = crate::services::roadmap_text::render_item_block(
-                    &item,
-                    crate::services::roadmap_text::row_indent(&raw),
-                );
-                let appended = crate::services::roadmap_text::append_item(&raw, &block);
-                fs::write(&self.roadmap_path, appended).with_context(|| {
-                    format!("Failed to write roadmap file: {:?}", self.roadmap_path)
-                })?;
+                self.persist_new_row(&raw, &item)?;
             }
             None => {
                 let mut roadmap = Roadmap::default();
@@ -208,9 +184,24 @@ impl RoadmapService {
         id: &str,
         build: impl FnOnce(String) -> RoadmapItem,
     ) -> Result<String> {
+        // PMAT-1363: an id is a filename (`entries/<id>.yaml`), a commit trailer and
+        // a branch name. Refused before the lock is taken, so a refusal touches
+        // nothing — not the roadmap, not the high-water mark. Unconditional: a repo
+        // that has not opted in today is the repo that migrates tomorrow, and an id
+        // minted now cannot be renamed then.
+        if !crate::services::roadmap_fragments::is_ticket_id(id) {
+            anyhow::bail!(
+                "refusing id {id:?}: a ticket id must be filename-safe PREFIX-N \
+                 (^[A-Za-z][A-Za-z0-9_]*-[0-9]+$, at most {} characters). It becomes \
+                 docs/roadmaps/entries/<id>.yaml in a repository that has opted in to \
+                 fragments, and a Pmat-Ticket trailer everywhere (PMAT-1363).",
+                crate::services::roadmap_fragments::MAX_ID_LEN
+            );
+        }
         let authority = self.id_authority();
         let mut lock = Self::acquire_write_lock_at(&authority.lock_path)?;
-        let raw = fs::read_to_string(&self.roadmap_path).unwrap_or_default();
+        // PMAT-1363: the view, so an id a fragment already holds is "in use".
+        let raw = self.read_view_unlocked()?.unwrap_or_default();
         crate::services::roadmap_text::check_roadmap_text(&raw, &self.roadmap_path)
             .map_err(|invalid| anyhow::anyhow!("{invalid}"))?;
         if crate::services::roadmap_text::id_lines(&raw)
@@ -224,14 +215,9 @@ impl RoadmapService {
                 self.roadmap_path.display()
             );
         }
-        let item = build(id.to_string());
-        let block = crate::services::roadmap_text::render_item_block(
-            &item,
-            crate::services::roadmap_text::row_indent(&raw),
-        );
-        let appended = crate::services::roadmap_text::append_item(&raw, &block);
-        fs::write(&self.roadmap_path, appended)
-            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
+        // PMAT-1363: the same seam as the allocator path — this is the path
+        // `pmat work add --github-issue` takes.
+        self.persist_new_row(&raw, &build(id.to_string()))?;
         // Keep the shared high-water mark ahead of a caller-supplied id, so the
         // allocator cannot later hand out an id this call already spent.
         if let Some(number) = id.rsplit('-').next().and_then(|n| n.parse::<u32>().ok()) {
@@ -241,6 +227,28 @@ impl RoadmapService {
             }
         }
         Ok(id.to_string())
+    }
+
+    /// Write one NEW row: its own `entries/<id>.yaml` in a repository that has
+    /// opted in, an append to `roadmap.yaml` otherwise. The caller holds the lock.
+    ///
+    /// PMAT-1363: the fragment is what makes two pull requests disjoint on the
+    /// roadmap — an append still has both branches writing one file's tail. Both
+    /// `work add` paths (allocated id and caller-supplied id) come through here,
+    /// so the behaviour cannot depend on which flag the caller used.
+    fn persist_new_row(&self, raw: &str, item: &RoadmapItem) -> Result<()> {
+        let block = crate::services::roadmap_text::render_item_block(
+            item,
+            crate::services::roadmap_text::row_indent(raw),
+        );
+        if let Some(entries) = self.fragment_dir()? {
+            crate::services::roadmap_fragments::write_fragment(&entries, &item.id, &block)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            return Ok(());
+        }
+        let appended = crate::services::roadmap_text::append_item(raw, &block);
+        fs::write(&self.roadmap_path, appended)
+            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))
     }
 
     /// Replace ONE row's raw text — the row declaring `id` — with `item`.
@@ -265,8 +273,11 @@ impl RoadmapService {
     pub fn replace_item_raw(&self, id: &str, item: &RoadmapItem) -> Result<()> {
         let _lock = self.acquire_write_lock()?;
 
-        let raw = fs::read_to_string(&self.roadmap_path)
-            .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
+        // PMAT-1363: the view — base ⊕ entries/ in an opted-in repository — so a
+        // ticket that exists only as a fragment can be edited too.
+        let raw = self.read_view_unlocked()?.ok_or_else(|| {
+            anyhow::anyhow!("Failed to read roadmap file: {:?}", self.roadmap_path)
+        })?;
         crate::services::roadmap_text::check_roadmap_text(&raw, &self.roadmap_path)?;
 
         let block = crate::services::roadmap_text::render_item_block(
@@ -280,13 +291,38 @@ impl RoadmapService {
                     self.roadmap_path
                 )
             })?;
+        // PMAT-1363: the edited row becomes (or replaces) that ticket's fragment,
+        // and roadmap.yaml is not opened for write. A base row edited this way is
+        // superseded by its fragment at the next aggregation.
+        if let Some(entries) = self.fragment_dir()? {
+            if item.id != id {
+                anyhow::bail!(
+                    "refusing to re-id {id} as {}: a fragment is named for its id, and a \
+                     rename would leave the old id's row behind (PMAT-1363)",
+                    item.id
+                );
+            }
+            return crate::services::roadmap_fragments::write_fragment(&entries, id, &block)
+                .map(|_| ())
+                .map_err(|e| anyhow::anyhow!("{e}"));
+        }
         fs::write(&self.roadmap_path, updated)
             .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))
         // Lock released automatically
     }
 
     /// Serialise and write the roadmap. The caller must already hold the lock.
+    ///
+    /// PMAT-1363: the ONE model-level writer — `save`, `upsert_item`,
+    /// `upsert_item_checked`, `remove_item` and the empty-roadmap arm of
+    /// `add_item_with_next_id` all come through here. In a repository that has
+    /// opted in to `entries/` it writes fragments and never opens `roadmap.yaml`
+    /// ([`Self::write_roadmap_as_fragments`]); otherwise it writes the whole file,
+    /// exactly as before.
     fn write_roadmap_unlocked(&self, roadmap: &Roadmap) -> Result<()> {
+        if let Some(entries) = self.fragment_dir()? {
+            return self.write_roadmap_as_fragments(&entries, roadmap);
+        }
         if let Some(parent) = self.roadmap_path.parent() {
             fs::create_dir_all(parent)
                 .with_context(|| format!("Failed to create directory: {:?}", parent))?;
@@ -303,27 +339,18 @@ impl RoadmapService {
         // Acquire exclusive lock for entire read-modify-write operation
         let _lock = self.acquire_write_lock()?;
 
-        // Load roadmap (no lock needed - we already have exclusive lock)
-        let mut roadmap = if self.roadmap_path.exists() {
-            let contents = fs::read_to_string(&self.roadmap_path)
-                .with_context(|| format!("Failed to read roadmap file: {:?}", self.roadmap_path))?;
-            self.parse_roadmap_yaml(&contents)?
-        } else {
-            Roadmap::default()
+        // Load roadmap (no lock needed - we already have exclusive lock).
+        // PMAT-1363: the view — base ⊕ entries/ in an opted-in repository.
+        let mut roadmap = match self.read_view_unlocked()? {
+            Some(contents) => self.parse_roadmap_yaml(&contents)?,
+            None => Roadmap::default(),
         };
 
         // Modify
         let removed = roadmap.remove_item(id);
 
         // Save (no lock needed - we already have exclusive lock)
-        if let Some(parent) = self.roadmap_path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create directory: {:?}", parent))?;
-        }
-        let yaml = serde_yaml_ng::to_string(&roadmap)
-            .with_context(|| "Failed to serialize roadmap to YAML")?;
-        fs::write(&self.roadmap_path, yaml)
-            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
+        self.write_roadmap_unlocked(&roadmap)?;
 
         Ok(removed)
         // Lock released automatically

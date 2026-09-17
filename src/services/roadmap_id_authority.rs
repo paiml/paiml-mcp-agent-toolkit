@@ -131,7 +131,19 @@ impl IdAuthority {
             commits.extend(non_empty_lines(&refs));
         }
 
+        // PMAT-1363: a ref's `entries/` spends ids too. In a repository that has
+        // opted in to fragments, a ticket added on another branch lives ONLY in
+        // that branch's `entries/<id>.yaml` until the post-merge aggregation, so
+        // reading the ref's roadmap.yaml alone is exactly the false LOW this
+        // function exists to prevent.
+        let entries_rel = repo
+            .roadmap_rel
+            .parent()
+            .map(|dir| dir.join("entries"))
+            .and_then(|dir| dir.to_str().map(ToString::to_string));
+
         let mut blobs: BTreeSet<String> = BTreeSet::new();
+        let mut trees: BTreeSet<String> = BTreeSet::new();
         for commit in &commits {
             let spec = format!("{commit}:{rel}");
             // `--quiet` so a ref that simply has no roadmap says nothing.
@@ -140,19 +152,36 @@ impl IdAuthority {
             {
                 blobs.extend(non_empty_lines(&blob));
             }
-        }
-
-        let mut max: Option<u32> = None;
-        for blob in &blobs {
-            let Some(text) = git_stdout(&repo.toplevel, &["cat-file", "-p", blob]) else {
-                continue;
-            };
-            if let Some(found) = roadmap_text::max_id_number(&text) {
-                max = Some(max.map_or(found, |seen: u32| seen.max(found)));
+            if let Some(entries) = &entries_rel {
+                let spec = format!("{commit}:{entries}");
+                if let Some(tree) =
+                    git_stdout(&repo.toplevel, &["rev-parse", "--verify", "--quiet", &spec])
+                {
+                    trees.extend(non_empty_lines(&tree));
+                }
             }
         }
-        max
+
+        let from_rows = blobs.iter().filter_map(|blob| {
+            let text = git_stdout(&repo.toplevel, &["cat-file", "-p", blob])?;
+            roadmap_text::max_id_number(&text)
+        });
+        let from_fragments = trees
+            .iter()
+            .filter_map(|tree| max_fragment_id_in_tree(&repo.toplevel, tree));
+        from_rows.chain(from_fragments).max()
     }
+}
+
+/// The greatest id number an `entries/` tree's `<id>.yaml` names spend, read by
+/// [`roadmap_text::id_number`] — the same rule as a roadmap row of that id.
+fn max_fragment_id_in_tree(toplevel: &Path, tree: &str) -> Option<u32> {
+    let names = git_stdout(toplevel, &["ls-tree", "--name-only", tree])?;
+    non_empty_lines(&names)
+        .iter()
+        .filter_map(|name| name.strip_suffix(".yaml"))
+        .filter_map(roadmap_text::id_number)
+        .max()
 }
 
 /// The pre-PMAT-680 authority: `<roadmap>.yaml.lock` beside the roadmap.

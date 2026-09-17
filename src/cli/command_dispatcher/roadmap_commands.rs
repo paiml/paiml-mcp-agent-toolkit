@@ -31,6 +31,18 @@ impl CommandDispatcher {
             );
         }
 
+        // PMAT-1363: `pmat roadmap aggregate` regenerates roadmap.yaml from its
+        // base and entries/ and returns early, like `sync`.
+        if let RoadmapCommands::Aggregate {
+            write,
+            check,
+            roadmap,
+            entries,
+        } = &roadmap_cmd
+        {
+            return crate::roadmap::aggregate::execute(*write, *check, roadmap, entries.as_deref());
+        }
+
         // Load configuration (with defaults)
         let config = RoadmapConfig {
             path: roadmap::default_roadmap_path(),
@@ -120,6 +132,9 @@ impl CommandDispatcher {
                 }
                 // MACS-013: handled by the early return above; unreachable here.
                 RoadmapCommands::Sync { .. } => unreachable!("Sync handled before config pipeline"),
+                RoadmapCommands::Aggregate { .. } => {
+                    unreachable!("Aggregate handled before config pipeline")
+                }
             },
         };
 

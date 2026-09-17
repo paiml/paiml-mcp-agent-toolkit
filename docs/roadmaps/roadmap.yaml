@@ -6812,15 +6812,21 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:32Z
-  updated: 2026-09-15T16:00:32Z
+  updated: 2026-09-17T09:30:00Z
   spec: null
   acceptance_criteria:
   - 'See paiml/paiml-mcp-agent-toolkit#1363. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  - 'In a repository with docs/roadmaps/entries/ (the predicate of paiml/.github roadmap-fragment-parity), RoadmapService::save and every model writer write entries/<id>.yaml and leave roadmap.yaml byte-identical; without entries/ they write the whole file as before. Mutation: deleting the fragment branch of write_roadmap_unlocked turns 4 wiring tests RED.'
+  - 'pmat roadmap aggregate [--write|--check] ports aprender scripts/lib/roadmap_fragments.py: idempotent, deterministic, supersede-on-duplicate, sorted insert; the 14 reference selftest rows are case_01..case_14. On aprender origin/main 754c48225 (899 rows, 11 fragments) three runs are byte-identical to each other, to the committed file and to the Python; a 22-scenario differential against the Python is 22/22 byte-identical.'
+  - pmat work add refuses an id that is not filename-safe PREFIX-N; pmat work list and pmat work status read base plus fragments (there is no pmat work show subcommand).
+  - 'Fragment writes and aggregate --write hold the repository lock (<git common dir>/pmat/roadmap-id.lock); removing lock_exclusive turns the lock tests RED. Contract: contracts/roadmap-fragments-v1.yaml (8 obligations, 8 falsification tests).'
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
+  release: 3.41.0
 - id: PMAT-1365
   github_issue: 1365
   item_type: task
@@ -6842,11 +6848,11 @@ roadmap:
   github_issue: 1366
   item_type: task
   title: 'impl-estimates.jsonl is write-only: 16 rows written, 0 poolable — unit is not gated at write time'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:32Z
-  updated: 2026-09-17T06:34:59Z
+  updated: 2026-09-17T09:11:15.649954793+00:00
   spec: null
   acceptance_criteria:
   - 'See paiml/paiml-mcp-agent-toolkit#1366. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
