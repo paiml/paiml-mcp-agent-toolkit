@@ -194,6 +194,38 @@ pub(super) fn github_issue_advice(item: &RoadmapItem) -> Option<String> {
     })
 }
 
+/// Judge `commit_msg`, then stage `files`, for [`auto_commit_work_files`].
+/// Prints why and returns false when the commit must not happen.
+///
+/// That commit runs with `--no-verify` (grill D9 / CB-2113: the commit-msg hook
+/// pmat writes refuses a commit naming a *completed* item, and this message
+/// carries no `Pmat-Ticket:` trailer), so no hook ever lints it. pmat lints it
+/// itself, before staging anything: a closing reference here would close the
+/// linked issue the moment the commit reaches the default branch (PMAT-900001).
+pub(super) fn ready_to_commit(project_path: &Path, files: &[&str], commit_msg: &str) -> bool {
+    let hits = crate::services::closing_keywords::find(commit_msg);
+    if !hits.is_empty() {
+        println!(
+            "{}",
+            c::warn("Auto-commit: commit message would close a GitHub issue, not committing")
+        );
+        for hit in &hits {
+            println!("   line {}: {}", hit.line, hit.text);
+        }
+        return false;
+    }
+    let add_status = std::process::Command::new("git")
+        .arg("add")
+        .args(files)
+        .current_dir(project_path)
+        .status();
+    if !matches!(add_status, Ok(s) if s.success()) {
+        println!("{}", c::warn("Auto-commit: failed to stage files"));
+        return false;
+    }
+    true
+}
+
 /// Print completion next steps with commit metadata (helper for handle_work_complete)
 pub(super) fn print_complete_next_steps(item: &RoadmapItem, id: &str, metadata: &CommitMetadata) {
     println!("{}", c::subheader("🎯 Next steps:"));
@@ -239,38 +271,8 @@ pub(super) fn auto_commit_work_files(
         }
     }
 
-    // git add the modified files
-    let add_status = Command::new("git")
-        .arg("add")
-        .args(&files_to_add)
-        .current_dir(project_path)
-        .status();
-
-    if !matches!(add_status, Ok(s) if s.success()) {
-        println!("{}", c::warn("Auto-commit: failed to stage files"));
-        println!();
-        print_complete_next_steps(item, id, metadata);
-        return;
-    }
-
-    // Build commit message
     let commit_msg = work_complete_commit_message(item, id, metadata);
-
-    // This commit runs with `--no-verify` (grill D9 / CB-2113: the commit-msg
-    // hook pmat writes refuses a commit naming a *completed* item, so it must
-    // not fire on pmat's own completion commit) — which means no hook ever
-    // lints this message. So pmat lints it itself, in-process, right before
-    // committing: a closing reference here would close the linked issue the
-    // moment this commit reaches the default branch, unasked.
-    let hits = crate::services::closing_keywords::find(&commit_msg);
-    if !hits.is_empty() {
-        println!(
-            "{}",
-            c::warn("Auto-commit: commit message would close a GitHub issue, not committing")
-        );
-        for hit in &hits {
-            println!("   line {}: {}", hit.line, hit.text);
-        }
+    if !ready_to_commit(project_path, &files_to_add, &commit_msg) {
         println!();
         print_complete_next_steps(item, id, metadata);
         return;
@@ -438,6 +440,40 @@ mod closing_keyword_tests {
             "advice must not hand the user a close command: {advice:?}"
         );
         assert!(advice.contains("Closes #5"), "{advice:?}");
+    }
+
+    /// The in-process lint that stands in for the hook `--no-verify` skips:
+    /// a closing message is refused BEFORE anything is staged; a clean one is
+    /// staged and admitted.
+    #[test]
+    fn ready_to_commit_refuses_a_closing_message_before_staging() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let git = |args: &[&str]| {
+            std::process::Command::new("git")
+                .current_dir(dir.path())
+                .args(args)
+                .output()
+                .expect("git")
+        };
+        assert!(git(&["init", "-q"]).status.success());
+        std::fs::write(dir.path().join("roadmap.yaml"), "x\n").expect("write");
+        let staged = || {
+            String::from_utf8_lossy(&git(&["diff", "--cached", "--name-only"]).stdout).to_string()
+        };
+
+        assert!(!ready_to_commit(
+            dir.path(),
+            &["roadmap.yaml"],
+            "feat: this fixes #5 (Refs PMAT-1)"
+        ));
+        assert_eq!(staged(), "", "a refused message must stage nothing");
+
+        assert!(ready_to_commit(
+            dir.path(),
+            &["roadmap.yaml"],
+            "feat: this fixes issue #5 (Refs PMAT-1)"
+        ));
+        assert_eq!(staged().trim(), "roadmap.yaml");
     }
 
     #[test]
