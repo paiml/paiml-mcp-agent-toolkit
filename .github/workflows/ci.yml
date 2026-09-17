@@ -92,7 +92,7 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability]
+    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability, tdg-ratchet]
     if: always()
     steps:
       - name: Check required jobs
@@ -102,7 +102,8 @@ jobs:
                    "windows-check:${{ needs.windows-check.result }}" \
                    "reusable-pin-drift:${{ needs.reusable-pin-drift.result }}" \
                    "roadmap-validate:${{ needs.roadmap-validate.result }}" \
-                   "traceability:${{ needs.traceability.result }}"; do
+                   "traceability:${{ needs.traceability.result }}" \
+                   "tdg-ratchet:${{ needs.tdg-ratchet.result }}"; do
             name=${j%%:*}
             result=${j#*:}
             if [ "$result" != "success" ]; then
@@ -149,6 +150,39 @@ jobs:
           echo "control: a duplicated id is refused"
       - name: pmat work validate (0 = valid, 1 = invalid or unreadable)
         run: ./target/debug/pmat work validate
+
+  # PMAT-636: CB-200's `[tdg] baseline` (.pmat-gates.toml) is a ratchet on how many
+  # definitions grade below A, and until this job nothing that decides a merge
+  # measured it. `the_committed_baseline_is_the_measured_count` reads
+  # `.pmat/context.db`; a CI checkout has none, so under `ci / gate`'s
+  # `cargo test --lib` it took its no-index branch and PASSED on every pull request
+  # while master drifted from the banked 1688 to 1741 — measured with ONE pmat
+  # binary over cold indexes of 683d6994d and ce945d81e, so new debt, not grader
+  # drift. The `Ladder gate — pmat comply` step runs CB-200 too, but with
+  # continue-on-error, so its red reached nothing.
+  #
+  # This job asks CB-200 itself, which indexes a fresh checkout OUTSIDE it (#1008),
+  # and scripts/cb200-ratchet-gate.sh passes exactly one outcome: measured, and
+  # equal to the recorded baseline. Over it, under it and not banked, stale, not
+  # measured, or disagreeing with .pmat-gates.toml are each exit 1 and named. It
+  # is in `gate`'s `needs` AND in its result loop, so a red verdict fails the
+  # required check. CONTROL FIRST, as roadmap-validate does: every verdict is
+  # planted, including a real pmat run over one definition planted below grade A,
+  # and must be reached before the verdict on this tree is believed.
+  tdg-ratchet:
+    name: CB-200 ratchet measured
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: build pmat from this tree
+        run: cargo build --bin pmat --locked
+      - name: control — every CB-200 verdict is reachable, and a planted below-A definition is refused
+        run: bash scripts/cb200-ratchet-gate.sh --control --pmat ./target/debug/pmat
+      - name: CB-200 is measured and equals the recorded baseline
+        run: bash scripts/cb200-ratchet-gate.sh --pmat ./target/debug/pmat
 
   # PMAT-719 (goal-mode.md §7.1, step 2 of §11): the first CB rule wired into
   # the required `gate` context OUTSIDE the `Ladder gate — pmat comply` step,

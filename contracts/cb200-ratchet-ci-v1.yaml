@@ -1,0 +1,151 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-17"
+  author: PAIML Engineering
+  registry: true
+  references:
+    - "issue 1266 — CB-200 over its recorded baseline on master while every required check read green"
+    - "PMAT-1363 / PMAT-1365 — 1742 below grade A against a banked 1688, measured on a clean clone of 441d198e7"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  contract: cb200-ratchet-ci-v1
+  status: active
+  description: >
+    `[tdg] baseline` in .pmat-gates.toml is a ratchet on how many definitions grade below
+    A. The only re-derivation that ran at a merge was the --lib test
+    `the_committed_baseline_is_the_measured_count`, which needs `.pmat/context.db`; a CI
+    checkout has none, so the test took its no-index branch and passed on every pull
+    request while master drifted from 1688 to 1741. ci.yml's `tdg-ratchet` job now has
+    CB-200 index the checkout out-of-tree, and scripts/cb200-ratchet-gate.sh passes exactly
+    one outcome: measured, and equal to the recorded baseline. Every other outcome is
+    named and fails. The job is in `gate`'s needs and result loop, `make gate` runs the
+    same two steps, and a control reaches every verdict — one of them by running the real
+    pmat over a definition planted below grade A — before the verdict on the tree is read.
+
+equations:
+  measured_equals_baseline:
+    formula: "verdict(tree) = PASS  <=>  measured(CB-200, tree) and count(tree) = recorded_baseline(.pmat-gates.toml)"
+    domain: "one `pmat comply check --checks CB-200 --format json` report and the .pmat-gates.toml it judged"
+    codomain: "PASS | OVER | BEATEN | STALE | NOT MEASURED | DISAGREE"
+    invariants:
+      - "count > baseline is OVER: new debt is refused"
+      - "count < baseline is BEATEN: a beaten baseline that is not banked is slack a regression can hide in"
+      - "the verdict is read from CB-200's message, never from comply's exit code, which is 0 on the Warn a held baseline reports"
+    preconditions: []
+
+  unmeasured_is_a_failure:
+    formula: "report has no single CB-200 verdict, or status = Skip, or the message starts 'Not measured', or it does not lead with a count  =>  NOT MEASURED, exit 1"
+    domain: "any report the gate reads, including a crash that wrote no JSON"
+    codomain: "exit code"
+    invariants:
+      - "a ratchet that did not run has not held: no absent, skipped or count-less verdict is PASS"
+      - "a PASS verdict from a comply run that exited non-zero is NOT MEASURED"
+    preconditions: []
+
+  stale_is_a_failure:
+    formula: "message carries CB-200's stale-index note or its NOT A VERDICT demotion  =>  STALE, exit 1"
+    domain: "reports measured over a project's own .pmat/context.db"
+    codomain: "exit code"
+    invariants:
+      - "a count from an index older than the sources describes an older tree, which can only under-count HEAD"
+    preconditions: []
+
+  the_two_baseline_readers_agree:
+    formula: "baseline CB-200 compared against = [tdg] baseline read from .pmat-gates.toml by the gate itself, else DISAGREE, exit 1"
+    domain: "reports whose verdict names a recorded baseline"
+    codomain: "exit code"
+    invariants:
+      - "a gates file with no numeric [tdg] baseline is NOT MEASURED: there is no ratchet to hold"
+    preconditions: []
+
+  a_planted_below_a_definition_is_refused:
+    formula: "project p with one definition graded below A and [tdg] baseline = 0  =>  gate(real pmat, p) = OVER, exit 1; the same project at baseline 1  =>  PASS, exit 0"
+    domain: "the pmat built from this tree, over a scratch project, its index kept under a scratch PMAT_CACHE_DIR"
+    codomain: "exit code"
+    invariants:
+      - "the fixture tree is never written to"
+      - "both directions run, so neither a gate that always fails nor one that always passes survives"
+    preconditions: []
+
+  the_ratchet_reaches_the_required_check:
+    formula: "ci.yml tdg-ratchet runs --control before the measurement  and  tdg-ratchet in needs(gate)  and  gate reads needs.tdg-ratchet.result  and  scripts/gate.sh has both tdg-ratchet step rows"
+    domain: ".github/workflows/ci.yml and scripts/gate.sh at any revision"
+    codomain: bool
+    invariants:
+      - "gate is `if: always()`, so a job it needs but whose result it does not read cannot fail it"
+    preconditions: []
+
+proof_obligations:
+  - type: postcondition
+    property: "the gate passes exactly when CB-200 measured the tree and the count equals the baseline"
+    formal: "verdict = PASS ⇔ measured ∧ count = baseline"
+    applies_to: measured_equals_baseline
+  - type: invariant
+    property: "nothing unmeasured passes"
+    formal: "¬measured ⇒ verdict = NOT MEASURED ∧ exit = 1"
+    applies_to: unmeasured_is_a_failure
+  - type: invariant
+    property: "a stale count fails"
+    formal: "stale(index) ⇒ verdict = STALE ∧ exit = 1"
+    applies_to: stale_is_a_failure
+  - type: invariant
+    property: "the gate and CB-200 read the same baseline, or the gate fails"
+    formal: "reported_baseline ≠ recorded_baseline ⇒ verdict = DISAGREE ∧ exit = 1"
+    applies_to: the_two_baseline_readers_agree
+  - type: postcondition
+    property: "a definition planted below grade A is refused by the real pmat, and the same project held at its baseline passes"
+    formal: "gate(pmat, planted, 0) = OVER ∧ gate(pmat, planted, 1) = PASS"
+    applies_to: a_planted_below_a_definition_is_refused
+  - type: invariant
+    property: "a red ratchet fails the required gate check and make gate"
+    formal: "verdict ≠ PASS ⇒ result(tdg-ratchet) = failure ⇒ result(gate) = failure"
+    applies_to: the_ratchet_reaches_the_required_check
+
+falsification_tests:
+  - id: measured_equals_baseline
+    rule: "a report at the baseline passes; one over it and one under it fail, named OVER and BEATEN"
+    prediction: "arms 1 HELD, 2 OVER, 3 BEATEN GREEN"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    if_fails: "the ratchet admits new debt, or lets a beaten baseline stand as headroom"
+  - id: unmeasured_is_a_failure
+    rule: "a skipped verdict, a 'Not measured' verdict and a report with no CB-200 verdict each fail as NOT MEASURED"
+    prediction: "arms 4 SKIPPED, 5 UNMEASURED, 6 ABSENT GREEN"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    if_fails: "the gate repeats the defect it replaces: a measurement that did not happen reads as a pass"
+  - id: stale_is_a_failure
+    rule: "a verdict carrying the stale-index note fails as STALE"
+    prediction: "arm 7 STALE GREEN"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    if_fails: "a count of an older tree, which can only under-count, holds the ratchet"
+  - id: the_two_baseline_readers_agree
+    rule: "a verdict naming a baseline other than .pmat-gates.toml's fails as DISAGREE"
+    prediction: "arm 8 DISAGREE GREEN"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    if_fails: "the gate judges a number nothing in the tree records"
+  - id: a_planted_below_a_definition_is_refused
+    rule: "the real pmat over one planted below-A definition is OVER at baseline 0 and PASS at baseline 1"
+    prediction: "arms 9 PLANTED-OVER and 10 PLANTED-HELD GREEN (planted_below_a grades B-, complexity 18)"
+    test: "cargo build --bin pmat --locked && bash scripts/cb200-ratchet-gate.sh --control --pmat target/debug/pmat"
+    if_fails: "the gate cannot tell a tree with new debt from one without, and its green carries no information"
+  - id: the_ratchet_reaches_the_required_check
+    rule: "removing tdg-ratchet from gate's needs or result loop, the control or measurement step, or a make gate row fails the lib test"
+    prediction: "make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check, RED with needs.tdg-ratchet.result removed from gate's loop: 'ci.yml gate needs tdg-ratchet but never reads its result'"
+    test: "cargo test --lib make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check"
+    if_fails: "the job goes red and gate, which is if: always(), reports success anyway"
+
+kani_harnesses: []
+
+qa_gate:
+  id: CB200-RATCHET-CI
+  name: CB-200 ratchet measured in CI
+  description: >
+    Shell and workflow wiring, so the obligations are carried by executable controls rather
+    than Lean or Kani. scripts/cb200-ratchet-gate.sh --control plants every verdict, two of
+    them through the real pmat; the lib test re-reads ci.yml and scripts/gate.sh under
+    cargo test --lib. ci.yml tdg-ratchet runs the control before the measurement.
+  checks:
+    - validation
+    - falsification
+  pass_criteria: >
+    scripts/cb200-ratchet-gate.sh --control exits 0 with arms 1-10 GREEN;
+    cargo test --lib make_gate_tests::the_tdg_ratchet_job_reaches_the_required_gate_check passes;
+    scripts/cb200-ratchet-gate.sh --pmat <the pmat built from the tree> exits 0 (PASS).

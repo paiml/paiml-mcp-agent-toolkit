@@ -139,6 +139,9 @@ ci-only | mutation-diff (not required) | mutation-diff | .github/workflows/mutat
 #   D2 — roadmap-write query gate
 # A new row needs no other edit: the runner, the CI-ONLY printout and the verdict pick it up.
 # Keep this marker; scripts/gate-control.sh and src/make_gate_tests.rs assert it is here.
+# ── gate — ci.yml tdg-ratchet (PMAT-636): CB-200's `[tdg] baseline`, measured where a merge is decided.
+step    | gate | tdg-ratchet-control | .github/workflows/ci.yml#tdg-ratchet#control — every CB-200 verdict is reachable, and a planted below-A definition is refused | - | -
+step    | gate | tdg-ratchet | .github/workflows/ci.yml#tdg-ratchet#CB-200 is measured and equals the recorded baseline | CI measures a fresh checkout over pmat's own out-of-tree index; in a clone that holds .pmat/context.db CB-200 counts that index instead, and a stale one is a FAIL (STALE) | -
 LEGS
 }
 

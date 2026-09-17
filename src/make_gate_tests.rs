@@ -20,9 +20,11 @@
 //!   5. no CI-only row blames a credential that is a GitHub token `gh auth token` supplies;
 //!   6. no leg runs a hand-written `target/debug/pmat`: `cmd` rows run `$PMAT_BIN`, the
 //!      executable cargo reports building, and the one spelling `step` text may use is the
-//!      one `scripts/gate.sh` rewrites to it.
+//!      one `scripts/gate.sh` rewrites to it;
+//!   7. CB-200's ratchet reaches the required `gate` check through ci.yml's `tdg-ratchet`
+//!      job, and `make gate` runs the same two steps (PMAT-636).
 //!
-//! Contract: `contracts/make-gate-v1.yaml`.
+//! Contract: `contracts/make-gate-v1.yaml`; item 7, `contracts/cb200-ratchet-ci-v1.yaml`.
 
 use serde_yaml_ng::Value;
 use std::fs;
@@ -470,5 +472,77 @@ fn no_leg_runs_a_hand_written_pmat_binary_path() {
     assert!(
         script.contains(&format!("\"{REWRITTEN}\"")) && script.contains("--message-format json"),
         "{SCRIPT} no longer rewrites {REWRITTEN} to the executable cargo reports building"
+    );
+}
+
+/// PMAT-636: CB-200's `[tdg] baseline` is enforced where a merge is decided, or nowhere.
+///
+/// `cargo test --lib` cannot measure the ratchet on a CI checkout: it has no
+/// `.pmat/context.db`, so `the_committed_baseline_is_the_measured_count` took its no-index
+/// branch and passed while master drifted from 1688 to 1741 below grade A. ci.yml's
+/// `tdg-ratchet` job measures it instead, and that is a gate only while all of these hold:
+/// the job runs the control before the measurement, `gate` needs the job, `gate` READS its
+/// result (`gate` is `if: always()`, so a need alone lets a red job through), and `make gate`
+/// runs both steps. Remove any one and a red ratchet reaches nothing.
+#[test]
+fn the_tdg_ratchet_job_reaches_the_required_gate_check() {
+    let ci: Value = serde_yaml_ng::from_str(&read(".github/workflows/ci.yml")).unwrap_or_default();
+    let jobs = ci.get("jobs");
+    let runs: Vec<String> = jobs
+        .and_then(|j| j.get("tdg-ratchet"))
+        .and_then(|j| j.get("steps"))
+        .and_then(Value::as_sequence)
+        .map(|steps| {
+            steps
+                .iter()
+                .filter_map(|step| step.get("run").and_then(Value::as_str))
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+    let control = runs
+        .iter()
+        .position(|r| r.contains("scripts/cb200-ratchet-gate.sh --control"));
+    let measure = runs
+        .iter()
+        .position(|r| r.contains("scripts/cb200-ratchet-gate.sh --pmat"));
+    assert!(
+        control.is_some() && measure.is_some() && control < measure,
+        "ci.yml tdg-ratchet must run the gate's control, then its measurement; its run steps are {runs:?}"
+    );
+
+    let gate = jobs.and_then(|j| j.get("gate"));
+    let needs: Vec<&str> = gate
+        .and_then(|g| g.get("needs"))
+        .and_then(Value::as_sequence)
+        .map(|n| n.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    assert!(
+        needs.contains(&"tdg-ratchet"),
+        "ci.yml gate does not need tdg-ratchet, so the ratchet reaches no required check: {needs:?}"
+    );
+    let gate_steps = gate
+        .and_then(|g| g.get("steps"))
+        .map(|s| serde_yaml_ng::to_string(s).unwrap_or_default())
+        .unwrap_or_default();
+    assert!(
+        gate_steps.contains("needs.tdg-ratchet.result"),
+        "ci.yml gate needs tdg-ratchet but never reads its result; gate is `if: always()`, so a red \
+         ratchet would pass it"
+    );
+
+    let legs: Vec<String> = rows(&read(SCRIPT))
+        .into_iter()
+        .filter(|r| {
+            r.kind == "step"
+                && r.source
+                    .starts_with(".github/workflows/ci.yml#tdg-ratchet#")
+        })
+        .map(|r| r.leg)
+        .collect();
+    assert_eq!(
+        legs.len(),
+        2,
+        "make gate must run both tdg-ratchet steps, the control and the measurement; it runs {legs:?}"
     );
 }
