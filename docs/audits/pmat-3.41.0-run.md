@@ -230,3 +230,10 @@ tree: run-log rebased, behind=0 against origin/master 7fa1be27d.
 Raw: #1387 armed through `pmat-merge` on a 3/3 PASS artifact (judged 81fe249fa), 45 pass / 0 fail, merged 12:3xZ; session reports CB-2115 on master = 115 items / 115 issues / 0 findings. Cycle time launch→merge: 46 min. Note: `kind-gate.sh` and `model-gate.sh` both exit 2 on `kind:lifecycle` — the skill has no such kind; the session recorded it rather than working around it (goes to paiml-implement, not fixed here).
 
 Decision: 12:36Z launched D4 session seven (pid 3325886): merge master, fix its own gate.sh stale-binary finding RED→GREEN, full `make gate`, one quorum round, arm via `pmat-merge`; told NOT to carry lifecycle rows and to stop if a new orphan appears. Slots 3/3: D2 (PMAT-1385), D7 (PMAT-1305, PR #1388 in CI), D4.
+
+## 2026-09-17T13:12Z — sessions in flight
+
+tree: run-log behind=0 against origin/master 7fa1be27d.
+- PR #1388:      26 pass      16 pending       4 skipping 
+- PR #1368:      15 pass      27 pending       4 skipping 
+- D2 PMAT-1385: LIVE at 287746ab0, last transcript event 12:55Z (a long-running command or a delegate is in flight; pid alive). D7 at 34d347c69, D4 at c5f254f70. Slots 3/3. Queue: D0, D6.
