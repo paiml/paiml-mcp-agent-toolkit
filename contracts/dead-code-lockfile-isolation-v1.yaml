@@ -42,7 +42,8 @@ equations:
       - "ABSENT before ⇒ ABSENT after: whether a tree carries a lockfile is the project's decision, not pmat's (#1076)"
       - "PRESENT before ⇒ byte-identical after, including when cargo legitimately rewrote it mid-run"
       - "unchanged ⇒ NOTHING is written: an identical rewrite still moves the mtime, and clean-tree gates read more than content"
-      - "presence is asked with exists(), not with read().ok(): a path that exists but cannot be read must never report Untouched"
+      - "presence is asked with exists(), not with read().ok(), at BOTH ends: a path that exists and cannot be READ is neither Absent nor Present, and is never deleted or overwritten"
+      - "a restore failure is reported even when the cargo run ALSO failed; the two facts never trade places"
       - "for a workspace MEMBER the protected path is the WORKSPACE root's lockfile, which is the only one cargo writes"
       - "the guarantee is independent of the cargo version: measured identically on cargo 1.95.0 and 1.98.0"
     preconditions:
@@ -92,6 +93,15 @@ proof_obligations:
     formal: "lock(p) = ABSENT ⇒ compiler_scan(analyse(p)).verdict = full ∧ dead_one ∈ findings(analyse(p))"
     applies_to: analyze
 
+  - type: invariant
+    property: "DCLI-OB-009 a lockfile that exists but cannot be READ is never deleted and never overwritten: the analysis may not remove what it could not snapshot"
+    formal: "exists(p) ∧ ¬readable(p) before ⇒ restore = Untouched ∧ exists(p) after; and if it VANISHED, restore = Failed"
+    applies_to: acquire
+  - type: invariant
+    property: "DCLI-OB-010 a failed restore reaches the caller even when the cargo run also failed, and carries the cargo error with it"
+    formal: "restore = Failed(d) ⇒ result = Err(e) ∧ e ∋ \"lockfile-restore-failed\" ∧ (cargo = Err(c) ⇒ e ∋ c)"
+    applies_to: cargo_outcome_or_restore_failure
+
 falsification_tests:
   - id: DCLI-F-001
     rule: "a rewritten lockfile is restored byte-for-byte (DCLI-OB-001)"
@@ -138,3 +148,13 @@ falsification_tests:
     prediction: "the two byte-identity tests fail on master and pass on the fix inside rust:1.95-slim with infra#653's overlay in /usr/local/cargo/config.toml, and the identical [[patch.unused]] rewrite reproduces on cargo 1.98.0"
     test: "docs/audits/impl-PMAT-1403-receipt.md — RED/GREEN transcripts from the clean-room toolchain"
     if_fails: "the fix is a workaround for one toolchain rather than an invariant of the analyzer"
+  - id: DCLI-F-010
+    rule: "an unreadable lockfile is never deleted (DCLI-OB-009)"
+    prediction: "with a directory where the lockfile belongs, restore reports Untouched and the path survives; if it vanishes instead, restore reports Failed with the token. Found by quorum review (lane 1): `acquire` classified on `fs::read` alone, so an unreadable lockfile was recorded Absent, the `(Absent, true, _)` arm matched at restore, and the guard DELETED the project's own file. Mutation, measured 2026-09-18: collapsing the `PresentUnreadable` arm back into `Absent` turns both tests RED"
+    test: "cargo test --lib -- lockfile_guard_tests::a_lockfile_that_exists_but_cannot_be_read_is_never_deleted lockfile_guard_tests::an_unreadable_lockfile_that_disappears_is_reported_as_failed"
+    if_fails: "the mechanism whose purpose is to leave the tree alone is the thing that destroys it"
+  - id: DCLI-F-011
+    rule: "a failed restore is never swallowed by a failed cargo run (DCLI-OB-010)"
+    prediction: "all four combinations of (cargo ok/err) x (restore clean/failed) return the right thing, and the both-failed case carries BOTH the token and the cargo error. Found by quorum review (lane 1): `let outcome = outcome?;` ran before the restore was inspected, so a cargo failure short-circuited and the user was told why the analysis stopped but not that it had left the repository modified. Mutation, measured 2026-09-18: restoring that `outcome?` turns the test RED"
+    test: "cargo test --lib lockfile_guard_tests::a_failed_restore_outranks_a_failed_cargo_run_and_is_never_swallowed"
+    if_fails: "a rewritten Cargo.lock goes unreported whenever cargo also failed -- the quiet half of the original defect"

@@ -229,3 +229,120 @@ fn a_workspace_member_guards_the_workspace_root_lockfile() {
          would protect a file cargo never writes and leave the real one exposed"
     );
 }
+
+/// `CargoCheckOutcome` carries no `Debug`, so `expect_err` cannot name it. The
+/// assertion is the point either way: an `Ok` here IS the defect.
+fn unreachable_ok() -> anyhow::Error {
+    assert!(
+        false,
+        "a failed restore returned Ok: the failure was swallowed"
+    );
+    anyhow::anyhow!("unreachable")
+}
+
+/// A lockfile that EXISTS but cannot be read must never be deleted.
+///
+/// Found by quorum review (lane 1, PMAT-1403). `acquire` classified on
+/// `fs::read` alone, so an unreadable lockfile was recorded `Absent`; at
+/// restore the path existed, the `(Absent, true, _)` arm matched, and the guard
+/// REMOVED the project's own file. A mechanism whose entire purpose is to leave
+/// the tree alone would have been the thing that destroyed it.
+///
+/// The unreadable state is forced with a directory rather than `chmod`: the
+/// clean room runs its gates as root, where a mode-0 file is still readable.
+#[test]
+fn a_lockfile_that_exists_but_cannot_be_read_is_never_deleted() {
+    let tmp = crate_root();
+    let lockfile = tmp.path().join("Cargo.lock");
+    std::fs::create_dir(&lockfile).expect("an unreadable thing at the lockfile path");
+    std::fs::write(lockfile.join("occupant"), b"x").expect("make it non-empty");
+
+    let guard = LockfileGuard::acquire(tmp.path());
+    assert_eq!(
+        guard.restore(),
+        LockfileRestore::Untouched,
+        "there were never any bytes to put back, so the only safe move is none"
+    );
+    assert!(
+        lockfile.exists(),
+        "the guard deleted a file it could not read: it is not the analysis's to remove"
+    );
+}
+
+/// ...and if something else removes it, that IS reported: the analysis ran over
+/// a file it could not snapshot and cannot restore.
+#[test]
+fn an_unreadable_lockfile_that_disappears_is_reported_as_failed() {
+    let tmp = crate_root();
+    let lockfile = tmp.path().join("Cargo.lock");
+    std::fs::create_dir(&lockfile).expect("an unreadable thing at the lockfile path");
+
+    let guard = LockfileGuard::acquire(tmp.path());
+    std::fs::remove_dir(&lockfile).expect("simulate cargo clearing the path");
+
+    let outcome = guard.restore();
+    let detail = failure_detail(&outcome);
+    assert!(
+        detail.contains(crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE_RESTORE_FAILED)
+            && detail.contains("Cargo.lock"),
+        "a lockfile that vanished and cannot be rebuilt must carry the token and the path: \
+         {detail}"
+    );
+}
+
+/// A failed restore must reach the caller even when cargo ALSO failed.
+///
+/// Found by quorum review (lane 1, PMAT-1403). `run_cargo_check` did
+/// `let outcome = outcome?;` before looking at the restore, so a cargo failure
+/// short-circuited and the restore failure was dropped: the user learned why
+/// the analysis stopped and not that it had left their repository modified.
+#[test]
+fn a_failed_restore_outranks_a_failed_cargo_run_and_is_never_swallowed() {
+    use super::cargo_outcome_or_restore_failure;
+
+    let failed = || LockfileRestore::Failed("lockfile-restore-failed: /x/Cargo.lock".into());
+    let token = crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE_RESTORE_FAILED;
+
+    // cargo failed AND the restore failed: BOTH facts survive.
+    let err = match cargo_outcome_or_restore_failure(
+        Err(anyhow::anyhow!("Cargo check failed: boom")),
+        failed(),
+    ) {
+        Err(e) => e,
+        Ok(_) => unreachable_ok(),
+    };
+    let text = format!("{err}");
+    assert!(
+        text.contains(token),
+        "the restore failure was swallowed by the cargo error: {text}"
+    );
+    assert!(
+        text.contains("boom"),
+        "the cargo error must be carried along, not traded away: {text}"
+    );
+
+    // cargo succeeded, the restore failed: still an error.
+    let err = match cargo_outcome_or_restore_failure(
+        Ok(super::CargoCheckOutcome::suppressed_by_env()),
+        failed(),
+    ) {
+        Err(e) => e,
+        Ok(_) => unreachable_ok(),
+    };
+    assert!(format!("{err}").contains(token));
+
+    // Nothing wrong: the cargo outcome passes through untouched.
+    assert!(
+        cargo_outcome_or_restore_failure(
+            Ok(super::CargoCheckOutcome::suppressed_by_env()),
+            LockfileRestore::Untouched
+        )
+        .is_ok(),
+        "a clean restore must not turn a good run into an error"
+    );
+    assert!(cargo_outcome_or_restore_failure(
+        Err(anyhow::anyhow!("Cargo check failed: boom")),
+        LockfileRestore::Restored
+    )
+    .is_err_and(|e| format!("{e}").contains("boom") && !format!("{e}").contains(token)));
+}

@@ -248,16 +248,49 @@ belongs: `write()` and `remove_file()` both fail for uid 0 too. This is recorded
 chmod-based test would have shipped green and been vacuous in the one environment that found
 the original bug.
 
+## Quorum round 3 — a FAIL that was right
+
+The tree changed after rounds 1 and 2 (the rebase, the guard move, the allow-list entry), so
+the quorum was re-run on the final diff. **Lane 1 (`gemini-3.1-pro-high`) returned FAIL with
+two cited findings. Both were real, both are fixed, and both now have a falsifier that was
+measured to fire.**
+
+1. **`acquire` classified on `fs::read` alone.** A `Cargo.lock` that EXISTED but could not be
+   read was recorded `Absent`; at restore the path existed, the `(Absent, true, _)` arm
+   matched, and the guard **deleted the project's own file**. The mechanism whose entire
+   purpose is to leave the tree alone would have been the thing that destroyed it — and the
+   contract already claimed, wrongly, that presence was asked with `exists()`: I had applied
+   that only in `restore_inner`, not in `acquire`. A third state, `PresentUnreadable`, now
+   separates "not there" from "there and unreadable"; the latter is never deleted, never
+   overwritten, and is reported `Failed` only if it VANISHES.
+2. **A failed restore could be swallowed by a failed cargo run.** `let outcome = outcome?;`
+   ran before `restored` was inspected, so when cargo failed the restore failure was dropped:
+   the user learned why the analysis stopped and not that it had left their repository
+   modified — the quiet half of the original defect. The decision is now a pure function,
+   `cargo_outcome_or_restore_failure`, which makes a failed restore outrank a failed cargo run
+   and carries the cargo error along rather than trading it away. All four combinations are
+   unit-tested without running cargo at all.
+
+Mutation evidence for both, measured 2026-09-18:
+
+| Mutant | Result |
+|---|---|
+| collapse the `PresentUnreadable` arm back into `Absent` | `23 passed; 2 failed` — both new guard tests |
+| restore the `let outcome = outcome?;` ordering | `24 passed; 1 failed` — the swallow test |
+
+Lanes 2 and 3 returned PASS on the same diff and saw neither finding. That is the argument for
+the quorum: a 2/3 majority would have merged a guard that deletes unreadable lockfiles.
+
 ## Contract
 
 `contracts/dead-code-lockfile-isolation-v1.yaml` — `pv status`:
 
 ```
-References: 7   Equations: 2   Proof obligations: 8   Falsification tests: 9   Kani harnesses: 0
+References: 7   Equations: 2   Proof obligations: 10   Falsification tests: 11   Kani harnesses: 0
 ```
 
-**8 obligations declared, 8 evaluated, 0 failed.** DCLI-OB-001..008 map one-to-one onto
-DCLI-F-001..008, each naming the `cargo test` invocation that judges it; every one was run
+**10 obligations declared, 10 evaluated, 0 failed.** DCLI-OB-001..010 map one-to-one onto
+DCLI-F-001..008 and DCLI-F-010..011, each naming the `cargo test` invocation that judges it; every one was run
 above. DCLI-F-009 (the same guarantee under a second toolchain) is evaluated by this receipt's
 RED/GREEN transcripts and is the ninth falsification test against the eighth obligation.
 

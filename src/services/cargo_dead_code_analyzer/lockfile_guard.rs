@@ -11,6 +11,16 @@ pub(crate) enum LockfileBefore {
     Absent,
     /// There was a lockfile, holding exactly these bytes.
     Present(Vec<u8>),
+    /// The path EXISTED and could not be read, so there are no bytes to put
+    /// back.
+    ///
+    /// Recorded apart from `Absent` because the two are opposites and
+    /// `fs::read` cannot tell them apart. Collapsed into `Absent`, an
+    /// unreadable lockfile is "not there before, there after" at restore time,
+    /// and the guard DELETES the project's own file -- silent data loss
+    /// committed by the mechanism whose whole purpose is to leave the tree
+    /// alone. Nothing this analysis never saw may be removed by it.
+    PresentUnreadable,
 }
 
 /// What the guard had to do, reported so the caller can react rather than
@@ -80,13 +90,15 @@ impl LockfileGuard {
     /// Snapshot the lockfile. Call this BEFORE the cargo child is spawned.
     pub(crate) fn acquire(cargo_root: &Path) -> Self {
         let path = workspace_lockfile_path(cargo_root);
-        // A read error is treated as absent-and-unreadable rather than
-        // propagated: refusing to analyse because a lockfile could not be READ
-        // would be the `--locked` mistake in a new costume. It is recorded as
-        // `Present` only when the bytes are in hand, so the restore can never
-        // write a guess.
+        // A read error is never propagated: refusing to analyse because a
+        // lockfile could not be READ would be the `--locked` mistake in a new
+        // costume. But it is not flattened into `Absent` either -- presence and
+        // readability are different questions, and `fs::read` only answers the
+        // second. `Present` is recorded only when the bytes are in hand, so the
+        // restore can never write a guess.
         let before = match std::fs::read(&path) {
             Ok(bytes) => LockfileBefore::Present(bytes),
+            Err(_) if path.exists() => LockfileBefore::PresentUnreadable,
             Err(_) => LockfileBefore::Absent,
         };
         Self {
@@ -124,6 +136,17 @@ impl LockfileGuard {
                 LockfileRestore::Untouched
             }
             (LockfileBefore::Absent, false, _) => LockfileRestore::Untouched,
+
+            // Unreadable before and still there: leave it exactly alone. There
+            // are no bytes to compare and none to write, so the only safe move
+            // is the one that touches nothing.
+            (LockfileBefore::PresentUnreadable, true, _) => LockfileRestore::Untouched,
+            // ...and if it is GONE, this analysis destroyed a file it could not
+            // snapshot. Say so; there is nothing to put back.
+            (LockfileBefore::PresentUnreadable, false, _) => {
+                self.failed("it existed but could not be read, and is now gone".into())
+            }
+
             (LockfileBefore::Present(before), _, _) => self.put_back(before),
             // cargo CREATED one where the project had none. Remove it: the
             // presence of a lockfile is the project's decision (#1076).

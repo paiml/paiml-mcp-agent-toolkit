@@ -271,20 +271,12 @@ impl CargoDeadCodeAnalyzer {
         let outcome = self.wait_for_cargo_check(cmd, deadline).await;
         let restored = guard.restore();
 
-        // Restore first, THEN propagate: a cargo failure must not cost the tree
-        // its lockfile.
-        let outcome = outcome?;
-
-        if let LockfileRestore::Failed(detail) = restored {
-            // The scan itself succeeded, so this is not a fidelity caveat --
-            // it is a broken promise about the tree, and it is raised rather
-            // than attached to a report that would otherwise read as a clean
-            // read-only run.
-            return Err(anyhow::anyhow!(
-                "dead-code analysis modified the analysed project and could not undo it: {detail}"
-            ));
-        }
-        Ok(outcome)
+        // Restore first, THEN decide what to report. A cargo failure must not
+        // cost the tree its lockfile, and it must not HIDE that the tree kept a
+        // change either: `outcome?` on its own would propagate the cargo error
+        // and drop the restore failure on the floor, telling the user why the
+        // analysis stopped and not that it left their repository modified.
+        cargo_outcome_or_restore_failure(outcome, restored)
     }
 
     /// Build the `cargo check` invocation, or `None` when the scan is skipped.
@@ -476,6 +468,35 @@ impl CargoDeadCodeAnalyzer {
             String::from_utf8_lossy(&stdout).to_string(),
         ))
     }
+}
+
+/// What `run_cargo_check` returns, given how cargo went AND how the restore went.
+///
+/// Pure, and separate from the cargo run, because the interesting cases are the
+/// ones that need both halves to go wrong at once and a test would otherwise
+/// have to manufacture a failing cargo and an unwritable directory together.
+///
+/// A failed restore OUTRANKS a cargo failure. The tree having kept a change the
+/// analysis could not undo is the more serious fact and the more surprising
+/// one: cargo failing is visible the next time the user builds, while a
+/// silently rewritten `Cargo.lock` is exactly the thing that shipped in
+/// v3.41.0. The cargo error is carried along rather than discarded.
+pub(crate) fn cargo_outcome_or_restore_failure(
+    outcome: Result<CargoCheckOutcome>,
+    restored: LockfileRestore,
+) -> Result<CargoCheckOutcome> {
+    let LockfileRestore::Failed(detail) = restored else {
+        return outcome;
+    };
+    Err(match outcome {
+        Ok(_) => anyhow::anyhow!(
+            "dead-code analysis modified the analysed project and could not undo it: {detail}"
+        ),
+        Err(cargo) => anyhow::anyhow!(
+            "dead-code analysis modified the analysed project and could not undo it: {detail} \
+             (the cargo run also failed: {cargo})"
+        ),
+    })
 }
 
 /// A `cargo check` whose stdout may or may not have been produced, carried
