@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.41.1] - 2026-09-18
+
+### Fixed
+
+- **A read-only `pmat analyze dead-code` could rewrite the analysed project's
+  `Cargo.lock` (#1403, #1406).** The analyzer runs `cargo check` inside the directory it is
+  analysing, with that project's lockfile writable, and simply assumed cargo would not need
+  to write. Cargo rewrites a lockfile whenever the resolution it computes differs from the
+  bytes on disk — so an ambient `[patch.crates-io]` in `$CARGO_HOME/config.toml` was enough
+  to have `[[patch.unused]]` appended to a lockfile that pmat had promised only to read.
+  An ambient patch is one trigger among several: a stale lockfile, a different lockfile
+  `version`, a `[replace]`, or no lockfile at all all produce the same rewrite. Reproduced
+  byte-identically on cargo 1.98.0 in about two seconds with a throwaway `CARGO_HOME`
+  holding one `[patch.crates-io]` entry, so this is **not** a toolchain difference — any
+  cargo does it.
+
+  The fix is `LockfileGuard`: the workspace root's lockfile is snapshotted before the cargo
+  child spawns and restored on every exit path — success, cargo failure, deadline kill, and
+  `Drop`. `--locked` and `--frozen` stay **out**, and a test now pins their absence: adding
+  `--locked` was tried on 2026-08-25 and reverted the same day because it silently disabled
+  the compiler scan (80 dead functions became 0). Contract
+  `contracts/dead-code-lockfile-isolation-v1.yaml`, 10 obligations and 11 falsification
+  tests.
+
+  Latent since `2bdc6b90c` (2026-08-25), when that `--locked` revert left the analyzer with
+  no mechanism enforcing the read-only property it claims. What was new was only the
+  observer: paiml/.github#72 raised the release clean room's timeout, so its unit-test stage
+  reached a verdict on a pmat tag for the first time since v3.39.0.
+
+### Note on 3.41.0
+
+**3.41.0 was cut but never published, and this release supersedes it.** PR #1400 merged as
+`ecd97c6bc` and the annotated tag `v3.41.0` was pushed on it; the release clean room
+(`release.yml` run **35286438196**, job `gate / cpu-gates`) then failed in its unit-test
+stage — 21774 passed, 2 failed — on the two tests that assert the defect above, so every
+publish and release step behind that gate was skipped. There is no `v3.41.0` release object
+and no `3.41.0` on crates.io (`/api/v1/crates/pmat/3.41.0` -> HTTP 404). The `[3.41.0]`
+section below is left exactly as it was written, and its tag is left pointing where it
+points, as the record of a cut that failed its own gate; everything that section describes
+ships here in 3.41.1.
+
 ## [3.41.0] - 2026-09-17
 
 ### Added

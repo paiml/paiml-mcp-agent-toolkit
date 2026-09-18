@@ -1,0 +1,84 @@
+{
+  "ticket": "PMAT-1408",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master and origin/master agree",
+  "head": "b00c5ae77a9aac2551a9604b1eb024bdf3c79060",
+  "diff_sha256": "ce22a3ebcd7d7881c133b4ef47864422c75f8667cf8fa4c464d9066994f7a6f1",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 6039,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff accurately implements the acceptance criteria for PMAT-1408. It correctly bumps the version from 3.41.0 to 3.41.1 in both `Cargo.toml` and `Cargo.lock`. The `CHANGELOG.md` is updated with a `[3.41.1]` section that appropriately names #1406 and PMAT-1403, and thoroughly explains why `[3.41.0]` was cut-but-never-published, explicitly citing the clean-room run ID `35286438196` while leaving the original `[3.41.0]` section completely intact below it. Finally, the ticket itself is added to `docs/roadmaps/roadmap.yaml` which is standard. There are no deviations from the requested changes and no forbidden actions are taken.",
+      "findings": [],
+      "raw_bytes": 2535,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff accurately and completely satisfies all acceptance criteria for PMAT-1408 without extraneous changes:\n1. `Cargo.toml` and `Cargo.lock` bump the package version from 3.41.0 to 3.41.1, with no other version carriers in the repository.\n2. `CHANGELOG.md` introduces section `[3.41.1]` with the 2026-09-18 release date, explicitly references PR #1406 and ticket PMAT-1403, and documents the dead-code lockfile guard (`LockfileGuard`).\n3. `CHANGELOG.md` documents `3.41.0` as cut but never published, citing clean-room run ID `35286438196` (job `gate / cpu-gates`), while leaving the existing `[3.41.0]` section intact without re-labeling it.\n4. `docs/roadmaps/roadmap.yaml` correctly records PMAT-1408 with its full acceptance criteria in accordance with the repository standard.\n5. No gates are weakened, no tests contradict the ticket, and no forbidden actions are taken.",
+      "findings": [],
+      "raw_bytes": 3047,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff origin/master...HEAD strictly and faithfully implements ticket PMAT-1408 ('release: pmat 3.41.1 — the dead-code lockfile guard, and 3.41.0 burned unpublished'). The version is bumped from 3.41.0 to 3.41.1 across Cargo.toml and Cargo.lock, CHANGELOG.md documents both the 3.41.1 release notes (with Dead-Code Lockfile Guard and isolation contracts) and the burned 3.41.0 release explanation, and roadmap.yaml contains the PMAT-1408 task entry with all acceptance criteria. All release gates (scripts/ticket-release-control.sh) and package checks pass cleanly with zero extraneous changes.",
+      "findings": [],
+      "raw_bytes": 8164,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.7-flash-high",
+      "model_measured": "gemini-3.7-flash-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}
