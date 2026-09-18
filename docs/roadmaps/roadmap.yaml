@@ -7095,7 +7095,7 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2026-09-18T09:50:58Z
-  updated: 2026-09-18T09:50:58Z
+  updated: 2026-09-18T16:08:41Z
   spec: null
   acceptance_criteria:
   - 'Release commit for pmat 3.41.1: Cargo.toml 3.41.0 -> 3.41.1 and the pmat entry in Cargo.lock bumped to match (those two files are the only version carriers); CHANGELOG.md gains [3.41.1] naming #1406 (the dead-code lockfile guard, PMAT-1403) and records [3.41.0] as cut-but-never-published with clean-room run id 35286438196, leaving the existing [3.41.0] section intact rather than re-labelling it. 3.41.0 is burned because a width-3 grillme quorum returned 3/3 FAIL against deleting and re-creating the pushed tag v3.41.0 on the fixed head: git fetch refuses to clobber an existing tag, so any clone or CI cache from the 12-hour window would keep resolving v3.41.0 to the red commit ecd97c6bc. make gate all local legs green on the merge commit; package under the repo''s own 9.0 MiB gate; tag v3.41.1 on the merge commit; release.yml gate / cpu-gates GREEN on that sha before anything is published; cargo publish --dry-run --locked then --locked from a detached checkout, never --allow-dirty; crates.io max_stable_version reads back 3.41.1 and make release-check exits 0, which is what closes #1401.'
@@ -7104,7 +7104,7 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
-  notes: null
+  notes: 'CORRECTION to this ticket''s own acceptance criteria, measured 2026-09-18. The criterion "crates.io max_stable_version reads back 3.41.1 and make release-check exits 0, which is what closes #1401" is wrong in its last clause: NOTHING closes a release-check issue. quality-gate.yml:310-341 only opens or refreshes one, on failure; the single `issue close` string in .github/workflows is inside ci.yml''s control proving no pmat code path can close a GitHub issue (PMAT-900001, contracts/pmat-issue-closure-v1.yaml). Per that contract an issue closes only via a merged PR body''s own Closes line. make release-check DOES exit 0 ("3.41.1 is tagged, released and on crates.io") and crates.io max_stable_version DOES read 3.41.1 — both halves that are about this release are met. #1401 and #1410 remain OPEN and stale, and closing either turns a rowed issue into an ORPHAN-ROADMAP that reds CB-2115 on the next PR, so the close and its lifecycle row belong together and are left to the orchestrator. Evidence: docs/audits/release-3.41.1-receipt.md sections 7.2, 4.5 and 8. Found by quorum round 5 lane 1 on PR #1404.'
 - id: GH-1410
   github_issue: 1410
   item_type: task

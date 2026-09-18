@@ -275,6 +275,29 @@ what a round *found*, which no later round can invalidate; whether a later round
 it concluded, is answered by `docs/audits/quorum-PMAT-1408.json` at the merged head — which is
 where a reader should look, and the only place that can be right.
 
+**Round 5 (lane 1) — one finding upheld, one already disclosed, one refuted.**
+
+*Upheld, and it is the sharpest finding of the session:* **PMAT-1408's own acceptance criteria
+assert that `make release-check` exiting 0 "is what closes #1401" — and #1401 is OPEN.** That
+criterion is unmet as written and cannot be met, because the premise behind it is false: nothing
+closes a `release-check` issue (correction 7.2, measured). I wrote that criterion myself when
+filing the ticket, taking the brief's premise on trust instead of measuring it first. So the
+ticket's definition of done contains a claim this work disproved. **The criterion is what is
+wrong, not the outcome**, and it is named here rather than left for a reader to trip over;
+PMAT-1408's `notes` carry the same correction, and amending the criterion is the orchestrator's,
+since a ticket cannot complete itself. This receipt does **not** claim that criterion satisfied.
+
+*Already disclosed:* the lane objected that re-running the clean room for
+`Host key verification failed` extends the brief's allowance, which only names
+runner-lost-communication. It does, and §4.2 says so in those words — the extension was declared
+before the re-run, not excused after it. The lane is right that it is an extension; the
+disclosure is the answer, and the re-run then produced a real 58-minute verdict rather than none.
+Recorded, unchanged.
+
+*Refuted:* the lane called `#1404` "an unrelated PR … a typo leftover". #1404 **is this pull
+request** — `gh pr view 1404` returns this branch, `PMAT-1399-release-receipt`, and this receipt
+is its diff. Grounded `cited` and wrong, like round 3's line-38 claim.
+
 **No FAIL was re-run away, and none is quietly dropped.** A receipt that hides the rounds which
 criticised it is worth nothing. Every lane FAIL against this receipt found a real defect in this
 session's own artefacts; every upheld one was fixed at the source, and the single finding that
@@ -404,6 +427,11 @@ document was being written.
   orchestrator, together with their rows.
 - **PMAT-1408's row is `planned` with issue #1408 open.** A ticket cannot complete itself under
   CB-2113; row completion is the orchestrator's, in the next lifecycle round.
+- **PMAT-1408's acceptance criteria are wrong where they say `make release-check` green "is what
+  closes #1401".** Nothing closes that issue (7.2). The criterion was written on the brief's
+  unmeasured premise and is disproved by this session's own measurement; it needs amending, which
+  a ticket cannot do to itself. `pmat work edit --notes` records the correction on the ticket.
+  Every other criterion in PMAT-1408 is met and evidenced above.
 - ~~The release has no attached binaries.~~ **Resolved and measured.** `binary-release.yml` run
   **35358864629** and `post-release.yml` run **35358868718**, both dispatched by hand after the
   403 in correction 6, completed **success**. `gh release view v3.41.1 --json assets` lists **12
