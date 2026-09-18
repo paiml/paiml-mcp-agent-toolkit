@@ -1,17 +1,20 @@
 //! What the USER is told when the compiler layer could not run.
 //!
-//! `pmat analyze dead-code` used to shell out to `cargo check`, which generates
-//! a `Cargo.lock` when none exists — so an analysis wrote a source-controlled
-//! artifact into a repository it was only asked to read (#1076). Passing
-//! `--locked` makes cargo refuse instead, and the refusal costs rustc's
-//! dead-code lint: only explicit `allow(dead_code)` admissions can still be
-//! found.
+//! `pmat analyze dead-code` shells out to `cargo check`, which generates a
+//! `Cargo.lock` when none exists and REWRITES one whose resolution has moved —
+//! so an analysis wrote a source-controlled artifact into a repository it was
+//! only asked to read (#1076). `--locked` made cargo refuse instead, and the
+//! refusal cost rustc's dead-code lint: only explicit `allow(dead_code)`
+//! admissions could still be found, so it was reverted (2bdc6b90c). Since
+//! PMAT-1403 the write is permitted and UNDONE by `LockfileGuard`, which is why
+//! the lockfile-less cases below now assert a FULL scan.
 //!
-//! That is a real loss of fidelity, and the report's SHAPE does not change when
-//! it happens. `Total dead lines: 0` from a full compile and `Total dead lines:
-//! 0` from a suppression scan alone are the same characters and different
-//! facts. These tests pin that both the human surface and the machine surfaces
-//! say which one the reader is holding.
+//! A reduced scan is still reachable — `PMAT_DEAD_CODE_SKIP`, or cargo refusing
+//! for a reason of its own — and when it happens the report's SHAPE does not
+//! change. `Total dead lines: 0` from a full compile and `Total dead lines: 0`
+//! from a suppression scan alone are the same characters and different facts.
+//! These tests pin that both the human surface and the machine surfaces say
+//! which one the reader is holding, on EVERY renderer.
 
 use super::{
     format_dead_code_result, run_dead_code_analysis_with_filters, DeadCodeAnalysisFilters,
@@ -56,9 +59,30 @@ async fn analyse(path: &std::path::Path) -> crate::models::dead_code::DeadCodeRe
         .report
 }
 
+/// A real report with its compiler-scan verdict swapped for a reduced one.
+///
+/// These tests are about the RENDERERS: that no output format drops the
+/// disclosure. They used to reach a reduced report by analysing a lockfile-less
+/// crate, which since PMAT-1403 is scanned in FULL — so the trigger is replaced
+/// rather than the assertions. `PMAT_DEAD_CODE_SKIP` is the trigger that still
+/// fires, and it is named here instead of being set: mutating the environment
+/// of a test binary that runs its tests in parallel would reach every other
+/// test in the process.
+fn reduced(
+    report: &crate::models::dead_code::DeadCodeResult,
+) -> crate::models::dead_code::DeadCodeResult {
+    let mut reduced = report.clone();
+    reduced.compiler_scan = Some(crate::models::dead_code::CompilerScanReport::reduced(
+        crate::models::dead_code::COMPILER_SCAN_REASON_ENV_SKIP,
+        "PMAT_DEAD_CODE_SKIP was set, so cargo check did not run; only explicit \
+         allow(dead_code) admissions were searched for"
+            .to_string(),
+    ));
+    reduced
+}
+
 /// The command that caused the problem must also leave the tree it analysed
 /// exactly as it found it.
-#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
 #[tokio::test]
 async fn the_analysis_leaves_no_lockfile_in_the_analysed_tree() {
     let temp = crate_without_lockfile();
@@ -73,11 +97,10 @@ async fn the_analysis_leaves_no_lockfile_in_the_analysed_tree() {
 
 /// `--format json` — the surface CI and agents read, and the one where a silent
 /// reduction is most dangerous, because there is no prose beside it.
-#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
 #[tokio::test]
 async fn the_json_report_declares_the_reduced_scan_and_why() {
     let temp = crate_without_lockfile();
-    let report = analyse(temp.path()).await;
+    let report = reduced(&analyse(temp.path()).await);
     let json = format_dead_code_result(
         &report,
         &DeadCodeOutputFormat::Json,
@@ -94,15 +117,15 @@ async fn the_json_report_declares_the_reduced_scan_and_why() {
     );
     assert_eq!(
         value["compiler_scan"]["reason"].as_str(),
-        Some("lockfile-would-be-written"),
+        Some("suppressed-by-env"),
         "the cause must be a stable token, not prose a client has to grep: {json}"
     );
     let detail = value["compiler_scan"]["detail"]
         .as_str()
         .expect("a detail string");
     assert!(
-        detail.contains("Cargo.lock"),
-        "the reason must name the artifact that was not written: {detail}"
+        detail.contains("PMAT_DEAD_CODE_SKIP"),
+        "the reason must name what stopped the scan: {detail}"
     );
     assert!(
         detail.contains("allow(dead_code)"),
@@ -113,11 +136,10 @@ async fn the_json_report_declares_the_reduced_scan_and_why() {
 
 /// The human summary carries the same disclosure, next to the figures it
 /// qualifies.
-#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
 #[tokio::test]
 async fn the_text_summary_declares_the_reduced_scan() {
     let temp = crate_without_lockfile();
-    let report = analyse(temp.path()).await;
+    let report = reduced(&analyse(temp.path()).await);
     let rendered = format_dead_code_result(
         &report,
         &DeadCodeOutputFormat::Summary,
@@ -132,7 +154,7 @@ async fn the_text_summary_declares_the_reduced_scan() {
     );
     assert!(rendered.contains("reduced"), "{rendered}");
     assert!(
-        rendered.contains("Cargo.lock"),
+        rendered.contains("PMAT_DEAD_CODE_SKIP"),
         "the reason must reach the human surface too, not just the JSON: {rendered}"
     );
 }
@@ -140,11 +162,10 @@ async fn the_text_summary_declares_the_reduced_scan() {
 /// EVERY renderer, not three of four. A disclosure one format drops is a
 /// disclosure the consumer who chose that format never sees — and `sarif` is
 /// what a CI pipeline ingests.
-#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
 #[tokio::test]
 async fn every_output_format_carries_the_reduced_verdict() {
     let temp = crate_without_lockfile();
-    let report = analyse(temp.path()).await;
+    let report = reduced(&analyse(temp.path()).await);
 
     for format in [
         DeadCodeOutputFormat::Json,
@@ -161,7 +182,7 @@ async fn every_output_format_carries_the_reduced_verdict() {
              consumer of that format reads an empty finding list as a clean crate:\n{rendered}"
         );
         assert!(
-            rendered.contains("lockfile-would-be-written"),
+            rendered.contains("suppressed-by-env"),
             "`--format {format:?}` drops the machine-readable cause:\n{rendered}"
         );
     }

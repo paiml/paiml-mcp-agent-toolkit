@@ -1,0 +1,162 @@
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  created: "2026-09-18"
+  author: PAIML Engineering
+  references:
+    - "paiml/paiml-mcp-agent-toolkit#1403 — dead-code analysis rewrites the analysed project's Cargo.lock whenever any ambient [patch] is in scope"
+    - "paiml/paiml-mcp-agent-toolkit#1076 — cargo check generates a Cargo.lock in the analysed tree; --locked was the first fix and was reverted"
+    - "commit 2bdc6b90c — Revert \"--locked\": it silently disabled the compiler scan (80 dead functions -> 0 on the differential corpus)"
+    - "fleet unified gate run 35286438196, job gate / cpu-gates on runner intel-clean-room-5: v3.41.0 GATE B2 failed 2 of 21776 with exactly these two assertions"
+    - "infra#653 — the clean room installs the publish overlay into $CARGO_HOME/config.toml so every CHILD cargo process inherits it, whatever its cwd; that is the ambient [patch] the failure exposed"
+    - "docs/audits/impl-PMAT-1403-receipt.md — reproduction, five whys, RED/GREEN in the clean-room toolchain, mutant evidence"
+    - "docs/audits/mutants/PMAT-1403-forgotten-lockfile-guard.patch — the mutant that re-enables the rewrite"
+  registry: true
+  description: >
+    An analysis that calls itself read-only must not be able to rewrite the
+    analysed project's Cargo.lock — under ANY cargo version and ANY ambient
+    cargo configuration. `cargo check` writes that file whenever the resolution
+    it computes differs from the bytes on disk: an ambient [patch] (recorded as
+    [[patch.unused]]), a stale lockfile, a [replace], or no lockfile at all. The
+    analyzer had no mechanism enforcing the property; it was an accident of the
+    environment, and it held in ci / test on ubuntu-latest only because no
+    overlay is installed there. `--locked` makes cargo REFUSE instead, and takes
+    rustc's dead-code lint with it, so it was measured and reverted. The write is
+    now permitted at full fidelity and UNDONE: LockfileGuard snapshots the
+    workspace-root lockfile before the cargo child is spawned and restores it on
+    every path out of run_cargo_check, including the deadline kill and, through
+    Drop, a panic. A restore that cannot happen is an ERROR, never a caveat on a
+    report that would otherwise read as a clean read-only run.
+  contract: dead-code-lockfile-isolation
+  status: enforced
+
+equations:
+  the_lockfile_is_a_fixed_point_of_the_analysis:
+    formula: |
+      lock(p) = bytes of <workspace_root(p)>/Cargo.lock, or ABSENT
+      analyse(p) terminating normally  ⇒  lock(p) after = lock(p) before
+      workspace_root(p) = dirname(`cargo locate-project --workspace` in p), fallback p
+    domain: "any crate root the analyzer compiles, under any $CARGO_HOME configuration"
+    codomain: "the lockfile's bytes, or its absence"
+    invariants:
+      - "ABSENT before ⇒ ABSENT after: whether a tree carries a lockfile is the project's decision, not pmat's (#1076)"
+      - "PRESENT before ⇒ byte-identical after, including when cargo legitimately rewrote it mid-run"
+      - "unchanged ⇒ NOTHING is written: an identical rewrite still moves the mtime, and clean-tree gates read more than content"
+      - "presence is asked with exists(), not with read().ok(), at BOTH ends: a path that exists and cannot be READ is neither Absent nor Present, and is never deleted or overwritten"
+      - "a restore failure is reported even when the cargo run ALSO failed; the two facts never trade places"
+      - "run_cargo_check has ONE exit: the suppressed-by-env path reaches the same restore and the same reporting rule as the cargo path, because Drop can only DISCARD what restore returns"
+      - "for a workspace MEMBER the protected path is the WORKSPACE root's lockfile, which is the only one cargo writes"
+      - "the guarantee is independent of the cargo version: measured identically on cargo 1.95.0 and 1.98.0"
+    preconditions:
+      - "pmat's own process is not SIGKILLed mid-run — no in-process mechanism reaches a destructor there, and --locked buys that case only by not scanning"
+
+  the_fix_does_not_cost_the_scan:
+      formula: "compiler_scan(analyse(p)).verdict = full ∧ dead_one ∈ findings(analyse(p)), whether or not p had a lockfile"
+      domain: "a crate with a private function carrying no allow(dead_code)"
+      codomain: bool
+      invariants:
+        - "a lockfile-less crate is scanned at FULL fidelity — the half 2bdc6b90c could not deliver"
+        - "neither --locked nor --frozen appears in the cargo argv"
+        - "`dead_one` is findable ONLY by rustc's dead-code lint, so its presence is the proof the compiler layer really ran"
+      preconditions: []
+
+proof_obligations:
+  - type: invariant
+    property: "DCLI-OB-001 a lockfile that existed before the analysis is byte-identical after it, even when cargo rewrote it"
+    formal: "lock(p) = PRESENT(b) before ⇒ lock(p) = PRESENT(b) after, for every ambient [patch] in $CARGO_HOME/config.toml"
+    applies_to: restore
+  - type: invariant
+    property: "DCLI-OB-002 a lockfile cargo generated where the project had none is removed again (#1076)"
+    formal: "lock(p) = ABSENT before ⇒ lock(p) = ABSENT after"
+    applies_to: restore
+  - type: postcondition
+    property: "DCLI-OB-003 an untouched lockfile is not written at all — the mtime is preserved, not just the bytes"
+    formal: "cargo did not change the file ⇒ restore = Untouched ∧ mtime after = mtime before"
+    applies_to: restore
+  - type: invariant
+    property: "DCLI-OB-004 the guard protects the WORKSPACE root's lockfile, which for a member crate is above the analysed directory"
+    formal: "guard(member).path = workspace_root(member)/Cargo.lock ≠ member/Cargo.lock"
+    applies_to: workspace_lockfile_path
+  - type: invariant
+    property: "DCLI-OB-005 the guard covers every path out of the cargo run, including a panic between spawning cargo and the explicit restore"
+    formal: "drop(guard) without restore() ⇒ lock(p) after = lock(p) before"
+    applies_to: drop
+  - type: invariant
+    property: "DCLI-OB-006 a restore that cannot happen is reported with a stable token and raised as an error, never attached to a successful report"
+    formal: "restore = Failed(d) ⇒ d ∋ \"lockfile-restore-failed\" ∧ d ∋ the path ∧ run_cargo_check = Err"
+    applies_to: restore_inner
+  - type: invariant
+    property: "DCLI-OB-007 the flag that was reverted does not creep back: the cargo argv carries neither --locked nor --frozen"
+    formal: "args(build_cargo_check_command()) ∌ --locked ∧ args(build_cargo_check_command()) ∌ --frozen"
+    applies_to: build_cargo_check_command
+  - type: invariant
+    property: "DCLI-OB-008 protecting the lockfile does not reduce the scan: a lockfile-less crate is still scanned in full and still yields the compiler-only finding"
+    formal: "lock(p) = ABSENT ⇒ compiler_scan(analyse(p)).verdict = full ∧ dead_one ∈ findings(analyse(p))"
+    applies_to: analyze
+
+  - type: invariant
+    property: "DCLI-OB-009 a lockfile that exists but cannot be READ is never deleted and never overwritten: the analysis may not remove what it could not snapshot"
+    formal: "exists(p) ∧ ¬readable(p) before ⇒ restore = Untouched ∧ exists(p) after; and if it VANISHED, restore = Failed"
+    applies_to: acquire
+  - type: invariant
+    property: "DCLI-OB-010 a failed restore reaches the caller on EVERY path out, including the suppressed-by-env one, and carries the cargo error with it"
+    formal: "restore = Failed(d) ⇒ result = Err(e) ∧ e ∋ \"lockfile-restore-failed\" ∧ (cargo = Err(c) ⇒ e ∋ c), for outcome ∈ {Ok(scan), Ok(suppressed), Err(cargo)}"
+    applies_to: cargo_outcome_or_restore_failure
+
+falsification_tests:
+  - id: DCLI-F-001
+    rule: "a rewritten lockfile is restored byte-for-byte (DCLI-OB-001)"
+    prediction: "the exact [[patch.unused]] block cargo appended in run 35286438196 is undone; restore reports Restored"
+    test: "cargo test --lib lockfile_guard_tests::a_rewritten_lockfile_is_restored_byte_for_byte"
+    if_fails: "a read-only analysis leaves the analysed project's dependency resolution changed"
+  - id: DCLI-F-002
+    rule: "a generated lockfile is removed again (DCLI-OB-002)"
+    prediction: "restore reports Restored and the file is gone"
+    test: "cargo test --lib lockfile_guard_tests::a_generated_lockfile_is_removed_again"
+    if_fails: "#1076 is back: git add -A after an analysis commits a lockfile nobody chose"
+  - id: DCLI-F-003
+    rule: "the common case writes nothing (DCLI-OB-003)"
+    prediction: "restore reports Untouched and the mtime is unchanged"
+    test: "cargo test --lib -- lockfile_guard_tests::an_untouched_lockfile_is_not_rewritten lockfile_guard_tests::an_absent_lockfile_that_stays_absent_is_untouched"
+    if_fails: "every analysis touches the lockfile, and every clean-tree gate downstream sees it"
+  - id: DCLI-F-004
+    rule: "a workspace member guards the workspace root (DCLI-OB-004)"
+    prediction: "guard(member).path is the workspace root's Cargo.lock, not the member's"
+    test: "cargo test --lib lockfile_guard_tests::a_workspace_member_guards_the_workspace_root_lockfile"
+    if_fails: "every workspace member is unprotected while the guard looks correct"
+  - id: DCLI-F-005
+    rule: "Drop is the belt for a panic (DCLI-OB-005)"
+    prediction: "leaving the guard's scope without calling restore still restores the bytes"
+    test: "cargo test --lib lockfile_guard_tests::dropping_the_guard_restores_as_well"
+    if_fails: "a panic between spawning cargo and the explicit restore leaves the tree dirty"
+  - id: DCLI-F-006
+    rule: "a failed restore is named, not swallowed (DCLI-OB-006)"
+    prediction: "with a directory where the lockfile was, both the write branch and the remove branch report Failed carrying lockfile-restore-failed and the path. The failure is forced with a directory rather than with chmod because the clean room runs its gates as ROOT, where a read-only directory is not read-only — the chmod version of this test passed locally and was vacuous in the one environment that found the bug (measured in the PMAT-1403 clean-room GREEN run)"
+    test: "cargo test --lib -- lockfile_guard_tests::a_restore_that_cannot_write_is_reported_as_failed lockfile_guard_tests::a_removal_that_cannot_happen_is_reported_as_failed"
+    if_fails: "an analysis that modified the tree and could not undo it reports success"
+  - id: DCLI-F-007
+    rule: "--locked and --frozen stay out of the argv (DCLI-OB-007)"
+    prediction: "neither flag appears. This test asserted the OPPOSITE before PMAT-1403; only the sign changed, because the argv is exactly where a well-meaning fix would put --locked back"
+    test: "cargo test --lib lockfile_tests::the_cargo_invocation_never_carries_locked_or_frozen"
+    if_fails: "the compiler scan silently disappears on every repo with an absent or stale lockfile, as it did before 2bdc6b90c"
+  - id: DCLI-F-008
+    rule: "the tree is clean AND the search is undiminished (DCLI-OB-008, the counter-tests)"
+    prediction: "all four end-to-end tests pass: a lockfile-less crate creates no lockfile and is still scanned in full, and a crate WITH a lockfile is scanned in full with its lockfile byte-identical. Mutation, measured 2026-09-18: docs/audits/mutants/PMAT-1403-forgotten-lockfile-guard.patch (forget the guard instead of restoring) turns the two byte-identity tests RED and leaves the fidelity tests green — so the two halves are independently measured"
+    test: "cargo test --lib -- lockfile_tests::analysing_a_lockfile_less_crate_creates_no_lockfile lockfile_tests::a_lockfile_less_crate_is_still_scanned_at_full_fidelity lockfile_tests::a_crate_with_a_lockfile_is_analysed_fully_and_its_lockfile_is_untouched lockfile_disclosure_tests::a_crate_with_a_lockfile_reports_a_full_scan_and_the_compiler_finding"
+    if_fails: "either the analysis writes into the tree it measures, or it stopped measuring to avoid doing so"
+  - id: DCLI-F-009
+    rule: "the guarantee is not a property of one cargo version (equation preconditions)"
+    prediction: "the two byte-identity tests fail on master and pass on the fix inside rust:1.95-slim with infra#653's overlay in /usr/local/cargo/config.toml, and the identical [[patch.unused]] rewrite reproduces on cargo 1.98.0"
+    test: "docs/audits/impl-PMAT-1403-receipt.md — RED/GREEN transcripts from the clean-room toolchain"
+    if_fails: "the fix is a workaround for one toolchain rather than an invariant of the analyzer"
+  - id: DCLI-F-010
+    rule: "an unreadable lockfile is never deleted (DCLI-OB-009)"
+    prediction: "with a directory where the lockfile belongs, restore reports Untouched and the path survives; if it vanishes instead, restore reports Failed with the token. Found by quorum review (lane 1): `acquire` classified on `fs::read` alone, so an unreadable lockfile was recorded Absent, the `(Absent, true, _)` arm matched at restore, and the guard DELETED the project's own file. Mutation, measured 2026-09-18: collapsing the `PresentUnreadable` arm back into `Absent` turns both tests RED"
+    test: "cargo test --lib -- lockfile_guard_tests::a_lockfile_that_exists_but_cannot_be_read_is_never_deleted lockfile_guard_tests::an_unreadable_lockfile_that_disappears_is_reported_as_failed"
+    if_fails: "the mechanism whose purpose is to leave the tree alone is the thing that destroys it"
+  - id: DCLI-F-011
+    rule: "a failed restore is never swallowed by a failed cargo run (DCLI-OB-010)"
+    prediction: "all four combinations of (cargo ok/err) x (restore clean/failed) return the right thing, and the both-failed case carries BOTH the token and the cargo error. Found by quorum review (lane 1): `let outcome = outcome?;` ran before the restore was inspected, so a cargo failure short-circuited and the user was told why the analysis stopped but not that it had left the repository modified. Mutation, measured 2026-09-18: restoring that `outcome?` turns the test RED"
+    test: "cargo test --lib lockfile_guard_tests::a_failed_restore_outranks_a_failed_cargo_run_and_is_never_swallowed"
+    if_fails: "a rewritten Cargo.lock goes unreported whenever cargo also failed -- the quiet half of the original defect"
+    note: "the suppressed-by-env path is covered structurally rather than end to end: run_cargo_check has ONE exit, so there is no second return for a Drop to swallow. Pinning it end to end would mean setting PMAT_DEAD_CODE_SKIP, which is process-wide state in a suite ci / test runs as one process -- a test that set it failed three unrelated tests beside it, measured 2026-09-18. The combination itself (Ok(suppressed) x Failed) IS in DCLI-F-011"

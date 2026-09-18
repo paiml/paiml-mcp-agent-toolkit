@@ -384,6 +384,7 @@ pub async fn analyze_dead_code(project_path: impl AsRef<Path>) -> Result<Accurat
 // Include implementation files
 include!("cargo_dead_code_analyzer/crate_root.rs");
 include!("cargo_dead_code_analyzer/cache_operations.rs");
+include!("cargo_dead_code_analyzer/lockfile_guard.rs");
 include!("cargo_dead_code_analyzer/analysis.rs");
 include!("cargo_dead_code_analyzer/target_isolation.rs");
 include!("cargo_dead_code_analyzer/parsing.rs");
@@ -458,3 +459,7 @@ pub(crate) fn write_fixture_lockfile(crate_root: &Path) {
 #[cfg(test)]
 #[path = "cargo_dead_code_analyzer/lockfile_tests.rs"]
 mod lockfile_tests;
+
+#[cfg(test)]
+#[path = "cargo_dead_code_analyzer/lockfile_guard_tests.rs"]
+mod lockfile_guard_tests;

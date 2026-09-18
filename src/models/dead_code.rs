@@ -556,6 +556,17 @@ pub const COMPILER_SCAN_REASON_CACHED: &str = "compiler-lint-cached";
 pub const COMPILER_SCAN_REASON_LOCKFILE: &str = "lockfile-would-be-written";
 /// Machine-readable cause for a scan suppressed by `PMAT_DEAD_CODE_SKIP`.
 pub const COMPILER_SCAN_REASON_ENV_SKIP: &str = "suppressed-by-env";
+/// Stable token for the one way a dead-code analysis can still leave the tree
+/// changed: `cargo check` rewrote the project's `Cargo.lock` and the original
+/// bytes could not be put back.
+///
+/// It is NOT a [`CompilerScanReport::reason`]. When a restore fails the
+/// compiler layer ran and the verdict is honestly [`COMPILER_SCAN_FULL`] — what
+/// failed is the read-only contract, not the scan, and hanging a caveat on an
+/// otherwise successful report is the absence-rendered-as-success shape this
+/// field exists to remove. It is carried by the ERROR instead, so a consumer
+/// can still match a token rather than prose.
+pub const COMPILER_SCAN_REASON_LOCKFILE_RESTORE_FAILED: &str = "lockfile-restore-failed";
 
 /// Whether the COMPILER-LINT layer of the scan actually ran.
 ///

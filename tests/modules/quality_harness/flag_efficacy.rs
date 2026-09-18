@@ -390,6 +390,34 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "--color",
         "default `--format markdown` (misc_commands_cuda_oracle.rs:47) renders a Markdown document through format_markdown_report, and html/json are documents too; colour is live only in the terminal formatter reached by `score --breakdown`, `gate` and `kaizen`, which the sweep checks separately",
     ),
+    // --- --allow-dirty on a corpus that PMAT-1403 stopped dirtying -----------
+    // These two are the fix for #1403 observed from the other side. The flag is
+    // genuinely effective: on a tree with a modified TRACKED file,
+    // `analyze reachability --write-ledger` exits 1 printing ` M src/lib.rs`
+    // and refuses, and the same command with `--allow-dirty` exits 0 writing
+    // the ledger (measured 2026-09-18 on a two-commit fixture). It has nothing
+    // to permit HERE because the corpus is clean.
+    //
+    // It was not always clean. The corpus commits a hand-written `Cargo.lock`
+    // (mod.rs:1497, written before `git add -A`, so it is TRACKED), and until
+    // PMAT-1403 `pmat analyze dead-code` ran `cargo check` in the corpus
+    // without restoring it -- rewriting that tracked file and leaving every
+    // later command in the sweep looking at a dirty tree. `--allow-dirty` was
+    // reported effective because an earlier probe had broken the fixture.
+    //
+    // So this is not a flag to wire up: it is a flag whose precondition this
+    // corpus can no longer reach by accident. To exercise it on purpose, dirty
+    // a tracked file first -- and if that is ever done, delete these entries.
+    (
+        "analyze reachability",
+        "--allow-dirty",
+        "permits --write-ledger on a dirty tree (exit 1 -> exit 0, measured); the corpus is clean, and was only ever dirty because analyze dead-code rewrote its tracked Cargo.lock before PMAT-1403 fixed that",
+    ),
+    (
+        "analyze unrun-tests",
+        "--allow-dirty",
+        "permits --write-ledger on a dirty tree; same corpus, same reason as analyze reachability --allow-dirty above (PMAT-1403)",
+    ),
 ];
 
 /// Where a probe writes when a flag's only observable is "a file was written".

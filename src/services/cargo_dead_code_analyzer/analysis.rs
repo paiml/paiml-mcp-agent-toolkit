@@ -246,10 +246,46 @@ impl CargoDeadCodeAnalyzer {
     /// a run that could not compile the crate is distinguishable from a run
     /// that compiled it and found nothing.
     async fn run_cargo_check(&self, deadline: std::time::Instant) -> Result<CargoCheckOutcome> {
-        let Some(cmd) = self.build_cargo_check_command() else {
-            return Ok(CargoCheckOutcome::suppressed_by_env());
+        // THIS is what makes "read-only" true of the lockfile, and it is taken
+        // BEFORE `build_cargo_check_command` on purpose. That builder is not
+        // inert: it shells out to `cargo metadata` twice (`isolated_target_dir`
+        // and `named_targets`). Both pass `--no-deps` and so resolve nothing
+        // today, but the guard's promise is "no cargo this analysis runs can
+        // leave the lockfile changed", and a snapshot taken after some of those
+        // cargos would silently narrow it to "no cargo AFTER the ones we forgot
+        // about". Taken here, the snapshot precedes every cargo process the
+        // analysis starts, so the promise cannot be narrowed by a future edit
+        // to the builder.
+        let guard = LockfileGuard::acquire(&self.cargo_root);
+
+        // ONE exit, deliberately, and no `?` before the restore.
+        //
+        // `PMAT_DEAD_CODE_SKIP` used to `return Ok(...)` from here. The guard
+        // was then dropped, and `Drop` can only DISCARD what `restore` returns
+        // -- so on that path a failed restore became a successful, clean-looking
+        // read-only run, which is the exact shape this ticket exists to remove
+        // (found by quorum review, lane 1). A single exit makes that class of
+        // mistake unavailable rather than merely absent: every way out of the
+        // work below -- suppressed, `Ok`, a cargo failure, the deadline kill --
+        // reaches the same `restore` and the same reporting rule. `Drop` is
+        // left as the belt for a panic only.
+        //
+        // The single exit is the whole guarantee here, and it is structural
+        // rather than tested: pinning it end to end would mean setting
+        // `PMAT_DEAD_CODE_SKIP`, which is process-wide state in a suite
+        // `ci / test` runs as ONE process -- a test that sets it failed three
+        // unrelated tests beside it, measured. The rule every path routes
+        // through, `cargo_outcome_or_restore_failure`, is unit-tested on all
+        // four combinations, the suppressed-scan one included.
+        let outcome = match self.build_cargo_check_command() {
+            None => Ok(CargoCheckOutcome::suppressed_by_env()),
+            Some(cmd) => self.wait_for_cargo_check(cmd, deadline).await,
         };
-        self.wait_for_cargo_check(cmd, deadline).await
+        let restored = guard.restore();
+
+        // A cargo failure must not cost the tree its lockfile, and it must not
+        // HIDE that the tree kept a change either.
+        cargo_outcome_or_restore_failure(outcome, restored)
     }
 
     /// Build the `cargo check` invocation, or `None` when the scan is skipped.
@@ -271,35 +307,27 @@ impl CargoDeadCodeAnalyzer {
         let mut cmd = Command::new("cargo");
         cmd.current_dir(&self.cargo_root)
             .arg("check")
-            // NO `--locked`, and #1076 IS THEREFORE STILL OPEN. Read this before
-            // adding it back — it was added, measured, and reverted.
+            // NO `--locked`. It was added, measured and reverted (2bdc6b90c),
+            // and it must not come back: cargo then REFUSES on any repo whose
+            // lockfile is absent or stale, and rustc's dead-code lint goes with
+            // it -- 80 dead functions became 0 on the differential corpus, and
+            // seven `analyze dead-code` leaves went identical-for-empty-and-
+            // large. Trading "writes a Cargo.lock" for "silently reports no
+            // dead code on most libraries" is the worse deal, and it is the
+            // exact absence-rendered-as-success shape that release removed.
             //
-            // `--locked` does stop the lockfile write. It also DISABLES THE
-            // COMPILER SCAN on any repo whose lockfile is absent or stale,
-            // because cargo refuses and the heuristic fallback cannot see what
-            // the compiler sees: on the differential corpus the scan finds 80
-            // dead functions and the heuristic finds 0, so seven `analyze
-            // dead-code` leaves went identical-for-empty-and-large and the gate
-            // went red. Reverting this one flag turned it green.
+            // What keeps the tree clean instead is `LockfileGuard`, acquired in
+            // `run_cargo_check` before this command is ever spawned: cargo is
+            // allowed to write the lockfile, at full fidelity, and the bytes
+            // are put back afterwards on every path out -- including the
+            // deadline kill. A failed restore is an ERROR, not a caveat.
             //
-            // Trading "writes a Cargo.lock" for "silently reports no dead code
-            // on most libraries" is a worse deal, and it is the exact
-            // absence-rendered-as-success shape this release exists to remove.
-            // A real fix has to keep the scan: analyse a copy, or snapshot and
-            // restore the lockfile, or accept the write and disclose it.
-            // `cargo check` GENERATES `Cargo.lock` when none exists, so the
-            // analyser was writing a real, source-controlled artifact into a
-            // repository it had only been asked to measure -- and whether a
-            // lockfile belongs in a tree is the project's decision (libraries
-            // deliberately omit it, binaries deliberately commit it), not
-            // ours. `--locked` makes cargo REFUSE instead: it exits 101 with
-            // "cannot create/update the lock file ... because --locked was
-            // passed to prevent this" and touches nothing. The refusal is
-            // caught in `wait_for_cargo_check` and turned into a DISCLOSED
-            // reduction in fidelity.
-            //
-            // Deliberately not "delete it afterwards": a killed run leaves the
-            // file behind and the cleanup is invisible either way.
+            // Deliberately a restore rather than a delete: a `Present` snapshot
+            // undoes a REWRITE (an ambient `[patch]`, a stale resolution) as
+            // well as a creation, and deleting would only ever have handled the
+            // second. The residual hole is a `SIGKILL` of pmat itself, which
+            // reaches no destructor -- and which `--locked` closes only by not
+            // scanning.
             .arg("--message-format=json")
             // A target directory only this workspace root builds into (#1305).
             // Inherited, it could be shared with a same-named crate elsewhere,
@@ -449,6 +477,35 @@ impl CargoDeadCodeAnalyzer {
             String::from_utf8_lossy(&stdout).to_string(),
         ))
     }
+}
+
+/// What `run_cargo_check` returns, given how cargo went AND how the restore went.
+///
+/// Pure, and separate from the cargo run, because the interesting cases are the
+/// ones that need both halves to go wrong at once and a test would otherwise
+/// have to manufacture a failing cargo and an unwritable directory together.
+///
+/// A failed restore OUTRANKS a cargo failure. The tree having kept a change the
+/// analysis could not undo is the more serious fact and the more surprising
+/// one: cargo failing is visible the next time the user builds, while a
+/// silently rewritten `Cargo.lock` is exactly the thing that shipped in
+/// v3.41.0. The cargo error is carried along rather than discarded.
+pub(crate) fn cargo_outcome_or_restore_failure(
+    outcome: Result<CargoCheckOutcome>,
+    restored: LockfileRestore,
+) -> Result<CargoCheckOutcome> {
+    let LockfileRestore::Failed(detail) = restored else {
+        return outcome;
+    };
+    Err(match outcome {
+        Ok(_) => anyhow::anyhow!(
+            "dead-code analysis modified the analysed project and could not undo it: {detail}"
+        ),
+        Err(cargo) => anyhow::anyhow!(
+            "dead-code analysis modified the analysed project and could not undo it: {detail} \
+             (the cargo run also failed: {cargo})"
+        ),
+    })
 }
 
 /// A `cargo check` whose stdout may or may not have been produced, carried
