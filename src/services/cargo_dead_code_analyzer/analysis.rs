@@ -246,19 +246,28 @@ impl CargoDeadCodeAnalyzer {
     /// a run that could not compile the crate is distinguishable from a run
     /// that compiled it and found nothing.
     async fn run_cargo_check(&self, deadline: std::time::Instant) -> Result<CargoCheckOutcome> {
+        // THIS is what makes "read-only" true of the lockfile, and it is taken
+        // BEFORE `build_cargo_check_command` on purpose. That builder is not
+        // inert: it shells out to `cargo metadata` twice (`isolated_target_dir`
+        // and `named_targets`). Both pass `--no-deps` and so resolve nothing
+        // today, but the guard's promise is "no cargo this analysis runs can
+        // leave the lockfile changed", and a snapshot taken after some of those
+        // cargos would silently narrow it to "no cargo AFTER the ones we forgot
+        // about". Taken here, the snapshot precedes every cargo process the
+        // analysis starts, so the promise cannot be narrowed by a future edit
+        // to the builder.
+        //
+        // Every way out of the call below -- `Ok`, a cargo failure, the
+        // deadline kill, a panic -- passes back through this frame. The
+        // deadline path kills and reaps the child before it returns, so nothing
+        // is still writing when the bytes go back. See `LockfileGuard` for why
+        // the write is undone instead of forbidden with `--locked`
+        // (2bdc6b90c, #1076).
+        let guard = LockfileGuard::acquire(&self.cargo_root);
+
         let Some(cmd) = self.build_cargo_check_command() else {
             return Ok(CargoCheckOutcome::suppressed_by_env());
         };
-
-        // THIS is what makes "read-only" true of the lockfile, and it is here
-        // rather than inside `wait_for_cargo_check` on purpose: the snapshot
-        // must exist before the child does, and every way out of that call --
-        // `Ok`, a cargo failure, the deadline kill, a panic -- has to pass back
-        // through this frame. The deadline path kills and reaps the child
-        // before it returns, so nothing is still writing when the bytes go
-        // back. See `LockfileGuard` for why the write is undone instead of
-        // forbidden with `--locked` (2bdc6b90c, #1076).
-        let guard = LockfileGuard::acquire(&self.cargo_root);
         let outcome = self.wait_for_cargo_check(cmd, deadline).await;
         let restored = guard.restore();
 
