@@ -537,3 +537,7 @@ tree: run-log behind=3. On head 2db469bf2 the required `CB-200 ratchet measured`
 ## 2026-09-18T04:46Z — D8 pushed e541edb99 (verdict commit?); CI re-running
 
 tree: run-log behind=3. #1406 27 pass / 17 pending / 0 fail, not yet armed. Host up 13 hours, 14 minutes.
+
+## 2026-09-18T05:05Z — D8 at its ninth `make gate` run; #1406 35 pass / 11 pending
+
+tree: run-log behind=3. Host up 13 hours, 34 minutes. Session has been live 4h46m (K=200).
