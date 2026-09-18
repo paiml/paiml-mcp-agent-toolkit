@@ -517,3 +517,7 @@ Raw (PR #1406 body, PMAT-1403): reproduced byte-identically on cargo 1.98.0 in ~
 Correction to the D8 brief (finding): my brief told the session the failure was "ONLY inside the clean-room container" and pointed at the container's cargo version; both were wrong — the trigger is the ambient overlay, reproducible anywhere in seconds. The brief's hedge ("may be latent, find out") held.
 
 Next: after #1406 merges → lifecycle (PMAT-1403 row) → re-cut decision. Master's `Cargo.toml` already says 3.41.0 and nothing is published, so the candidates are (a) delete and re-create tag `v3.41.0` on the fixed master (nothing consumed the old tag; no release object exists), or (b) 3.41.1 with 3.41.0 never published. The release session's grill quorum decides; the orchestrator's recommendation is (a), because 3.41.0 is what master and the CHANGELOG already say and the old tag was never a release.
+
+## 2026-09-18T02:49Z — D8 PR #1406 red on `feature-gate` (flag-efficacy leg); session reproducing
+
+tree: run-log behind=3. Run 35298437724: `falsification / flag-efficacy` fail → `feature-gate` (required) fail; 45 pass. The session is running nextest repeatedly to measure a flake rate before touching anything. Host up 11 hours, 17 minutes.
