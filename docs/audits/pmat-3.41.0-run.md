@@ -529,3 +529,7 @@ tree: run-log behind=3. #1406 checks 26 pass / 18 pending after the session read
 ## 2026-09-18T03:48Z — D8: flag-efficacy red read; fix pushed (c80ee8240); CI re-running
 
 tree: run-log behind=3. The flag-efficacy sweep on the earlier head judged `analyze reachability --allow-dirty` and `analyze unrun-tests --allow-dirty` NO-OP and `analyze complexity --diff-scope` ERROR-OUT (exit 2) — 446 effective / 4 refuses-honestly / 2 no-op / 1 error-out / 243 skipped. Whether that is the LockfileGuard's doing (a restored lockfile making a dirty tree read clean) or pre-existing is the session's to say in its receipt; #1400's sweep was green on ecd97c6bc, which points at the branch. #1406 now 25 pass / 19 pending. Host up 12 hours, 16 minutes.
+
+## 2026-09-18T04:16Z — D8: the new CB-200 ratchet job (D6) caught #1406 once; branch reworked
+
+tree: run-log behind=3. On head 2db469bf2 the required `CB-200 ratchet measured` job (added by #1394) went red — the gate D6 built bit on the very next code PR, which is what it is for; the session reworked to keep the count at the baseline (its receipt must show the count), regenerated the reachability ledger, pushed 15cf26519, final gate + quorum running. Host up 12 hours, 45 minutes.
