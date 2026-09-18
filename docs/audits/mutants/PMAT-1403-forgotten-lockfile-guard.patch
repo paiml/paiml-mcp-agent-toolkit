@@ -1,0 +1,24 @@
+# PMAT-1403 falsifier. Re-enables the defect by forgetting the guard instead of
+# restoring: cargo's rewrite of the analysed project's Cargo.lock survives the
+# analysis, exactly as it did on v3.41.0 (fleet unified gate run 35286438196,
+# GATE B2). The guard is still ACQUIRED and the type still exists, so a "does
+# the mechanism compile" test would not notice -- only the byte-identity
+# assertions can.
+#
+# Apply to the FIXED tree:
+#   git apply docs/audits/mutants/PMAT-1403-forgotten-lockfile-guard.patch
+# Revert:
+#   git apply -R docs/audits/mutants/PMAT-1403-forgotten-lockfile-guard.patch
+--- a/src/services/cargo_dead_code_analyzer/analysis.rs
++++ b/src/services/cargo_dead_code_analyzer/analysis.rs
+@@ -260,7 +260,9 @@
+         // forbidden with `--locked` (2bdc6b90c, #1076).
+         let guard = LockfileGuard::acquire(&self.cargo_root);
+         let outcome = self.wait_for_cargo_check(cmd, deadline).await;
+-        let restored = guard.restore();
++        // MUTANT: never restore, and defuse the Drop belt as well.
++        std::mem::forget(guard);
++        let restored = LockfileRestore::Untouched;
+ 
+         // Restore first, THEN propagate: a cargo failure must not cost the tree
+         // its lockfile.

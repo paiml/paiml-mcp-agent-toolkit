@@ -9,14 +9,16 @@
 //! nobody chose. It also dirties the tree for any "is the working copy clean"
 //! gate downstream — including pmat's own dogfood check.
 //!
-//! The fix is `--locked`: cargo REFUSES rather than writes. The refusal costs
-//! the compiler-lint layer, and the whole point of these tests is that the loss
-//! is stated rather than absorbed into an unchanged report shape.
+//! The fix is `LockfileGuard` (PMAT-1403): cargo is allowed to write, at full
+//! fidelity, and the bytes are put back on every path out of `run_cargo_check`.
+//! `--locked` was the FIRST fix and was reverted in 2bdc6b90c — it stops the
+//! write by stopping the scan (80 dead functions -> 0 on the differential
+//! corpus), which is why the counter-tests below insist a full scan still finds
+//! `dead_one`. Both halves are the contract: the tree is untouched AND the
+//! search is undiminished. A fix that delivers only one of them is not a fix.
 
 use super::{lockfile_refusal_line, CargoDeadCodeAnalyzer};
-use crate::models::dead_code::{
-    COMPILER_SCAN_REASON_ENV_SKIP, COMPILER_SCAN_REASON_LOCKFILE, COMPILER_SCAN_REASON_OK,
-};
+use crate::models::dead_code::{COMPILER_SCAN_REASON_ENV_SKIP, COMPILER_SCAN_REASON_OK};
 
 /// A crate with one live export and one genuinely dead private function.
 ///
@@ -42,8 +44,8 @@ fn crate_fixture() -> tempfile::TempDir {
 /// THE ISSUE. Analysing a crate that has no lockfile must not create one.
 ///
 /// Pre-fix this assertion fails: `cargo check` writes `Cargo.lock` into the
-/// analysed tree and `git status --porcelain` reports `?? Cargo.lock`.
-#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
+/// analysed tree and `git status --porcelain` reports `?? Cargo.lock`. The
+/// guard removes what cargo generated, so the crate ends as it began.
 #[tokio::test]
 async fn analysing_a_lockfile_less_crate_creates_no_lockfile() {
     let tmp = crate_fixture();
@@ -65,14 +67,14 @@ async fn analysing_a_lockfile_less_crate_creates_no_lockfile() {
     );
 }
 
-/// …and the cost of not writing it is DECLARED, with a machine-readable reason.
+/// …and it costs NOTHING, which is the half 2bdc6b90c could not deliver.
 ///
-/// Without this the report is the same shape over a much smaller search: only
-/// explicit `allow(dead_code)` admissions were looked for, so `0 dead items`
-/// would read as "nothing is dead" when it means "nothing was admitted".
-#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
+/// `--locked` made this exact crate report `reduced`: the report kept its shape
+/// over a much smaller search, so `0 dead items` read as "nothing is dead" when
+/// it meant "nothing was admitted". The guard has to beat that, not match it —
+/// if a lockfile-less crate loses `dead_one`, the reverted bug is back.
 #[tokio::test]
-async fn the_refused_compiler_scan_is_declared_on_the_report() {
+async fn a_lockfile_less_crate_is_still_scanned_at_full_fidelity() {
     let tmp = crate_fixture();
 
     let report = CargoDeadCodeAnalyzer::new(tmp.path())
@@ -85,22 +87,27 @@ async fn the_refused_compiler_scan_is_declared_on_the_report() {
         .as_ref()
         .expect("a cargo run always records whether its compiler layer ran");
     assert!(
-        !scan.is_full(),
-        "the compiler layer cannot have run: compiling this crate needs a lockfile \
-         that does not exist, yet the report claims a full scan: {scan:?}"
+        scan.is_full(),
+        "the guard bought cleanliness by losing the compiler layer — that is \
+         2bdc6b90c's bug wearing the new fix's clothes: {scan:?}"
     );
     assert_eq!(
-        scan.reason, COMPILER_SCAN_REASON_LOCKFILE,
+        scan.reason, COMPILER_SCAN_REASON_OK,
         "the cause must be a stable token a consumer can branch on, not prose: {scan:?}"
     );
+
+    // Full fidelity is a claim about findings, not a label.
+    let found: Vec<&str> = report
+        .files_with_dead_code
+        .iter()
+        .flat_map(|f| f.dead_items.iter())
+        .map(|i| i.name.as_str())
+        .collect();
     assert!(
-        scan.detail.contains("Cargo.lock"),
-        "the reason must NAME the artifact that was not written: {scan:?}"
-    );
-    assert!(
-        scan.detail.contains("allow(dead_code)"),
-        "the reason must say what WAS searched for, or a reader cannot weigh the \
-         count beside it: {scan:?}"
+        found.contains(&"dead_one"),
+        "`dead_one` carries no allow(dead_code), so only rustc can find it; a \
+         lockfile-less crate that loses it has been refused in all but name: \
+         findings were {found:?}"
     );
 }
 
@@ -170,16 +177,16 @@ async fn a_crate_with_a_lockfile_is_analysed_fully_and_its_lockfile_is_untouched
     );
 }
 
-/// The mechanism is cargo's refusal, not a cleanup of ours.
+/// The flag that was reverted must not creep back.
 ///
-/// A "delete it afterwards" fix leaves the reproducer clean too, so the
-/// observable end-state cannot tell the two apart — but they are not equally
-/// safe: a killed run never reaches a cleanup, and an invisible cleanup is a
-/// second thing the user is not told about. Pinning `--locked` in the argv pins
-/// which of the two this is.
-#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
+/// This test used to assert the OPPOSITE — `--locked` present — because that
+/// was the first fix. It was measured and reverted (2bdc6b90c) for silently
+/// disabling the compiler scan, and the argv is where a well-meaning "just make
+/// the lockfile test pass" would put it back. So the argv is still pinned; only
+/// the sign changed. What replaced it is `LockfileGuard`, whose own behaviour is
+/// pinned in `lockfile_guard_tests.rs`.
 #[test]
-fn the_cargo_invocation_forbids_cargo_from_writing_the_lockfile() {
+fn the_cargo_invocation_never_carries_locked_or_frozen() {
     let tmp = crate_fixture();
     let analyzer = CargoDeadCodeAnalyzer::new(tmp.path());
     let cmd = analyzer
@@ -190,11 +197,15 @@ fn the_cargo_invocation_forbids_cargo_from_writing_the_lockfile() {
         .get_args()
         .map(|a| a.to_string_lossy().into_owned())
         .collect();
-    assert!(
-        args.iter().any(|a| a == "--locked"),
-        "without --locked cargo generates the analysed repo's Cargo.lock, and any \
-         clean-up afterwards is skipped by a killed run: {args:?}"
-    );
+    for banned in ["--locked", "--frozen"] {
+        assert!(
+            !args.iter().any(|a| a == banned),
+            "{banned} makes cargo refuse on an absent or stale lockfile and takes \
+             rustc's dead-code lint with it — 80 dead functions became 0 when this \
+             was last tried (2bdc6b90c). The lockfile is protected by LockfileGuard, \
+             not by disabling the scan: {args:?}"
+        );
+    }
 }
 
 /// `PMAT_DEAD_CODE_SKIP` is the OTHER way the compiler layer does not run, and

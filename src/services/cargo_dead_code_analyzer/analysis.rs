@@ -249,7 +249,33 @@ impl CargoDeadCodeAnalyzer {
         let Some(cmd) = self.build_cargo_check_command() else {
             return Ok(CargoCheckOutcome::suppressed_by_env());
         };
-        self.wait_for_cargo_check(cmd, deadline).await
+
+        // THIS is what makes "read-only" true of the lockfile, and it is here
+        // rather than inside `wait_for_cargo_check` on purpose: the snapshot
+        // must exist before the child does, and every way out of that call --
+        // `Ok`, a cargo failure, the deadline kill, a panic -- has to pass back
+        // through this frame. The deadline path kills and reaps the child
+        // before it returns, so nothing is still writing when the bytes go
+        // back. See `LockfileGuard` for why the write is undone instead of
+        // forbidden with `--locked` (2bdc6b90c, #1076).
+        let guard = LockfileGuard::acquire(&self.cargo_root);
+        let outcome = self.wait_for_cargo_check(cmd, deadline).await;
+        let restored = guard.restore();
+
+        // Restore first, THEN propagate: a cargo failure must not cost the tree
+        // its lockfile.
+        let outcome = outcome?;
+
+        if let LockfileRestore::Failed(detail) = restored {
+            // The scan itself succeeded, so this is not a fidelity caveat --
+            // it is a broken promise about the tree, and it is raised rather
+            // than attached to a report that would otherwise read as a clean
+            // read-only run.
+            return Err(anyhow::anyhow!(
+                "dead-code analysis modified the analysed project and could not undo it: {detail}"
+            ));
+        }
+        Ok(outcome)
     }
 
     /// Build the `cargo check` invocation, or `None` when the scan is skipped.
@@ -271,35 +297,27 @@ impl CargoDeadCodeAnalyzer {
         let mut cmd = Command::new("cargo");
         cmd.current_dir(&self.cargo_root)
             .arg("check")
-            // NO `--locked`, and #1076 IS THEREFORE STILL OPEN. Read this before
-            // adding it back — it was added, measured, and reverted.
+            // NO `--locked`. It was added, measured and reverted (2bdc6b90c),
+            // and it must not come back: cargo then REFUSES on any repo whose
+            // lockfile is absent or stale, and rustc's dead-code lint goes with
+            // it -- 80 dead functions became 0 on the differential corpus, and
+            // seven `analyze dead-code` leaves went identical-for-empty-and-
+            // large. Trading "writes a Cargo.lock" for "silently reports no
+            // dead code on most libraries" is the worse deal, and it is the
+            // exact absence-rendered-as-success shape that release removed.
             //
-            // `--locked` does stop the lockfile write. It also DISABLES THE
-            // COMPILER SCAN on any repo whose lockfile is absent or stale,
-            // because cargo refuses and the heuristic fallback cannot see what
-            // the compiler sees: on the differential corpus the scan finds 80
-            // dead functions and the heuristic finds 0, so seven `analyze
-            // dead-code` leaves went identical-for-empty-and-large and the gate
-            // went red. Reverting this one flag turned it green.
+            // What keeps the tree clean instead is `LockfileGuard`, acquired in
+            // `run_cargo_check` before this command is ever spawned: cargo is
+            // allowed to write the lockfile, at full fidelity, and the bytes
+            // are put back afterwards on every path out -- including the
+            // deadline kill. A failed restore is an ERROR, not a caveat.
             //
-            // Trading "writes a Cargo.lock" for "silently reports no dead code
-            // on most libraries" is a worse deal, and it is the exact
-            // absence-rendered-as-success shape this release exists to remove.
-            // A real fix has to keep the scan: analyse a copy, or snapshot and
-            // restore the lockfile, or accept the write and disclose it.
-            // `cargo check` GENERATES `Cargo.lock` when none exists, so the
-            // analyser was writing a real, source-controlled artifact into a
-            // repository it had only been asked to measure -- and whether a
-            // lockfile belongs in a tree is the project's decision (libraries
-            // deliberately omit it, binaries deliberately commit it), not
-            // ours. `--locked` makes cargo REFUSE instead: it exits 101 with
-            // "cannot create/update the lock file ... because --locked was
-            // passed to prevent this" and touches nothing. The refusal is
-            // caught in `wait_for_cargo_check` and turned into a DISCLOSED
-            // reduction in fidelity.
-            //
-            // Deliberately not "delete it afterwards": a killed run leaves the
-            // file behind and the cleanup is invisible either way.
+            // Deliberately a restore rather than a delete: a `Present` snapshot
+            // undoes a REWRITE (an ambient `[patch]`, a stale resolution) as
+            // well as a creation, and deleting would only ever have handled the
+            // second. The residual hole is a `SIGKILL` of pmat itself, which
+            // reaches no destructor -- and which `--locked` closes only by not
+            // scanning.
             .arg("--message-format=json")
             // A target directory only this workspace root builds into (#1305).
             // Inherited, it could be shared with a same-named crate elsewhere,
