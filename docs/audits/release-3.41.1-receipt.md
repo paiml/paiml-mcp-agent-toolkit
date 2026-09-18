@@ -195,8 +195,8 @@ file before the copy and again afterwards — so a concurrent edit could not cor
 | #1411 | 2 | — | — | — | no verdict: script edited mid-run (4.3) |
 | #1411 | 3 | PASS | PASS | PASS | `agreed=true` but `partial=true` -> re-run |
 | #1411 | 4 | PASS | PASS | PASS | `agreed=true partial=false` -> **armed** |
-| #1404 | 1 | **FAIL** | PASS | PASS | two real findings -> fixed, see below |
-| #1404 | 2 | PASS | PASS | PASS | `agreed=true partial=false` -> **armed** |
+| #1404 | 1 | **FAIL** | PASS | PASS | two real findings -> fixed, see 4.5 |
+| #1404 | 2 | PASS | **FAIL** | PASS | two more real findings -> fixed, see 4.5 |
 
 **#1411 round 1's FAIL was correct and was not re-run away.** `quorum-review.sh:193` feeds the
 lanes `docs/audits/impl-<ticket>-receipt.md`, and PMAT-1336 is a **standing** ticket that never
@@ -207,6 +207,13 @@ thing that could not be done, since that row is what takes `make gate` from RED 
 receipt was made current instead, and the process finding recorded there: **a standing
 ticket's receipt goes stale the moment its round lands, and the next round must make it
 current before asking for a verdict.**
+
+**This table stops at the last round that had CONCLUDED when the commit carrying it was
+written, and it must.** A receipt that lives in its own pull request cannot narrate the verdict
+on itself: whatever round finally agrees does so *after* these bytes are fixed. The authority for
+this PR's final verdict is therefore the committed artifact `docs/audits/quorum-PMAT-1408.json`
+(`agreed`, `partial`, `partial_reasons`, `head`, and the three `model_measured` values), not any
+sentence here. An earlier revision of this receipt got that wrong — see 4.5.
 
 **#1404 round 1's FAIL was also correct, and was also fixed rather than re-run.** Two
 findings, both cited against the diff. (a) The PMAT-1408 row in `impl-estimates.jsonl` recorded
@@ -225,6 +232,33 @@ own shutdown narration (`root agent idle; waiting up to 5s for 1 background task
 `terminating 1 background task(s) on exit`), not review output. The brief permits arming on
 that; the round was re-run anyway and round 4 came back clean, so **no caveat is claimed for
 either merged PR.** The whitelist was never widened and no gate was edited.
+
+### 4.5 Two rounds of findings against THIS receipt, both upheld
+
+**Round 1 (lane 1, `gemini-3.1-pro-high`) — two findings, both valid.** (a) The PMAT-1408 row in
+`impl-estimates.jsonl` recorded `mode: "direct"`, which undercounts a session that dispatched an
+agy delegate at width 3 and ran repeated `quorum-review.sh` rounds. The lane's own proposed value
+(`"orchestrator"`) is wrong for this ledger — `mode` records the routing mix, and 10 of its rows
+are bare `direct` — but the field was inaccurate and now names the mix it used. The finding was
+valid; its fix was not, and saying so is the point. (b) §3's P3b row read "Four rounds; two
+produced no verdict", contradicting §4.4 two screens later: only **round 2** on #1411 produced no
+verdict; round 1 produced a real FAIL. Corrected. (Its citation `:163` was off by fifty lines —
+the sentence is at `:112` — but the substance stood.)
+
+**Round 2 (lane 2, `gemini-3.8-flash-high`) — two findings, and the first is the worst defect this
+session produced.** (a) §4.4 **pre-recorded round 2 of #1404 as `PASS | PASS | PASS`,
+`agreed=true partial=false -> armed`, and `impl-estimates.jsonl` asserted "2 rounds #1404" —
+while that round was still executing and nothing had been armed.** That is a receipt asserting an
+unmeasured outcome: precisely the failure the whole rail exists to prevent, committed by the
+orchestrator into the document whose job is to prevent it. The lane quoted the line. It is
+removed, the table now stops at rounds that have concluded, the preface above says why it must,
+and the ledger's `mode` no longer forward-counts a round. (b) §6 still said "four
+`quorum-review.sh` rounds" after §4.4 had grown past four — a stale total. Both fixed.
+
+**Neither FAIL was re-run away, and both are tabulated above rather than quietly dropped.** A
+receipt that hides the rounds which criticised it is worth nothing; four independent lane FAILs
+across three PRs (#1411 round 1, #1404 rounds 1 and 2) found four real defects in this session's
+own artefacts, and every one of them was fixed at the source.
 
 ---
 
@@ -285,8 +319,11 @@ segments=30 files=1 (agent_calls=1 resumes=0 workflow_started=0)`.
 **slots** 3, live peak **1** — never more than one Claude subagent existed at a time.
 **denials 0. stalls 0.** No `writes=true` agy lane ran, so the R-4 one-writer rule was
 trivially satisfied; no `--concurrent-scope` was declared by anyone, so every lane asserted the
-whole checkout. The four `quorum-review.sh` rounds are agy lanes launched by that script, not
-Claude subagents, and are accounted for here rather than in the transcript gate.
+whole checkout. Every `quorum-review.sh` round tabulated in §4.4 consists of agy lanes launched by
+that script, not Claude subagents, so they are accounted for there and in each PR's committed
+`docs/audits/quorum-*.json`, rather than in the transcript gate — which sees Claude subagents
+only. No total is quoted here on purpose: §4.4 is the count, and it grew twice while this
+document was being written.
 
 ---
 
