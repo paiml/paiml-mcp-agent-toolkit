@@ -3,12 +3,12 @@
   "base": "master",
   "base_resolved": "origin/master",
   "base_note": "local master and origin/master agree",
-  "head": "53089420c25ddb6756c658ab3fed75a0a9089b54",
-  "diff_sha256": "dbaa17ee8696bdd4ef9ca527ca45860e51716ef78c96257c0b29fe35ecfec91b",
+  "head": "c1148c750d80f768326a13b49b86a646790e6114",
+  "diff_sha256": "5875ca25d35e87f98742f1780d5d008a219e6374b6fef0c46cf818778ceeeb57",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "inline",
-  "prompt_bytes": 23473,
+  "prompt_bytes": 27844,
   "author": {
     "model": "claude-opus-5",
     "family": "claude",
@@ -20,10 +20,21 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff implements the lifecycle operation described in PMAT-1336 for PMAT-1403. It updates the `status` to `completed` and the `updated` timestamp in `docs/roadmaps/roadmap.yaml` since the corresponding issue (#1403) was closed by PR #1406, and a ticket cannot complete itself. It also appends the corresponding receipt narrative to `docs/audits/impl-PMAT-1336-receipt.md`. All claims match the diff precisely.\n\nThe lane witness file `.git/paiml-lane-witness` could not be found in the workspace (`/home/noah/src/paiml-mcp-agent-toolkit.wt/PMAT-1336/.git` is a directory without the witness file), so `tree_witness` is omitted as permitted by the schema.",
-      "findings": [],
-      "raw_bytes": 2588,
-      "err_bytes": 100,
+      "summary": "The diff correctly resolves the ORPHAN-GITHUB #1410 finding by registering GH-1410 in the roadmap.yaml file with the status 'planned'. The 16 added lines perfectly match the receipt claim. No forbidden or undocumented changes are present.",
+      "findings": [
+        {
+          "claim": "GH-1410 is added to the roadmap with 16 lines and status 'planned', matching the receipt claim exactly.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited"
+        },
+        {
+          "claim": "The receipt section for GH-1410 accurately describes the lifecycle addition to fix the CB-2115 ORPHAN-GITHUB finding.",
+          "file": "docs/audits/impl-PMAT-1336-receipt.md",
+          "grounding": "cited"
+        }
+      ],
+      "raw_bytes": 2487,
+      "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
       "grounding_check": "parity",
@@ -36,9 +47,9 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff satisfies all acceptance criteria for PMAT-1336 without violating any constraints:\n1. Acceptance Criterion 1 (Bijection): `pmat work sync --check-only` reports a complete bijection (112 open items vs 112 open issues, 0 findings) against live GitHub. Both CB-2113 (Commit Traceability) and CB-2115 (Roadmap Coherence) pass cleanly.\n2. Acceptance Criterion 2 (Scope): The diff touches only `docs/roadmaps/roadmap.yaml` and `docs/audits/impl-PMAT-1336-receipt.md`. No source code or gate files were modified.\n3. Acceptance Criterion 3 (Provenance): The commit message (53089420c) explicitly names the landing merge commit 117ce5171 (PR #1406) that closed issue #1403.\n4. Receipt verification: All factual claims in the receipt section (including merge commit hashes, issue status, absence of `docs/roadmaps/entries/`, and timestamp distribution counts 204 vs 185) were independently measured and verified. No refuting evidence found.",
+      "summary": "Review for PMAT-1336 (lifecycle-12, PR #1411):\n- Scope & Criteria: PMAT-1336's acceptance criteria require (1) bijection between GitHub issues and roadmap items with zero findings against live GitHub, and (2) touching only docs/roadmaps/roadmap.yaml and docs/audits. The diff strictly adheres to these criteria: it adds the missing row for open issue #1410 (GH-1410, planned status) and updates the receipt docs/audits/impl-PMAT-1336-receipt.md. No source files, gates, or test definitions are modified.\n- Receipt Alignment: The receipt section '2026-09-18 — #1410 registered: 3.41.1 declared, not yet published (lifecycle-12)' accurately describes the exact changes in the diff (16 insertions in roadmap.yaml adding GH-1410 for issue 1410).\n- Refutation Checks: No gates weakened, no tests inverted, no receipt claims unbacked, and nothing done outside the ticket scope. No refutations found. Verdict: PASS.",
       "findings": [],
-      "raw_bytes": 3164,
+      "raw_bytes": 3124,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -52,9 +63,9 @@
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff satisfies all acceptance criteria of PMAT-1336. It transitions PMAT-1403 to completed following the merge of PR #1406 (which closed issue #1403), restoring the roadmap-GitHub bijection. The diff only touches docs/roadmaps/roadmap.yaml and docs/audits/impl-PMAT-1336-receipt.md, contains no source code changes or gate weakenings, and all receipt claims are backed line-for-line by the diff.",
+      "summary": "The diff registers orphan GitHub issue #1410 as roadmap item GH-1410 in docs/roadmaps/roadmap.yaml and updates docs/audits/impl-PMAT-1336-receipt.md with the corresponding implementation receipt section for PMAT-1336. The changes precisely match the ticket's lifecycle mandate, no gates or tests are weakened or contradicted, receipt claims are fully backed by the diff, and no extraneous changes were introduced. Verdict is PASS.",
       "findings": [],
-      "raw_bytes": 2062,
+      "raw_bytes": 2143,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -66,13 +77,32 @@
     }
   ],
   "dissent": [],
-  "dedup": [],
+  "dedup": [
+    {
+      "file": "docs/audits/impl-PMAT-1336-receipt.md",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The receipt section for GH-1410 accurately describes the lifecycle addition to fix the CB-2115 ORPHAN-GITHUB finding."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": null,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "GH-1410 is added to the roadmap with 16 lines and status 'planned', matching the receipt claim exactly."
+      ]
+    }
+  ],
   "uncovered": [],
   "coverage_source": "lanes",
-  "partial": true,
-  "partial_reasons": [
-    "lane 1: non-empty .err (100 bytes, 1 line(s) beyond agy-lane's workspace narration)"
-  ],
+  "partial": false,
+  "partial_reasons": [],
   "auto_merge": {
     "checked": true,
     "was_armed": false,
