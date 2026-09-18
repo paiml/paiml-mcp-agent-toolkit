@@ -521,3 +521,7 @@ Next: after #1406 merges → lifecycle (PMAT-1403 row) → re-cut decision. Mast
 ## 2026-09-18T02:49Z — D8 PR #1406 red on `feature-gate` (flag-efficacy leg); session reproducing
 
 tree: run-log behind=3. Run 35298437724: `falsification / flag-efficacy` fail → `feature-gate` (required) fail; 45 pass. The session is running nextest repeatedly to measure a flake rate before touching anything. Host up 11 hours, 17 minutes.
+
+## 2026-09-18T03:18Z — D8: CI re-running on #1406
+
+tree: run-log behind=3. #1406 checks 26 pass / 18 pending after the session read the flag-efficacy failure (its receipt will say whether it fixed something or named a flake; the orchestrator re-reads the receipt before trusting either). Host up 11 hours, 46 minutes.
