@@ -1,0 +1,86 @@
+{
+  "ticket": "PMAT-1403",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master and origin/master agree",
+  "head": "c22018c6d05ad05549e2085710b53f77449566e3",
+  "diff_sha256": "0608e9b96a1fcadf80eddc8197f1c2b5d83a544b9f37b36847beb5fcfa36dbaf",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "file",
+  "prompt_bytes": 158335,
+  "author": {
+    "model": "claude-opus-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff perfectly implements the fix for PMAT-1403. The read-only guarantee is correctly enforced via LockfileGuard, which snapshots the workspace root's Cargo.lock and safely restores it on all exit paths. It explicitly covers unreadable lockfiles via PresentUnreadable, ensuring they are not deleted, and correctly handles both cargo failures and environmental suppression. The previously reverted `--locked` flag remains omitted so that full dead-code scanning functionality is retained. All assertions in the receipt are backed by the changes, and no gates are weakened.",
+      "findings": [],
+      "raw_bytes": 2464,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff successfully implements LockfileGuard to snapshot and restore the Cargo.lock file, ensuring that the read-only dead-code analysis does not mutate the repository. It introduces a PresentUnreadable state to prevent deleting unreadable lockfiles, accurately propagates restore failures instead of dropping them, and guarantees that --locked and --frozen flags are not used. All 7 tests previously ignored due to #1076 are un-ignored and updated. The implementation accurately fulfills all claims and contract obligations listed in the ticket and receipt without weakening any gates.",
+      "findings": [],
+      "raw_bytes": 2540,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff completely and correctly implements the fix for PMAT-1403. The read-only guarantee is securely enforced by LockfileGuard which snapshots the workspace root Cargo.lock and restores it on all exit paths, including suppressed-by-env and cargo failure paths. Unreadable lockfiles are safely handled via `PresentUnreadable` state avoiding accidental deletion, and cargo errors do not swallow restore errors. The removed `--locked` flag is not reintroduced, preserving the full dead-code scan functionality, and all the formerly ignored tests are updated and un-ignored. No claims from the receipt are refuted by the diff.",
+      "findings": [],
+      "raw_bytes": 2560,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini"
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [
+    "lane models: every one of the 3 lanes ran on ONE model id (gemini-3.1-pro-high) — agreement under resampling, not independent corroboration (PMAT-125)"
+  ],
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+  }
+}
