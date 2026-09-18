@@ -210,10 +210,13 @@ current before asking for a verdict.**
 of this PR's own.** It cannot: every round that finds something rewrites this document, which
 creates the next round, so any row count here is falsified the moment it is written. Three
 successive revisions proved that empirically, each caught by lanes citing the row the previous fix
-had just invalidated. The authority for **this** PR's rounds and its final verdict is the
-committed artifact `docs/audits/quorum-PMAT-1408.json` — `agreed`, `partial`, `partial_reasons`,
-`head`, and the three `model_measured` values — plus the per-round copies kept beside the run
-logs. §4.5 narrates what those rounds *found*, which is stable; it states no count, which is not.
+had just invalidated. The authority for **this** PR's rounds and its final verdict is
+`docs/audits/quorum-PMAT-1408.json` — `agreed`, `partial`, `partial_reasons`, `head`, and the three
+`model_measured` values — which, exactly as on #1409, #1411, #1406 and #1407, is **not** part of the
+diff under review: it is written by the round judging that diff and lands in a separate `quorum:`
+commit once a round agrees. It is present at the merged head; until then the per-round copies kept
+beside the run logs are the record. §4.5 narrates what those rounds *found*, which is stable; it
+states no count, which is not.
 
 **#1411 round 3's `partial=true`** had one reason, byte-identical to what #1407 recorded:
 `lane 1: non-empty .err (100 bytes, 1 line(s) beyond agy-lane's workspace narration)` — agy's
@@ -272,8 +275,11 @@ pattern, not the individual defects, is the lesson: **a receipt that narrates it
 generate a finding per revision for as long as it keeps a count or a quotation that the next
 revision can falsify.** The structure above removes both. What §4.5 states from here on is only
 what a round *found*, which no later round can invalidate; whether a later round exists, and what
-it concluded, is answered by `docs/audits/quorum-PMAT-1408.json` at the merged head — which is
-where a reader should look, and the only place that can be right.
+it concluded, is answered by `docs/audits/quorum-PMAT-1408.json` **at the merged head** — which is
+where a reader should look, and the only place that can be right. Round 6's lane 1 objected that
+that file is absent from this diff, and it is: a diff can never contain the verdict on itself.
+Calling the artifact "committed" without that qualification was this receipt's own imprecision, and
+§4.4 now states it precisely rather than arguing with the lane.
 
 **Round 5 (lane 1) — one finding upheld, one already disclosed, one refuted.**
 
