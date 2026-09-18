@@ -124,46 +124,43 @@ impl LockfileGuard {
                 LockfileRestore::Untouched
             }
             (LockfileBefore::Absent, false, _) => LockfileRestore::Untouched,
-
-            // cargo rewrote it. Put the original bytes back and VERIFY, because
-            // a restore that silently did nothing is the same shape as the bug.
-            (LockfileBefore::Present(before), _, _) => match std::fs::write(&self.path, before) {
-                Ok(()) => match std::fs::read(&self.path) {
-                    Ok(after) if after == *before => LockfileRestore::Restored,
-                    Ok(_) => LockfileRestore::Failed(format!(
-                        "{}: rewrote {} with the original bytes and read back different ones",
-                        crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE_RESTORE_FAILED,
-                        self.path.display()
-                    )),
-                    Err(e) => LockfileRestore::Failed(format!(
-                        "{}: rewrote {} with the original bytes and could not read it back: {e}",
-                        crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE_RESTORE_FAILED,
-                        self.path.display()
-                    )),
-                },
-                Err(e) => LockfileRestore::Failed(format!(
-                    "{}: cargo rewrote {} and the original bytes could not be written back: {e}",
-                    crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE_RESTORE_FAILED,
-                    self.path.display()
-                )),
-            },
-
+            (LockfileBefore::Present(before), _, _) => self.put_back(before),
             // cargo CREATED one where the project had none. Remove it: the
             // presence of a lockfile is the project's decision (#1076).
-            (LockfileBefore::Absent, true, _) => match std::fs::remove_file(&self.path) {
-                Ok(()) if !self.path.exists() => LockfileRestore::Restored,
-                Ok(()) => LockfileRestore::Failed(format!(
-                    "{}: removed the {} cargo generated and it is still there",
-                    crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE_RESTORE_FAILED,
-                    self.path.display()
-                )),
-                Err(e) => LockfileRestore::Failed(format!(
-                    "{}: cargo generated {} and it could not be removed: {e}",
-                    crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE_RESTORE_FAILED,
-                    self.path.display()
-                )),
-            },
+            (LockfileBefore::Absent, true, _) => self.take_away(),
         }
+    }
+
+    /// Write the snapshot back over whatever cargo left, and VERIFY it: a
+    /// restore that silently did nothing is the same shape as the bug.
+    fn put_back(&self, before: &[u8]) -> LockfileRestore {
+        if let Err(e) = std::fs::write(&self.path, before) {
+            return self.failed(format!("the original bytes could not be written back: {e}"));
+        }
+        match std::fs::read(&self.path) {
+            Ok(after) if after == before => LockfileRestore::Restored,
+            Ok(_) => self.failed("the original bytes went in and different ones came back".into()),
+            Err(e) => self.failed(format!("the original bytes went in and cannot be read: {e}")),
+        }
+    }
+
+    /// Remove the lockfile cargo generated, and VERIFY it is gone.
+    fn take_away(&self) -> LockfileRestore {
+        match std::fs::remove_file(&self.path) {
+            Ok(()) if !self.path.exists() => LockfileRestore::Restored,
+            Ok(()) => self.failed("cargo's lockfile was removed and is still there".into()),
+            Err(e) => self.failed(format!("cargo generated it and it cannot be removed: {e}")),
+        }
+    }
+
+    /// Every failure carries the stable token and the path, from one place, so
+    /// a consumer never has to match on which branch produced it.
+    fn failed(&self, what: String) -> LockfileRestore {
+        LockfileRestore::Failed(format!(
+            "{}: {}: {what}",
+            crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE_RESTORE_FAILED,
+            self.path.display()
+        ))
     }
 }
 

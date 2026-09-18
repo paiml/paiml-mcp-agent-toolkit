@@ -62,15 +62,15 @@ proof_obligations:
   - type: invariant
     property: "DCLI-OB-001 a lockfile that existed before the analysis is byte-identical after it, even when cargo rewrote it"
     formal: "lock(p) = PRESENT(b) before ⇒ lock(p) = PRESENT(b) after, for every ambient [patch] in $CARGO_HOME/config.toml"
-    applies_to: LockfileGuard::restore
+    applies_to: restore
   - type: invariant
     property: "DCLI-OB-002 a lockfile cargo generated where the project had none is removed again (#1076)"
     formal: "lock(p) = ABSENT before ⇒ lock(p) = ABSENT after"
-    applies_to: LockfileGuard::restore
+    applies_to: restore
   - type: postcondition
     property: "DCLI-OB-003 an untouched lockfile is not written at all — the mtime is preserved, not just the bytes"
     formal: "cargo did not change the file ⇒ restore = Untouched ∧ mtime after = mtime before"
-    applies_to: LockfileGuard::restore
+    applies_to: restore
   - type: invariant
     property: "DCLI-OB-004 the guard protects the WORKSPACE root's lockfile, which for a member crate is above the analysed directory"
     formal: "guard(member).path = workspace_root(member)/Cargo.lock ≠ member/Cargo.lock"
@@ -78,11 +78,11 @@ proof_obligations:
   - type: invariant
     property: "DCLI-OB-005 the guard covers every path out of the cargo run, including a panic between spawning cargo and the explicit restore"
     formal: "drop(guard) without restore() ⇒ lock(p) after = lock(p) before"
-    applies_to: LockfileGuard::drop
+    applies_to: drop
   - type: invariant
     property: "DCLI-OB-006 a restore that cannot happen is reported with a stable token and raised as an error, never attached to a successful report"
     formal: "restore = Failed(d) ⇒ d ∋ \"lockfile-restore-failed\" ∧ d ∋ the path ∧ run_cargo_check = Err"
-    applies_to: LockfileGuard::restore_inner
+    applies_to: restore_inner
   - type: invariant
     property: "DCLI-OB-007 the flag that was reverted does not creep back: the cargo argv carries neither --locked nor --frozen"
     formal: "args(build_cargo_check_command()) ∌ --locked ∧ args(build_cargo_check_command()) ∌ --frozen"
@@ -90,7 +90,7 @@ proof_obligations:
   - type: invariant
     property: "DCLI-OB-008 protecting the lockfile does not reduce the scan: a lockfile-less crate is still scanned in full and still yields the compiler-only finding"
     formal: "lock(p) = ABSENT ⇒ compiler_scan(analyse(p)).verdict = full ∧ dead_one ∈ findings(analyse(p))"
-    applies_to: CargoDeadCodeAnalyzer::analyze
+    applies_to: analyze
 
 falsification_tests:
   - id: DCLI-F-001
