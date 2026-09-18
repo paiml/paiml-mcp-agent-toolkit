@@ -746,3 +746,21 @@ Correction to the operator's brief, by measurement: **rebuilding `sovereign-ci:s
 Also: `cargo-pin-check.sh` C1_unpinned=0 C2_version_over_list=0 over 46 cargo resources; `yaml-parses-guard.sh` 495/0. Commit 9c411f4, PR **paiml/infra#692** (`closes #690` in the title as #591 did — infra runs no CB-2115 job; its own bijection is 180 findings off and not mine to fix here), quorum running with `--author-model claude-opus-5`. The `state` symlink in the clone (→ `~/src/infra/state`, so the make targets find the live lock) is untracked and will not be committed.
 
 Remaining: aprender `tools.toml` 3.40.1→3.41.1 (last, per the brief), then the aprender aggregate PR; #1401/#1410 closure and the release receipt PR #1404; the final report section.
+
+## 2026-09-18T16:02Z — aprender tools.toml 3.40.1→3.41.1 (PR #3491) with both baselines RE-MEASURED; byte-identical aggregator proof taken; infra#692 rebased over a roadmap collision
+
+tree: run-log HEAD=39bf7163e origin/master 516305ef0 behind=0.
+
+The aprender half of the pin contract, done in a fresh clone `~/src/aprender-fleet` at origin/main 3409b29d2 (the local `~/src/aprender` was 92 behind and untouched). Issue-first: aprender **#3490**, `pmat work add --github-issue 3490` — and this is the first real-world run of D1's fragment writer: pmat 3.41.1 wrote `docs/roadmaps/entries/PMAT-3490.yaml`, not `roadmap.yaml`, because `entries/` exists there.
+
+RED before the change, in the fresh clone with the converged pmat on PATH: `check_tool_versions.sh` → `FAIL pmat pinned 3.40.1 found 3.41.1`. That is what every aprender PR gets on every converged runner from the moment infra#692's apply finished until #3491 lands — the same split #3301 fixed for 3.40.1. It is why this step could not wait for the infra PR to merge. GREEN after: `ok pmat pinned 3.41.1 found 3.41.1`, `4/4 checks, 0 failed`.
+
+Baselines — the instrument and the tree separated by measurement, which #3301 did not manage to do:
+- `complexity_baseline.txt`: 676 rows → **670** (`check_complexity_ratchet.sh --update`: 10345 files, 179788 functions). The six dropped functions all still exist; their three files were each changed on 2026-09-16, the day AFTER #3301's re-measurement. Falsified directly: pmat 3.41.1 run on `llm.rs` as of 4bad830fd reads 36/61, 40/91, 20/40, 16/36 — the exact numbers 3.40.1 recorded. Same binary, old tree, same reading → the instrument is flat on complexity; the tree moved.
+- CB-200: `pmat comply check --checks CB-200` from a cold index → **599**, "2 under the recorded baseline of 601: lower". The same binary on 5d95ed54e (the tree that banked 601 under 3.40.2) reads **602** — so 3.41.1 grades one more definition below B on that tree than 3.40.2 did (which one, not identified), and the current tree is three better than 09-17 under the one instrument. Written 599: lowered, never raised, and the ratchet refuses anything above it from here. `.pmat-gates.toml [tdg] baseline` and `scripts/cb200_baseline.txt` move together, and `check_complexity_ratchet.sh` reads `ok CB-200 baseline 599`, `PASS (D2)`; `check_baseline_ratchets.sh` PASS (22 files, 18 ratcheted, "3 name a versioned instrument and it was PROBED").
+
+Byte-identical proof for the last step, taken while the tree was in hand: `make roadmap-aggregate` (python) wrote `roadmap.yaml` at sha256 `fb345c44cb18ef0a…`, 642,905 bytes, from 919 base + 32 fragments; `pmat roadmap aggregate` (3.41.1) on the same inputs wrote the same bytes (`cmp` silent, same sha), and `pmat roadmap aggregate --check` reads the python output as `ok … idempotent`. The aggregate-replacement PR can cite this rather than re-derive it.
+
+Commit 41c976596, PR **paiml/aprender#3491** (`Closes #3490`), quorum running (`--author-model claude-opus-5`). Untouched on purpose: `scripts/pmat_bin.sh` `PMAT_PIN="3.37.0"`.
+
+infra#692 meanwhile went `mergeStateStatus=DIRTY`: #691 (PMAT-689) merged to main and appended a roadmap row at the same tail my PMAT-690 row sits on. Rebased onto 7e0bcf23a, kept both rows (298 rows, 0 duplicate ids, parses), pushed with `--force-with-lease`; `pmat-merge` correctly disarmed the earlier verdict ("no quorum verdict … at 7346a29") because the judged diff's context changed, so a second quorum round is running. Nothing about the change itself moved.
