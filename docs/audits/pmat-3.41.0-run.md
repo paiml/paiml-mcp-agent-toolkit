@@ -474,3 +474,14 @@ tree: run-log rebased, behind=0 against origin/master ecd97c6bc; tag v3.41.0 →
 ## 2026-09-17T23:59Z — CI clean room running 38 min so far (was killed at 30 on every prior tag)
 
 tree: run-log behind=0. release run 35286438196: create-release success, gate/lint-gate success, gate/cpu-gates in_progress since 23:21:21Z, gpu-gates skipped. Host up 8 hours, 27 minutes. REL-3.41.0 session LIVE, waiting on the same job before publishing.
+
+## 2026-09-18T00:20Z — STOP-THE-LINE: clean room RED on the release sha (v3.41.0 = ecd97c6bc). No publish.
+
+tree: run-log behind=0 against origin/master ecd97c6bc; tag v3.41.0 → ecd97c6bc.
+
+Raw: `release.yml` run 35286438196 — create-release success; `gate / lint-gate` success; `gate / cpu-gates` FAILURE (runner intel-clean-room-5, 23:21:21Z → 00:16:38Z, 55 min — the first pmat tag since v3.39.0 to run past the old 30-minute kill; step "Run clean-room Mode A+B" failed, not a timeout); `gate / gate` failure; `verify` and `prerelease` skipped. Log: `GATE B2 FAILED (809s): unit tests failed` — `test result: FAILED. 21774 passed; 2 failed; 158 ignored`:
+- `dead_code_handlers::lockfile_disclosure_tests::a_crate_with_a_lockfile_reports_a_full_scan_and_the_compiler_finding` — "a read-only analysis rewrote the project's lockfile" (`dead_code_lockfile_disclosure_tests.rs:211`)
+- `cargo_dead_code_analyzer::lockfile_tests::a_crate_with_a_lockfile_is_analysed_fully_and_its_lockfile_is_untouched` — "the analysed project's lockfile was modified by a read-only analysis" (`lockfile_tests.rs:166`)
+Both tests date from 2026-08-25 (2bdc6b90c, the revert of `--locked` because it silently disabled the compiler scan, #1076) and pass in `ci / test` (ubuntu-latest, rustc 1.98.0) and locally; they fail in the clean-room container's toolchain. Since no clean room has completed since v3.39.0, this is most likely a LATENT defect the timeout fix exposed, not a regression of today's PRs — to be established by the fix session, not assumed.
+
+Decision + basis: stop-the-line condition 3 holds; `cargo publish` does not run; the tag stays where it is (unpublished, no GitHub release beyond the auto-created prerelease shell) until a fix lands and a clean room is green on a release sha. 00:19Z launched D8 (clone `.wt/D8`, pid 1798305, K=200): reproduce in the clean-room toolchain, mechanism, fix at the cause without weakening the tests and without re-trying `--locked`. How 3.41.0 is re-cut (retag vs 3.41.1) is decided after the fix, with the quorum; the crate version 3.41.0 is on master unpublished either way. The release session is still polling; it will stop on the red per its brief. Slots 2/3: REL-3.41.0, D8.
