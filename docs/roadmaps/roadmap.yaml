@@ -7087,3 +7087,21 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: PMAT-1408
+  github_issue: 1408
+  item_type: task
+  title: 'release: pmat 3.41.1 — the dead-code lockfile guard, and 3.41.0 burned unpublished'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-18T09:50:58Z
+  updated: 2026-09-18T09:50:58Z
+  spec: null
+  acceptance_criteria:
+  - 'Release commit for pmat 3.41.1: Cargo.toml 3.41.0 -> 3.41.1 and the pmat entry in Cargo.lock bumped to match (those two files are the only version carriers); CHANGELOG.md gains [3.41.1] naming #1406 (the dead-code lockfile guard, PMAT-1403) and records [3.41.0] as cut-but-never-published with clean-room run id 35286438196, leaving the existing [3.41.0] section intact rather than re-labelling it. 3.41.0 is burned because a width-3 grillme quorum returned 3/3 FAIL against deleting and re-creating the pushed tag v3.41.0 on the fixed head: git fetch refuses to clobber an existing tag, so any clone or CI cache from the 12-hour window would keep resolving v3.41.0 to the red commit ecd97c6bc. make gate all local legs green on the merge commit; package under the repo''s own 9.0 MiB gate; tag v3.41.1 on the merge commit; release.yml gate / cpu-gates GREEN on that sha before anything is published; cargo publish --dry-run --locked then --locked from a detached checkout, never --allow-dirty; crates.io max_stable_version reads back 3.41.1 and make release-check exits 0, which is what closes #1401.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
