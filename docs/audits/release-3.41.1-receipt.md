@@ -195,8 +195,6 @@ file before the copy and again afterwards — so a concurrent edit could not cor
 | #1411 | 2 | — | — | — | no verdict: script edited mid-run (4.3) |
 | #1411 | 3 | PASS | PASS | PASS | `agreed=true` but `partial=true` -> re-run |
 | #1411 | 4 | PASS | PASS | PASS | `agreed=true partial=false` -> **armed** |
-| #1404 | 1 | **FAIL** | PASS | PASS | two real findings -> fixed, see 4.5 |
-| #1404 | 2 | PASS | **FAIL** | PASS | two more real findings -> fixed, see 4.5 |
 
 **#1411 round 1's FAIL was correct and was not re-run away.** `quorum-review.sh:193` feeds the
 lanes `docs/audits/impl-<ticket>-receipt.md`, and PMAT-1336 is a **standing** ticket that never
@@ -208,23 +206,14 @@ receipt was made current instead, and the process finding recorded there: **a st
 ticket's receipt goes stale the moment its round lands, and the next round must make it
 current before asking for a verdict.**
 
-**This table stops at the last round that had CONCLUDED when the commit carrying it was
-written, and it must.** A receipt that lives in its own pull request cannot narrate the verdict
-on itself: whatever round finally agrees does so *after* these bytes are fixed. The authority for
-this PR's final verdict is therefore the committed artifact `docs/audits/quorum-PMAT-1408.json`
-(`agreed`, `partial`, `partial_reasons`, `head`, and the three `model_measured` values), not any
-sentence here. An earlier revision of this receipt got that wrong — see 4.5.
-
-**#1404 round 1's FAIL was also correct, and was also fixed rather than re-run.** Two
-findings, both cited against the diff. (a) The PMAT-1408 row in `impl-estimates.jsonl` recorded
-`mode: "direct"`, which undercounts a session that dispatched an agy delegate at width 3 and ran
-six `quorum-review.sh` rounds; the lane's own proposed value (`"orchestrator"`) is wrong for this
-ledger — `mode` records the routing mix, and 10 of its rows are bare `direct` — but the field was
-inaccurate and is now `direct + agy-delegate(grillme x3) + quorum-review.sh(width 3; 2 rounds
-#1409, 4 rounds #1411, 2 rounds #1404)`. (b) §3's P3b row said "Four rounds; two produced no
-verdict", which contradicts §4.4: only **round 2** produced no verdict; round 1 produced a FAIL.
-The lane was right and the sentence was wrong; it is corrected above. (Its line citation for (b),
-`:163`, is off — the sentence is at `:112` — but the substance stands.)
+**This table covers #1409 and #1411 — the two merged PRs — and deliberately enumerates NO round
+of this PR's own.** It cannot: every round that finds something rewrites this document, which
+creates the next round, so any row count here is falsified the moment it is written. Three
+successive revisions proved that empirically, each caught by lanes citing the row the previous fix
+had just invalidated. The authority for **this** PR's rounds and its final verdict is the
+committed artifact `docs/audits/quorum-PMAT-1408.json` — `agreed`, `partial`, `partial_reasons`,
+`head`, and the three `model_measured` values — plus the per-round copies kept beside the run
+logs. §4.5 narrates what those rounds *found*, which is stable; it states no count, which is not.
 
 **#1411 round 3's `partial=true`** had one reason, byte-identical to what #1407 recorded:
 `lane 1: non-empty .err (100 bytes, 1 line(s) beyond agy-lane's workspace narration)` — agy's
@@ -233,7 +222,7 @@ own shutdown narration (`root agent idle; waiting up to 5s for 1 background task
 that; the round was re-run anyway and round 4 came back clean, so **no caveat is claimed for
 either merged PR.** The whitelist was never widened and no gate was edited.
 
-### 4.5 Two rounds of findings against THIS receipt, both upheld
+### 4.5 What the rounds against THIS receipt found
 
 **Round 1 (lane 1, `gemini-3.1-pro-high`) — two findings, both valid.** (a) The PMAT-1408 row in
 `impl-estimates.jsonl` recorded `mode: "direct"`, which undercounts a session that dispatched an
@@ -250,11 +239,11 @@ the sentence is at `:112` — but the substance stood.)
 
 **Round 2 (lane 2, `gemini-3.8-flash-high`) — two findings, and the first is the worst defect this
 session produced.** (a) §4.4 **pre-recorded round 2 of #1404 as `PASS | PASS | PASS`,
-`agreed=true partial=false -> armed`, and `impl-estimates.jsonl` asserted "2 rounds #1404" —
-while that round was still executing and nothing had been armed.** That is a receipt asserting an
+`agreed=true partial=false -> armed`, and the ledger's `mode` forward-counted that round — while
+it was still executing and nothing had been armed.** That is a receipt asserting an
 unmeasured outcome: precisely the failure the whole rail exists to prevent, committed by the
 orchestrator into the document whose job is to prevent it. The lane quoted the line. It is
-removed, the table now stops at rounds that have concluded, the preface above says why it must,
+removed, the table now enumerates none of this PR's rounds at all, the preface above says why,
 and the ledger's `mode` no longer forward-counts a round. (b) §6 still said "four
 `quorum-review.sh` rounds" after §4.4 had grown past four — a stale total. Both fixed.
 
@@ -269,12 +258,29 @@ range ends at PMAT-1403 on line 38. The basis excludes the row it explains, whic
 should do, and it was computed by `estimate.sh` before the row existed. A cited grounding is not
 a correct citation, and this one is recorded as refuted rather than silently accommodated.
 
-**Neither FAIL was re-run away, and both are tabulated above rather than quietly dropped.** A
-receipt that hides the rounds which criticised it is worth nothing; the lane FAILs across three PRs
-(#1411 round 1; #1404 rounds 1, 2 and 3) found real defects in this session's own artefacts, and
-every upheld one was fixed at the source — while the one finding that measurement refuted is
-recorded as refuted, not quietly accommodated. The rounds are in §4.4; no total is quoted, for
-the same reason §6 quotes none.
+**Round 4 (3/3 FAIL) — one defect, found by all three lanes independently, and it was mine
+twice over.** The fix for round 3 had patched §4.5's copy of the round-1 narrative while leaving a
+**stale duplicate of the same paragraph in §4.4's prose**, still reproducing the superseded ledger
+value. So the correction announced in §4.5 was contradicted, verbatim, twenty lines above it. Two
+lanes additionally noted that §4.4's table had gained no row for round 3 and that §4.5's heading
+still said "Two rounds". All three findings upheld. The duplicate paragraph is deleted, §4.4 now
+enumerates none of this PR's rounds and says why, the heading counts nothing, and no copy of that
+ledger field survives anywhere in this document — verified by `grep`, not by reading.
+
+That is the third consecutive round whose finding was created by the previous round's fix, and the
+pattern, not the individual defects, is the lesson: **a receipt that narrates its own review will
+generate a finding per revision for as long as it keeps a count or a quotation that the next
+revision can falsify.** The structure above removes both. What §4.5 states from here on is only
+what a round *found*, which no later round can invalidate; whether a later round exists, and what
+it concluded, is answered by `docs/audits/quorum-PMAT-1408.json` at the merged head — which is
+where a reader should look, and the only place that can be right.
+
+**No FAIL was re-run away, and none is quietly dropped.** A receipt that hides the rounds which
+criticised it is worth nothing. Every lane FAIL against this receipt found a real defect in this
+session's own artefacts; every upheld one was fixed at the source, and the single finding that
+measurement refuted is recorded above as refuted rather than accommodated. The rounds themselves
+live in `docs/audits/quorum-PMAT-1408.json` and the kept per-round copies. No total is stated
+here, for the same reason §4.4 enumerates no row for this PR and §6 quotes no total either.
 
 ---
 
