@@ -541,3 +541,7 @@ tree: run-log behind=3. #1406 27 pass / 17 pending / 0 fail, not yet armed. Host
 ## 2026-09-18T05:05Z — D8 at its ninth `make gate` run; #1406 35 pass / 11 pending
 
 tree: run-log behind=3. Host up 13 hours, 34 minutes. Session has been live 4h46m (K=200).
+
+## 2026-09-18T05:35Z — D8: quorum 3/3 on e541edb99 after three rounds of real findings; CI on the receipt head
+
+tree: run-log behind=3. #1406 head 10e20f8d4 (docs: nine gate runs, six red legs, no baseline raised), 29 pass / 15 pending. Two findings from its trail, both recorded in its receipt: (a) `--allow-dirty` on `analyze reachability`/`unrun-tests` read as effective in the flag-efficacy sweep ONLY because the dead-code analysis was dirtying the corpus lockfile — the guard removed the dirt and the sweep called the flags no-ops (28d3bab63: a flag whose only proof was another defect); (b) quorum rounds 1–2 found real restore-path holes (an unreadable lockfile deleted; a failed restore swallowed) — fixed in 2db469bf2/15cf26519/e541edb99. Host up 14 hours, 3 minutes.
