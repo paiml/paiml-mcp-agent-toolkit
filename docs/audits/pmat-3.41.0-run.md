@@ -625,3 +625,17 @@ Three corrections to the brief I wrote, made before launching rather than left f
 3. The brief told the session to verify the three "never published" facts with `cargo search`. Replaced with the registry API call that actually works, including the trap that cost me a command: `https://crates.io/api/v1/crates/pmat` returns HTML, not JSON, to a curl with no User-Agent, and a bare `json.load` then dies with `Expecting value: line 1 column 1`. The measured values are carried in the brief so the session can compare rather than only re-derive.
 
 Also added to the brief, from this session's own experience an hour earlier: the `quorum-review.sh` `partial=true` behaviour (prints `NOT AGREED`, exits 1, even with `agreed=true` and 3/3 PASS) with the instruction to read `.agreed`/`.partial`/`.partial_reasons` out of the artifact rather than trusting the last line — and the standing prohibition on widening the whitelist to pass its own PR.
+
+## 2026-09-18T12:20Z — the quorum took option (b): the release is **3.41.1**, not a retagged 3.41.0
+
+tree: run-log HEAD=2af799924 origin/master=18e5ddb87 behind=0. Release session live 44 minutes, phase 1 of 7 done.
+
+Decision, by the grill quorum the brief asked for, against my own recommendation of (a): **do not move the tag; burn 3.41.0 and ship 3.41.1.** Ticket filed issue-first as **#1408** (`release: pmat 3.41.1 — the dead-code lockfile guard, and 3.41.0 burned unpublished`), PR **#1409** (`CHANGELOG.md`, `Cargo.toml`, `Cargo.lock`, `docs/roadmaps/roadmap.yaml` — the last being PMAT-1408's own row, which CB-2113 needs to resolve the trailer).
+
+Basis, quoted from the ticket body rather than paraphrased: `git fetch` will not move an already-fetched tag without `--force`, so any clone, CI cache, Docker build or `cargo install --git` in the ~12-hour window since `v3.41.0` was pushed would keep resolving `v3.41.0` to the red commit `ecd97c6bc` — "silently and indefinitely". That is exactly the "moved tag is a hard-to-undo outward action" ground the brief said to defer on, and the lanes found a concrete mechanism for it rather than a principle. I recommended (a); the quorum's reasoning is better than mine and it stands. `[3.41.0]` stays in the CHANGELOG as cut-but-never-published, with the failed gate run id, so nothing is silently re-labelled.
+
+Consequences recorded now, before they can be forgotten downstream:
+- The crate version that reaches crates.io is **3.41.1**. Every later step in the operator's brief that names 3.41.0 — the five `machines/*/forjar.yaml` `stack-tool-pmat.version` pins, `forjar apply -r stack-tool-pmat`, the `sovereign-ci:stable` and `sovereign-gpu-runner` images, `tool-pin-check.sh`, and aprender's `tools.toml` — converges to **3.41.1**. Still never downward: the fleet is at 3.40.1.
+- Confirming the third "never published" fact a fourth way, from the ticket: `/api/v1/crates/pmat/3.41.0` → **HTTP 404**.
+
+Also measured, so a later step does not trip on it: `~/src/aprender` is **92 commits behind** `origin/main` (HEAD 0c6932fd5 vs 4a538ddef) and has no `roadmap-aggregate` make target and no `docs/roadmaps/entries/` at that revision. The aprender work — deleting its local aggregator shell in favour of `pmat roadmap aggregate`, proving byte-identical output — must be done in a fresh standalone clone, not in that checkout, and the target must be located on `origin/main` first.
