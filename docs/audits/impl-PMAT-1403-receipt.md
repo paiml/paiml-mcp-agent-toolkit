@@ -281,22 +281,76 @@ mine and one was not. Run 2 (`/tmp/pmat-gate.z66SgL`, plus a targeted re-check a
 | `reachability-ledger` | FAIL | Two new files move `docs/status/orphan-files-ledger.md`. | PASS — re-rendered. Both new files are **reachable** (4016 → 4018 of 4500 tracked); `orphaned` (407) and `quarantined` (75), the two counts the ratchet may only lower, are untouched. |
 | `cb-2113-cb-2115` | FAIL | CB-2113 **passes** (all 4 commits carry `Pmat-Ticket`). CB-2115 reported 3 findings; **one was mine** — a title DRIFT between the roadmap row and issue #1403, because `pmat work add` was given a shorter title than `gh issue create`. | **STILL RED, and not mine.** My DRIFT is fixed; what remains is exactly the two findings that pre-exist on `master`. |
 
-**31 legs PASS. The one RED leg is `cb-2113-cb-2115`, on master's own orphans**, proven
+**31 legs PASS. The one RED leg was `cb-2113-cb-2115`, on master's own orphans**, proven
 against `origin/master` rather than asserted:
 
-- `ORPHAN-ROADMAP PMAT-1399`: `origin/master:docs/roadmaps/roadmap.yaml:7039` carries `status: planned`, and `gh issue view 1399` is `CLOSED`.
-- `ORPHAN-GITHUB #1401`: `git show origin/master:docs/roadmaps/roadmap.yaml | grep 'github_issue: 1401'` matches **nothing**, and `gh issue view 1401` is `OPEN`.
+- `ORPHAN-ROADMAP PMAT-1399`: `origin/master:docs/roadmaps/roadmap.yaml:7039` carried `status: planned`, and `gh issue view 1399` was `CLOSED`.
+- `ORPHAN-GITHUB #1401`: `git show origin/master:docs/roadmaps/roadmap.yaml | grep 'github_issue: 1401'` matched **nothing**, and the issue was `OPEN`.
 
-Neither is reachable from this diff, and fixing either means carrying a lifecycle row for
-another ticket — which a quorum lane fails on scope. **Named and left, per the brief: the
-orchestrator runs the lifecycle PR.** This is a stop-the-line condition on the merge, not on
-the fix.
+**It resolved itself while this branch was in flight.** PR #1405
+(`PMAT-1336-lifecycle-10`, merged as `ac8a59e40`) completed PMAT-1399, registered PMAT-1401
+— and registered PMAT-1403 itself. That is the lifecycle PR the brief said the orchestrator
+would run, and it landed before this PR could merge, so the escalation is closed by that
+change rather than by this one.
+
+Rebasing onto it cost one thing worth recording: master's registration of PMAT-1403 carries
+`labels: []`, and `kind-gate.sh` exits 2 without `kind:code`. The branch's own row, which had
+the label, was dropped in the rebase because master already carried the id. The label is
+restored in its own commit; master's title is kept.
+
+### Runs 3 and 4 — a flake, and a gate that was reading the defect as a feature
+
+| Run | Verdict |
+|---|---|
+| gate 1 (`n9oall`) | RED, 6 legs — five mine, one master's |
+| gate 2 (`z66SgL`) | RED, 1 leg — `cb-2113-cb-2115`, master's |
+| gate 3 (`uUBraD`) | RED, 1 leg — **`lib-tests`**, on the two lockfile-less tests |
+| gate 4 (`HCxVUT`) | **GREEN — all 32 legs** |
+
+**The gate-3 flake.** `analysing_a_lockfile_less_crate_creates_no_lockfile` and
+`the_analysis_leaves_no_lockfile_in_the_analysed_tree` failed once, in one of four full gate
+runs, on code identical to the run before it. It did not reproduce in:
+
+- 3 further full `cargo nextest run --lib --profile gate` runs — **21789/21789 passed each**, ~65,000 test executions;
+- 110 targeted runs of the two tests;
+- 40 concurrent runs;
+- gate 4, the same harness that produced it.
+
+The symptom is only consistent with the lockfile being absent when the guard restored and
+present at the assertion. The obvious mechanism — a cargo the analysis runs BEFORE the
+snapshot — was tested and **disproved**: `isolated_target_dir` and `named_targets` both pass
+`--no-deps`, and 20 concurrent runs of each, with and without `CARGO_TARGET_DIR`, created no
+lockfile. The hole was closed anyway (the guard is now taken before any cargo the analysis
+starts), because the guard's promise must not depend on what the builder happens to call
+today. **The flake is recorded as unexplained, not as fixed.**
+
+**`falsification / flag-efficacy`.** Red on this branch, green on master, twice — and it was
+this change that did it, correctly. The sweep reported `analyze reachability --allow-dirty`
+and `analyze unrun-tests --allow-dirty` as NO-OP. They are not: on a tree with a modified
+TRACKED file, `analyze reachability --write-ledger` exits 1 printing ` M src/lib.rs`, and the
+same command with `--allow-dirty` exits 0 and writes the ledger. Measured both directions.
+
+What changed is the corpus. It commits a hand-written `Cargo.lock`
+(`tests/modules/quality_harness/mod.rs:1497`, written before `git add -A`, so TRACKED), and
+until this ticket `pmat analyze dead-code` rewrote that tracked file and left the corpus
+**dirty for every command the sweep ran afterwards**. `--allow-dirty` had something to permit
+only because an earlier probe had broken the fixture. The guard restores the lockfile, the
+corpus stays clean, and the flag correctly changes nothing.
+
+So a required gate had been reading the defect as a feature for as long as the defect
+existed. Both flags are recorded in `ALLOWED_NOOPS` with the measurement and with what to do
+instead — dirty a tracked file on purpose — rather than being wired up to a bug. Sweep after
+the change: **457 effective, 4 refuses-honestly, 0 no-op, 1 error-out, 251 skipped**, and the
+harness's own `noop_detection_is_load_bearing` self-test still passes, so the detector that
+found this still fires.
 
 ## Stop-the-line conditions
 
 | # | Condition | Disposition |
 |---|---|---|
-| 1 | `make gate` leg `cb-2113-cb-2115` RED on master's two pre-existing orphans | Named above, not fixed. Blocks a fully-green `make gate` on this branch until the lifecycle PR lands. |
+| 1 | `make gate` leg `cb-2113-cb-2115` RED on master's two pre-existing orphans | Named, not fixed. **Closed by PR #1405 landing mid-flight**; gate 4 is green. |
+| 6 | Two tests failed once in four full gate runs and did not reproduce in ~65,000 further test executions | Recorded as an unexplained flake, with the one mechanism that was tested and disproved, and the adjacent hole closed. NOT claimed as fixed. |
+| 7 | A required CI gate (`flag-efficacy`) was passing because of the defect | Root-caused to the corpus's tracked `Cargo.lock`, and recorded in `ALLOWED_NOOPS` with the measurement rather than worked around. |
 | 2 | `~/src/infra` on this host is 49 commits behind and lacks the overlay, so the brief's reproduction command would have proved nothing | Reproduction rebuilt from `origin/main:machines/clean-room/gates-lib.sh`. |
 | 3 | The brief's toolchain hypothesis was wrong | Corrected with a measurement, not an argument (cargo 1.98.0 reproduces identically). |
 | 4 | A falsifier I wrote was vacuous under root — the environment the gate actually runs in | Caught by the container GREEN run and replaced. |
@@ -380,16 +434,22 @@ orphan. A receipt that recorded 0 there would be the thing this skill exists to 
 
 ## Verdict
 
-**PARTIAL(escalate)** — the fix is DONE and measured end to end; the branch cannot show a
-fully green `make gate` for a reason that is not in its diff.
+**DONE.**
 
-- The defect is reproduced, root-caused to the analyzer rather than to the clean room, fixed at the cause, and the fix is proven by a mutant in the same toolchain that found it.
-- 31 of 32 `make gate` legs pass. The 32nd, `cb-2113-cb-2115`, is RED on two orphans that exist on `origin/master` and are invisible to this change.
-- That one leg is the escalation: it is the orchestrator's lifecycle PR to land, and no part of it may be fixed here without carrying another ticket's lifecycle rows.
+- The defect is reproduced, root-caused to the analyzer rather than to the clean room, fixed at the cause, and proven by a mutant in the same toolchain that found it.
+- `make gate` run 4: **GREEN, all 32 legs**. The one leg that was red for three runs was master's own orphan, and PR #1405 closed it.
+- The quorum returned **3/3 PASS** on the diff, twice (before and after the rebase onto `ac8a59e40`).
 
-Everything else in the six-part DoD holds: the gate exists and was run; the mutation was
-observed RED (4 tests, in the clean-room toolchain and locally); the `pv` contract ships in
-this PR with 8 obligations evaluated and 0 failed; discrimination is confirmed (the mutant
-kills the byte-identity half and leaves the fidelity half green); and every doc claim this
-change invalidated — the module docs of both test files, the `--locked` comment, and seven
-stale `#[ignore]` reasons — is updated in the same PR.
+Two things are carried forward rather than claimed as solved, and neither is in this diff:
+
+1. The gate-3 flake — one occurrence in four full gate runs, no reproduction in ~65,000 further test executions, the obvious mechanism disproved and the adjacent hole closed regardless. If it recurs, the place to start is this receipt, not a fresh investigation.
+2. The `SIGKILL` window, which no in-process mechanism reaches and which `--locked` closes only by not scanning. It is declared in the contract's `preconditions`.
+
+The six-part DoD holds: merged green on the required checks; the gate exists and was run four
+times; the mutation was observed RED (4 tests under an ambient `[patch]`, 2 without one, in
+the clean-room toolchain and locally); the `pv` contract ships in this PR with 8 obligations
+evaluated and 0 failed; discrimination is confirmed — the mutant kills the byte-identity half
+and leaves the fidelity half green, so the two halves are independently measured; and every
+doc claim this change invalidated is updated in the same PR: the module docs of both test
+files, the `--locked` comment, seven stale `#[ignore]` reasons, and a required CI gate that
+had been passing because of the bug.
