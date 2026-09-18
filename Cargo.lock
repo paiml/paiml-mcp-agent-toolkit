@@ -266,7 +266,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3ffe7f0d70e042446d29e86957643e23fb25ea0ff2365e92e5cd419d8c5b37"
 dependencies = [
  "anyhow",
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.64.0",
  "aprender-gemm-codegen",
  "aprender-quant",
  "bytemuck",
@@ -289,7 +289,7 @@ version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31fca1e31a6262d16c277d1b2a0c6c682db6db6d3e145c51c2fe7d82f7dff1ef"
 dependencies = [
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.64.0",
  "regex",
  "serde",
  "serde_json",
@@ -309,6 +309,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender-contracts-macros"
+version = "0.67.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cb003af15c597b365e6df5abcd73030c2f438461d7eac7082f0f2f4959c3788"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
+
+[[package]]
 name = "aprender-core"
 version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -317,7 +328,7 @@ dependencies = [
  "apr-format",
  "aprender-common",
  "aprender-compute",
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.64.0",
  "aprender-quant",
  "bincode",
  "getrandom 0.2.17",
@@ -391,11 +402,11 @@ dependencies = [
 
 [[package]]
 name = "aprender-present-core"
-version = "0.64.0"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "657fed587813760458899806ae8c7d9fd30b5da9349da5b2fc0451535410a3c3"
+checksum = "ce8bcd924140499f8af66fb18e5dacba4d98edd153b96da7a6e9060b11123d5e"
 dependencies = [
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.67.0",
  "serde",
  "serde_json",
  "serde_yaml_ng",
@@ -4994,7 +5005,7 @@ dependencies = [
  "aprender 0.64.0",
  "aprender-compute",
  "aprender-contracts",
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.64.0",
  "aprender-db",
  "aprender-graph",
  "aprender-present-core",
