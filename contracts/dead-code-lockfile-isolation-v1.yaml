@@ -44,6 +44,7 @@ equations:
       - "unchanged ⇒ NOTHING is written: an identical rewrite still moves the mtime, and clean-tree gates read more than content"
       - "presence is asked with exists(), not with read().ok(), at BOTH ends: a path that exists and cannot be READ is neither Absent nor Present, and is never deleted or overwritten"
       - "a restore failure is reported even when the cargo run ALSO failed; the two facts never trade places"
+      - "run_cargo_check has ONE exit: the suppressed-by-env path reaches the same restore and the same reporting rule as the cargo path, because Drop can only DISCARD what restore returns"
       - "for a workspace MEMBER the protected path is the WORKSPACE root's lockfile, which is the only one cargo writes"
       - "the guarantee is independent of the cargo version: measured identically on cargo 1.95.0 and 1.98.0"
     preconditions:
@@ -98,8 +99,8 @@ proof_obligations:
     formal: "exists(p) ∧ ¬readable(p) before ⇒ restore = Untouched ∧ exists(p) after; and if it VANISHED, restore = Failed"
     applies_to: acquire
   - type: invariant
-    property: "DCLI-OB-010 a failed restore reaches the caller even when the cargo run also failed, and carries the cargo error with it"
-    formal: "restore = Failed(d) ⇒ result = Err(e) ∧ e ∋ \"lockfile-restore-failed\" ∧ (cargo = Err(c) ⇒ e ∋ c)"
+    property: "DCLI-OB-010 a failed restore reaches the caller on EVERY path out, including the suppressed-by-env one, and carries the cargo error with it"
+    formal: "restore = Failed(d) ⇒ result = Err(e) ∧ e ∋ \"lockfile-restore-failed\" ∧ (cargo = Err(c) ⇒ e ∋ c), for outcome ∈ {Ok(scan), Ok(suppressed), Err(cargo)}"
     applies_to: cargo_outcome_or_restore_failure
 
 falsification_tests:
@@ -158,3 +159,4 @@ falsification_tests:
     prediction: "all four combinations of (cargo ok/err) x (restore clean/failed) return the right thing, and the both-failed case carries BOTH the token and the cargo error. Found by quorum review (lane 1): `let outcome = outcome?;` ran before the restore was inspected, so a cargo failure short-circuited and the user was told why the analysis stopped but not that it had left the repository modified. Mutation, measured 2026-09-18: restoring that `outcome?` turns the test RED"
     test: "cargo test --lib lockfile_guard_tests::a_failed_restore_outranks_a_failed_cargo_run_and_is_never_swallowed"
     if_fails: "a rewritten Cargo.lock goes unreported whenever cargo also failed -- the quiet half of the original defect"
+    note: "the suppressed-by-env path is covered structurally rather than end to end: run_cargo_check has ONE exit, so there is no second return for a Drop to swallow. Pinning it end to end would mean setting PMAT_DEAD_CODE_SKIP, which is process-wide state in a suite ci / test runs as one process -- a test that set it failed three unrelated tests beside it, measured 2026-09-18. The combination itself (Ok(suppressed) x Failed) IS in DCLI-F-011"

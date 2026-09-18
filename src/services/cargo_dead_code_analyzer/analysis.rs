@@ -256,26 +256,35 @@ impl CargoDeadCodeAnalyzer {
         // about". Taken here, the snapshot precedes every cargo process the
         // analysis starts, so the promise cannot be narrowed by a future edit
         // to the builder.
-        //
-        // Every way out of the call below -- `Ok`, a cargo failure, the
-        // deadline kill, a panic -- passes back through this frame. The
-        // deadline path kills and reaps the child before it returns, so nothing
-        // is still writing when the bytes go back. See `LockfileGuard` for why
-        // the write is undone instead of forbidden with `--locked`
-        // (2bdc6b90c, #1076).
         let guard = LockfileGuard::acquire(&self.cargo_root);
 
-        let Some(cmd) = self.build_cargo_check_command() else {
-            return Ok(CargoCheckOutcome::suppressed_by_env());
+        // ONE exit, deliberately, and no `?` before the restore.
+        //
+        // `PMAT_DEAD_CODE_SKIP` used to `return Ok(...)` from here. The guard
+        // was then dropped, and `Drop` can only DISCARD what `restore` returns
+        // -- so on that path a failed restore became a successful, clean-looking
+        // read-only run, which is the exact shape this ticket exists to remove
+        // (found by quorum review, lane 1). A single exit makes that class of
+        // mistake unavailable rather than merely absent: every way out of the
+        // work below -- suppressed, `Ok`, a cargo failure, the deadline kill --
+        // reaches the same `restore` and the same reporting rule. `Drop` is
+        // left as the belt for a panic only.
+        //
+        // The single exit is the whole guarantee here, and it is structural
+        // rather than tested: pinning it end to end would mean setting
+        // `PMAT_DEAD_CODE_SKIP`, which is process-wide state in a suite
+        // `ci / test` runs as ONE process -- a test that sets it failed three
+        // unrelated tests beside it, measured. The rule every path routes
+        // through, `cargo_outcome_or_restore_failure`, is unit-tested on all
+        // four combinations, the suppressed-scan one included.
+        let outcome = match self.build_cargo_check_command() {
+            None => Ok(CargoCheckOutcome::suppressed_by_env()),
+            Some(cmd) => self.wait_for_cargo_check(cmd, deadline).await,
         };
-        let outcome = self.wait_for_cargo_check(cmd, deadline).await;
         let restored = guard.restore();
 
-        // Restore first, THEN decide what to report. A cargo failure must not
-        // cost the tree its lockfile, and it must not HIDE that the tree kept a
-        // change either: `outcome?` on its own would propagate the cargo error
-        // and drop the restore failure on the floor, telling the user why the
-        // analysis stopped and not that it left their repository modified.
+        // A cargo failure must not cost the tree its lockfile, and it must not
+        // HIDE that the tree kept a change either.
         cargo_outcome_or_restore_failure(outcome, restored)
     }
 

@@ -281,6 +281,30 @@ Mutation evidence for both, measured 2026-09-18:
 Lanes 2 and 3 returned PASS on the same diff and saw neither finding. That is the argument for
 the quorum: a 2/3 majority would have merged a guard that deletes unreadable lockfiles.
 
+### Round 4 — the same lane, a third real finding
+
+Re-run on the fixed diff, lane 1 returned FAIL again, and again it was right. Moving the guard
+ahead of `build_cargo_check_command` (the round-2 hardening) made the `PMAT_DEAD_CODE_SKIP`
+early return a second exit from `run_cargo_check`: it returned `Ok(suppressed_by_env())`
+without inspecting `restored`, the guard was dropped, and `Drop` can only DISCARD what
+`restore` returns. On that path a failed restore became a clean-looking read-only run — the
+exact shape this ticket exists to remove, reintroduced by my own fix for a different hole.
+
+`run_cargo_check` now has **one exit**. Suppressed, `Ok`, a cargo failure and the deadline
+kill all reach the same `restore` and the same reporting rule; `Drop` is the belt for a panic
+only. That makes the class unavailable rather than merely absent.
+
+It is covered structurally rather than end to end, and that is a stated limit: pinning it with
+a real `PMAT_DEAD_CODE_SKIP` would mean mutating process-wide state in a suite `ci / test` runs
+as ONE process. Measured — a `#[serial]` test that set it failed three unrelated tests beside
+it, so it was written, run, and removed rather than shipped. The rule every path now routes
+through is unit-tested on all four combinations, the suppressed-scan one included.
+
+**Three findings, three rounds, one lane.** Lane 1 (`gemini-3.1-pro-high`) found every one;
+lanes 2 and 3 passed the diff each time. The quorum is not a formality here — it is the only
+thing that caught a guard that deletes unreadable lockfiles, a swallowed failure, and a hole
+opened by the fix for another hole.
+
 ## Contract
 
 `contracts/dead-code-lockfile-isolation-v1.yaml` — `pv status`:

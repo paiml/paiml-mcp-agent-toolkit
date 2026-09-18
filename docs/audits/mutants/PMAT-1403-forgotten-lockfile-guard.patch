@@ -11,14 +11,14 @@
 #   git apply -R docs/audits/mutants/PMAT-1403-forgotten-lockfile-guard.patch
 --- a/src/services/cargo_dead_code_analyzer/analysis.rs
 +++ b/src/services/cargo_dead_code_analyzer/analysis.rs
-@@ -269,7 +269,9 @@
-             return Ok(CargoCheckOutcome::suppressed_by_env());
+@@ -281,7 +281,9 @@
+             None => Ok(CargoCheckOutcome::suppressed_by_env()),
+             Some(cmd) => self.wait_for_cargo_check(cmd, deadline).await,
          };
-         let outcome = self.wait_for_cargo_check(cmd, deadline).await;
 -        let restored = guard.restore();
 +        // MUTANT: never restore, and defuse the Drop belt as well.
 +        std::mem::forget(guard);
 +        let restored = LockfileRestore::Untouched;
  
-         // Restore first, THEN decide what to report. A cargo failure must not
-         // cost the tree its lockfile, and it must not HIDE that the tree kept a
+         // A cargo failure must not cost the tree its lockfile, and it must not
+         // HIDE that the tree kept a change either.
