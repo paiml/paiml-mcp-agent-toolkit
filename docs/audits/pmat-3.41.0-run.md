@@ -685,3 +685,16 @@ tree: run-log HEAD=a9bdc8a3f origin/master=94286c23d behind=0. Release session l
 Raw: PR **#1411** `chore(PMAT-1336): row #1410 — 3.41.1 declared but not yet published (lifecycle-12)`, opened by the release session under the standing lifecycle ticket; head moved to c1148c750 (a receipt section round 1 was "right to miss"), then to bc272770f = the quorum artifact, `3/3 PASS on c1148c750, partial=false`. Four rounds were needed: rounds 1–3 hit the same reproducible `partial` (100 bytes of agy shutdown narration on the gemini-3.1-pro-high lane) or a NO-VERDICT lane; the session chose to re-run until clean rather than arm on a partial artifact, which the brief permits either way. CI on bc272770f: 29 pass / 15 pending / 4 skipping at this reading. Not armed yet (`autoMergeRequest` null) — the session arms after CI, as it did on #1409.
 
 Cost accounting, because the operator asked why releases take long: this lifecycle PR exists only because `release-check` filed #1410 on the bump merge and CB-2115 counts it. ~75 minutes of wall clock between #1409 merging and the tag being possible, spent on a two-line roadmap row and four quorum rounds. Same ticket recommendation as the 11:50Z entry.
+
+## 2026-09-18T13:45Z — `v3.41.1` tagged on 516305ef0; clean room run **35351362363** in progress
+
+tree: run-log HEAD=e850b23d1 origin/master=516305ef0 behind=0. Release session live ~4h.
+
+Raw, in order:
+- #1411 → `MERGED 516305ef07f7197b9eb9a773c609f834dbdf4c5b` (lifecycle-12; 47 pass / 5 skipping). Master's bijection is whole again.
+- `make gate` on **516305ef0**: `verdict: GREEN`, 32 legs (log `make-gate-516305ef0.log`). On 94286c23d it had been 31/32 with CB-2115 red on the bot's #1410 — the diff between the two commits is docs-only (`impl-PMAT-1336-receipt.md`, `quorum-PMAT-1336.json`, `roadmap.yaml`: 3 files, +106/−16, nothing outside `docs/`), and the session measured that before choosing the tag target. The commit with the green gate on record is the one tagged.
+- `cargo package`: `Packaged 5043 files, 44.2MiB (8.9MiB compressed)`, exact **9,359,632 B = 8.9260 MiB = 99.18 % of the repo's 9.0 MiB gate**, 77,552 B of headroom. Under budget, and barely: the next release that adds a receipt or a contract of ordinary size trips it. Ticket after the release — the gate needs either a larger budget with a stated reason or an `exclude` list that keeps audits out of the crate.
+- Tag `refs/tags/v3.41.1` → annotated object 98ab97d12 → target **516305ef0**. `v3.41.0` (42b4b7192 → ecd97c6bc) untouched, as decided.
+- `release.yml` run **35351362363** on 516305ef0, `in_progress`, created 2026-09-18T13:38:08Z. This is the clean room. Nothing is published until `gate / cpu-gates` in that run is green; red or cancelled is a stop-the-line and the session's brief says so.
+
+Load on the host during the gate: 13–24, dominated by other people's work (a 20-core `apr qa` model eval, an ffmpeg transcode, a peer session's agy lanes), 97 GB memory free. The session ran its one heavy job and did not add a second.
