@@ -503,3 +503,7 @@ Lifecycle-10: master read three findings (ORPHAN-ROADMAP PMAT-1399; ORPHAN-GITHU
 ## 2026-09-18T01:11Z — D8 in flight
 
 tree: run-log behind=0. Lifecycle-10 #1405 armed on 3/3, in CI. D8 PMAT-1403 committed 3a1ef7c2e (clippy/fmt stage). Host up 9 hours, 40 minutes.
+
+## 2026-09-18T01:51Z — D8 in flight (likely in its clean-room reproduction)
+
+tree: run-log behind=3 against origin/master ac8a59e40. #1405 merged; master bijection coherent. D8 HEAD 166a6f9eb, no PR yet; load 0.15 (a clean-room container run shows as low host load). Host up 10 hours, 19 minutes.
