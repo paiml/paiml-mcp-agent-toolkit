@@ -188,3 +188,13 @@ exactly as the refutation doctrine tells it to — "a receipt claim is not backe
 and failed the PR. The fix is this section, not a narrower lane brief: a standing ticket's
 receipt goes stale the moment its round lands, and the round after it must make the receipt
 current *before* it asks for a verdict. Written by the release-3.41.1 orchestrator session.
+
+## 2026-09-18 — after 3.41.1 shipped: PMAT-1408, PMAT-1401 and GH-1410 completed; #1412 registered
+
+At `HEAD=edc845e19 origin/master=edc845e19 behind=0` (the receipt PR #1404 merged), `pmat work sync --check-only` read open items 114 against open issues 112 with four findings: `ORPHAN-ROADMAP PMAT-1408` (the 3.41.1 release ticket), `ORPHAN-ROADMAP PMAT-1401` (release-check's 3.41.0 issue) and `ORPHAN-ROADMAP GH-1410` (release-check's 3.41.1 issue — the row lifecycle-12 minted from the bot's issue carries a `GH-` id, which is what `work sync --direction github-to-yaml` mints for an add-item, as opposed to `work add --github-issue`'s `PMAT-`), plus `ORPHAN-GITHUB #1412`.
+
+The three issues were closed by the orchestrator, not by any automation — no automation closes a `release-check` issue; the release session measured that `ci.yml`'s only "issue close" hit is the PMAT-900001 control proving pmat can never close one — through `mutate.sh close --repo paiml/paiml-mcp-agent-toolkit --issue N --cite "#1409 (…)" --quorum docs/audits/quorum-PMAT-1408.json` (agreed=true), each read back CLOSED. The citation names the release PR #1409 (merged 94286c23d), the clean-room run 35351362363 green on 516305ef0, crates.io 3.41.1 at 2026-09-18T14:48:52Z, `make release-check` exit 0, and the receipt `docs/audits/release-3.41.1-receipt.md` merged in #1404 as edc845e19.
+
+#1412 is new: an independent `pr-review` session reviewing paiml/aprender#3491 measured that pmat 3.41.1's MCP `pmat_index_stats` deletes a CLI-built index (2/2; 7/7 CLI paths intact). Filed issue-first, rowed with `pmat work add --github-issue 1412` → PMAT-1412.
+
+Then `pmat work sync --direction github-to-yaml`: the dry-run planned exactly `close-item GH-1410 #1410 → Completed`, `close-item PMAT-1401 #1401 → Completed`, `close-item PMAT-1408 #1408 → Completed`; the diff is those three rows' `status`/`updated` lines plus PMAT-1412's 16-line row. After it: 112/112 coherent. Written by the orchestrator session of the 3.41.0 release run — the run whose log is `docs/audits/pmat-3.41.0-run.md` and whose shipped version, after 3.41.0 failed its own clean room, is 3.41.1; the earlier sections' "release-3.41.0 orchestrator session" is this same session, named after the run and not after the version that shipped. keeps-open #1412.
