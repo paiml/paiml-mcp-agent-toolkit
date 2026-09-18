@@ -376,22 +376,39 @@ counts as a call). CB-200 went back to 1680 twice: `restore_inner` scored B, was
 then scored A- once the quorum's third state was added, and was decomposed again — one branch
 per state of `before`, which is also how the invariant reads.
 
-**The gate-3 flake.** `analysing_a_lockfile_less_crate_creates_no_lockfile` and
-`the_analysis_leaves_no_lockfile_in_the_analysed_tree` failed once, in nine full gate
-runs, on code identical to the run before it. It did not reproduce in:
+**The flake — the reason this PR is not merged.** `analysing_a_lockfile_less_crate_creates_no_lockfile`
+and `the_analysis_leaves_no_lockfile_in_the_analysed_tree` fail intermittently **in the full
+nextest suite only**. Measured across eleven `make gate` runs: red in runs **3, 10 and 11**,
+green in 1, 2, 4, 6, 7, 8, 9 (runs 1, 2 and 6 were red for other, fixed reasons). Run 11 was
+executed with nothing else on the host, so **load is not the trigger**.
 
-- 3 further full `cargo nextest run --lib --profile gate` runs — **21789/21789 passed each**, ~65,000 test executions;
-- 110 targeted runs of the two tests;
-- 40 concurrent runs;
-- gates 4, 7, 8 and 9, the same harness that produced it.
+It does not reproduce outside the full suite:
 
-The symptom is only consistent with the lockfile being absent when the guard restored and
-present at the assertion. The obvious mechanism — a cargo the analysis runs BEFORE the
-snapshot — was tested and **disproved**: `isolated_target_dir` and `named_targets` both pass
-`--no-deps`, and 20 concurrent runs of each, with and without `CARGO_TARGET_DIR`, created no
-lockfile. The hole was closed anyway (the guard is now taken before any cargo the analysis
-starts), because the guard's promise must not depend on what the builder happens to call
-today. **The flake is recorded as unexplained, not as fixed.**
+| Probe | Result |
+|---|---|
+| 3 × `cargo nextest run --lib --profile gate` | 21789/21789 passed each (~65,000 executions) |
+| 110 targeted runs of the two tests | 0 failures |
+| 40 concurrent runs | 0 failures |
+| `pmat analyze dead-code` through the real binary | no lockfile left behind |
+
+Both failures are FAST (0.23s), and the only state consistent with the assertion is: the
+lockfile was **absent when the guard restored and present at the assertion**. Two mechanisms
+were tested and **disproved**:
+
+- *A cargo the analysis runs before the snapshot.* `isolated_target_dir` and `named_targets` both pass `--no-deps`; 20 concurrent runs of each, with and without `CARGO_TARGET_DIR`, created no lockfile. The guard was moved ahead of them anyway.
+- *`cargo metadata` / `cargo locate-project` writing the file.* Measured: neither does, on a clean fixture or under concurrency.
+
+**This is an unexplained, reproducible flake in two tests this change moved from `#[ignore]`d
+to running.** They are not the tests the release gate failed on — the two byte-identity
+assertions that are the actual defect have never flaked, in any run, in any toolchain. But a
+flake is red until root-caused, re-ignoring them is forbidden and would be dishonest, and the
+budget for this ticket is spent. The line is stopped here rather than merged past.
+
+**Where to start next.** The assertion cannot currently distinguish "the guard reported
+`Untouched` over a file that appeared later" from "the guard restored and something recreated
+it". Making `run_cargo_check` carry the `LockfileRestore` it observed out to the test — or
+having the two tests assert on the guard's own verdict rather than only on the filesystem —
+would turn the next occurrence into an answer instead of another mystery.
 
 **`falsification / flag-efficacy`.** Red on this branch, green on master, twice — and it was
 this change that did it, correctly. The sweep reported `analyze reachability --allow-dirty`
@@ -503,22 +520,21 @@ orphan. A receipt that recorded 0 there would be the thing this skill exists to 
 
 ## Verdict
 
-**DONE.**
+**PARTIAL(escalate).** The fix is correct and proven; it is NOT merged, and the reason is in
+this branch, not outside it.
 
-- The defect is reproduced, root-caused to the analyzer rather than to the clean room, fixed at the cause, and proven by a mutant in the same toolchain that found it.
-- `make gate` runs 7, 8 and **9 — the final HEAD — are GREEN, all 32 legs**. The one leg that was red for three runs was master's own orphan, and PR #1405 closed it.
-- The quorum ran **five rounds** and returned **3/3 PASS** on the final tree. Lane 1 returned FAIL three times in between and was right every time; see below.
+What is settled:
 
-Two things are carried forward rather than claimed as solved, and neither is in this diff:
+- The defect is reproduced, root-caused to the analyzer, fixed at the cause, and proven by a mutant in the clean-room toolchain that found it (RED 5/2 → GREEN 22/0 → MUTANT 18/4 → REVERT 22/0, and 21/4 under an ambient `[patch]` on the final form).
+- **CI on the PR is fully green: 47 checks pass, 0 fail, 0 pending.**
+- The `pv` contract ships with **10 obligations, 10 evaluated, 0 failed**, 11 falsification tests.
+- Three real defects found by quorum lane 1 across three rounds are fixed, each with a falsifier measured to fire.
+- A required CI gate that had been passing *because of* the bug is root-caused and recorded.
+- Neither ratchet was ever raised; no `#[ignore]` was added; seven stale ones were removed.
 
-1. The gate-3 flake — one occurrence in nine full gate runs, no reproduction in ~65,000 further test executions, the obvious mechanism disproved and the adjacent hole closed regardless. If it recurs, the place to start is this receipt, not a fresh investigation.
-2. The `SIGKILL` window, which no in-process mechanism reaches and which `--locked` closes only by not scanning. It is declared in the contract's `preconditions`.
+What blocks the merge, both named rather than worked around:
 
-The six-part DoD holds: merged green on the required checks; the gate exists and was run four
-times; the mutation was observed RED (4 tests under an ambient `[patch]`, 2 without one, in
-the clean-room toolchain and locally); the `pv` contract ships in this PR with 8 obligations
-evaluated and 0 failed; discrimination is confirmed — the mutant kills the byte-identity half
-and leaves the fidelity half green, so the two halves are independently measured; and every
-doc claim this change invalidated is updated in the same PR: the module docs of both test
-files, the `--locked` comment, seven stale `#[ignore]` reasons, and a required CI gate that
-had been passing because of the bug.
+1. **The flake above** — reproducible at suite level in 3 of 11 gate runs, in two tests this change un-ignored, unexplained after the two obvious mechanisms were disproved. `make gate` is therefore not green on the final tree.
+2. **The quorum cannot reach agreement on the final HEAD.** Round 5 was **3/3 PASS on `e541edb99`**; on `10e20f8d4` (which differs only by this receipt's prose) three consecutive rounds returned lane 1 PASS with lanes 2 and 3 **NO-VERDICT** — both timed out having launched a compile inside their lane and returned prose instead of a schema verdict (`lane-2.err`: *"terminating 1 background task(s) on exit"*). Each was re-run as the merge rule requires. `pmat-merge` needs `agreed=true` for the current HEAD; it was never armed, and `--admin` and the web UI were not used.
+
+The merge is the operator's call. The code is ready; the two things above are not.
