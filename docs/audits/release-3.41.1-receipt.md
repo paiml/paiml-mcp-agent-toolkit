@@ -239,8 +239,11 @@ either merged PR.** The whitelist was never widened and no gate was edited.
 `impl-estimates.jsonl` recorded `mode: "direct"`, which undercounts a session that dispatched an
 agy delegate at width 3 and ran repeated `quorum-review.sh` rounds. The lane's own proposed value
 (`"orchestrator"`) is wrong for this ledger — `mode` records the routing mix, and 10 of its rows
-are bare `direct` — but the field was inaccurate and now names the mix it used. The finding was
-valid; its fix was not, and saying so is the point. (b) §3's P3b row read "Four rounds; two
+are bare `direct` — but the field was inaccurate and now names the mix it used. (This receipt
+deliberately does **not** quote that field's value: an earlier revision did, the value was
+corrected once afterwards, and the quotation went stale — which rounds 3's lanes 1 and 2 both
+caught, independently and correctly. `impl-estimates.jsonl` is the authority for its own row.)
+The finding was valid; its fix was not, and saying so is the point. (b) §3's P3b row read "Four rounds; two
 produced no verdict", contradicting §4.4 two screens later: only **round 2** on #1411 produced no
 verdict; round 1 produced a real FAIL. Corrected. (Its citation `:163` was off by fifty lines —
 the sentence is at `:112` — but the substance stood.)
@@ -255,10 +258,23 @@ removed, the table now stops at rounds that have concluded, the preface above sa
 and the ledger's `mode` no longer forward-counts a round. (b) §6 still said "four
 `quorum-review.sh` rounds" after §4.4 had grown past four — a stale total. Both fixed.
 
+**Round 3 (lanes 1 and 2) — one finding upheld, one refuted by measurement.** Upheld, and both
+lanes found it independently: §4.5 still quoted the *previous* `mode` value after the ledger had
+been corrected, so the receipt and the ledger disagreed. Fixed above by removing the quotation
+rather than re-synchronising it, because a prose copy of a mutable field will go stale again.
+Refuted: lane 1 also claimed PMAT-1408's `"basis":"…:L27-L38"` is self-referential because "the
+PMAT-1408 row itself is inserted at line 38". Measured — `grep -n 'PMAT-1408'
+docs/audits/impl-estimates.jsonl` puts that row on **line 40**, and `sed -n '27,38p'` shows the
+range ends at PMAT-1403 on line 38. The basis excludes the row it explains, which is what it
+should do, and it was computed by `estimate.sh` before the row existed. A cited grounding is not
+a correct citation, and this one is recorded as refuted rather than silently accommodated.
+
 **Neither FAIL was re-run away, and both are tabulated above rather than quietly dropped.** A
-receipt that hides the rounds which criticised it is worth nothing; four independent lane FAILs
-across three PRs (#1411 round 1, #1404 rounds 1 and 2) found four real defects in this session's
-own artefacts, and every one of them was fixed at the source.
+receipt that hides the rounds which criticised it is worth nothing; the lane FAILs across three PRs
+(#1411 round 1; #1404 rounds 1, 2 and 3) found real defects in this session's own artefacts, and
+every upheld one was fixed at the source — while the one finding that measurement refuted is
+recorded as refuted, not quietly accommodated. The rounds are in §4.4; no total is quoted, for
+the same reason §6 quotes none.
 
 ---
 
