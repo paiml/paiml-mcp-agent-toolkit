@@ -611,7 +611,7 @@ Re-measured, for the re-cut decision the release session must take (all three of
 
 Next: #1407 merges → substitute that master sha into `.run/briefs/REL2.tmpl` and launch the re-cut release session.
 
-## 2026-09-18T11:36Z — #1407 MERGED (18e5ddb87); the re-cut release session is launched
+## 2026-09-18T09:36Z — #1407 MERGED (18e5ddb87); the re-cut release session is launched
 
 tree: run-log rebased onto origin/master 18e5ddb87, behind=0. Host up 18 hours, 4 minutes; load 3.90/4.63/5.83; `/mnt/nvme-raid0` 83% used, 2.4T free; 0 headless sessions live at launch time (the peer PMAT-238 session ended).
 
@@ -621,12 +621,12 @@ Launched `REL-3.41.0` (pid 1136469) in the standalone clone `~/src/paiml-mcp-age
 
 Three corrections to the brief I wrote, made before launching rather than left for the session to discover:
 1. "on a fresh branch … Skip `git switch -c`" was ambiguous to the point of being wrong — replaced with the exact command `git switch -C release/3.41.0-recut <sha>`, plus `git branch -f master origin/master` so pmat-merge hashes against the right local ref, plus a note that the clone already has `PMAT-1399-release-receipt` checked out with a clean tree.
-2. "no other non-dependabot PR is in CI" was FALSE. Measured at 11:35Z: #1337, #1338, #1341 and #1357 are open non-dependabot feature PRs from earlier sessions, alongside five dependabot PRs and the drafts #1224 and #1404. The brief now names them and says explicitly not to touch any of them.
+2. "no other non-dependabot PR is in CI" was FALSE. Measured at 09:35Z: #1337, #1338, #1341 and #1357 are open non-dependabot feature PRs from earlier sessions, alongside five dependabot PRs and the drafts #1224 and #1404. The brief now names them and says explicitly not to touch any of them.
 3. The brief told the session to verify the three "never published" facts with `cargo search`. Replaced with the registry API call that actually works, including the trap that cost me a command: `https://crates.io/api/v1/crates/pmat` returns HTML, not JSON, to a curl with no User-Agent, and a bare `json.load` then dies with `Expecting value: line 1 column 1`. The measured values are carried in the brief so the session can compare rather than only re-derive.
 
 Also added to the brief, from this session's own experience an hour earlier: the `quorum-review.sh` `partial=true` behaviour (prints `NOT AGREED`, exits 1, even with `agreed=true` and 3/3 PASS) with the instruction to read `.agreed`/`.partial`/`.partial_reasons` out of the artifact rather than trusting the last line — and the standing prohibition on widening the whitelist to pass its own PR.
 
-## 2026-09-18T12:20Z — the quorum took option (b): the release is **3.41.1**, not a retagged 3.41.0
+## 2026-09-18T09:57Z — the quorum took option (b): the release is **3.41.1**, not a retagged 3.41.0
 
 tree: run-log HEAD=2af799924 origin/master=18e5ddb87 behind=0. Release session live 44 minutes, phase 1 of 7 done.
 
@@ -640,7 +640,7 @@ Consequences recorded now, before they can be forgotten downstream:
 
 Also measured, so a later step does not trip on it: `~/src/aprender` is **92 commits behind** `origin/main` (HEAD 0c6932fd5 vs 4a538ddef) and has no `roadmap-aggregate` make target and no `docs/roadmaps/entries/` at that revision. The aprender work — deleting its local aggregator shell in favour of `pmat roadmap aggregate`, proving byte-identical output — must be done in a fresh standalone clone, not in that checkout, and the target must be located on `origin/main` first.
 
-## 2026-09-18T13:15Z — #1409 CI fully green; quorum in its second round; the fleet has SEVEN pmat carriers, not five
+## 2026-09-18T10:25Z — #1409 CI fully green; quorum in its second round; the fleet has SEVEN pmat carriers, not five
 
 tree: run-log HEAD=627c2f32c origin/master=18e5ddb87 behind=0. Release session live 49 minutes.
 
@@ -656,7 +656,7 @@ FLEET PREP, all read-only, measured in the fresh clone `~/src/infra-fleet` at `0
 
 Per-host apply is `make -C machines/<host> …`; `make -C machines/fleet-hosts check-pmat-pins` is the three-way (it runs `test-pmat-pin-check.sh` fixtures first, then `pmat-pin-check.sh`, engine `tool-pin-check.sh`, with `PIN_PROVENANCE=1` asking forjar's cargo cache whether it put the running binary there). No ad-hoc SSH needed for any of it.
 
-## 2026-09-18T14:05Z — #1409 MERGED (94286c23d): master says 3.41.1; the session moves to gate → tag → clean room
+## 2026-09-18T11:24Z — #1409 MERGED (94286c23d): master says 3.41.1; the session moves to gate → tag → clean room
 
 tree: run-log rebased onto origin/master 94286c23d, behind=0. Release session live ~2h30m, phase 2 of 7.
 
@@ -667,3 +667,13 @@ Reviewed the merged diff myself before it merged: `Cargo.toml` 3.41.0→3.41.1, 
 Held back on purpose: lifecycle-12 (PMAT-1408's row) is not needed yet because #1408 is still open, and any PR opened now would put a 48-check CI run on the same self-hosted runners the tag's clean room is about to need. The release's `gate / cpu-gates` gets the runners to itself.
 
 Next, all the session's: `make gate` on 94286c23d, package size vs 9.0 MiB, annotated tag `v3.41.1` on 94286c23d, `release.yml` `gate / cpu-gates` on that sha (run id recorded here when it exists), then publish from a detached tag checkout.
+
+## 2026-09-18T11:50Z — CORRECTION: four entry headers above were local time labelled `Z`; `make gate` on 94286c23d is RED on one leg, by construction
+
+tree: run-log HEAD=f954c0cce origin/master=94286c23d behind=0. Now measured with `date -u`: 11:46:29Z, local 13:46:29 (UTC+2).
+
+Correction to my own prior claims. The headers I wrote as `11:36Z`, `12:20Z`, `13:15Z` and `14:05Z` were the host's LOCAL clock (read off `uptime`) written with a `Z` suffix. The authoritative times are the run-log branch's own commit timestamps, which git stamps `+02:00`: those four entries were committed at 09:37Z, 09:57Z, 10:25Z and 11:24Z. Headers rewritten in place to `09:36Z`, `09:57Z`, `10:25Z`, `11:24Z`; the body line "Measured at 11:35Z" in the launch entry is now `09:35Z`. Independent check: the release session's log file is named `REL-3.41.0-20260918T093604Z.log` by `date -u` at launch, and the entry that announced the launch said `11:36Z`. The brief I gave the session carried the same +2h error in one place ("At 2026-09-18T11:35Z the board carries…"), and the session copied it into #1408's body as "re-measured 2026-09-18T11:36Z"; the facts in that sentence are right, the clock is +2h. Entries before `09:36Z` were stamped from `date -u` and are unaffected. From here every header comes from `date -u`.
+
+Raw, `make gate` on the merge commit 94286c23d (session log `make-gate-merge.log`, 127 lines, 32 legs): **31 pass, 1 FAIL — `cb-2113-cb-2115`**, and the failing check is CB-2115 alone: `ORPHAN-GITHUB #1410: release-check: 3.41.1 is declared in Cargo.toml but not fully released`. Every leg that ran pmat ran `/mnt/nvme-raid0/targets/pmat-rel/debug/pmat`, the executable cargo reported. So the code is green and the roadmap/GitHub bijection is not, because of an issue that did not exist when #1409 was judged.
+
+Mechanism, not blame: the `release-check` workflow files that issue on the master push that carries a new version — it filed #1401 for 3.41.0 the same way — and CB-2115 counts an unrowed issue as a finding, so **the merge commit of any version bump fails `make gate` on CB-2115 from the moment it lands until a lifecycle PR rows the bot's issue.** The grace window did not cover it (`tolerated 0`). The session is doing the right thing: `PMAT-1336-lifecycle-12`, `pmat work sync --direction github-to-yaml` planning exactly one action for #1410. I am not opening a competing lifecycle PR. After it merges, the commit whose `make gate` can be green is the lifecycle-12 merge commit, which carries the same `Cargo.toml` 3.41.1 — that, not 94286c23d, is the honest tag target, and I expect the session to reach the same conclusion; if it tags 94286c23d with a red gate on record, that is a stop-the-line and I will say so here. Ticket after the release: `release-check` should not be able to red the gate its own release needs (row the issue it files, or have CB-2115 treat a `release-check`-authored issue inside the grace window as tolerated).
