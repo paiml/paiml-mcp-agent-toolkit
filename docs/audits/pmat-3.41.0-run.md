@@ -533,3 +533,7 @@ tree: run-log behind=3. The flag-efficacy sweep on the earlier head judged `anal
 ## 2026-09-18T04:16Z — D8: the new CB-200 ratchet job (D6) caught #1406 once; branch reworked
 
 tree: run-log behind=3. On head 2db469bf2 the required `CB-200 ratchet measured` job (added by #1394) went red — the gate D6 built bit on the very next code PR, which is what it is for; the session reworked to keep the count at the baseline (its receipt must show the count), regenerated the reachability ledger, pushed 15cf26519, final gate + quorum running. Host up 12 hours, 45 minutes.
+
+## 2026-09-18T04:46Z — D8 pushed e541edb99 (verdict commit?); CI re-running
+
+tree: run-log behind=3. #1406 27 pass / 17 pending / 0 fail, not yet armed. Host up 13 hours, 14 minutes.
