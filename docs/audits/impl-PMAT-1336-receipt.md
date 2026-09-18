@@ -132,3 +132,15 @@ Then `pmat work sync --direction github-to-yaml`: the dry-run planned exactly `c
 At `HEAD=ecd97c6bc origin/master=ecd97c6bc behind=0`, `pmat work sync --check-only` read open items 112 against open issues 113 with three findings: `ORPHAN-ROADMAP PMAT-1399` (#1400, the release cut, merged as ecd97c6bc and closed issue 1399), `ORPHAN-GITHUB #1401` (auto-filed by github-actions at 23:20:36Z: "release-check: 3.41.0 is declared in Cargo.toml but not fully released" — true, and it stays true until the clean room is green and the crate is published), `ORPHAN-GITHUB #1403` (00:24:33Z: the clean-room GATE B2 defect; the PMAT-1403 fix session's branch carries its own copy of this row and takes master's bytes when it merges).
 
 Fixes, all through the sanctioned writers: `pmat work add --github-issue 1401` and `--github-issue 1403` (two 16-line rows, `labels: []`); `pmat work sync --direction github-to-yaml`, whose dry-run planned exactly `close-item PMAT-1399 #1399 → Completed`. After them: 113/113 coherent. Written by the release-3.41.0 orchestrator session. keeps-open #1401, keeps-open #1403.
+
+## 2026-09-18 — PMAT-1403 completed after #1406 merged
+
+At `HEAD=117ce5171 origin/master=117ce5171 behind=0`, `pmat work sync --check-only` read open items 113 against open issues 112 with one finding, `ORPHAN-ROADMAP PMAT-1403: #1403 is closed` — #1406 (`LockfileGuard`: dead-code analysis no longer rewrites the analysed project's `Cargo.lock` under an ambient `[patch]`) merged as 117ce5171 at 2026-09-18T07:55Z and closed issue 1403. A ticket cannot complete itself under CB-2113, so its row stayed `planned` in that PR.
+
+Fixed with `pmat work sync --direction github-to-yaml`: the dry-run planned exactly `close-item PMAT-1403 #1403 → Completed`; the diff is that row's `status` and `updated` lines, and nothing else (`git diff --stat`: 1 file, 2 insertions, 2 deletions). After it: 112/112 coherent.
+
+`docs/roadmaps/entries/` does not exist in this repo, so `RoadmapService::save()` takes its whole-file branch and writes `docs/roadmaps/roadmap.yaml` directly — PMAT-1363's fragment path is conditional on that directory existing and is not exercised here.
+
+Observation, not a defect of this change: the writer stamps `updated` as `2026-09-18T07:58:27.422072847+00:00` while 204 of the file's rows carry the `…Z` form and 185 carry `+00:00`. The split predates this PR (counted on `117ce5171` before the edit) and is left alone rather than mass-rewritten inside a lifecycle PR.
+
+#1401 ("3.41.0 is declared in Cargo.toml but not fully released") is still open and still true: the tag's clean room was red, nothing was published, and crates.io max_stable_version is 3.40.2. keeps-open #1401. Written by the release-3.41.0 orchestrator session.
