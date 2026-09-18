@@ -355,23 +355,35 @@ Rebasing onto it cost one thing worth recording: master's registration of PMAT-1
 the label, was dropped in the rebase because master already carried the id. The label is
 restored in its own commit; master's title is kept.
 
-### Runs 3 and 4 — a flake, and a gate that was reading the defect as a feature
+### Every `make gate` run, and what each red leg was
 
-| Run | Verdict |
-|---|---|
-| gate 1 (`n9oall`) | RED, 6 legs — five mine, one master's |
-| gate 2 (`z66SgL`) | RED, 1 leg — `cb-2113-cb-2115`, master's |
-| gate 3 (`uUBraD`) | RED, 1 leg — **`lib-tests`**, on the two lockfile-less tests |
-| gate 4 (`HCxVUT`) | **GREEN — all 32 legs** |
+| Run | Verdict | Red legs |
+|---|---|---|
+| 1 `n9oall` | RED | 6 — `lib-tests`, `pv-obligations`, `tdg-ratchet`, `unrun-tests`, `reachability-ledger`, `cb-2113-cb-2115` |
+| 2 `z66SgL` | RED | 1 — `cb-2113-cb-2115` (master's orphans) |
+| 3 `uUBraD` | RED | 1 — **`lib-tests`**, the flake |
+| 4 `HCxVUT` | **GREEN** | — |
+| 5 | (superseded by the quorum round-3 fixes) | — |
+| 6 `btChzM` | RED | 3 — `lib-tests`/`unrun-tests` (ledger drift from the 3 new tests) and `tdg-ratchet` (`restore_inner` at A-) |
+| 7 | **GREEN** | — |
+| 8 | **GREEN** (on `e541edb99`, the quorum's judged tree) | — |
+| 9 | **GREEN** (on `c5fca1c03`, the final HEAD) | — |
+
+**Nine runs; six distinct red legs; every one of them mine except `cb-2113-cb-2115`, and
+neither ratchet ever raised.** `panic_macro_calls_src` went back to 785 (one of the two
+offenders was in PROSE — the ratchet greps `git grep -oF`, so a doc comment quoting the macro
+counts as a call). CB-200 went back to 1680 twice: `restore_inner` scored B, was decomposed,
+then scored A- once the quorum's third state was added, and was decomposed again — one branch
+per state of `before`, which is also how the invariant reads.
 
 **The gate-3 flake.** `analysing_a_lockfile_less_crate_creates_no_lockfile` and
-`the_analysis_leaves_no_lockfile_in_the_analysed_tree` failed once, in one of four full gate
+`the_analysis_leaves_no_lockfile_in_the_analysed_tree` failed once, in nine full gate
 runs, on code identical to the run before it. It did not reproduce in:
 
 - 3 further full `cargo nextest run --lib --profile gate` runs — **21789/21789 passed each**, ~65,000 test executions;
 - 110 targeted runs of the two tests;
 - 40 concurrent runs;
-- gate 4, the same harness that produced it.
+- gates 4, 7, 8 and 9, the same harness that produced it.
 
 The symptom is only consistent with the lockfile being absent when the guard restored and
 present at the assertion. The obvious mechanism — a cargo the analysis runs BEFORE the
@@ -494,12 +506,12 @@ orphan. A receipt that recorded 0 there would be the thing this skill exists to 
 **DONE.**
 
 - The defect is reproduced, root-caused to the analyzer rather than to the clean room, fixed at the cause, and proven by a mutant in the same toolchain that found it.
-- `make gate` run 4: **GREEN, all 32 legs**. The one leg that was red for three runs was master's own orphan, and PR #1405 closed it.
-- The quorum returned **3/3 PASS** on the diff, twice (before and after the rebase onto `ac8a59e40`).
+- `make gate` runs 7, 8 and **9 — the final HEAD — are GREEN, all 32 legs**. The one leg that was red for three runs was master's own orphan, and PR #1405 closed it.
+- The quorum ran **five rounds** and returned **3/3 PASS** on the final tree. Lane 1 returned FAIL three times in between and was right every time; see below.
 
 Two things are carried forward rather than claimed as solved, and neither is in this diff:
 
-1. The gate-3 flake — one occurrence in four full gate runs, no reproduction in ~65,000 further test executions, the obvious mechanism disproved and the adjacent hole closed regardless. If it recurs, the place to start is this receipt, not a fresh investigation.
+1. The gate-3 flake — one occurrence in nine full gate runs, no reproduction in ~65,000 further test executions, the obvious mechanism disproved and the adjacent hole closed regardless. If it recurs, the place to start is this receipt, not a fresh investigation.
 2. The `SIGKILL` window, which no in-process mechanism reaches and which `--locked` closes only by not scanning. It is declared in the contract's `preconditions`.
 
 The six-part DoD holds: merged green on the required checks; the gate exists and was run four
