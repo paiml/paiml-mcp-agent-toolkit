@@ -7074,11 +7074,11 @@ roadmap:
   github_issue: 1403
   item_type: task
   title: dead-code analysis rewrites the analysed project's Cargo.lock whenever any ambient [patch] is in scope (clean-room GATE B2 red on v3.41.0)
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-18T00:33:30Z
-  updated: 2026-09-18T02:10:42Z
+  updated: 2026-09-18T07:58:27.422072847+00:00
   spec: null
   acceptance_criteria: []
   phases: []
