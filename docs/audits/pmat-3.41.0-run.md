@@ -562,3 +562,24 @@ Raw (D8 receipt, PMAT-1403, ~6.9 h): RED in the clean-room toolchain (rust:1.95-
 - Quorum: the 3/3 sat on e541edb99; four later rounds on the receipt commits went PASS / NO-VERDICT / NO-VERDICT. Cause, read from the lane files: lane 2 (gemini-3.8-flash-high) DID return a PASS verdict inside an agy `status:ERROR` envelope — "UNAVAILABLE (code 503): No capacity available for model gemini-3.8-flash-high"; lane 3 (gemini-3.7-flash-high) started `cargo test --lib lockfile` in the background and returned prose. Re-run by the orchestrator with `--lane-model gemini-3.1-pro-high` ×3: AGREED 3/3 on c22018c6d; `receipt-lint` complete; the artifact records the PMAT-125 caveat verbatim ("agreement under resampling, not independent corroboration"). Committed, pushed, `pmat-merge 1406 --auto --merge` armed. Basis for one model on three lanes: two of the three configured models could not return a schema verdict on this diff at all; the alternative was no verdict, and the artifact says what it is.
 
 Next after the merge: lifecycle (PMAT-1403 row → completed; #1401 stays until publish) → re-cut: the release session (reading its own receipt and the run log) decides retag-vs-3.41.1 with a grill quorum, then tag → CI clean room → publish.
+
+## 2026-09-18T08:05Z — #1406 MERGED (117ce5171); lifecycle-11 (#1407) opened and in quorum; infra clone prepared
+
+tree: run-log rebased onto origin/master 117ce5171, behind=0. Host up 16 hours, 33 minutes.
+
+Raw: `gh pr view 1406 --json state,mergeCommit` → `MERGED 117ce517190f1be3327f730d2fb25cdde7b17bb0`, all 48 checks green at merge. That is D8 landed — the last of the D0–D8 defect set that gates the release.
+
+Lifecycle-11, in `.wt/PMAT-1336` at `HEAD=117ce5171 origin/master=117ce5171 behind=0`:
+- `pmat work sync --check-only` → `open items 113 · open issues 112 · matched 112 · tolerated 0`, one finding `ORPHAN-ROADMAP PMAT-1403: #1403 is closed`, exit non-zero. Reproduces the CB-2115 cascade exactly as predicted.
+- `pmat work sync --direction github-to-yaml` → plan of exactly one action, `close-item PMAT-1403 #1403 → Completed`; `git diff --stat` 1 file / +2 / -2.
+- On the commit: `CB-2113 ✓` (1 non-merge commit in 117ce51..HEAD carries a Pmat-Ticket trailer naming an open item) and `CB-2115 ✓` (112 open items and 112 open issues in bijection, matched 112, tolerated 0). Pushed as `PMAT-1336-lifecycle-11`, PR **#1407**, quorum running (`--author-model claude-opus-5`; the orchestrator session's model changed from Fable 5.1 to Opus 5 (1M context) at the compaction boundary, so the author-model argument changes with it — recorded because EV-17 makes the same-family rule depend on it).
+
+Two measurements recorded rather than acted on:
+- `docs/roadmaps/entries/` does not exist in this repo, so `RoadmapService::save()` took its whole-file branch. PMAT-1363's fragment writer is conditional on that directory and was NOT exercised by this sync — the D1 acceptance evidence stands on its own tests, not on this run.
+- `docs/roadmaps/roadmap.yaml` carries two `updated` serialisations: 204 rows `…Z` and 185 rows `+00:00`. Counted on `117ce5171` BEFORE the edit, so it predates this PR and is not a regression from D1/D2. Left alone; mass-rewriting timestamps inside a lifecycle PR would fail scope. Candidate for its own ticket after the release.
+
+Fleet prep (read-only, no convergence — convergence stays behind publish): fresh standalone clone at `~/src/infra-fleet` from `git@github.com:paiml/infra.git`, `HEAD=083a67bad origin/main=083a67bad behind=0` — not `~/src/infra`, which sits at `a7a0758b` and lacks the infra#653 `[patch.crates-io]` overlay. `stack-tool-pmat.version` read from each `machines/*/forjar.yaml`: intel 3.40.1, lambda-labs 3.40.1, gx10 3.40.1, yoga 3.40.1, mini 3.40.1 — five hosts, all at the same pin, nothing to un-converge.
+
+Also on the host: one `claude -p /paiml-implement PMAT-238` session that this orchestrator did not launch (peer session, pid 398175). Counted against the 3-slot rule, and noted because the paiml-implement lock is per-USER: it can block this session's `git push`/`gh pr` at any moment.
+
+Next: quorum on #1407 → arm → launch the re-cut release session (REL2) on the resulting master sha.
