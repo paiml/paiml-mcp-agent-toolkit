@@ -583,3 +583,30 @@ Fleet prep (read-only, no convergence — convergence stays behind publish): fre
 Also on the host: one `claude -p /paiml-implement PMAT-238` session that this orchestrator did not launch (peer session, pid 398175). Counted against the 3-slot rule, and noted because the paiml-implement lock is per-USER: it can block this session's `git push`/`gh pr` at any moment.
 
 Next: quorum on #1407 → arm → launch the re-cut release session (REL2) on the resulting master sha.
+
+## 2026-09-18T09:00Z — #1407 armed after three quorum rounds; the retag facts re-measured
+
+tree: run-log HEAD=edf9f4832 origin/master=117ce5171 behind=0 (branch carries only the log). Host up 17 hours, 28 minutes.
+
+Raw (quorum on #1407, head 53089420c, `--author-model claude-opus-5`):
+
+| round | lane 1 gemini-3.1-pro-high | lane 2 gemini-3.8-flash-high | lane 3 gemini-3.7-flash-high | agreed | partial |
+|---|---|---|---|---|---|
+| 1 | PASS | PASS | PASS | true | true |
+| 2 | PASS | NO-VERDICT (503 "No capacity available") | PASS | false | true |
+| 3 | PASS | PASS | PASS | true | true |
+
+`findings` empty on all six returned verdicts; `grounding_check: parity` on all of them; `lint.ok: true` ("receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude").
+
+Decision: armed on round 3 (`pmat-merge 1407 --auto --merge` → "quorum verdict … agrees for 53089420c25dd… — arming auto-merge"). Basis: `agreed=true` for the judged head is the standing rule and the artifact carries its own caveat.
+
+The caveat, not suppressed: `partial=true` in rounds 1 and 3 for one reason, byte-identical both times — `lane 1: non-empty .err (100 bytes, 1 line(s) beyond agy-lane's workspace narration)`. The 100 bytes are agy's own shutdown narration ("root agent idle; waiting up to 5s for 1 background task(s)" / "terminating 1 background task(s) on exit"), not review output. Reproducing identically across two rounds with the same lane model makes it a property of that runner, not sampling noise. Round 2 was re-run rather than accepted, and round 3 was run rather than the whitelist widened: a gate is not edited to make its own PR pass. Copies of all three artifacts are at `.run/logs/quorum-1407-round{1,2,3}.json`.
+
+PROCESS FINDING (ticket after the release, do not fix inside it): `quorum-review.sh:389` prints `NOT AGREED` and exits 1 whenever `partial=true`, even with `agreed=true` and 3/3 PASS; `pmat-merge`'s acceptance is `.agreed==true and .head==$h` (pmat-merge:211) and says nothing about `partial`. Two gates, one artifact, opposite verdicts — and the gap is one-directional: a partial artifact CAN arm auto-merge. Recorded on #1407 as a comment as well.
+
+Re-measured, for the re-cut decision the release session must take (all three of the "never published" facts, independently):
+- `gh release view v3.41.0` → `release not found` — no GitHub release object exists.
+- crates.io registry API → `max_version 3.40.2 max_stable 3.40.2 newest 3.40.2` — 3.41.0 was never published, so no consumer can be holding it.
+- `gh api .../git/ref/tags/v3.41.0` → object type `tag` (annotated), sha `42b4b7192`; dereferenced, `target=ecd97c6bc318f09552364dfc052c013cd6fbaa6d`, `tagger 2026-09-17T23:20:55Z`.
+
+Next: #1407 merges → substitute that master sha into `.run/briefs/REL2.tmpl` and launch the re-cut release session.
