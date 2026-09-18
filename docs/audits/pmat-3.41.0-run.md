@@ -610,3 +610,18 @@ Re-measured, for the re-cut decision the release session must take (all three of
 - `gh api .../git/ref/tags/v3.41.0` → object type `tag` (annotated), sha `42b4b7192`; dereferenced, `target=ecd97c6bc318f09552364dfc052c013cd6fbaa6d`, `tagger 2026-09-17T23:20:55Z`.
 
 Next: #1407 merges → substitute that master sha into `.run/briefs/REL2.tmpl` and launch the re-cut release session.
+
+## 2026-09-18T11:36Z — #1407 MERGED (18e5ddb87); the re-cut release session is launched
+
+tree: run-log rebased onto origin/master 18e5ddb87, behind=0. Host up 18 hours, 4 minutes; load 3.90/4.63/5.83; `/mnt/nvme-raid0` 83% used, 2.4T free; 0 headless sessions live at launch time (the peer PMAT-238 session ended).
+
+Raw: `gh pr view 1407 --json state,mergeCommit` → `MERGED 18e5ddb87681d623f647debfba7ae16cfcd42123`, all 48 checks green. The roadmap/GitHub bijection is 112/112 and the CB-2115 cascade is clear, so the release PR can be judged on its own merits.
+
+Launched `REL-3.41.0` (pid 1136469) in the standalone clone `~/src/paiml-mcp-agent-toolkit.wt/REL-3.41.0` from `.run/briefs/REL2.txt`, branch `release/3.41.0-recut` off `18e5ddb87681d623f647debfba7ae16cfcd42123`, budget 200 turns. Log: `.run/logs/REL-3.41.0-20260918T093604Z.log`.
+
+Three corrections to the brief I wrote, made before launching rather than left for the session to discover:
+1. "on a fresh branch … Skip `git switch -c`" was ambiguous to the point of being wrong — replaced with the exact command `git switch -C release/3.41.0-recut <sha>`, plus `git branch -f master origin/master` so pmat-merge hashes against the right local ref, plus a note that the clone already has `PMAT-1399-release-receipt` checked out with a clean tree.
+2. "no other non-dependabot PR is in CI" was FALSE. Measured at 11:35Z: #1337, #1338, #1341 and #1357 are open non-dependabot feature PRs from earlier sessions, alongside five dependabot PRs and the drafts #1224 and #1404. The brief now names them and says explicitly not to touch any of them.
+3. The brief told the session to verify the three "never published" facts with `cargo search`. Replaced with the registry API call that actually works, including the trap that cost me a command: `https://crates.io/api/v1/crates/pmat` returns HTML, not JSON, to a curl with no User-Agent, and a bare `json.load` then dies with `Expecting value: line 1 column 1`. The measured values are carried in the brief so the session can compare rather than only re-derive.
+
+Also added to the brief, from this session's own experience an hour earlier: the `quorum-review.sh` `partial=true` behaviour (prints `NOT AGREED`, exits 1, even with `agreed=true` and 3/3 PASS) with the instruction to read `.agreed`/`.partial`/`.partial_reasons` out of the artifact rather than trusting the last line — and the standing prohibition on widening the whitelist to pass its own PR.
