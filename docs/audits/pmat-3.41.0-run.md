@@ -549,3 +549,7 @@ tree: run-log behind=3. #1406 head 10e20f8d4 (docs: nine gate runs, six red legs
 ## 2026-09-18T06:11Z — D8: CI green (47 pass); re-running a quorum round after NO-VERDICT lanes
 
 tree: run-log behind=3. #1406 all checks green on 10e20f8d4; the round on that head had NO-VERDICT lanes (lane failures, re-run, never counted). Host up 14 hours, 39 minutes.
+
+## 2026-09-18T06:40Z — D8 pushed 398c98fe9 (11th gate run); CI restarts
+
+tree: run-log behind=3. Host up 15 hours, 9 minutes. Session live 6h20m; if it ends PARTIAL the orchestrator finishes the arm from its committed artifact.
