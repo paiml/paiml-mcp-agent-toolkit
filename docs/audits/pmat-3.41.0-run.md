@@ -764,3 +764,23 @@ Byte-identical proof for the last step, taken while the tree was in hand: `make 
 Commit 41c976596, PR **paiml/aprender#3491** (`Closes #3490`), quorum running (`--author-model claude-opus-5`). Untouched on purpose: `scripts/pmat_bin.sh` `PMAT_PIN="3.37.0"`.
 
 infra#692 meanwhile went `mergeStateStatus=DIRTY`: #691 (PMAT-689) merged to main and appended a roadmap row at the same tail my PMAT-690 row sits on. Rebased onto 7e0bcf23a, kept both rows (298 rows, 0 duplicate ids, parses), pushed with `--force-with-lease`; `pmat-merge` correctly disarmed the earlier verdict ("no quorum verdict … at 7346a29") because the judged diff's context changed, so a second quorum round is running. Nothing about the change itself moved.
+
+## 2026-09-18T16:15Z — CORRECTION: the "byte-identical aggregator" measurement two entries up was VACUOUS; re-measured for real; aggregate-writer PR (PMAT-3493) built with a full ladder
+
+tree: run-log HEAD=06d71e298 origin/master 516305ef0 behind=0.
+
+Correction to my own prior claim (the entry headed "aprender tools.toml 3.40.1→3.41.1", paragraph "Byte-identical proof … taken while the tree was in hand"; also in aprender#3491's body and #3493's issue body as first written). `pmat roadmap aggregate` with NO flag **prints** the aggregate to stdout and writes nothing — `--help`: "Prints the aggregate by default"; only `--write` writes. I ran python `--write`, saved the file, ran `pmat roadmap aggregate` (which printed; I looked at `tail -1` and saw a YAML line without registering what it was), then `cmp`'d the python file against itself. The "same sha both ways" (642,905 B, fb345c44cb18ef0a) was the same file, unchanged. Caught when the first cut of the new `make roadmap-aggregate` target — also flagless — left `roadmap-aggregate-check` RED after a "write": the RED control did its job. Same failure family as the memory note "a grep that finds nothing is not evidence of absence": a comparison whose second operand was never produced.
+
+Re-measured, each writer from a clean checkout of the base, 920 base + 33 fragments (branch `fix/roadmap-aggregate-pmat`, which adds PMAT-3493's fragment):
+
+| writer | bytes | sha256 |
+|---|---|---|
+| `python3 scripts/lib/roadmap_fragments.py aggregate --write` | 643,348 | 8403d71d857df724… |
+| `pmat roadmap aggregate` (stdout) | 643,348 | 8403d71d857df724… |
+| `pmat roadmap aggregate --write` | 643,348 | 8403d71d857df724… |
+
+`cmp` python vs pmat: identical. The conclusion survives; the earlier numbers do not. Corrections posted: a comment on aprender#3491 (its body cannot be amended without disarming the queued merge, and the paragraph was explicitly "not acted on"), #3493's body edited in place, and this entry.
+
+The aggregate-writer change itself (aprender issue **#3493** → `pmat work add --github-issue 3493` → PMAT-3493, a fragment): `make roadmap-aggregate` → `pmat roadmap aggregate --write`, the ONE writer; `make roadmap-aggregate-check` → `pmat … --check` AND python `aggregate --check` — two independent checkers on the committed bytes every run, so byte-identity is asserted continuously, not claimed once. The python module stays (adopt, changed, split, 14-row selftest with its registered mutation, census imports in `check_roadmap_fragment_required.sh`) because the contract's falsification tests cite it and deleting it would re-home four obligations — a bigger change than "one PR" and not what the byte-identity proof licenses. Ladder on the committed targets: RED (fragment present, aggregate stale → both checkers FAIL, pmat names the first differing row) → GREEN (`make roadmap-aggregate` +16 lines, both ok) → IDEM (second write, same sha) → RED control (edit a fragment's priority → both FAIL; restore → ok). Contract `apr-roadmap-fragments-v1.yaml`: scope/references name the writer and the oracle, no obligation changed; `pv validate` valid; `pv status` 5 proof obligations / 4 falsification tests (not 0/0); python selftest 14/0 red; fragment guard PASS. Committed 9320cca7c on top of #3491's branch; it goes to a PR once #3491 leaves the merge queue (a branch from main would fail `check_tool_versions.sh` on every converged runner until then).
+
+Correction to the operator's brief, from this work: aprender's aggregator was never a "shell" — it is `scripts/lib/roadmap_fragments.py` — and it is not deleted, for the reason above.
