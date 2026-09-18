@@ -698,3 +698,11 @@ Raw, in order:
 - `release.yml` run **35351362363** on 516305ef0, `in_progress`, created 2026-09-18T13:38:08Z. This is the clean room. Nothing is published until `gate / cpu-gates` in that run is green; red or cancelled is a stop-the-line and the session's brief says so.
 
 Load on the host during the gate: 13–24, dominated by other people's work (a 20-core `apr qa` model eval, an ffmpeg transcode, a peer session's agy lanes), 97 GB memory free. The session ran its one heavy job and did not add a second.
+
+## 2026-09-18T14:16Z — clean room 35351362363 at "Run clean-room Mode A+B", ~40 minutes in
+
+tree: run-log HEAD=a0153f464 origin/master=516305ef0 behind=0.
+
+Raw: `gh run view 35351362363` → `in_progress`; jobs `create-release=success` (the draft/prerelease object exists — it is not the publish), `gate / lint-gate=success`, `gate / gpu-gates=skipped`, `gate / cpu-gates=in_progress` at step "Run clean-room Mode A+B", the step whose B2 stage failed on v3.41.0. Nothing else is running against the runners from this side.
+
+Read-only prep for the last step in the operator's brief, from `paiml/aprender@main` via the API (the local `~/src/aprender` is 92 behind and is not used): a correction to the brief — aprender's aggregator is not a shell script. `make roadmap-aggregate` runs `python3 scripts/lib/roadmap_fragments.py aggregate --write` and `roadmap-aggregate-check` runs the same with `--check` (Makefile:565–570, "#3296"). The replacement is `pmat roadmap aggregate` / `pmat roadmap aggregate --check`, and the byte-identical proof is a diff of the two aggregators' output on the same `entries/`. Ordering constraint that is easy to get wrong: 3.41.1 is the FIRST published pmat carrying `roadmap aggregate` (D1 #1364 landed after 3.40.2 shipped), so aprender's `tools.toml` pin must move to 3.41.1 BEFORE that PR, not after — the brief lists tools.toml last among the fleet steps, and the aggregate PR after it, which is the right order. `scripts/lib/roadmap_fragments.py` has other callers (`check_roadmap_*.sh`, contracts `apr-roadmap-fragments-v1.yaml`); the PR replaces the make targets and proves the bytes, and whether the module itself can go is measured there, not assumed.
