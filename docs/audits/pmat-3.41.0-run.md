@@ -553,3 +553,12 @@ tree: run-log behind=3. #1406 all checks green on 10e20f8d4; the round on that h
 ## 2026-09-18T06:40Z — D8 pushed 398c98fe9 (11th gate run); CI restarts
 
 tree: run-log behind=3. Host up 15 hours, 9 minutes. Session live 6h20m; if it ends PARTIAL the orchestrator finishes the arm from its committed artifact.
+
+## 2026-09-18T07:28Z — D8 DONE(code); orchestrator ran the final quorum round and armed #1406
+
+tree: run-log rebased, behind=0 against origin/master ac8a59e40. Host up 15 hours, 56 minutes.
+
+Raw (D8 receipt, PMAT-1403, ~6.9 h): RED in the clean-room toolchain (rust:1.95-slim as root with the infra#653 overlay, built from origin/main's `gates-lib.sh` because `~/src/infra` is 49 commits behind): 5 passed / 2 failed at the same two files and lines; GREEN on the fix 22/22; MUTANT 18/4; REVERT 22/22; GREEN on the committed bytes 22/22. `make gate` run 12: 32/32 on a clean tree. CI 47 pass / 0 fail. Contract `contracts/dead-code-lockfile-isolation-v1.yaml`: 10 obligations / 10 evaluated / 0 failed, 11 falsification tests. 7 stale `#[ignore]`s removed, none added; ratchets flat (CB-200 back to 1680 twice, panic! back to 785). `--locked` stays out and a test pins its absence. The session's own reported "flake" was its mutant left applied in the working tree (runs 10–11); recorded as a correction, not deleted.
+- Quorum: the 3/3 sat on e541edb99; four later rounds on the receipt commits went PASS / NO-VERDICT / NO-VERDICT. Cause, read from the lane files: lane 2 (gemini-3.8-flash-high) DID return a PASS verdict inside an agy `status:ERROR` envelope — "UNAVAILABLE (code 503): No capacity available for model gemini-3.8-flash-high"; lane 3 (gemini-3.7-flash-high) started `cargo test --lib lockfile` in the background and returned prose. Re-run by the orchestrator with `--lane-model gemini-3.1-pro-high` ×3: AGREED 3/3 on c22018c6d; `receipt-lint` complete; the artifact records the PMAT-125 caveat verbatim ("agreement under resampling, not independent corroboration"). Committed, pushed, `pmat-merge 1406 --auto --merge` armed. Basis for one model on three lanes: two of the three configured models could not return a schema verdict on this diff at all; the alternative was no verdict, and the artifact says what it is.
+
+Next after the merge: lifecycle (PMAT-1403 row → completed; #1401 stays until publish) → re-cut: the release session (reading its own receipt and the run log) decides retag-vs-3.41.1 with a grill quorum, then tag → CI clean room → publish.
