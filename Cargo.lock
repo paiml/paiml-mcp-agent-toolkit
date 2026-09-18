@@ -220,6 +220,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "apr-format"
+version = "0.67.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b692c51264b53fa2515061bd552a7705e14a08ef36ef77dd4fe79fedd1066242"
+dependencies = [
+ "bincode",
+ "half",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "aprender"
 version = "0.25.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -246,7 +261,7 @@ version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cc7023dfe64eb43abe7abbc8a58c7e6ee80a76cd26cbe3b36b74889bc343722"
 dependencies = [
- "aprender-core",
+ "aprender-core 0.64.0",
 ]
 
 [[package]]
@@ -260,15 +275,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender-common"
+version = "0.67.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3aadc0adb3b6db8fb3447b0de941753b3f20f64b09f9d201c9eb003df43fbe0"
+dependencies = [
+ "lz4_flex 0.11.6",
+ "zstd",
+]
+
+[[package]]
 name = "aprender-compute"
 version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3ffe7f0d70e042446d29e86957643e23fb25ea0ff2365e92e5cd419d8c5b37"
 dependencies = [
  "anyhow",
- "aprender-contracts-macros",
- "aprender-gemm-codegen",
- "aprender-quant",
+ "aprender-contracts-macros 0.64.0",
+ "aprender-gemm-codegen 0.64.0",
+ "aprender-quant 0.64.0",
  "bytemuck",
  "chrono",
  "futures-intrusive",
@@ -284,12 +309,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender-compute"
+version = "0.67.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0941d90dff7ba95734c57e46722a68af7730cadf7c936f44cd8c6f2148d8b909"
+dependencies = [
+ "anyhow",
+ "aprender-contracts-macros 0.67.0",
+ "aprender-gemm-codegen 0.67.0",
+ "aprender-quant 0.67.0",
+ "chrono",
+ "hostname",
+ "num_cpus",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "thiserror 2.0.20",
+ "toml 0.8.23",
+]
+
+[[package]]
 name = "aprender-contracts"
 version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31fca1e31a6262d16c277d1b2a0c6c682db6db6d3e145c51c2fe7d82f7dff1ef"
 dependencies = [
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.64.0",
  "regex",
  "serde",
  "serde_json",
@@ -309,16 +354,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender-contracts-macros"
+version = "0.67.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cb003af15c597b365e6df5abcd73030c2f438461d7eac7082f0f2f4959c3788"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
+
+[[package]]
 name = "aprender-core"
 version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb3dc9ae789a6030a877128730e9796e1c8125768fb71dab4270542ca7520c65"
 dependencies = [
- "apr-format",
- "aprender-common",
- "aprender-compute",
- "aprender-contracts-macros",
- "aprender-quant",
+ "apr-format 0.64.0",
+ "aprender-common 0.64.0",
+ "aprender-compute 0.64.0",
+ "aprender-contracts-macros 0.64.0",
+ "aprender-quant 0.64.0",
+ "bincode",
+ "getrandom 0.2.17",
+ "memmap2",
+ "minijinja",
+ "rand 0.9.4",
+ "rand_chacha 0.9.0",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "tempfile",
+]
+
+[[package]]
+name = "aprender-core"
+version = "0.67.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85eceaee28dabcbfc8ca2a2d8f27807dc6b1407944382178de560867a559d556"
+dependencies = [
+ "apr-format 0.67.0",
+ "aprender-common 0.67.0",
+ "aprender-compute 0.67.0",
+ "aprender-contracts-macros 0.67.0",
+ "aprender-quant 0.67.0",
  "bincode",
  "getrandom 0.2.17",
  "memmap2",
@@ -340,8 +421,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "678fea162f77b0343cddfa95fd892bc71fd133dbbe04a60e90f5b340446dbb03"
 dependencies = [
  "anyhow",
- "aprender-common",
- "aprender-compute",
+ "aprender-common 0.64.0",
+ "aprender-compute 0.64.0",
  "arrow",
  "bytemuck",
  "chrono",
@@ -377,14 +458,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender-gemm-codegen"
+version = "0.67.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1900348f3684ba8d1aa631513a2bddb0fbbbb283ae4e3662f33d0515f823edc9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
+
+[[package]]
 name = "aprender-graph"
 version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "189d5d89c9986e53dc592d27c25257e3367108d1f51ea141e5fd13f743edbcf9"
 dependencies = [
  "anyhow",
- "aprender-compute",
- "aprender-core",
+ "aprender-compute 0.64.0",
+ "aprender-core 0.64.0",
+ "thiserror 2.0.20",
+ "tokio",
+]
+
+[[package]]
+name = "aprender-graph"
+version = "0.67.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ca1893412ed3ca564e0d6337a97dec056caf11c6f5f4b3a98e029454258dc81"
+dependencies = [
+ "anyhow",
+ "aprender-compute 0.67.0",
+ "aprender-core 0.67.0",
  "thiserror 2.0.20",
  "tokio",
 ]
@@ -395,7 +500,7 @@ version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "657fed587813760458899806ae8c7d9fd30b5da9349da5b2fc0451535410a3c3"
 dependencies = [
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.64.0",
  "serde",
  "serde_json",
  "serde_yaml_ng",
@@ -411,13 +516,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender-quant"
+version = "0.67.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c4ea8b23b048ecf4db814ef7cc139fb8490e30f1962e9c09d09f29662b817a4"
+dependencies = [
+ "half",
+]
+
+[[package]]
 name = "aprender-rag"
 version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f33f168079c3a7e1dcdd7e7d044945c739949abb4ecedf9af7ae6f0b638d68a"
 dependencies = [
- "aprender-common",
- "aprender-compute",
+ "aprender-common 0.64.0",
+ "aprender-compute 0.64.0",
  "async-trait",
  "rusqlite",
  "serde",
@@ -430,13 +544,13 @@ dependencies = [
 
 [[package]]
 name = "aprender-viz"
-version = "0.64.0"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0346aa0e93d9161c218eced6ee512620ffc1d30100ceb6f4e99ca305858d3e05"
+checksum = "62d09b5ad7b797488baf4b6b38a02362da550024cec053ae5eadc3e5b688cd17"
 dependencies = [
- "aprender-common",
- "aprender-compute",
- "aprender-graph",
+ "aprender-common 0.67.0",
+ "aprender-compute 0.67.0",
+ "aprender-graph 0.67.0",
  "base64 0.22.1",
  "libc",
  "png",
@@ -4992,11 +5106,11 @@ dependencies = [
  "actix-rt",
  "anyhow",
  "aprender 0.64.0",
- "aprender-compute",
+ "aprender-compute 0.64.0",
  "aprender-contracts",
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.64.0",
  "aprender-db",
- "aprender-graph",
+ "aprender-graph 0.64.0",
  "aprender-present-core",
  "aprender-rag",
  "aprender-viz",
