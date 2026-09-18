@@ -7078,11 +7078,12 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-18T00:33:30Z
-  updated: 2026-09-18T00:33:30Z
+  updated: 2026-09-18T02:10:42Z
   spec: null
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
