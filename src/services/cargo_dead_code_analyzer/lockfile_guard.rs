@@ -128,29 +128,48 @@ impl LockfileGuard {
         // would then report `Untouched` over something it had not looked at.
         let now_exists = self.path.exists();
         let now = std::fs::read(&self.path).ok();
-        match (&self.before, now_exists, now) {
+        match &self.before {
+            LockfileBefore::Present(before) => self.restore_present(before, now.as_deref()),
+            LockfileBefore::PresentUnreadable => self.restore_unreadable(now_exists),
+            LockfileBefore::Absent => self.restore_absent(now_exists),
+        }
+    }
+
+    /// There were bytes before. There must be exactly those bytes after.
+    ///
+    /// `now` is `None` when the file is unreadable NOW, which is not equal to
+    /// `before` and therefore correctly routes to `put_back`.
+    fn restore_present(&self, before: &[u8], now: Option<&[u8]>) -> LockfileRestore {
+        if now == Some(before) {
             // Unchanged: touch nothing. Rewriting identical bytes would still
             // move the mtime, and every "is the tree clean" gate downstream
             // reads more than content.
-            (LockfileBefore::Present(before), true, Some(now)) if *before == now => {
-                LockfileRestore::Untouched
-            }
-            (LockfileBefore::Absent, false, _) => LockfileRestore::Untouched,
+            LockfileRestore::Untouched
+        } else {
+            self.put_back(before)
+        }
+    }
 
-            // Unreadable before and still there: leave it exactly alone. There
-            // are no bytes to compare and none to write, so the only safe move
-            // is the one that touches nothing.
-            (LockfileBefore::PresentUnreadable, true, _) => LockfileRestore::Untouched,
-            // ...and if it is GONE, this analysis destroyed a file it could not
-            // snapshot. Say so; there is nothing to put back.
-            (LockfileBefore::PresentUnreadable, false, _) => {
-                self.failed("it existed but could not be read, and is now gone".into())
-            }
+    /// It was there and could not be read, so there is nothing to put back.
+    ///
+    /// Still there: leave it exactly alone -- no bytes to compare, none to
+    /// write, and it is the project's file, not ours to remove. Gone: this
+    /// analysis destroyed something it could not snapshot, and must say so.
+    fn restore_unreadable(&self, now_exists: bool) -> LockfileRestore {
+        if now_exists {
+            LockfileRestore::Untouched
+        } else {
+            self.failed("it existed but could not be read, and is now gone".into())
+        }
+    }
 
-            (LockfileBefore::Present(before), _, _) => self.put_back(before),
-            // cargo CREATED one where the project had none. Remove it: the
-            // presence of a lockfile is the project's decision (#1076).
-            (LockfileBefore::Absent, true, _) => self.take_away(),
+    /// There was no lockfile. If cargo made one, take it away again: whether a
+    /// tree carries a lockfile is the project's decision (#1076).
+    fn restore_absent(&self, now_exists: bool) -> LockfileRestore {
+        if now_exists {
+            self.take_away()
+        } else {
+            LockfileRestore::Untouched
         }
     }
 

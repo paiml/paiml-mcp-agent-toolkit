@@ -20,5 +20,5 @@
 +        std::mem::forget(guard);
 +        let restored = LockfileRestore::Untouched;
  
-         // Restore first, THEN propagate: a cargo failure must not cost the tree
-         // its lockfile.
+         // Restore first, THEN decide what to report. A cargo failure must not
+         // cost the tree its lockfile, and it must not HIDE that the tree kept a
