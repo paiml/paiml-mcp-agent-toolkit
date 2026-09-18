@@ -655,3 +655,15 @@ FLEET PREP, all read-only, measured in the fresh clone `~/src/infra-fleet` at `0
 - Image rebuild is not just a rebuild: `make -C machines/intel ci-image` builds and pushes `sovereign-ci:stable` from **origin/main on the host** ("run only AFTER your PR merges"), and `sovereign-ci.yml` in **paiml/.github** pins that image BY DIGEST in four places. So rebuilding the image without a follow-up PR moving the digest in paiml/.github means nothing built reaches CI — the intel Makefile says so in its own comments and has a check that reads the pin back. That dependency is not in the operator's brief and is recorded here before it can bite.
 
 Per-host apply is `make -C machines/<host> …`; `make -C machines/fleet-hosts check-pmat-pins` is the three-way (it runs `test-pmat-pin-check.sh` fixtures first, then `pmat-pin-check.sh`, engine `tool-pin-check.sh`, with `PIN_PROVENANCE=1` asking forjar's cargo cache whether it put the running binary there). No ad-hoc SSH needed for any of it.
+
+## 2026-09-18T14:05Z — #1409 MERGED (94286c23d): master says 3.41.1; the session moves to gate → tag → clean room
+
+tree: run-log rebased onto origin/master 94286c23d, behind=0. Release session live ~2h30m, phase 2 of 7.
+
+Raw: quorum artifact `docs/audits/quorum-PMAT-1408.json` — `head b00c5ae77 agreed=true partial=false`, lanes gemini-3.1-pro-high / gemini-3.8-flash-high / gemini-3.7-flash-high all PASS, `partial_reasons: []` (a clean artifact; round 1 had a NO-VERDICT lane and was re-run, per the brief). Committed as 88fdf6c1c; CI 48/48 green on it; `gh pr view 1409` → `MERGED 94286c23d5fa30a17528de38d4960a3c3d0ce47b`. Issues #1408 and #1401 both still OPEN, as they should be: the PR carried no closing line, so no ORPHAN-ROADMAP and no traceability cascade on the board.
+
+Reviewed the merged diff myself before it merged: `Cargo.toml` 3.41.0→3.41.1, `Cargo.lock` the one `pmat` line, `CHANGELOG.md` gains `[3.41.1] - 2026-09-18` naming #1403/#1406 with the mechanism (cargo rewrites a lockfile whenever its resolution differs from the bytes on disk; reproduced on cargo 1.98.0; `--locked` deliberately stays out, with a test pinning its absence) and a "Note on 3.41.0" that leaves `[3.41.0]` untouched and states the run id 35286438196 and the 404. Matches the record in this log; nothing to correct.
+
+Held back on purpose: lifecycle-12 (PMAT-1408's row) is not needed yet because #1408 is still open, and any PR opened now would put a 48-check CI run on the same self-hosted runners the tag's clean room is about to need. The release's `gate / cpu-gates` gets the runners to itself.
+
+Next, all the session's: `make gate` on 94286c23d, package size vs 9.0 MiB, annotated tag `v3.41.1` on 94286c23d, `release.yml` `gate / cpu-gates` on that sha (run id recorded here when it exists), then publish from a detached tag checkout.
