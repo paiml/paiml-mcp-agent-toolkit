@@ -7105,3 +7105,19 @@ roadmap:
   labels:
   - kind:code
   notes: null
+- id: GH-1410
+  github_issue: 1410
+  item_type: task
+  title: 'release-check: 3.41.1 is declared in Cargo.toml but not fully released'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-18T11:45:43.900229416+00:00
+  updated: 2026-09-18T11:45:43.900229416+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
