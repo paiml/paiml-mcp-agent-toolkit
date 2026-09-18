@@ -144,3 +144,47 @@ Fixed with `pmat work sync --direction github-to-yaml`: the dry-run planned exac
 Observation, not a defect of this change: the writer stamps `updated` as `2026-09-18T07:58:27.422072847+00:00` while 204 of the file's rows carry the `…Z` form and 185 carry `+00:00`. The split predates this PR (counted on `117ce5171` before the edit) and is left alone rather than mass-rewritten inside a lifecycle PR.
 
 #1401 ("3.41.0 is declared in Cargo.toml but not fully released") is still open and still true: the tag's clean room was red, nothing was published, and crates.io max_stable_version is 3.40.2. keeps-open #1401. Written by the release-3.41.0 orchestrator session.
+
+## 2026-09-18 — #1410 registered: 3.41.1 declared, not yet published (lifecycle-12)
+
+At `HEAD=94286c23d origin/master=94286c23d behind=0`, `pmat work sync --check-only` read open
+items 113 against open issues 114 with one finding, `ORPHAN-GITHUB #1410` — auto-filed by the
+release-check automation at 2026-09-18T11:21:32Z, "release-check: 3.41.1 is declared in
+Cargo.toml but not fully released". #1409 (the 3.41.1 release commit, PMAT-1408) had merged as
+`94286c23d` minutes earlier and master began declaring a version crates.io does not carry;
+crates.io `max_stable_version` is `3.40.2`. The claim is exactly true and it closes itself
+when `make release-check` reads green after the publish. #1401 is the same issue for 3.41.0
+and is still open and still rowed.
+
+**Why this round is in front of the tag rather than after it.** Until #1410 is rowed it is an
+`ORPHAN-GITHUB`, so CB-2115 fails, so the `cb-2113-cb-2115` leg of `make gate` fails, so
+`make gate` is **RED** on `94286c23d` — the very commit the release brief requires green
+before `v3.41.1` goes on it. Measured on that commit: 32 legs ran, **31 PASS and 1 FAIL**, the
+one FAIL being `cb-2113-cb-2115` with `✗ CB-2115: 1 finding(s) — ORPHAN-GITHUB #1410`, while
+`✓ CB-2113` read `not_applicable: HEAD is the default branch; 22 of 22 non-merge commit(s)
+since v3.41.0 carry a Pmat-Ticket trailer`.
+
+Fixed with the sanctioned writer, `pmat work sync --direction github-to-yaml`: the dry-run
+planned exactly one action, `create-item #1410 "release-check: 3.41.1 is declared in
+Cargo.toml but not fully released" → GH-1410`, and the diff is that row and nothing else
+(`git diff --stat`: 1 file, 16 insertions, 0 deletions). Row status `planned`, which is
+correct — the thing it describes has not happened yet. After it: **114/114 coherent**, and
+`pmat comply check --checks CB-2113,CB-2115` reads `✓` on both. keeps-open #1410, keeps-open
+#1401.
+
+**Recorded, not fixed here.** The release-check filer and CB-2115 are in tension by
+construction: every release reds `make gate` from the version-bump merge until the publish,
+and the only way through is a lifecycle row like this one. Nothing in this PR changes that,
+and nothing should — it wants its own ticket after the release rather than a change made
+inside one.
+
+**A second process finding, from this round's own quorum.** Round 1 on #1411 returned lane 1
+`FAIL`, lane 2 `NO-VERDICT`, lane 3 `PASS`. Lane 1's FAIL was correct on its own terms and is
+the reason this section exists: `quorum-review.sh:193` feeds the lanes
+`docs/audits/impl-PMAT-1336-receipt.md`, and because PMAT-1336 is a **standing** ticket that
+never completes, that file still described the *previous* round (PMAT-1403 completed, #1401
+and #1403 registered) while the diff under review added `GH-1410`. Lane 1 read the mismatch
+exactly as the refutation doctrine tells it to — "a receipt claim is not backed by the diff" —
+and failed the PR. The fix is this section, not a narrower lane brief: a standing ticket's
+receipt goes stale the moment its round lands, and the round after it must make the receipt
+current *before* it asks for a verdict. Written by the release-3.41.1 orchestrator session.
