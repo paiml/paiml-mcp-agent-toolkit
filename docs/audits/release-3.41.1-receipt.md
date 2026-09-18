@@ -109,7 +109,7 @@ Every measurement opened with a tree line. **None ran with `behind≠0`.**
 | P2 | release commit `b00c5ae77` | `Cargo.toml` + `Cargo.lock` 3.41.0->3.41.1, `CHANGELOG.md [3.41.1]`, PMAT-1408's row. **4 files, nothing else.** `cargo metadata --locked` exit 0 |
 | P2b | PR **#1409** | quorum round 1: 2 PASS + 1 **NO-VERDICT** (lane failure) -> re-run. Round 2: **3/3 PASS, `agreed=true`, `partial=false`, `partial_reasons=[]`, `dissent=[]`**, all three `.err` 0 bytes. CI 47 SUCCESS / 5 SKIPPED / 0 FAILURE, `mergeStateStatus: CLEAN`. Armed only via `pmat-merge`. Merged **`94286c23d`** |
 | P3 | `make gate` on `94286c23d` | **RED** — 31 PASS, 1 FAIL (`cb-2113-cb-2115`). Root-caused, not worked around — section 4 |
-| P3b | lifecycle-12, PR **#1411** | rows `#1410`. Four rounds; two produced no verdict — section 4. Final: **3/3 PASS, `partial=false`**. CI 47 SUCCESS / 0 FAILURE. Merged **`516305ef0`** |
+| P3b | lifecycle-12, PR **#1411** | rows `#1410`. Four rounds; **one** (round 2) produced no verdict at all, and round 1 produced a real FAIL — section 4. Final: **3/3 PASS, `partial=false`**. CI 47 SUCCESS / 0 FAILURE. Merged **`516305ef0`** |
 | P4 | `make gate` on `516305ef0` | **GREEN — 32 PASS, 0 FAIL.** 16 CI-only rows printed by name, not counted |
 | P4b | package size | `pmat-3.41.1.crate` **9,359,632 B = 8.9260 MiB compressed**; cargo prints `8.9MiB`. Gate fails at `>= 9.0` -> **PASS**, 77,552 B headroom, 99.18% of the repo's own 9.0 MiB budget (`feature-matrix.yml:507`), 89.26% of crates.io's 10 MiB. sha256 `efb7c2af9f937ee0b359d7019d19612b5caf57c70dfac407066060d7cb86b28f` |
 | P5 | tag | annotated **`v3.41.1`** -> `516305ef07f7197b9eb9a773c609f834dbdf4c5b`, pushed |
@@ -195,6 +195,8 @@ file before the copy and again afterwards — so a concurrent edit could not cor
 | #1411 | 2 | — | — | — | no verdict: script edited mid-run (4.3) |
 | #1411 | 3 | PASS | PASS | PASS | `agreed=true` but `partial=true` -> re-run |
 | #1411 | 4 | PASS | PASS | PASS | `agreed=true partial=false` -> **armed** |
+| #1404 | 1 | **FAIL** | PASS | PASS | two real findings -> fixed, see below |
+| #1404 | 2 | PASS | PASS | PASS | `agreed=true partial=false` -> **armed** |
 
 **#1411 round 1's FAIL was correct and was not re-run away.** `quorum-review.sh:193` feeds the
 lanes `docs/audits/impl-<ticket>-receipt.md`, and PMAT-1336 is a **standing** ticket that never
@@ -205,6 +207,17 @@ thing that could not be done, since that row is what takes `make gate` from RED 
 receipt was made current instead, and the process finding recorded there: **a standing
 ticket's receipt goes stale the moment its round lands, and the next round must make it
 current before asking for a verdict.**
+
+**#1404 round 1's FAIL was also correct, and was also fixed rather than re-run.** Two
+findings, both cited against the diff. (a) The PMAT-1408 row in `impl-estimates.jsonl` recorded
+`mode: "direct"`, which undercounts a session that dispatched an agy delegate at width 3 and ran
+six `quorum-review.sh` rounds; the lane's own proposed value (`"orchestrator"`) is wrong for this
+ledger — `mode` records the routing mix, and 10 of its rows are bare `direct` — but the field was
+inaccurate and is now `direct + agy-delegate(grillme x3) + quorum-review.sh(width 3; 2 rounds
+#1409, 4 rounds #1411, 2 rounds #1404)`. (b) §3's P3b row said "Four rounds; two produced no
+verdict", which contradicts §4.4: only **round 2** produced no verdict; round 1 produced a FAIL.
+The lane was right and the sentence was wrong; it is corrected above. (Its line citation for (b),
+`:163`, is off — the sentence is at `:112` — but the substance stands.)
 
 **#1411 round 3's `partial=true`** had one reason, byte-identical to what #1407 recorded:
 `lane 1: non-empty .err (100 bytes, 1 line(s) beyond agy-lane's workspace narration)` — agy's
@@ -332,9 +345,12 @@ Claude subagents, and are accounted for here rather than in the transcript gate.
   orchestrator, together with their rows.
 - **PMAT-1408's row is `planned` with issue #1408 open.** A ticket cannot complete itself under
   CB-2113; row completion is the orchestrator's, in the next lifecycle round.
-- **The release has no attached binaries yet.** `binary-release.yml` run 35358864629 was
-  dispatched by hand and was still running when this receipt was written; its outcome is not
-  claimed here.
+- ~~The release has no attached binaries.~~ **Resolved and measured.** `binary-release.yml` run
+  **35358864629** and `post-release.yml` run **35358868718**, both dispatched by hand after the
+  403 in correction 6, completed **success**. `gh release view v3.41.1 --json assets` lists **12
+  assets** — a `.tar.gz` and a `.sha256` for each of `aarch64-apple-darwin`,
+  `aarch64-unknown-linux-gnu`, `aarch64-unknown-linux-musl`, `x86_64-apple-darwin`,
+  `x86_64-unknown-linux-gnu`, `x86_64-unknown-linux-musl`.
 - **`make validate-book` was NOT run this session.** Session 1 ran it and it passed on the same
   content; 3.41.1 adds one CHANGELOG entry and the lockfile guard, neither of which touches the
   book's chapters. This is a gap, not a pass, and is named as one.
