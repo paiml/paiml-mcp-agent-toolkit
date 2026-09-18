@@ -722,3 +722,27 @@ One red job in run 35351362363, and it is NOT a gate: `prerelease` — its first
 Correction found by the session, to my brief: "Issue #1401 closes itself only if `make release-check` reads green" is FALSE. No automation closes a `release-check` issue; `ci.yml`'s only "issue close" hit is the PMAT-900001 control proving pmat can never close one. So #1401 (3.41.0) and #1410 (3.41.1) are closed by a sanctioned path or not at all: a PR body with its own `Closes` line, or `mutate.sh close --quorum` with a cited receipt. That is the orchestrator's next lifecycle step, after the receipt PR.
 
 Session now: `cargo install pmat --version 3.41.1 --locked --root /mnt/nvme-raid0/targets/pmat-install-3411` in flight (`df` before: `/mnt/nvme-raid0` 84 %, 2.2 T free; `/` 84 %, 287 G free), then the dogfood list on the INSTALLED binary including the #1403 reproduction under an ambient `[patch]`.
+
+## 2026-09-18T15:42Z — FLEET CONVERGED to 3.41.1 on all five hosts, per unit and per principal; infra PR #692 in quorum; two stop-the-line conditions found and removed through forjar
+
+tree: run-log rebased, origin/master 516305ef0, behind=0. Fleet work done in the fresh clone `~/src/infra-fleet` on branch `fleet/pmat-3.41.1` from origin/main 204a0314d (fast-forwarded before branching: it had moved 9 commits since 083a67bad). Ticket issue-first: infra **#690**, `pmat work add --github-issue 690` → **PMAT-690**.
+
+Before (`pmat-pin-check.sh`): `lambda-labs 3.40.1 3.40.2 DRIFT` (something installed 3.40.2 here outside forjar), the other four `ok` at 3.40.1; `matched=4 drifted=1`.
+
+Applied, one host at a time, `forjar apply -f machines/<host>/forjar.yaml -r stack-tool-pmat --state-dir ~/src/infra/state --yes` (the live state dir; #591 recorded why): intel 2 converged/0 failed 464 s; gx10 3/0 199 s; yoga 6/0 553 s; mini 3/0 587 s; lambda-labs 2/0 206 s. forjar's own state lock refused a second apply while one ran (`state directory is locked by PID 902990`), so "one at a time" was enforced by the tool, not by me. After: `make -C machines/fleet-hosts check-pmat-pins` → fixtures ok, then all five `3.41.1 3.41.1 ok`, **`matched=5 drifted=0 unmanaged=0 missing=0 unpinned=0 undeclared=0`**.
+
+Then the principal that USES the tool, per unit — the brief's "three-way as runner principal on every unit" — and this is where the login-user check was green over a split fleet, twice:
+
+| host | login user | runner principal, measured |
+|---|---|---|
+| intel | 3.41.1 | **STOP-THE-LINE #1**: `make -C machines/intel verify-fleet-bin` → FAIL, "fleet copy differs from ~/.cargo/bin/pmat (fleet copy WINS on PATH)", stale=2 — the `/opt/fleet-bin` mirror that all 16 listeners resolve first was still 3.40.1. Remedy named by the tool and run as the make target: `make -C machines/intel deploy-fleet-bin` (5 converged, 12.9 s). Re-verify: stale=0; `.path: 17 checked, 0 not converged`; `effective PATH OK: 16/16 live listener(s) run with /opt/fleet-bin/bin first`; `/opt/fleet-bin/bin/pmat --version` → 3.41.1 |
+| lambda-labs | 3.41.1 | 2 live `Runner.Listener` (user noah), PATH read from `/proc/<pid>/environ`, resolve `~/.cargo/bin/pmat` → 3.41.1 |
+| mini | 3.41.1 | 1 `Runner.Listener` as the login user (noahgift) → 3.41.1 |
+| gx10 | 3.41.1 | bare-host listener → 3.41.1. **STOP-THE-LINE #2**: the container runners (`forjar-ephemeral.yaml`, `forjar-cpu-pool.yaml`) mount `/opt/ci-tools/pmat` as `/usr/local/bin/pmat`, and that file was root-owned, declared by NO resource in the repo, and still **3.40.1** — every container job ran the old pmat while every checker said 3.41.1. Fix, declared not hand-copied: new task resource `ci-tools-pmat` (`sudo install` from `~/.cargo/bin/pmat`, completion_check = the two `--version` lines agree, `depends_on: [stack-tool-pmat]`); `forjar apply -r ci-tools-pmat` → "1 converged (1 repaired drift)"; re-plan 0 to change. Measured from inside a throwaway container with the runner's own mounts: `/usr/local/bin/pmat` → 3.41.1, `PMAT_BIN_OVERRIDE` → 3.37.0 (the aprender `pmat_bin.sh` stop-gap, left alone on purpose) |
+| yoga | 3.41.1 | identical to gx10 in every respect, same fix, same measurements |
+
+Correction to the operator's brief, by measurement: **rebuilding `sovereign-ci:stable` and `sovereign-gpu-runner` "at 3.41.1" would move nothing.** `docker run --rm --entrypoint sh localhost:5000/sovereign-ci:stable -c 'command -v pmat'` on intel prints nothing (NO-PMAT-IN-IMAGE); same for `sovereign-gpu-runner:2.337.0` on gx10; the Dockerfile has no `cargo install pmat`. pmat reaches container jobs by bind mount, which is what the two stop-the-lines above were about. Not rebuilt; the paiml/.github digest bump that would have followed is not needed.
+
+Also: `cargo-pin-check.sh` C1_unpinned=0 C2_version_over_list=0 over 46 cargo resources; `yaml-parses-guard.sh` 495/0. Commit 9c411f4, PR **paiml/infra#692** (`closes #690` in the title as #591 did — infra runs no CB-2115 job; its own bijection is 180 findings off and not mine to fix here), quorum running with `--author-model claude-opus-5`. The `state` symlink in the clone (→ `~/src/infra/state`, so the make targets find the live lock) is untracked and will not be committed.
+
+Remaining: aprender `tools.toml` 3.40.1→3.41.1 (last, per the brief), then the aprender aggregate PR; #1401/#1410 closure and the release receipt PR #1404; the final report section.
