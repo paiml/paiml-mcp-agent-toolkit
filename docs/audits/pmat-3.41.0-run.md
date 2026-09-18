@@ -499,3 +499,7 @@ Correction (the session's own, and mine): the LOCAL clean room could not have ca
 Also corrected by the session: #1398 was not merged at its launch (it waited); version carriers are two files (Cargo.toml:4, Cargo.lock:4989), not five; doctest `--test-threads=4` and `CARGO_BUILD_JOBS=2` are already pinned by `gates/pmat.sh:18` and the Makefile; the self-hosted runners ARE on this host (`/home/noah/data/actions-runner-*`).
 
 Lifecycle-10: master read three findings (ORPHAN-ROADMAP PMAT-1399; ORPHAN-GITHUB #1401 — auto-filed "3.41.0 declared but not fully released", true until publish; ORPHAN-GITHUB #1403 — the defect, filed 00:24:33Z by the D8 session under the operator's token). Rows through the sanctioned writers → 113/113; PR #1405, quorum running. D8 (PMAT-1403) LIVE. Slots 1/3.
+
+## 2026-09-18T01:11Z — D8 in flight
+
+tree: run-log behind=0. Lifecycle-10 #1405 armed on 3/3, in CI. D8 PMAT-1403 committed 3a1ef7c2e (clippy/fmt stage). Host up 9 hours, 40 minutes.
