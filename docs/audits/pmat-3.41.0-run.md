@@ -507,3 +507,13 @@ tree: run-log behind=0. Lifecycle-10 #1405 armed on 3/3, in CI. D8 PMAT-1403 com
 ## 2026-09-18T01:51Z — D8 in flight (likely in its clean-room reproduction)
 
 tree: run-log behind=3 against origin/master ac8a59e40. #1405 merged; master bijection coherent. D8 HEAD 166a6f9eb, no PR yet; load 0.15 (a clean-room container run shows as low host load). Host up 10 hours, 19 minutes.
+
+## 2026-09-18T02:20Z — D8 PR #1406 open: LockfileGuard; the clean-room red was latent and toolchain-independent
+
+tree: run-log behind=3 against origin/master ac8a59e40. Host up 10 hours, 48 minutes.
+
+Raw (PR #1406 body, PMAT-1403): reproduced byte-identically on cargo 1.98.0 in ~2 s with a throwaway `CARGO_HOME` holding one `[patch.crates-io]` entry — NOT a toolchain difference (the container is `rust:1.95-slim`; irrelevant). An ambient `[patch]` is only one trigger: cargo rewrites the lockfile whenever its resolution differs from the bytes on disk. Latent since 2bdc6b90c (2026-08-25) reverted `--locked`. Fix: `LockfileGuard` snapshots the workspace root's lockfile before the cargo child spawns and restores it on every exit path (Ok, cargo failure, deadline kill, Drop); `--locked`/`--frozen` stay OUT (a new test pins their absence, because `--locked` silently disabled the compiler scan — 80 → 0 dead functions — which is why it was reverted). CI 24 pass / 20 pending; quorum pending.
+
+Correction to the D8 brief (finding): my brief told the session the failure was "ONLY inside the clean-room container" and pointed at the container's cargo version; both were wrong — the trigger is the ambient overlay, reproducible anywhere in seconds. The brief's hedge ("may be latent, find out") held.
+
+Next: after #1406 merges → lifecycle (PMAT-1403 row) → re-cut decision. Master's `Cargo.toml` already says 3.41.0 and nothing is published, so the candidates are (a) delete and re-create tag `v3.41.0` on the fixed master (nothing consumed the old tag; no release object exists), or (b) 3.41.1 with 3.41.0 never published. The release session's grill quorum decides; the orchestrator's recommendation is (a), because 3.41.0 is what master and the CHANGELOG already say and the old tag was never a release.
