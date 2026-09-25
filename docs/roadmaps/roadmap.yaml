@@ -7138,3 +7138,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: GH-1417
+  github_issue: 1417
+  item_type: task
+  title: 'deps: dependabot patch-updates group (12 crates, Cargo.lock only) — folded with PMAT-1428 into the release/deps batch'
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-25T09:42:23Z
+  updated: 2026-09-25T09:42:23Z
+  spec: null
+  acceptance_criteria:
+  - 'Refs #1417 (dependabot PR, folded)'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
