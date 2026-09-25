@@ -4744,7 +4744,7 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:31Z
-  updated: 2026-09-10T19:40:22.098038771+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4754,7 +4754,7 @@ roadmap:
   - deferred:3.41.0
   - kind:code
   notes: 'PMAT-1253 (goal-mode §5.1): paired with #1141, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
-  release: 3.41.0
+  release: 3.44.0
 - id: PMAT-700
   github_issue: null
   item_type: task
@@ -5415,7 +5415,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5423,7 +5423,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: 3.41.0
+  release: 3.43.0
 - id: GH-1118
   github_issue: 1118
   item_type: task
@@ -5687,7 +5687,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5695,7 +5695,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: 3.41.0
+  release: 3.43.0
 - id: GH-1138
   github_issue: 1138
   item_type: task
@@ -6016,7 +6016,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6024,6 +6024,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.43.0
 - id: GH-1239
   github_issue: 1239
   item_type: task
@@ -7058,11 +7059,11 @@ roadmap:
   github_issue: 1401
   item_type: task
   title: 'release-check: 3.41.0 is declared in Cargo.toml but not fully released'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-18T00:33:30Z
-  updated: 2026-09-18T00:33:30Z
+  updated: 2026-09-25T17:15:34.389965525+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7091,11 +7092,11 @@ roadmap:
   github_issue: 1408
   item_type: task
   title: 'release: pmat 3.41.1 — the dead-code lockfile guard, and 3.41.0 burned unpublished'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-18T09:50:58Z
-  updated: 2026-09-18T16:08:41Z
+  updated: 2026-09-25T17:15:34.389965525+00:00
   spec: null
   acceptance_criteria:
   - 'Release commit for pmat 3.41.1: Cargo.toml 3.41.0 -> 3.41.1 and the pmat entry in Cargo.lock bumped to match (those two files are the only version carriers); CHANGELOG.md gains [3.41.1] naming #1406 (the dead-code lockfile guard, PMAT-1403) and records [3.41.0] as cut-but-never-published with clean-room run id 35286438196, leaving the existing [3.41.0] section intact rather than re-labelling it. 3.41.0 is burned because a width-3 grillme quorum returned 3/3 FAIL against deleting and re-creating the pushed tag v3.41.0 on the fixed head: git fetch refuses to clobber an existing tag, so any clone or CI cache from the 12-hour window would keep resolving v3.41.0 to the red commit ecd97c6bc. make gate all local legs green on the merge commit; package under the repo''s own 9.0 MiB gate; tag v3.41.1 on the merge commit; release.yml gate / cpu-gates GREEN on that sha before anything is published; cargo publish --dry-run --locked then --locked from a detached checkout, never --allow-dirty; crates.io max_stable_version reads back 3.41.1 and make release-check exits 0, which is what closes #1401.'
@@ -7109,11 +7110,334 @@ roadmap:
   github_issue: 1410
   item_type: task
   title: 'release-check: 3.41.1 is declared in Cargo.toml but not fully released'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-18T11:45:43.900229416+00:00
-  updated: 2026-09-18T11:45:43.900229416+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1441
+  github_issue: 1441
+  item_type: task
+  title: make validate-book exits 0 when the pmat-book checkout is absent — a skipped gate reads as a pass
+  status: planned
+  priority: critical
+  assigned_to: null
+  created: 2026-09-25T13:49:13Z
+  updated: 2026-09-25T18:14:14Z
+  spec: null
+  acceptance_criteria:
+  - '#1441'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1412
+  github_issue: 1412
+  item_type: task
+  title: pmat_index_stats (MCP) deletes a CLI-built index — reproduced 2/2 on 3.41.1; 7/7 CLI paths leave it intact
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1414
+  github_issue: 1414
+  item_type: task
+  title: 'pmat work add --github-issue does not populate spec: or acceptance_criteria: from the spec row, and drops the issue''s priority'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1415
+  github_issue: 1415
+  item_type: task
+  title: '''present'' arm 4 is unsatisfiable by the author: it demands evidence/pr-review/<n>/ while B2 forbids reviewer_actor == author_actor'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1416
+  github_issue: 1416
+  item_type: task
+  title: pmat work add inserts the new row INSIDE a preceding row's multi-line quoted scalar — valid YAML, one row fewer than the text says
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1418
+  github_issue: 1418
+  item_type: task
+  title: pmat hooks install (3.41.1) still guards docs/execution/roadmap.md, a path pmat work no longer writes — the roadmap check always takes its skip branch
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1419
+  github_issue: 1419
+  item_type: task
+  title: 'pmat hooks install fails in a git worktree: ''Not a directory (os error 20)'' — .git is a FILE there, so $repo/.git/hooks does not exist'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1420
+  github_issue: 1420
+  item_type: task
+  title: pmat verify's SATD stage honours no exclude (.pmatignore, [quality-gates] exclude, exclude_paths — 8 variants measured), so a deliberate RED fixture reds verify on a clean tree
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1421
+  github_issue: 1421
+  item_type: task
+  title: pmat pre-commit hook regenerates AND stages .pmat/clippy-receipt into every commit
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1422
+  github_issue: 1422
+  item_type: task
+  title: 'ONT-11: pmat maps pv verdicts in ci / gate, exposes comply rule ids, one monotone armed_gates rule — no ontology types (ONT-001 R-21)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1423
+  github_issue: 1423
+  item_type: task
+  title: pmat work complete should judge complexity and file size on the ticket's DIFF, not the whole repo
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1424
+  github_issue: 1424
+  item_type: task
+  title: pmat-agent binary has no nightly — the nightly release ships pmat only
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog
+- id: GH-1425
+  github_issue: 1425
+  item_type: task
+  title: 'Adopt sovereign-update: `update` subcommand + daily update check (pmat) — EPIC aprender#4232'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.41.0
+- id: GH-1426
+  github_issue: 1426
+  item_type: task
+  title: 'pmat work re-serializes roadmap.yaml: ~90 unrelated lines re-quoted on a +17-line ticket edit (formatter churn on the merge-queue file)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1428
+  github_issue: 1428
+  item_type: task
+  title: 'fleet-bins: WONT-RUN on paiml/paiml-mcp-agent-toolkit'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1430
+  github_issue: 1430
+  item_type: task
+  title: 'fleet-bins: UNVERIFIABLE on paiml/paiml-mcp-agent-toolkit'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1433
+  github_issue: 1433
+  item_type: task
+  title: 'master CI red on traceability/gate: CB-2115 reports 17 roadmap↔GitHub orphans (ORPHAN-ROADMAP 3, ORPHAN-GITHUB 14)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1434
+  github_issue: 1434
+  item_type: task
+  title: 'differential-corpus: quality-gate provability_violations is 0 for both the empty and the defect-rich project — red on an unchanged master base since the 20260920 runner image'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1439
+  github_issue: 1439
+  item_type: task
+  title: Adopt dogfood-receipt-v1 for pmat releases (ARB-SELF-001 ASL-05)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1440
+  github_issue: 1440
+  item_type: task
+  title: 'FLOW-03 (delta over #1370): pmat work add refuses without --epic <issue> and --priority P0..P3, and creates the GitHub sub-issue link'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T17:15:34.389965525+00:00
   spec: null
   acceptance_criteria: []
   phases: []
