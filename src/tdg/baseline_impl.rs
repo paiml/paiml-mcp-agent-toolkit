@@ -62,7 +62,6 @@ impl TdgBaseline {
         let mut regressed = Vec::new();
         let mut unchanged = Vec::new();
         let mut added = Vec::new();
-        let mut removed = Vec::new();
         let mut rescored = Vec::new();
 
         // Check files in current baseline
@@ -73,33 +72,22 @@ impl TdgBaseline {
                 if delta.abs() < 0.01 {
                     // Unchanged (within floating point tolerance)
                     unchanged.push(path.clone());
-                } else if new_entry.content_hash == old_entry.content_hash {
+                    continue;
+                }
+                let comparison = FileComparison {
+                    path: path.clone(),
+                    old_score: old_entry.score.clone(),
+                    new_score: new_entry.score.clone(),
+                    delta,
+                    grade_change: (old_entry.score.grade, new_entry.score.grade),
+                };
+                if new_entry.content_hash == old_entry.content_hash {
                     // Same bytes, different score: the scorer moved (#1162).
-                    rescored.push(FileComparison {
-                        path: path.clone(),
-                        old_score: old_entry.score.clone(),
-                        new_score: new_entry.score.clone(),
-                        delta,
-                        grade_change: (old_entry.score.grade, new_entry.score.grade),
-                    });
+                    rescored.push(comparison);
                 } else if delta > 0.0 {
-                    // Improved
-                    improved.push(FileComparison {
-                        path: path.clone(),
-                        old_score: old_entry.score.clone(),
-                        new_score: new_entry.score.clone(),
-                        delta,
-                        grade_change: (old_entry.score.grade, new_entry.score.grade),
-                    });
+                    improved.push(comparison);
                 } else {
-                    // Regressed
-                    regressed.push(FileComparison {
-                        path: path.clone(),
-                        old_score: old_entry.score.clone(),
-                        new_score: new_entry.score.clone(),
-                        delta,
-                        grade_change: (old_entry.score.grade, new_entry.score.grade),
-                    });
+                    regressed.push(comparison);
                 }
             } else {
                 // File added
@@ -108,11 +96,12 @@ impl TdgBaseline {
         }
 
         // Check for removed files
-        for path in self.files.keys() {
-            if !other.files.contains_key(path) {
-                removed.push(path.clone());
-            }
-        }
+        let removed = self
+            .files
+            .keys()
+            .filter(|path| !other.files.contains_key(*path))
+            .cloned()
+            .collect();
 
         // Sort by delta magnitude
         improved.sort_by(|a, b| b.delta.total_cmp(&a.delta));
