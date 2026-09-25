@@ -45,7 +45,7 @@ jobs:
             os: ubuntu-latest
             cross: false
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+            os: ubuntu-22.04  # glibc 2.35 floor (#1428)
             cross: false
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
