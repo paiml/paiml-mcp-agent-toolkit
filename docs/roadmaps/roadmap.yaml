@@ -7121,3 +7121,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1441
+  github_issue: 1441
+  item_type: task
+  title: validate-book fails when the pmat-book checkout is absent
+  status: planned
+  priority: critical
+  assigned_to: null
+  created: 2026-09-25T13:49:13Z
+  updated: 2026-09-25T13:49:13Z
+  spec: null
+  acceptance_criteria:
+  - '#1441'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
