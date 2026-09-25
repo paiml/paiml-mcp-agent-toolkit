@@ -679,28 +679,85 @@ pub async fn quality_gate_compare(baseline: &Path, paths: &[PathBuf]) -> Result<
     Ok(json!({
         "status": "completed",
         "message": "Quality gate comparison completed successfully",
-        "comparison": {
-            "improved": comparison.improved.len(),
-            "regressed": comparison.regressed.len(),
-            "unchanged": comparison.unchanged.len(),
-            "added": comparison.added.len(),
-            "removed": comparison.removed.len(),
-            "improved_files": comparison.improved.iter().take(5).map(|fc| json!({
-                "path": fc.path.display().to_string(),
-                "old_score": fc.old_score.total,
-                "new_score": fc.new_score.total,
-                "delta": fc.delta,
-            })).collect::<Vec<_>>(),
-            "regressed_files": comparison.regressed.iter().take(5).map(|fc| json!({
-                "path": fc.path.display().to_string(),
-                "old_score": fc.old_score.total,
-                "new_score": fc.new_score.total,
-                "delta": fc.delta,
-            })).collect::<Vec<_>>(),
-            "has_regressions": !comparison.regressed.is_empty(),
-            "total_changes": comparison.improved.len() + comparison.regressed.len() + comparison.added.len() + comparison.removed.len(),
-        }
+        "comparison": comparison_json(&comparison),
     }))
+}
+
+/// One row per compared file, first five of a bucket.
+fn file_comparisons_json(files: &[crate::tdg::FileComparison]) -> Vec<Value> {
+    files
+        .iter()
+        .take(5)
+        .map(|fc| {
+            json!({
+                "path": fc.path.display().to_string(),
+                "old_score": fc.old_score.total,
+                "new_score": fc.new_score.total,
+                "delta": fc.delta,
+            })
+        })
+        .collect()
+}
+
+/// Every bucket `TdgBaseline::compare` fills, so the counts sum to the files
+/// compared. `rescored` (pmat#1162: unchanged bytes, changed score) was left
+/// out once and those files vanished from the MCP answer.
+fn comparison_json(comparison: &crate::tdg::BaselineComparison) -> Value {
+    json!({
+        "improved": comparison.improved.len(),
+        "regressed": comparison.regressed.len(),
+        "unchanged": comparison.unchanged.len(),
+        "rescored": comparison.rescored.len(),
+        "added": comparison.added.len(),
+        "removed": comparison.removed.len(),
+        "improved_files": file_comparisons_json(&comparison.improved),
+        "regressed_files": file_comparisons_json(&comparison.regressed),
+        "rescored_files": file_comparisons_json(&comparison.rescored),
+        "has_regressions": !comparison.regressed.is_empty(),
+        "total_changes": comparison.improved.len() + comparison.regressed.len() + comparison.added.len() + comparison.removed.len(),
+    })
+}
+
+#[cfg(test)]
+mod quality_gate_compare_json_tests {
+    use super::*;
+    use crate::tdg::{BaselineComparison, FileComparison, Grade, TdgScore};
+
+    fn fc(path: &str) -> FileComparison {
+        FileComparison {
+            path: PathBuf::from(path),
+            old_score: TdgScore::default(),
+            new_score: TdgScore::default(),
+            delta: -23.4,
+            grade_change: (Grade::AMinus, Grade::CPlus),
+        }
+    }
+
+    #[test]
+    fn a_rescored_file_is_counted_not_dropped() {
+        let comparison = BaselineComparison {
+            improved: vec![],
+            regressed: vec![],
+            unchanged: vec![PathBuf::from("a.rs")],
+            added: vec![],
+            removed: vec![],
+            rescored: vec![fc("src/parser/mod.rs")],
+        };
+        let v = comparison_json(&comparison);
+        assert_eq!(v["rescored"], 1);
+        assert_eq!(v["rescored_files"][0]["path"], "src/parser/mod.rs");
+        assert_eq!(v["has_regressions"], false);
+        let buckets = [
+            "improved",
+            "regressed",
+            "unchanged",
+            "rescored",
+            "added",
+            "removed",
+        ];
+        let sum: u64 = buckets.iter().map(|b| v[*b].as_u64().unwrap_or(0)).sum();
+        assert_eq!(sum, 2, "every compared file lands in exactly one bucket");
+    }
 }
 
 /// The MCP `quality_gate` tool and `pmat quality-gate` carry one name, so they
