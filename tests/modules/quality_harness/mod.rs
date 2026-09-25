@@ -1164,15 +1164,17 @@ mod tests {
     // Low-provability functions, for `quality-gate`'s provability check.
     //
     // That check scores four properties per function and fires under 0.70, and
-    // it is an *average over the first 50 functions* walkdir happens to yield —
-    // so a handful of low scorers cannot move it: the corpus averaged 0.92 and
-    // reported zero violations honestly. Each function here scores 0.20: a raw
-    // pointer costs both nullability and aliasing, `.expect()` with no `?`
-    // erases the bounds evidence, and `println!` costs purity. 40 files x 4
-    // functions at 0.20 keeps the sampled mean under the floor whichever files
-    // the walk reaches first — an earlier version at 0.50 measured 0.72 and the
-    // check stayed silent, which is exactly the near-miss a fixture must not
-    // sit on.
+    // it is an *average over 50 functions spread evenly across the tree in path
+    // order* — so a handful of low scorers cannot move it: the corpus averaged
+    // 0.92 and reported zero violations honestly. Each function here scores
+    // 0.20: a raw pointer costs both nullability and aliasing, `.expect()` with
+    // no `?` erases the bounds evidence, and `println!` costs purity. 40 files x
+    // 4 functions at 0.20 pull the sampled mean to 0.64 — an earlier version at
+    // 0.50 measured 0.72 and the check stayed silent, which is exactly the
+    // near-miss a fixture must not sit on. The sample used to be the first 50
+    // functions in readdir order, and this comment used to claim the fixture
+    // held "whichever files the walk reaches first": on runner image
+    // 20260920.314.1 it did not, and the check read 0 (pmat#1434).
     //
     // The pointer is null-checked and never dereferenced: `clippy::
     // not_unsafe_ptr_arg_deref` is deny-by-default, and a corpus that fails
