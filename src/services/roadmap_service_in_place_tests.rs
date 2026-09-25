@@ -17,19 +17,19 @@ mod in_place_tests {
     const ROW_B: &str = "- id: PMAT-002\n  title: \"Second, double-quoted\"\n  status: planned\n  priority: medium\n  created: '2026-01-02T00:00:00Z'\n  updated: '2026-01-02T00:00:00Z'\n  acceptance_criteria:\n  - 'docs/x.md: names the owner'  # a comment\n";
 
     fn fixture() -> (TempDir, RoadmapService, String) {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("tempdir");
         let path = temp.path().join("roadmap.yaml");
         let raw = format!("{HEADER}{ROW_A}{ROW_B}");
-        std::fs::write(&path, &raw).unwrap();
+        std::fs::write(&path, &raw).expect("write the roadmap fixture");
         (temp, RoadmapService::new(&path), raw)
     }
 
     fn read(service: &RoadmapService) -> String {
-        std::fs::read_to_string(service.path()).unwrap()
+        std::fs::read_to_string(service.path()).expect("read the roadmap back")
     }
 
     fn with_status(service: &RoadmapService, id: &str, status: ItemStatus) -> RoadmapItem {
-        let mut item = service.find_item(id).unwrap().unwrap();
+        let mut item = service.find_item(id).expect("find_item parses the roadmap").expect("the row is present");
         item.status = status;
         item.updated = "2026-09-24T00:00:00Z".to_string();
         item
@@ -39,11 +39,11 @@ mod in_place_tests {
     fn start_of_the_first_row_leaves_every_other_row_byte_identical() {
         let (_t, service, _) = fixture();
         let item = with_status(&service, "PMAT-001", ItemStatus::InProgress);
-        service.upsert_item_in_place(&item).unwrap();
+        service.upsert_item_in_place(&item).expect("the in-place upsert succeeds");
         let after = read(&service);
         assert!(after.starts_with(HEADER), "header churned:\n{after}");
         assert!(after.ends_with(ROW_B), "an untouched row churned:\n{after}");
-        let got = service.find_item("PMAT-001").unwrap().unwrap();
+        let got = service.find_item("PMAT-001").expect("find_item parses the roadmap").expect("the row is present");
         assert_eq!(got.status, ItemStatus::InProgress);
     }
 
@@ -51,13 +51,13 @@ mod in_place_tests {
     fn complete_of_the_last_row_leaves_every_other_row_byte_identical() {
         let (_t, service, _) = fixture();
         let item = with_status(&service, "PMAT-002", ItemStatus::Completed);
-        service.upsert_item_in_place(&item).unwrap();
+        service.upsert_item_in_place(&item).expect("the in-place upsert succeeds");
         let after = read(&service);
         assert!(
             after.starts_with(&format!("{HEADER}{ROW_A}")),
             "an untouched row churned:\n{after}"
         );
-        let got = service.find_item("PMAT-002").unwrap().unwrap();
+        let got = service.find_item("PMAT-002").expect("find_item parses the roadmap").expect("the row is present");
         assert_eq!(got.status, ItemStatus::Completed);
     }
 
@@ -66,20 +66,20 @@ mod in_place_tests {
         let (_t, service, raw) = fixture();
         let mut item = with_status(&service, "PMAT-001", ItemStatus::InProgress);
         item.id = "PMAT-003".to_string();
-        service.upsert_item_in_place(&item).unwrap();
+        service.upsert_item_in_place(&item).expect("the in-place upsert succeeds");
         let after = read(&service);
         assert!(
             after.starts_with(&raw),
             "the existing text churned:\n{after}"
         );
-        assert!(service.find_item("PMAT-003").unwrap().is_some());
+        assert!(service.find_item("PMAT-003").expect("find_item parses the roadmap").is_some());
     }
 
     #[test]
     fn an_unchanged_row_round_trips_to_the_same_bytes_outside_it() {
         let (_t, service, _) = fixture();
-        let item = service.find_item("PMAT-002").unwrap().unwrap();
-        service.upsert_item_in_place(&item).unwrap();
+        let item = service.find_item("PMAT-002").expect("find_item parses the roadmap").expect("the row is present");
+        service.upsert_item_in_place(&item).expect("the in-place upsert succeeds");
         assert!(read(&service).starts_with(&format!("{HEADER}{ROW_A}")));
     }
 
@@ -87,9 +87,9 @@ mod in_place_tests {
     fn a_duplicated_id_is_refused_and_nothing_is_written() {
         let (_t, service, raw) = fixture();
         let dup = format!("{raw}{ROW_A}");
-        std::fs::write(service.path(), &dup).unwrap();
+        std::fs::write(service.path(), &dup).expect("write the roadmap fixture");
         let mut item: RoadmapItem = serde_yaml_ng::from_str::<Vec<RoadmapItem>>(ROW_A)
-            .unwrap()
+            .expect("ROW_A is a valid roadmap row")
             .remove(0);
         item.status = ItemStatus::InProgress;
         assert!(service.upsert_item_in_place(&item).is_err());
@@ -98,12 +98,12 @@ mod in_place_tests {
 
     #[test]
     fn an_empty_roadmap_file_gains_the_row() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("tempdir");
         let service = RoadmapService::new(temp.path().join("roadmap.yaml"));
         let item: RoadmapItem = serde_yaml_ng::from_str::<Vec<RoadmapItem>>(ROW_A)
-            .unwrap()
+            .expect("ROW_A is a valid roadmap row")
             .remove(0);
-        service.upsert_item_in_place(&item).unwrap();
-        assert!(service.find_item("PMAT-001").unwrap().is_some());
+        service.upsert_item_in_place(&item).expect("the in-place upsert succeeds");
+        assert!(service.find_item("PMAT-001").expect("find_item parses the roadmap").is_some());
     }
 }
