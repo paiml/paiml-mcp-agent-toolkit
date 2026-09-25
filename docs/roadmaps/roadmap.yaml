@@ -5848,6 +5848,22 @@ roadmap:
   labels: []
   notes: null
   release: 3.41.0
+- id: GH-1434
+  github_issue: 1434
+  item_type: task
+  title: 'differential-corpus: quality-gate provability_violations is 0 for both the empty and the defect-rich project — the sample was the first 50 functions in readdir order'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-25T06:52:18.000000000+00:00
+  updated: 2026-09-25T06:52:18.000000000+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
 - id: GH-1225
   github_issue: 1225
   item_type: task
