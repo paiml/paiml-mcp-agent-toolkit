@@ -206,7 +206,7 @@ fn check_aggregate(
             String::new(),
             format!(
                 "FAIL {} is not what the aggregator produces from {}/ — first differing row: {id}. \
-                 Run `pmat roadmap aggregate --write` on the default branch; never edit it in a pull request.\n",
+                 Run `pmat roadmap sync` on the default branch; never edit it in a pull request.\n",
                 roadmap.display(),
                 entries_dir.display()
             ),

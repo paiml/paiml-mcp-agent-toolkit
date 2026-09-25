@@ -14,19 +14,22 @@ impl CommandDispatcher {
     pub async fn execute_roadmap_command(roadmap_cmd: RoadmapCommands) -> anyhow::Result<()> {
         use crate::roadmap::{self, RoadmapConfig};
 
-        // MACS-013: `pmat roadmap sync` renders ROADMAP.yaml directly and
-        // returns early — it does not use the sprint-config pipeline below.
+        // #1370: `pmat roadmap sync` is the one writer of roadmap.yaml in a repo
+        // with entries/, else the MACS-013 ROADMAP.yaml render; returns early —
+        // it does not use the sprint-config pipeline below.
         if let RoadmapCommands::Sync {
             gh_snapshot,
             dry_run,
+            check,
             path,
         } = &roadmap_cmd
         {
             let generated_at = chrono::Utc::now().to_rfc3339();
-            return crate::roadmap::sync::handle_roadmap_sync(
+            return crate::roadmap::sync_route::execute(
                 path,
                 gh_snapshot.clone(),
                 *dry_run,
+                *check,
                 &generated_at,
             );
         }
