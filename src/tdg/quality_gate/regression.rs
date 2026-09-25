@@ -487,7 +487,7 @@ mod tests {
 
         let result = RegressionGate::with_defaults()
             .check(&baseline, &current)
-            .unwrap();
+            .expect("the gate compares two in-memory baselines");
         assert!(result.passed, "{}", result.message);
         assert!(
             result
@@ -514,13 +514,13 @@ mod tests {
             path,
             69.9,
             Grade::CPlus,
-            "fn parse() { None.unwrap() }".to_string(),
+            "fn parse() { todo!() }".to_string(),
         )]);
 
         assert!(baseline.compare(&current).rescored.is_empty());
         let result = RegressionGate::with_defaults()
             .check(&baseline, &current)
-            .unwrap();
+            .expect("the gate compares two in-memory baselines");
         assert!(!result.passed);
         assert_eq!(result.violations.len(), 1);
     }
