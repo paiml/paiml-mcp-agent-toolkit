@@ -7127,11 +7127,11 @@ roadmap:
   github_issue: 1441
   item_type: task
   title: make validate-book exits 0 when the pmat-book checkout is absent — a skipped gate reads as a pass
-  status: planned
+  status: completed
   priority: critical
   assigned_to: null
   created: 2026-09-25T13:49:13Z
-  updated: 2026-09-25T18:14:14Z
+  updated: 2026-09-25T20:42:25.270724773+00:00
   spec: null
   acceptance_criteria:
   - '#1441'
@@ -7402,11 +7402,11 @@ roadmap:
   github_issue: 1434
   item_type: task
   title: 'differential-corpus: quality-gate provability_violations is 0 for both the empty and the defect-rich project — red on an unchanged master base since the 20260920 runner image'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-25T20:42:25.270724773+00:00
   spec: null
   acceptance_criteria: []
   phases: []
