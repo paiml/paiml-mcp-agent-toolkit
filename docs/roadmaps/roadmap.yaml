@@ -7125,12 +7125,12 @@ roadmap:
 - id: PMAT-1441
   github_issue: 1441
   item_type: task
-  title: 'make validate-book exits 0 when the pmat-book checkout is absent — a skipped gate reads as a pass'
+  title: make validate-book exits 0 when the pmat-book checkout is absent — a skipped gate reads as a pass
   status: planned
   priority: critical
   assigned_to: null
   created: 2026-09-25T13:49:13Z
-  updated: 2026-09-25T13:49:13Z
+  updated: 2026-09-25T18:14:14Z
   spec: null
   acceptance_criteria:
   - '#1441'
