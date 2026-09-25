@@ -50,3 +50,6 @@ include!("roadmap_service_migrate.rs");
 
 // Unit tests, property-based tests, and edge case tests
 include!("roadmap_service_tests.rs");
+
+// #1426: a state change rewrites one row, never the whole file
+include!("roadmap_service_in_place_tests.rs");
