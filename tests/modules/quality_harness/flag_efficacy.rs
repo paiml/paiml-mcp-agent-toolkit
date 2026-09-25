@@ -1934,8 +1934,9 @@ fn assert_large_corpus_spans_the_gate_a_inputs(root: &Path, read: &dyn Fn(&str) 
          critical defect — with unwraps every one of its 40 files auto-fails to F"
     );
 
-    // quality-gate :: results.provability_violations — the check averages the
-    // first 50 functions walkdir yields and fires under 0.70. Each of these
+    // quality-gate :: results.provability_violations — the check averages 50
+    // functions spread evenly over the tree in path order and fires under
+    // 0.70 (pmat#1434). Each of these
     // scores 0.20: raw pointer (nullability + aliasing), .expect() with no `?`
     // (bounds), println! (purity).
     let unproven = read("src/unproven_39.rs");
