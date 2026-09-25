@@ -76,7 +76,7 @@ impl QualityGate for RegressionGate {
         }
 
         let passed = violations.is_empty();
-        let message = if passed {
+        let mut message = if passed {
             format!(
                 "\u{2705} No quality regressions detected ({} files analyzed)",
                 current.summary.total_files
@@ -87,6 +87,16 @@ impl QualityGate for RegressionGate {
                 violations.len()
             )
         };
+        // Byte-identical files whose score moved are not regressions — the
+        // commit did not touch them (#1162) — but they are not hidden either:
+        // the baseline is stale and says so.
+        if !comparison.rescored.is_empty() {
+            message.push_str(&format!(
+                "; {} file(s) rescored with unchanged content (the scorer changed, \
+                 not the code): refresh the baseline",
+                comparison.rescored.len()
+            ));
+        }
 
         Ok(GateResult {
             passed,
@@ -114,11 +124,24 @@ mod tests {
     use crate::tdg::{BaselineEntry, ComponentScores, Grade, Language, TdgScore};
     use std::path::PathBuf;
 
+    /// Each (path, score) stands for distinct file content, as an edit would
+    /// produce: the score is part of what is hashed.
     fn create_test_baseline(scores: Vec<(PathBuf, f32, Grade)>) -> TdgBaseline {
+        let with_content = scores
+            .into_iter()
+            .map(|(path, score, grade)| {
+                let content = format!("{}:{score}", path.display());
+                (path, score, grade, content)
+            })
+            .collect();
+        create_test_baseline_with_content(with_content)
+    }
+
+    fn create_test_baseline_with_content(files: Vec<(PathBuf, f32, Grade, String)>) -> TdgBaseline {
         let mut baseline = TdgBaseline::new(None);
-        for (path, score, grade) in scores {
+        for (path, score, grade, content) in files {
             let entry = BaselineEntry {
-                content_hash: blake3::hash(b"test"),
+                content_hash: blake3::hash(content.as_bytes()),
                 score: TdgScore {
                     total: score,
                     grade,
@@ -432,5 +455,73 @@ mod tests {
     fn test_format_delta_zero() {
         let result = format_delta(0.0);
         assert!(result.contains("0"));
+    }
+
+    /// #1162: pzsh's `src/parser/mod.rs`, untouched for nine months, was scored
+    /// A- (93.3) in a baseline written before the critical-defect cap existed,
+    /// and C+ (69.9) by the current scorer. The content hash was identical on
+    /// both sides, and the gate failed a commit whose only staged file was a
+    /// workflow. The same bytes cannot have regressed.
+    #[test]
+    fn a_byte_identical_file_that_rescored_lower_is_not_a_regression() {
+        let path = PathBuf::from("src/parser/mod.rs");
+        let same = "fn parse() {}".to_string();
+        let baseline = create_test_baseline_with_content(vec![(
+            path.clone(),
+            93.3,
+            Grade::AMinus,
+            same.clone(),
+        )]);
+        let current = create_test_baseline_with_content(vec![(path, 69.9, Grade::CPlus, same)]);
+
+        let comparison = baseline.compare(&current);
+        assert!(
+            comparison.regressed.is_empty(),
+            "same bytes read as a regression"
+        );
+        assert_eq!(
+            comparison.rescored.len(),
+            1,
+            "the score change must still be reported"
+        );
+
+        let result = RegressionGate::with_defaults()
+            .check(&baseline, &current)
+            .unwrap();
+        assert!(result.passed, "{}", result.message);
+        assert!(
+            result
+                .message
+                .contains("1 file(s) rescored with unchanged content"),
+            "a stale baseline must be disclosed, not hidden: {}",
+            result.message
+        );
+    }
+
+    /// The control: the SAME scores with different bytes is an edit, and the
+    /// gate must still fail it. Without this, "never fail" would pass the test
+    /// above.
+    #[test]
+    fn an_edited_file_that_scores_lower_is_still_a_regression() {
+        let path = PathBuf::from("src/parser/mod.rs");
+        let baseline = create_test_baseline_with_content(vec![(
+            path.clone(),
+            93.3,
+            Grade::AMinus,
+            "fn parse() {}".to_string(),
+        )]);
+        let current = create_test_baseline_with_content(vec![(
+            path,
+            69.9,
+            Grade::CPlus,
+            "fn parse() { None.unwrap() }".to_string(),
+        )]);
+
+        assert!(baseline.compare(&current).rescored.is_empty());
+        let result = RegressionGate::with_defaults()
+            .check(&baseline, &current)
+            .unwrap();
+        assert!(!result.passed);
+        assert_eq!(result.violations.len(), 1);
     }
 }

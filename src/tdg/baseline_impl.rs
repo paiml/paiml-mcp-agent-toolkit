@@ -63,6 +63,7 @@ impl TdgBaseline {
         let mut unchanged = Vec::new();
         let mut added = Vec::new();
         let mut removed = Vec::new();
+        let mut rescored = Vec::new();
 
         // Check files in current baseline
         for (path, new_entry) in &other.files {
@@ -72,6 +73,15 @@ impl TdgBaseline {
                 if delta.abs() < 0.01 {
                     // Unchanged (within floating point tolerance)
                     unchanged.push(path.clone());
+                } else if new_entry.content_hash == old_entry.content_hash {
+                    // Same bytes, different score: the scorer moved (#1162).
+                    rescored.push(FileComparison {
+                        path: path.clone(),
+                        old_score: old_entry.score.clone(),
+                        new_score: new_entry.score.clone(),
+                        delta,
+                        grade_change: (old_entry.score.grade, new_entry.score.grade),
+                    });
                 } else if delta > 0.0 {
                     // Improved
                     improved.push(FileComparison {
@@ -114,6 +124,7 @@ impl TdgBaseline {
             unchanged,
             added,
             removed,
+            rescored,
         }
     }
 
