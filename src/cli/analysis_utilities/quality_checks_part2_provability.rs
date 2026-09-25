@@ -170,8 +170,15 @@ async fn calculate_provability_with_details(
     }))
 }
 
-/// Scan project source files and extract up to `max_count` function declarations
+/// Scan project source files and pick up to `max_count` function declarations
 /// with their file paths and line numbers for provability analysis.
+///
+/// The sample is spread evenly over EVERY function in the tree, in path order
+/// (pmat#1434). It used to be the first `max_count` functions in readdir
+/// order, which is the filesystem's hash order: on ext4 that is seeded per
+/// filesystem, so the same tree scored 0.92 or under 0.70 depending on the
+/// runner image it was checked out on, and the verdict measured the disk
+/// rather than the code.
 fn collect_project_functions(
     project_path: &Path,
     max_count: usize,
@@ -180,25 +187,40 @@ fn collect_project_functions(
     let scan_root = if src_dir.exists() { &src_dir } else { project_path };
 
     let mut functions = Vec::new();
-    let source_files = collect_source_files(scan_root);
-
-    for path in &source_files {
-        if functions.len() >= max_count {
-            break;
-        }
+    for path in &collect_source_files(scan_root) {
         let Ok(content) = std::fs::read_to_string(path) else {
             continue;
         };
-        extract_functions_from_source(&content, path, max_count, &mut functions);
+        extract_functions_from_source(&content, path, usize::MAX, &mut functions);
     }
 
-    functions
+    spread_sample(functions, max_count)
+}
+
+/// Keep `max_count` items at evenly spaced indices (`k * len / max_count`)
+/// across the whole list, so a sample of a large tree represents all of it
+/// rather than its first files.
+fn spread_sample<T>(items: Vec<T>, max_count: usize) -> Vec<T> {
+    let len = items.len();
+    if len <= max_count {
+        return items;
+    }
+    let mut k = 0;
+    let mut sample = Vec::with_capacity(max_count);
+    for (i, item) in items.into_iter().enumerate() {
+        if k < max_count && i == k * len / max_count {
+            sample.push(item);
+            k += 1;
+        }
+    }
+    sample
 }
 
 /// Collect .rs source files excluding test files.
 fn collect_source_files(root: &Path) -> Vec<std::path::PathBuf> {
     walkdir::WalkDir::new(root)
         .max_depth(10)
+        .sort_by_file_name()
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| {
@@ -325,5 +347,52 @@ pub fn format_quality_gate_output(
         QualityGateOutputFormat::Summary => format_qg_as_summary(results, violations),
         QualityGateOutputFormat::Detailed => format_qg_as_detailed(results, violations),
         QualityGateOutputFormat::Markdown => format_qg_as_markdown(results, violations),
+    }
+}
+
+#[cfg(test)]
+mod provability_sampling_tests {
+    use super::*;
+
+    /// pmat#1434: the sample must cover the whole tree, whatever order the
+    /// filesystem lists it in. The old sampler took the first 50 functions in
+    /// readdir order — here the first 10 files — so the verdict depended on
+    /// the disk. Reverting to it reddens this test.
+    #[test]
+    fn the_sample_spans_every_file_not_the_first_ones_listed() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src = dir.path().join("src");
+        std::fs::create_dir(&src).expect("mkdir src");
+        for i in 0..100 {
+            let body: String = (0..5)
+                .map(|f| format!("pub fn f{i:02}_{f}() {{}}\n"))
+                .collect();
+            std::fs::write(src.join(format!("m{i:02}.rs")), body).expect("write");
+        }
+        let sample = collect_project_functions(dir.path(), 50);
+        assert_eq!(sample.len(), 50);
+        let files: std::collections::BTreeSet<&str> =
+            sample.iter().map(|f| f.file_path.as_str()).collect();
+        assert_eq!(
+            files.len(),
+            50,
+            "one function from every other file, got {files:?}"
+        );
+        assert!(files.first().is_some_and(|p| p.ends_with("m00.rs")));
+        assert!(files.last().is_some_and(|p| p.ends_with("m98.rs")));
+        // Deterministic: the same tree always yields the same sample.
+        let again = collect_project_functions(dir.path(), 50);
+        assert!(sample
+            .iter()
+            .zip(&again)
+            .all(|(a, b)| a.file_path == b.file_path && a.line_number == b.line_number));
+    }
+
+    #[test]
+    fn spread_sample_keeps_evenly_spaced_items() {
+        assert_eq!(spread_sample((0..10).collect(), 5), vec![0, 2, 4, 6, 8]);
+        assert_eq!(spread_sample((0..7).collect(), 3), vec![0, 2, 4]);
+        assert_eq!(spread_sample((0..3).collect(), 5), vec![0, 1, 2]);
+        assert_eq!(spread_sample(Vec::<u8>::new(), 5), Vec::<u8>::new());
     }
 }

@@ -46,22 +46,21 @@ if [ -z "$BOOK_DIR" ] || [ "$BOOK_DIR" != "${BOOK_DIR#*..}" ]; then
 fi
 
 # Check if pmat-book exists.
-# Absent book => skip, not fail. But say so on stderr and say it loudly: a
-# green exit here means NOTHING was validated, and CLAUDE.md calls this the
-# release gate.
+# Absent book => FAIL (#1441). This used to exit 0 with a warning, so a green
+# 'make validate-book' read as a validated book on any machine without the
+# checkout. A gate that cannot measure must not report a pass.
 if [ ! -d "$BOOK_DIR" ]; then
     {
         echo ""
-        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo -e "${YELLOW}⚠️  SKIPPED - NOTHING WAS VALIDATED${NC}"
-        echo -e "${YELLOW}   pmat-book not found at: $BOOK_DIR${NC}"
-        echo -e "${YELLOW}   This exits 0. A green 'make validate-book' from${NC}"
-        echo -e "${YELLOW}   this machine is therefore NOT evidence of anything.${NC}"
-        echo -e "${YELLOW}   Clone pmat-book or set PMAT_BOOK_DIR to validate.${NC}"
-        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${RED}❌ FAILED - NOTHING WAS VALIDATED${NC}"
+        echo -e "${RED}   pmat-book not found at: $BOOK_DIR${NC}"
+        echo -e "${RED}   Clone https://github.com/paiml/pmat-book there,${NC}"
+        echo -e "${RED}   or set PMAT_BOOK_DIR to an existing checkout.${NC}"
+        echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
     } >&2
-    exit 0  # Don't fail if book doesn't exist
+    exit 1
 fi
 
 echo -e "${YELLOW}📚 Validating pmat-book (parallel, fail-fast)${NC}"
