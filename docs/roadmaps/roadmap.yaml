@@ -6903,7 +6903,7 @@ roadmap:
   github_issue: 1370
   item_type: task
   title: pmat roadmap sync as the ONE writer of docs/roadmaps/roadmap.yaml from a tracked per-ticket store; work add writes only the fragment; sync --check for the parity gate
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:34Z
@@ -6914,7 +6914,8 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
 - id: PMAT-1371
   github_issue: 1371
