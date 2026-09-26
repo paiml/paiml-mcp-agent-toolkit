@@ -7418,11 +7418,11 @@ roadmap:
   github_issue: 1440
   item_type: task
   title: 'FLOW-03 (delta over #1370): pmat work add refuses without --epic <issue> and --priority P0..P3, and creates the GitHub sub-issue link'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-26T11:35:29.565507067+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7488,7 +7488,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-26T10:03:49.215855853+00:00
-  updated: 2026-09-26T10:03:49.215855853+00:00
+  updated: 2026-09-26T11:35:29.565507067+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7496,3 +7496,4 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: backlog

@@ -218,7 +218,7 @@ Applying the plan changed 1 file, with 4 insertions and 4 deletions: each row's 
 
 ## lifecycle-16 — GH-1448 completed (#1449 merged, nightly republished)
 
-**Current round.** This section describes the diff under review. Everything above it describes earlier rounds.
+*(An earlier round.)*
 
 #1449 merged as `350f1adf4`. It pinned cargo-zigbuild to 0.23.4 so that aarch64-gnu links, and it filed the GH-1448 row.
 
@@ -237,3 +237,22 @@ Measured at HEAD = origin/master = `350f1adf4`, behind=0:
 Applying the plan changed 1 file, with 2 insertions and 2 deletions: the row's `status` (`planned` → `completed`) and `updated`. After it, `pmat work sync --check-only` reads **coherent**.
 
 **Addendum: GH-1451 filed.** CI on the first head (`a7fcdc7a7`) went red on CB-2115 with `ORPHAN-GITHUB #1451`, an external issue opened at 09:39Z, after the sync above. Re-measured at origin/master `350f1adf4`, behind=0: 127 open items against 128 open issues, one finding, and a one-action plan (`create-item #1451 → GH-1451`). Applying it adds 16 lines, which is a new `planned` row with no other change. `--check-only` reads **coherent**. The row only files the issue. Triaging it (keep or close as not planned) is left to the operator.
+
+## lifecycle-17 — GH-1440 completed (#1446 merged), GH-1451 release set to backlog
+
+**Current round.** This section describes the diff under review. Everything above it describes earlier rounds.
+
+#1446 merged as `26052b20c`. It makes `pmat work add` refuse a ticket that has no `--priority`, no kind, or no `--epic`, and it links the ticket's issue under the epic before writing the row (FLOW-03). Master's `traceability` check on `26052b20c` (CI run 36237654622) was green before #1440 was closed as completed.
+
+Separately, the cop moved #1451 to the `backlog` milestone. The row still carried no `release:`, so the pair drifted past the 60-minute grace window.
+
+Measured at HEAD = origin/master = `26052b20c`, behind=0:
+- `pmat work sync --direction github-to-yaml --dry-run` reported 128 open items against 127 open issues.
+- It found two findings: `ORPHAN-ROADMAP GH-1440: #1440 is closed` and `DRIFT GH-1451 <-> #1451 release: roadmap "" vs GitHub "backlog"`.
+- Its plan was two actions: `close-item GH-1440 → Completed` and `set-release GH-1451 → backlog`.
+
+Applying the plan changed 1 file, with 4 insertions and 3 deletions:
+- GH-1440: `status` (`planned` → `completed`) and `updated`.
+- GH-1451: `updated`, and a new `release: backlog`.
+
+Nothing else changed. After it, `pmat work sync --check-only` reads **coherent** (127/127).
