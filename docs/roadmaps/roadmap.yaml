@@ -6904,11 +6904,11 @@ roadmap:
   github_issue: 1370
   item_type: task
   title: pmat roadmap sync as the ONE writer of docs/roadmaps/roadmap.yaml from a tracked per-ticket store; work add writes only the fragment; sync --check for the parity gate
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-15T16:00:34Z
-  updated: 2026-09-15T16:00:34Z
+  updated: 2026-09-26T02:15:38.583928438+00:00
   spec: null
   acceptance_criteria:
   - 'See paiml/paiml-mcp-agent-toolkit#1370. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
@@ -7350,22 +7350,6 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: GH-1428
-  github_issue: 1428
-  item_type: task
-  title: 'fleet-bins: WONT-RUN on paiml/paiml-mcp-agent-toolkit'
-  status: planned
-  priority: medium
-  assigned_to: null
-  created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
 - id: GH-1430
   github_issue: 1430
   item_type: task
@@ -7441,6 +7425,40 @@ roadmap:
   updated: 2026-09-25T17:15:34.389965525+00:00
   spec: null
   acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-1428
+  github_issue: 1428
+  item_type: task
+  title: 'fleet-bins: WONT-RUN on paiml/paiml-mcp-agent-toolkit'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T02:24:26Z
+  updated: 2026-09-26T06:30:37.217404315+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Refs #1428; infra PMAT-1055 fleet-bins'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1417
+  github_issue: 1445
+  item_type: task
+  title: 'deps: dependabot patch-updates group (12 crates, Cargo.lock only) — folded with PMAT-1428 into the release/deps batch'
+  status: completed
+  priority: low
+  assigned_to: null
+  created: 2026-09-25T09:42:23Z
+  updated: 2026-09-26T06:30:37.217404315+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Refs #1417 (dependabot PR, folded)'
   phases: []
   subtasks: []
   estimated_effort: null

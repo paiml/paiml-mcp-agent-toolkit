@@ -188,3 +188,30 @@ exactly as the refutation doctrine tells it to — "a receipt claim is not backe
 and failed the PR. The fix is this section, not a narrower lane brief: a standing ticket's
 receipt goes stale the moment its round lands, and the round after it must make the receipt
 current *before* it asks for a verdict. Written by the release-3.41.1 orchestrator session.
+
+## lifecycle-14 — PMAT-1370 completed (#1443 merged)
+
+*(An earlier round.)*
+
+PR #1443 merged as `c234a75cb` and GitHub closed #1370. CB-2113 forbids a ticket completing
+itself, so #1443 left the PMAT-1370 row at `inprogress`. That left one CB-2115 ORPHAN-ROADMAP
+finding on master.
+
+Measured at HEAD=`c234a75cb`, origin/master=`c234a75cb`, behind=0: `pmat work sync --direction github-to-yaml --dry-run` reported
+129 open items against 128 open issues, one finding (`ORPHAN-ROADMAP PMAT-1370: #1370 is closed`), and a plan of exactly
+one action, `close-item PMAT-1370 #1370 → Completed`. Applying it changed 1 file with 2
+insertions and 2 deletions: the row's `status` (`inprogress` → `completed`) and `updated`, and nothing else. After it,
+`pmat work sync --check-only` reads **128/128 coherent**.
+
+## lifecycle-15 — PMAT-1428 and GH-1417 completed (#1438 merged)
+
+**Current round.** This section describes the diff under review. Everything above it describes earlier rounds.
+
+PR #1438 merged as `26cef2be3`. It folded #1432 (PMAT-1428, the glibc 2.35 floor for linux-gnu assets) and the dependabot patch-updates group #1417 (GH-1417, tracked by issue #1445). The PR body said "Refs" rather than using a closing keyword, and CB-2113 forbids a ticket completing itself, so both rows stayed open. After the merge, #1428 and #1445 were closed with a comment naming #1438.
+
+Measured at HEAD=`26cef2be3`, origin/master=`26cef2be3`, behind=0:
+- `pmat work sync --direction github-to-yaml --dry-run` reported 129 open items against 127 open issues.
+- It found two findings: `ORPHAN-ROADMAP GH-1417: #1445 is closed` and `ORPHAN-ROADMAP PMAT-1428: #1428 is closed`.
+- Its plan was exactly those two `close-item` actions.
+
+Applying the plan changed 1 file, with 4 insertions and 4 deletions: each row's `status` (`inprogress`/`planned` → `completed`) and `updated`, and nothing else. After it, `pmat work sync --check-only` reads **coherent**.

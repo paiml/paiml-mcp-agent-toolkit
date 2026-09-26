@@ -13,6 +13,13 @@ name: Binary Release
 # Targets: 4 Linux (x86_64/aarch64 × musl/gnu). musl variants are static
 # and ideal for Docker / scratch / Alpine; gnu variants are smaller and
 # match typical Linux distributions. aarch64 builds use `cross`.
+#
+# glibc floor (#1428): a gnu binary runs only where glibc is at least the
+# version it was linked against. ubuntu-latest carries 2.39, so a plain
+# `cargo build` there is WONT-RUN on 2.35 hosts. A gnu row names its floor
+# in `glibc:`; x86_64 links against it with cargo-zigbuild, aarch64 is
+# already below it in the cross image, and both rows assert it on the
+# built binary before anything is uploaded.
 
 on:
   release:
@@ -47,12 +54,14 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             cross: false
+            glibc: '2.35'
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
             cross: true
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             cross: true
+            glibc: '2.35'
           - target: aarch64-apple-darwin
             os: macos-latest
             cross: false
@@ -101,6 +110,28 @@ jobs:
             | tar xz -C "$dir"
           echo "$dir" >> "$GITHUB_PATH"
 
+      # zig 0.13.0 + cargo-zigbuild 0.22.3, each checked against its sha256
+      # (ziglang.org/download/index.json; the release's own .sha256 files).
+      - name: Install zig + cargo-zigbuild
+        if: matrix.glibc && !matrix.cross
+        run: |
+          dir="$RUNNER_TEMP/zigbuild"
+          mkdir -p "$dir" && cd "$dir"
+          arch=$(uname -m)
+          case "$arch" in
+            x86_64)  zig_sha=d45312e61ebcc48032b77bc4cf7fd6915c11fa16e4aad116b66c9468211230ea
+                     czb_sha=6a014d41ba41ca4b69ca4c4819b9f78a41b0197b5d486904e31c1244e3686190 ;;
+            aarch64) zig_sha=041ac42323837eb5624068acd8b00cd5777dac4cf91179e8dad7a7e90dd0c556
+                     czb_sha=6f86a78cf8be222ac08a68a944ffd8a1ef9d455c504097f0ffbd8bcfbe434a55 ;;
+            *) echo "::error::no pinned zig for $arch"; exit 1 ;;
+          esac
+          curl -fsSLo zig.tar.xz "https://ziglang.org/download/0.13.0/zig-linux-${arch}-0.13.0.tar.xz"
+          curl -fsSLo czb.tar.xz "https://github.com/rust-cross/cargo-zigbuild/releases/download/v0.22.3/cargo-zigbuild-${arch}-unknown-linux-gnu.tar.xz"
+          printf '%s  zig.tar.xz\n%s  czb.tar.xz\n' "$zig_sha" "$czb_sha" | sha256sum -c -
+          tar xJf zig.tar.xz && tar xJf czb.tar.xz
+          echo "$dir/zig-linux-${arch}-0.13.0" >> "$GITHUB_PATH"
+          echo "$dir/cargo-zigbuild-${arch}-unknown-linux-gnu" >> "$GITHUB_PATH"
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
@@ -110,8 +141,24 @@ jobs:
         run: |
           if [ "${{ matrix.cross }}" = "true" ]; then
             cross build --release --bin pmat --target ${{ matrix.target }} --locked
+          elif [ -n "${{ matrix.glibc }}" ]; then
+            # `<triple>.<glibc>` links against that glibc; the binary still lands in target/<triple>/.
+            cargo zigbuild --release --bin pmat --target ${{ matrix.target }}.${{ matrix.glibc }} --locked
           else
             cargo build --release --bin pmat --target ${{ matrix.target }} --locked
+          fi
+
+      - name: Assert the glibc floor
+        if: matrix.glibc
+        run: |
+          bin="target/${{ matrix.target }}/release/pmat"
+          floor='${{ matrix.glibc }}'
+          max=$(readelf --dyn-syms -W "$bin" | grep -oE 'GLIBC_[0-9]+(\.[0-9]+)+' | sed 's/^GLIBC_//' | sort -Vu | tail -n 1 || true)
+          if [ -z "$max" ]; then echo "::error::read no GLIBC symbol versions from $bin"; exit 1; fi
+          echo "highest GLIBC symbol version in $bin: $max (floor $floor)"
+          if [ "$(printf '%s\n%s\n' "$max" "$floor" | sort -V | tail -n 1)" != "$floor" ]; then
+            echo "::error::$bin needs GLIBC_$max, above the $floor floor — WONT-RUN on older hosts (#1428)"
+            exit 1
           fi
 
       - name: Strip binary
