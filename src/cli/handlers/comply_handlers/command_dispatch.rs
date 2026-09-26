@@ -15,7 +15,11 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             include_project,
             checks,
             github_snapshot,
+            list,
         } => {
+            if list {
+                return print_rule_list(format);
+            }
             let result = handle_check(&path, strict, failures_only, format, &checks, github_snapshot.as_deref()).await;
             if !include_project.is_empty() {
                 if let Err(e) = check_file_health_multi(&path, &include_project) {

@@ -7272,11 +7272,11 @@ roadmap:
   github_issue: 1422
   item_type: task
   title: 'ONT-11: pmat maps pv verdicts in ci / gate, exposes comply rule ids, one monotone armed_gates rule — no ontology types (ONT-001 R-21)'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-26T17:34:42.023927277+00:00
   spec: null
   acceptance_criteria: []
   phases: []

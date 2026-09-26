@@ -237,40 +237,28 @@ pub(crate) fn check_pv_lint(project_path: &Path, thresholds: &ComplyThresholds) 
         }
     };
 
-    // Step 1: Run pv lint on resolved contracts dir — avoids scanning work/ YAMLs
-    let (pv_passed, pv_error_detail) = std::process::Command::new("pv")
-        .args(["lint", &contracts_dir.display().to_string(), "--format", "json"])
-        .current_dir(project_path)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output()
-        .map(|o| {
-            let json_val = String::from_utf8(o.stdout)
-                .ok()
-                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok());
-            let passed = json_val
-                .as_ref()
-                .and_then(|v| v.get("passed")?.as_bool())
-                .unwrap_or(false);
-            // Extract first error finding for diagnostics
-            let detail = json_val
-                .as_ref()
-                .and_then(|v| v.get("findings")?.as_array())
-                .and_then(|arr| arr.iter().find(|f| {
-                    f.get("severity").and_then(|s| s.as_str()) == Some("error")
-                        || f.get("severity").and_then(|s| s.as_str()) == Some("ERROR")
-                }))
-                .and_then(|f| f.get("message").and_then(|m| m.as_str()))
-                .map(|s| s.to_string())
-                .or_else(|| {
-                    // Fallback: first line of stderr
-                    String::from_utf8(o.stderr).ok()
-                        .and_then(|s| s.lines().next().map(|l| l.trim().to_string()))
-                        .filter(|s| !s.is_empty())
-                });
-            (passed, detail)
-        })
-        .unwrap_or((false, None));
+    // Step 1: Run pv lint on resolved contracts dir — avoids scanning work/ YAMLs.
+    // An Unknown or an error is a Fail whatever `pv_lint_is_error` says: it is
+    // not a verdict, so it can never read as one (ONT-11, #1422).
+    let (pv_passed, pv_error_detail) = match run_pv_lint(project_path, &contracts_dir) {
+        PvLintRun::Judged { passed, detail } => (passed, detail),
+        PvLintRun::Unknown(line) => {
+            return ComplianceCheck {
+                name: "CB-1201: PV Lint".into(),
+                status: CheckStatus::Fail,
+                message: format!("PV Lint could not decide (Unknown, not armed) — {line}"),
+                severity: Severity::Error,
+            };
+        }
+        PvLintRun::Errored(line) => {
+            return ComplianceCheck {
+                name: "CB-1201: PV Lint".into(),
+                status: CheckStatus::Fail,
+                message: format!("PV Lint errored — {line}"),
+                severity: Severity::Error,
+            };
+        }
+    };
 
     // Step 2: Check test fulfillment
     let (total_refs, existing, missing) = count_contract_test_refs(project_path);
@@ -313,3 +301,98 @@ pub(crate) fn check_pv_lint(project_path: &Path, thresholds: &ComplyThresholds) 
     }
 }
 
+
+/// What one `pv lint` run said. pv's exit code is its verdict: 0 pass,
+/// 1 reject, 2 Unknown (a `decline:` line), 3 error (an `error:` line)
+/// (ONT-001 R-21, #1422).
+#[derive(Debug, Clone, PartialEq)]
+enum PvLintRun {
+    /// pv judged the contracts; `passed` is its JSON `passed` field.
+    Judged {
+        passed: bool,
+        detail: Option<String>,
+    },
+    /// pv could not decide (exit 2), or could not be run at all.
+    Unknown(String),
+    /// pv itself failed (exit 3).
+    Errored(String),
+}
+
+fn run_pv_lint(project_path: &Path, contracts_dir: &Path) -> PvLintRun {
+    match std::process::Command::new("pv")
+        .args(["lint", &contracts_dir.display().to_string(), "--format", "json"])
+        .current_dir(project_path)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output()
+    {
+        Ok(o) => classify_pv_lint(
+            o.status.code(),
+            &String::from_utf8_lossy(&o.stdout),
+            &String::from_utf8_lossy(&o.stderr),
+        ),
+        Err(e) => pv_lint_spawn_error(&e),
+    }
+}
+
+/// A `pv` that cannot be started has decided nothing.
+fn pv_lint_spawn_error(e: &std::io::Error) -> PvLintRun {
+    if e.kind() == std::io::ErrorKind::NotFound {
+        PvLintRun::Unknown("decline: pv not found".into())
+    } else {
+        PvLintRun::Unknown(format!("decline: pv could not be run: {e}"))
+    }
+}
+
+fn classify_pv_lint(code: Option<i32>, stdout: &str, stderr: &str) -> PvLintRun {
+    match code {
+        Some(2) => {
+            return PvLintRun::Unknown(tagged_line("decline:", stderr, stdout).unwrap_or_else(
+                || "decline: pv exited 2 without a decline: line".into(),
+            ))
+        }
+        Some(3) => {
+            return PvLintRun::Errored(
+                tagged_line("error:", stderr, stdout)
+                    .unwrap_or_else(|| "error: pv exited 3 without an error: line".into()),
+            )
+        }
+        _ => {}
+    }
+    let json_val = serde_json::from_str::<serde_json::Value>(stdout).ok();
+    let passed = json_val
+        .as_ref()
+        .and_then(|v| v.get("passed")?.as_bool())
+        .unwrap_or(false);
+    // Extract first error finding for diagnostics
+    let detail = json_val
+        .as_ref()
+        .and_then(|v| v.get("findings")?.as_array())
+        .and_then(|arr| {
+            arr.iter().find(|f| {
+                f.get("severity").and_then(|s| s.as_str()) == Some("error")
+                    || f.get("severity").and_then(|s| s.as_str()) == Some("ERROR")
+            })
+        })
+        .and_then(|f| f.get("message").and_then(|m| m.as_str()))
+        .map(|s| s.to_string())
+        .or_else(|| {
+            // Fallback: first line of stderr
+            stderr
+                .lines()
+                .next()
+                .map(|l| l.trim().to_string())
+                .filter(|s| !s.is_empty())
+        });
+    PvLintRun::Judged { passed, detail }
+}
+
+/// The first line of stderr, then stdout, that starts with `tag`, verbatim.
+fn tagged_line(tag: &str, stderr: &str, stdout: &str) -> Option<String> {
+    stderr
+        .lines()
+        .chain(stdout.lines())
+        .map(str::trim)
+        .find(|l| l.starts_with(tag))
+        .map(str::to_string)
+}
