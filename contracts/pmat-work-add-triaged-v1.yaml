@@ -1,0 +1,65 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-26"
+  author: PAIML Engineering
+  references:
+    - "issue 1440 — FLOW-03 (delta over #1370): work add refuses without --epic and --priority, and creates the GitHub sub-issue link"
+    - "paiml/infra docs/specifications/FLOW-001-fleet-flow-rules.md (FR-3 / F-3b, §0.4); epic paiml/infra#1114"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    A ticket is filed triaged or not at all. `pmat work add` refuses, before
+    anything is read from or written to GitHub or the roadmap, an add with no
+    priority, no kind, or no epic. The epic must be an open issue labelled
+    `epic` in the same repository, and the ticket must have a GitHub issue to
+    link under it. The sub-issue link is made before the row is written, so a
+    row carrying `epic: E` always has the link behind it; an existing link is
+    not made twice. The row carries `epic:`, the priority, and a `kind:<x>`
+    label. No milestone is required: defects and P0 are never refused for lack
+    of one.
+  contract: pmat-work-add-triaged
+  status: draft
+equations:
+  refuse_untriaged:
+    formula: "add(t) = refuse if priority(t) = none or kind(t) = none or epic(t) = none or issue(t) = none or not (open(epic) and labelled(epic, 'epic'))"
+    domain: "pmat work add"
+    codomain: "Result<(), Refusal>"
+    invariants:
+      - "no --priority: refused, roadmap and fragments byte-identical, no GitHub call"
+      - "no --kind and no kind:<x> tag: refused; --kind and a kind tag that disagree: refused"
+      - "no --epic: refused; --epic naming a closed issue, a pull request, or an issue without the `epic` label: refused, nothing linked"
+      - "--epic without --github-issue: refused (there is no issue to link)"
+      - "P0..P3 are accepted spellings of critical/high/medium/low"
+      - "no milestone is asked for, so a P0 or a defect is never refused for lack of one"
+    preconditions: []
+  link_then_row:
+    formula: "add(t) accepted => linked(epic(t), issue(t)) before row(t) is written, and row(t).epic = epic(t)"
+    domain: "pmat work add, accepted"
+    codomain: bool
+    invariants:
+      - "the sub-issue link exists on GitHub before the row or fragment is written"
+      - "a failed link writes nothing"
+      - "an issue already under the epic is not linked again"
+      - "the row carries epic: <E>, the priority, and the label kind:<x>"
+    preconditions: []
+falsification:
+  - condition: "work add succeeds without --priority, without a kind, or without --epic"
+    severity: P0
+    action: reject_push
+  - condition: "a row records epic: E while the ticket's issue is not a sub-issue of E"
+    severity: P0
+    action: reject_push
+  - condition: "a closed, unlabelled or pull-request epic is accepted"
+    severity: P1
+    action: reject_push
+falsification_tests:
+  - id: refuse_untriaged
+    rule: "unit tests work_add_triaged_* (src/tests/work_add_triaged_tests.rs); arms 1-7 of scripts/work-add-triaged-audit.sh"
+    prediction: "3.41.1 binary: an add with no --epic and no priority succeeds (arm 1 red); fixed binary: every refusal arm refuses and writes nothing"
+    if_fails: "an untriaged ticket is indistinguishable from a triaged one"
+    test: "PMAT=<binary> bash scripts/work-add-triaged-audit.sh"
+  - id: link_then_row
+    rule: "arms 8-10 of scripts/work-add-triaged-audit.sh (a stub `gh` on PATH records every call)"
+    prediction: "3.41.1 binary: no link call is ever made; fixed binary: exactly one POST sub_issues, and the row carries epic:"
+    if_fails: "the roadmap and GitHub disagree about which epic a ticket is under"
+    test: "PMAT=<binary> bash scripts/work-add-triaged-audit.sh"

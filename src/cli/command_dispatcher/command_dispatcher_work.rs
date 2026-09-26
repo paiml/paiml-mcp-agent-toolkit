@@ -200,6 +200,8 @@ impl CommandDispatcher {
                 title,
                 description,
                 priority,
+                epic,
+                kind,
                 tags,
                 path,
                 github,
@@ -211,7 +213,11 @@ impl CommandDispatcher {
                 work_handlers::handle_work_add(
                     title.clone(),
                     description.clone(),
-                    *priority,
+                    work_handlers::WorkAddTriage {
+                        epic: *epic,
+                        priority: *priority,
+                        kind: *kind,
+                    },
                     tags.clone(),
                     path.clone(),
                     *github,

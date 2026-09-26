@@ -160,7 +160,7 @@ async fn add_full(
     github_issue: Option<u64>,
     sequential_id: bool,
 ) -> anyhow::Result<()> {
-    crate::cli::handlers::work_handlers::handle_work_add(
+    crate::cli::handlers::work_handlers::add_ticket_row(
         title.to_string(),
         None,
         crate::cli::commands::WorkPriority::Medium,
@@ -171,6 +171,7 @@ async fn add_full(
         id.map(str::to_string),
         github_issue,
         sequential_id,
+        None, // no epic: these tests pin the row writer, not the FLOW-03 gate
     )
     .await
 }

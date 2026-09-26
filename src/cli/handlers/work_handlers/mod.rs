@@ -22,6 +22,10 @@ use crate::services::roadmap_service::RoadmapService;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
+// FLOW-03 (#1440): the triage gate and the epic sub-issue link for `work add`.
+pub mod work_add_triage;
+pub use work_add_triage::WorkAddTriage;
+
 include!("ticket_handlers.rs");
 
 // PMAT-674: duplicate-id and parse-location guards for `pmat work validate`.
@@ -96,6 +100,12 @@ mod work_migrate_lock_tests;
 #[cfg(test)]
 #[path = "../../../tests/work_add_single_authority_tests.rs"]
 mod work_add_single_authority_tests;
+// FLOW-03 (#1440): the triage gate and the epic link, against a fake GitHub.
+// Registered here for the same reason as its siblings: nothing reaches
+// `src/tests/lib.rs`. `cargo test --lib -- work_add_triaged` runs them.
+#[cfg(test)]
+#[path = "../../../tests/work_add_triaged_tests.rs"]
+mod work_add_triaged_tests;
 
 // PMAT-675: the release path a tag takes, pinned as data (see the file header).
 #[cfg(test)]
