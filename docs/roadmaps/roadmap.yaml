@@ -7464,3 +7464,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: GH-1448
+  github_issue: 1448
+  item_type: task
+  title: 'fleet-bins: WONT-RUN on paiml/paiml-mcp-agent-toolkit'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-26T08:03:30.164943333+00:00
+  updated: 2026-09-26T08:03:30.164943333+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

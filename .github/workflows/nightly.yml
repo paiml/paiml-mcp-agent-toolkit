@@ -95,8 +95,10 @@ jobs:
       - name: Ensure target is installed
         run: rustup target add ${{ matrix.target }}
 
-      # zig 0.13.0 + cargo-zigbuild 0.22.3, each checked against its sha256
+      # zig 0.13.0 + cargo-zigbuild 0.23.4, each checked against its sha256
       # (ziglang.org/download/index.json; the release's own .sha256 files).
+      # 0.23 is the floor: 0.22.3 passes rustc's aarch64 `-Wl,--fix-cortex-a53-843419`
+      # to zig cc, which rejects it (rust-cross/cargo-zigbuild#451; nightly run 36227537517).
       - name: Install zig + cargo-zigbuild
         if: matrix.glibc
         run: |
@@ -105,13 +107,13 @@ jobs:
           arch=$(uname -m)
           case "$arch" in
             x86_64)  zig_sha=d45312e61ebcc48032b77bc4cf7fd6915c11fa16e4aad116b66c9468211230ea
-                     czb_sha=6a014d41ba41ca4b69ca4c4819b9f78a41b0197b5d486904e31c1244e3686190 ;;
+                     czb_sha=6b69963040818ca1ef573d8135a95aa902e17cf7f873c32c6426642dadfe7f59 ;;
             aarch64) zig_sha=041ac42323837eb5624068acd8b00cd5777dac4cf91179e8dad7a7e90dd0c556
-                     czb_sha=6f86a78cf8be222ac08a68a944ffd8a1ef9d455c504097f0ffbd8bcfbe434a55 ;;
+                     czb_sha=25cf2cdc6cde848b33a761ff2cf46d1efe6ba7e1adfc4b6f3ee2d570cacb5419 ;;
             *) echo "::error::no pinned zig for $arch"; exit 1 ;;
           esac
           curl -fsSLo zig.tar.xz "https://ziglang.org/download/0.13.0/zig-linux-${arch}-0.13.0.tar.xz"
-          curl -fsSLo czb.tar.xz "https://github.com/rust-cross/cargo-zigbuild/releases/download/v0.22.3/cargo-zigbuild-${arch}-unknown-linux-gnu.tar.xz"
+          curl -fsSLo czb.tar.xz "https://github.com/rust-cross/cargo-zigbuild/releases/download/v0.23.4/cargo-zigbuild-${arch}-unknown-linux-gnu.tar.xz"
           printf '%s  zig.tar.xz\n%s  czb.tar.xz\n' "$zig_sha" "$czb_sha" | sha256sum -c -
           tar xJf zig.tar.xz && tar xJf czb.tar.xz
           echo "$dir/zig-linux-${arch}-0.13.0" >> "$GITHUB_PATH"
