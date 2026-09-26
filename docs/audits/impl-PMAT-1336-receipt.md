@@ -235,3 +235,5 @@ Measured at HEAD = origin/master = `350f1adf4`, behind=0:
 - Its plan was one `close-item` action.
 
 Applying the plan changed 1 file, with 2 insertions and 2 deletions: the row's `status` (`planned` → `completed`) and `updated`. After it, `pmat work sync --check-only` reads **coherent**.
+
+**Addendum: GH-1451 filed.** CI on the first head (`a7fcdc7a7`) went red on CB-2115 with `ORPHAN-GITHUB #1451`, an external issue opened at 09:39Z, after the sync above. Re-measured at origin/master `350f1adf4`, behind=0: 127 open items against 128 open issues, one finding, and a one-action plan (`create-item #1451 → GH-1451`). Applying it adds 16 lines, which is a new `planned` row with no other change. `--check-only` reads **coherent**. The row only files the issue. Triaging it (keep or close as not planned) is left to the operator.

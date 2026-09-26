@@ -7480,3 +7480,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: GH-1451
+  github_issue: 1451
+  item_type: task
+  title: Add paiml-mcp-agent-toolkit to awesome-ai-plugins?
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-26T10:03:49.215855853+00:00
+  updated: 2026-09-26T10:03:49.215855853+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
