@@ -9,17 +9,26 @@ use std::path::PathBuf;
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub enum RoadmapCommands {
-    /// Render a canonical ROADMAP.yaml from the work store + ledger states
-    /// (MACS F6 / Component 32). Deterministic: ids sorted, generation
-    /// timestamp excluded from the content hash, source snapshot ids included.
+    /// The ONE writer of docs/roadmaps/roadmap.yaml (#1370). When
+    /// docs/roadmaps/entries/ exists, regenerate roadmap.yaml from its base and the
+    /// per-ticket fragments `pmat work add` writes — deterministic, under the
+    /// roadmap lock; run it on the default branch, never in a pull request.
+    /// Otherwise render a canonical ROADMAP.yaml (MACS F6 / Component 32): ids
+    /// sorted, generation timestamp excluded from the content hash.
+    /// Exit: 0 ok, 1 drift (--check), 2 an input that cannot be read.
     Sync {
         /// Optional pinned GitHub export sha to fold into the content hash
         #[arg(long)]
         gh_snapshot: Option<String>,
 
-        /// Print the render to stdout instead of writing ROADMAP.yaml
+        /// Print the render to stdout instead of writing it
         #[arg(long)]
         dry_run: bool,
+
+        /// Write nothing; exit 1 when what is on disk is not the render (naming the
+        /// first differing row), 2 when an input cannot be read. The parity gate.
+        #[arg(long, conflicts_with = "dry_run")]
+        check: bool,
 
         /// Project path (default: current directory)
         #[arg(short = 'p', long = "path", default_value = ".")]
