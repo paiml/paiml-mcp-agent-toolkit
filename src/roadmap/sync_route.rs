@@ -106,26 +106,39 @@ pub fn run_fragment_sync(
 #[must_use]
 pub fn check_work_store(project_path: &Path, gh_snapshot: Option<String>) -> AggregateReport {
     let path = project_path.join("ROADMAP.yaml");
-    let committed = match std::fs::read_to_string(&path) {
-        Ok(text) => text,
-        Err(e) => {
-            return report(
-                2,
-                format!(
-                    "FAIL read {}: {e} — an input that cannot be read is never a pass\n",
-                    path.display()
-                ),
-            )
-        }
-    };
-    let rows = match read_work_store_rows(project_path) {
-        Ok(rows) => rows,
-        Err(e) => return report(2, format!("FAIL {e:#}\n")),
-    };
+    match committed_and_rendered(project_path, &path, gh_snapshot) {
+        Ok((committed, rendered)) => parity_report(&path, &committed, &rendered),
+        Err(failed) => failed,
+    }
+}
+
+/// The committed `ROADMAP.yaml` and its re-render, or the exit-2 report for an
+/// input that could not be read.
+fn committed_and_rendered(
+    project_path: &Path,
+    path: &Path,
+    gh_snapshot: Option<String>,
+) -> Result<(String, String), AggregateReport> {
+    let committed = std::fs::read_to_string(path).map_err(|e| {
+        report(
+            2,
+            format!(
+                "FAIL read {}: {e} — an input that cannot be read is never a pass\n",
+                path.display()
+            ),
+        )
+    })?;
+    let rows =
+        read_work_store_rows(project_path).map_err(|e| report(2, format!("FAIL {e:#}\n")))?;
     let snapshot = gh_snapshot.or_else(|| recorded_field(&committed, "gh_snapshot:"));
     let generated_at = recorded_field(&committed, "generated_at:").unwrap_or_default();
     let rendered = render_roadmap(&RoadmapSources::new(rows, snapshot), &generated_at);
-    match first_differing_line(&committed, &rendered) {
+    Ok((committed, rendered))
+}
+
+/// Exit 0 when the committed file is the render, 1 naming the first differing line.
+fn parity_report(path: &Path, committed: &str, rendered: &str) -> AggregateReport {
+    match first_differing_line(committed, rendered) {
         None => report(0, format!("ok  {} == render\n", path.display())),
         Some(line) => report(
             1,
