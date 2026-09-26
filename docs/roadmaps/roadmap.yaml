@@ -7434,11 +7434,11 @@ roadmap:
   github_issue: 1428
   item_type: task
   title: 'fleet-bins: WONT-RUN on paiml/paiml-mcp-agent-toolkit'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-25T02:24:26Z
-  updated: 2026-09-25T02:24:31.678286867+00:00
+  updated: 2026-09-26T06:30:37.217404315+00:00
   spec: null
   acceptance_criteria:
   - 'Refs #1428; infra PMAT-1055 fleet-bins'
@@ -7451,11 +7451,11 @@ roadmap:
   github_issue: 1445
   item_type: task
   title: 'deps: dependabot patch-updates group (12 crates, Cargo.lock only) — folded with PMAT-1428 into the release/deps batch'
-  status: planned
+  status: completed
   priority: low
   assigned_to: null
   created: 2026-09-25T09:42:23Z
-  updated: 2026-09-25T09:42:23Z
+  updated: 2026-09-26T06:30:37.217404315+00:00
   spec: null
   acceptance_criteria:
   - 'Refs #1417 (dependabot PR, folded)'
