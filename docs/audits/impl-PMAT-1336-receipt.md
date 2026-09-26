@@ -188,3 +188,17 @@ exactly as the refutation doctrine tells it to — "a receipt claim is not backe
 and failed the PR. The fix is this section, not a narrower lane brief: a standing ticket's
 receipt goes stale the moment its round lands, and the round after it must make the receipt
 current *before* it asks for a verdict. Written by the release-3.41.1 orchestrator session.
+
+## lifecycle-14 — PMAT-1370 completed (#1443 merged)
+
+**Current round.** This section describes the diff under review. Everything above it describes earlier rounds.
+
+PR #1443 merged as `c234a75cb` and GitHub closed #1370. CB-2113 forbids a ticket completing
+itself, so #1443 left the PMAT-1370 row at `inprogress`. That left one CB-2115 ORPHAN-ROADMAP
+finding on master.
+
+Measured at HEAD=`c234a75cb`, origin/master=`c234a75cb`, behind=0: `pmat work sync --direction github-to-yaml --dry-run` reported
+129 open items against 128 open issues, one finding (`ORPHAN-ROADMAP PMAT-1370: #1370 is closed`), and a plan of exactly
+one action, `close-item PMAT-1370 #1370 → Completed`. Applying it changed 1 file with 2
+insertions and 2 deletions: the row's `status` (`inprogress` → `completed`) and `updated`, and nothing else. After it,
+`pmat work sync --check-only` reads **128/128 coherent**.
