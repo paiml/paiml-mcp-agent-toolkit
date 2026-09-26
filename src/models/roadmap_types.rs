@@ -142,6 +142,13 @@ pub struct RoadmapItem {
     /// `skip_serializing_if` so every existing entry round-trips unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub release: Option<String>,
+
+    /// The epic issue this ticket is filed under (FLOW-03, #1440). `pmat work
+    /// add` writes it only after linking the ticket's issue under that epic as
+    /// a GitHub sub-issue, so the two agree. `default` + `skip_serializing_if`
+    /// so every existing entry round-trips unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub epic: Option<u64>,
 }
 
 fn default_item_type() -> ItemType {

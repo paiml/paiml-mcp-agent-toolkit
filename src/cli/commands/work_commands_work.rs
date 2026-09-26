@@ -12,9 +12,26 @@ pub enum WorkCommands {
         #[arg(short, long)]
         description: Option<String>,
 
-        /// Priority level
-        #[arg(short, long, value_enum, default_value = "medium")]
-        priority: WorkPriority,
+        /// Priority, required: P0|P1|P2|P3 (or critical|high|medium|low)
+        ///
+        /// FLOW-03 (#1440): an add without a priority is refused, not defaulted.
+        #[arg(short, long, value_enum)]
+        priority: Option<WorkPriority>,
+
+        /// The epic this ticket is filed under, required: an open issue labelled
+        /// `epic` in this repository
+        ///
+        /// FLOW-03 (#1440): before the row is written, the ticket's issue
+        /// (`--github-issue`) is linked under the epic as a GitHub sub-issue, and
+        /// the row records `epic: <N>`.
+        #[arg(long, value_name = "ISSUE")]
+        epic: Option<u64>,
+
+        /// Kind of work, required unless a `kind:<x>` tag gives it
+        ///
+        /// Recorded as the label `kind:<x>` (FLOW-03, #1440).
+        #[arg(long, value_enum)]
+        kind: Option<WorkKind>,
 
         /// Tags (comma-separated)
         #[arg(short, long)]
