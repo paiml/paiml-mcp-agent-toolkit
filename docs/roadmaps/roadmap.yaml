@@ -7350,22 +7350,6 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: GH-1428
-  github_issue: 1428
-  item_type: task
-  title: 'fleet-bins: WONT-RUN on paiml/paiml-mcp-agent-toolkit'
-  status: planned
-  priority: medium
-  assigned_to: null
-  created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
 - id: GH-1430
   github_issue: 1430
   item_type: task
@@ -7449,7 +7433,7 @@ roadmap:
 - id: PMAT-1428
   github_issue: 1428
   item_type: task
-  title: nightly/release linux-gnu assets need glibc <= 2.35 (fleet floor) — build on ubuntu-22.04
+  title: 'fleet-bins: WONT-RUN on paiml/paiml-mcp-agent-toolkit'
   status: inprogress
   priority: medium
   assigned_to: null
@@ -7464,7 +7448,7 @@ roadmap:
   labels: []
   notes: null
 - id: GH-1417
-  github_issue: 1417
+  github_issue: 1445
   item_type: task
   title: 'deps: dependabot patch-updates group (12 crates, Cargo.lock only) — folded with PMAT-1428 into the release/deps batch'
   status: planned
