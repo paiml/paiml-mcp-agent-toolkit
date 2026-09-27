@@ -22,6 +22,18 @@ the same unscoped invocation. This PR changes what `pmat comply check` decides a
 does not change `.github/workflows/`, and a job that runs these rules without `continue-on-error`
 belongs to EV-15, or to a follow-up ticket that names the workflow change.
 
+The row's text for (c), verbatim (paiml/infra `docs/specifications/paiml-ontology.md`, ONT-11 RED):
+
+> `CB-<next>: contracts-armed-gates-monotone`: `armed_gates[]` or `armed_shapes[]` in
+> `contracts/lint-baseline.json` shorter at HEAD than at the merge-base → `Fail` naming each
+> dropped entry; no `contracts/` → `Skip` with `decline: no contracts/`, never a vacuous `Pass`;
+> a repo that has never armed → `Pass` (arming is opt-in).
+
+So the rule compares two lists of names, and the row names both lists. "No shape logic" in the
+issue refers to shape evaluation (SHACL, Σ). CB-2118 reads `armed_shapes[]` as strings and never
+evaluates a shape. §3.9 of the same spec gives the key-absent default: "Key absent → every shape
+is armed".
+
 ## What changed
 
 | Part | Where | Behaviour |

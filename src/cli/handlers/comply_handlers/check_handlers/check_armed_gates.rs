@@ -11,6 +11,15 @@ const ARMED_GATES_BASELINE: &str = "contracts/lint-baseline.json";
 /// CB-2118: no entry of `armed_gates[]` or `armed_shapes[]` is dropped between
 /// the merge-base and HEAD.
 pub(crate) fn check_armed_gates_monotone(project_path: &Path) -> ComplianceCheck {
+    let base_ref = std::env::var("GITHUB_BASE_REF")
+        .ok()
+        .filter(|s| !s.trim().is_empty());
+    armed_gates_monotone_against(project_path, base_ref)
+}
+
+/// CB-2118 with the base branch given: `Some(b)` is what `GITHUB_BASE_REF`
+/// names on a pull request; `None` falls back to the local candidates.
+fn armed_gates_monotone_against(project_path: &Path, base_ref: Option<String>) -> ComplianceCheck {
     let name = "CB-2118: contracts-armed-gates-monotone";
     let check = |status, message: String, severity| ComplianceCheck {
         name: name.into(),
@@ -26,7 +35,7 @@ pub(crate) fn check_armed_gates_monotone(project_path: &Path) -> ComplianceCheck
         );
     }
     let head_text = std::fs::read_to_string(project_path.join(ARMED_GATES_BASELINE)).ok();
-    let base_text = match armed_gates_merge_base(project_path) {
+    let base_text = match armed_gates_merge_base(project_path, base_ref) {
         Ok(base) => git_show_file(project_path, &base, ARMED_GATES_BASELINE),
         Err(why) => {
             return check(
@@ -121,13 +130,10 @@ fn armed_names(v: &serde_json::Value, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// The merge-base of HEAD with the base branch: `GITHUB_BASE_REF` when set,
+/// The merge-base of HEAD with the base branch: `base_ref` when given,
 /// else `origin/HEAD`, `origin/master`, `origin/main`, `master`, `main`.
-fn armed_gates_merge_base(project_path: &Path) -> Result<String, String> {
-    let env_base = std::env::var("GITHUB_BASE_REF")
-        .ok()
-        .filter(|s| !s.trim().is_empty());
-    let mut candidates: Vec<String> = match env_base {
+fn armed_gates_merge_base(project_path: &Path, base_ref: Option<String>) -> Result<String, String> {
+    let mut candidates: Vec<String> = match base_ref {
         Some(b) => vec![b.clone(), format!("origin/{b}")],
         None => {
             let mut c = Vec::new();

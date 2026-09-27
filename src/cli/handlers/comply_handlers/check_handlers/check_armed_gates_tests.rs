@@ -99,7 +99,13 @@ mod armed_gates_tests {
         git(p, &["checkout", "-qb", "topic"]);
         std::fs::write(p.join(ARMED_GATES_BASELINE), r#"{"armed_gates":["validate"],"armed_shapes":["ont-shapes-v1"]}"#)
             .expect("write");
-        let c = check_armed_gates_monotone(p);
+        // The base ref is pinned, not read from this process's environment:
+        // on a CI runner GITHUB_BASE_REF names the PR's base, not this fixture's.
+        let c = armed_gates_monotone_against(p, None);
+        assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
+        assert!(c.message.contains("armed_gates: audit"), "{}", c.message);
+        // A pull request's base, as GITHUB_BASE_REF names it, finds the same merge-base.
+        let c = armed_gates_monotone_against(p, Some("master".into()));
         assert_eq!(c.status, CheckStatus::Fail, "{}", c.message);
         assert!(c.message.contains("armed_gates: audit"), "{}", c.message);
     }
