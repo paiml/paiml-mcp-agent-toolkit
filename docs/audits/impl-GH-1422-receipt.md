@@ -66,7 +66,14 @@ is armed".
   - `--self-test` is RED against a no-op pmat.
 - The row's probe, verbatim, on this branch: `rc=1`, the CB-1201 jq is `true`, and the `--list` jq is `true`.
 - Lib tests pass (25): `pv_lint_verdict_tests` (6), `armed_gates_tests` (10, including a git-fixture merge-base arm and F-31), and `tests_select_groups` (including the two new drift tests).
-- `docs/status/comply-enforcement-ledger.md` was regenerated with `pmat comply ledger --write`. It gains the CB-2118 row.
+- `docs/status/comply-enforcement-ledger.md` was regenerated with `pmat comply ledger --write`. It gains the CB-2118 row. The quorum brief leaves out `docs/status/*` as derived output (`quorum-review.sh`'s
+  `':(exclude)docs/status/*'`), so the row is reproduced here verbatim, as
+  `git diff master...HEAD -- docs/status/comply-enforcement-ledger.md` shows it. NEUTERED is the
+  ledger's own verdict, and it agrees with "Not done here":
+
+  ```
+| CB-2118 | contracts-armed-gates-monotone | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_armed_gates.rs:23` |
+  ```
 
 ## Not done here
 
