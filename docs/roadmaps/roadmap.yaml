@@ -4318,11 +4318,11 @@ roadmap:
   github_issue: 1274
   item_type: task
   title: 'publish poka-yoke: make publish-from-tag TAG=vX.Y.Z publishes only from a detached worktree of the tag; .claude/agent-memory/ gitignored; --locked on release-verify'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-10T18:18:08.278327787+00:00
+  updated: 2026-09-27T15:55:36Z
   spec: null
   acceptance_criteria:
   - '3.38.0: cargo publish --dry-run --locked refused the tree because untracked .claude/agent-memory/ counts as dirty; the operator moved it aside by hand. Structural fix: Makefile target publish-from-tag TAG= that refuses when TAG is absent or not on master, git worktree add --detach, env -u CARGO_REGISTRY_TOKEN cargo publish --dry-run --locked then cargo publish --locked, worktree removed. Belt: .claude/agent-memory/ in .gitignore; --locked on release-verify''s cargo install. Falsifier: with an untracked file in the main tree the target still dry-runs clean from the worktree; a non-existent tag exits 2 before any cargo call; dropping --detach → the zero-untracked-files assertion RED.'
