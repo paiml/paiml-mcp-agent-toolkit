@@ -7224,11 +7224,11 @@ roadmap:
   github_issue: 1419
   item_type: task
   title: 'pmat hooks install fails in a git worktree: ''Not a directory (os error 20)'' — .git is a FILE there, so $repo/.git/hooks does not exist'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-09-27T09:04:14Z
   spec: null
   acceptance_criteria: []
   phases: []
