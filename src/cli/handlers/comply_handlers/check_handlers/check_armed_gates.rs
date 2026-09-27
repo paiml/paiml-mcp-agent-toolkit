@@ -61,7 +61,9 @@ fn judge_armed_gates(base: Option<&str>, head: Option<&str>) -> (CheckStatus, St
     for key in ["armed_gates", "armed_shapes"] {
         // `armed_shapes` absent means every shape is armed (ONT-001 §3.9), so
         // removing the key widens arming; `armed_gates` has no such default.
-        if key == "armed_shapes" && head_v.get(key).is_none() {
+        // That default belongs to a baseline that exists: deleting the file
+        // drops every shape the merge-base armed.
+        if key == "armed_shapes" && head.is_some() && head_v.get(key).is_none() {
             continue;
         }
         let head_names = armed_names(&head_v, key);

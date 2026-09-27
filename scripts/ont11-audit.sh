@@ -94,6 +94,10 @@ printf '{"armed_gates":["validate"],"armed_shapes":[]}\n' > "$G/contracts/lint-b
 cb2118 "$G"
 [ "$rc" = 1 ] && row_is Fail "armed_gates: audit" && row_is Fail "armed_shapes: ont-shapes-v1"
 arm "10 dropping a gate and a shape fails naming both; exit 1 (exit $rc)" $?
+rm -f "${G:?}/contracts/lint-baseline.json"
+cb2118 "$G"
+[ "$rc" = 1 ] && row_is Fail "armed_gates: validate" && row_is Fail "armed_shapes: ont-shapes-v1"
+arm "10b deleting the baseline drops every gate and shape, naming each; exit 1 (exit $rc)" $?
 cb2118 "$T/bare"
 row_is Skip "decline: no contracts/"
 arm "11 no contracts/ is Skip 'decline: no contracts/' (exit $rc)" $?

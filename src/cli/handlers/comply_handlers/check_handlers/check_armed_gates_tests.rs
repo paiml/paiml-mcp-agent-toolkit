@@ -29,6 +29,12 @@ mod armed_gates_tests {
         let (status, msg) = judge_armed_gates(Some(BASE), None);
         assert_eq!(status, CheckStatus::Fail, "{msg}");
         assert!(msg.contains("armed_gates: validate") && msg.contains("armed_gates: audit"), "{msg}");
+        // The key-absent default is for a baseline that exists, not a deleted one.
+        assert!(msg.contains("armed_shapes: ont-shapes-v1"), "{msg}");
+        let shapes_only = r#"{"armed_shapes":["ont-shapes-v1"]}"#;
+        let (status, msg) = judge_armed_gates(Some(shapes_only), None);
+        assert_eq!(status, CheckStatus::Fail, "{msg}");
+        assert!(msg.contains("armed_shapes: ont-shapes-v1"), "{msg}");
     }
 
     #[test]
