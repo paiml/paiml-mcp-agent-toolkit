@@ -11,7 +11,19 @@ monotone armed_gates rule — no ontology types (ONT-001 R-21)"*. Scope as the i
 The row's current text (paiml/infra `docs/specifications/paiml-ontology.md`, ONT-11, v4.15)
 refines this, and the row is what was built. Where the issue and the row differ, the row wins:
 the list is `pmat comply check --list --format json` (the probe calls that spelling), and (a)
-lands in CB-1201, the one pv call `pmat comply check` makes.
+lands in CB-1201, the one pv call `pmat comply check` makes. The row's RED and Change lines,
+verbatim (v4.15):
+
+> RED (v4.15 — measured on pmat 3.41.1, `edc845e19`; v4.3–v4.14 named `pmat proof gate` and
+> `pmat comply --list-rules`, which do not exist): CB-1201 "PV Lint" is the one pv call
+> `pmat comply check` makes (`check_pv_enforcement.rs`) …
+
+> Change: CB-1201's exit-code mapping in `check_pv_enforcement.rs`; `--list` on `comply check`;
+> one rule `CB-<next>: contracts-armed-gates-monotone` … Nothing else.
+
+The issue was filed from v4.14, which is why it still says `comply --list-rules`. The row's own
+probe and F-31 call `pmat comply check --list`, and that is what this PR adds. `--list-rules` is
+not added as a second spelling of the same list.
 
 **What this row does not do: make a required check run these rules.** The row says so itself
 (v4.15, measured): CB-1201 is the one pv call `pmat comply check` makes, "and no required check
@@ -38,7 +50,7 @@ is armed".
 
 | Part | Where | Behaviour |
 |---|---|---|
-| (a) | `check_pv_enforcement.rs` (`run_pv_lint`, `classify_pv_lint`) | pv exit 2 gives `Fail` carrying pv's `decline:` line verbatim. Exit 3 gives `Fail` carrying the `error:` line. pv absent while `contracts/` exists gives `Fail` `decline: pv not found`, where it used to be a silent pass. Exit 0/1 keep the JSON + `pv_lint_is_error` policy, and no `contracts/` is still `Skip`. `comply check` exits 1 on any `Fail`. |
+| (a) | `check_pv_enforcement.rs` (`run_pv_lint`, `classify_pv_lint`) | pv exit 2 gives `Fail` carrying pv's `decline:` line verbatim. Exit 3 gives `Fail` carrying the `error:` line. pv absent while `contracts/` exists gives `Fail` `decline: pv not found`. It used to fall into the same `!pv_passed` branch as a lint failure, which is `Warn` "PV Lint failed" unless `pv_lint_is_error` (default false), and `comply check` exits 0 on a `Warn`. Exit 0/1 keep the JSON + `pv_lint_is_error` policy, and no `contracts/` is still `Skip`. `comply check` exits 1 on any `Fail`. |
 | (b) | `check.rs` (`RuleDecl`, `declared_rules`, `print_rule_list`), `misc_commands_comply.rs` (`--list`) | The group registry `--checks` validates against now holds `(id, title)` pairs. `--list --format json` prints `[{id, group, name}]` from it (174 rules), and text format prints one tab-separated row per rule. No second list exists: `every_emitted_rule_carries_its_declared_title` fails when a group emits a title other than the one it declares, and `every_declared_rule_has_one_title` fails on an empty title or a duplicate id. |
 | (c) | `check_armed_gates.rs` (CB-2118 `contracts-armed-gates-monotone`), default severity Error | Compares `armed_gates[]` / `armed_shapes[]` in `contracts/lint-baseline.json` at HEAD to the merge-base (`GITHUB_BASE_REF`, else origin/HEAD, origin/master, origin/main, master, main). Any dropped entry gives `Fail` naming each. Removing the `armed_shapes` key from a baseline that exists is not a drop, because absent means every shape is armed (ONT-001 §3.9). Deleting the file drops every gate and shape the merge-base armed. No `contracts/` gives `Skip` `decline: no contracts/`, and a repo that never armed gives `Pass`. The rule never requires arming. |
 | F-31 | `ont11_f31_no_source_file_uses_the_contracts_library` + audit arm 13 | RED if any `src/**/*.rs` contains `aprender_contracts::`. `aprender-contracts` stays a dev-dependency only. |
