@@ -46,34 +46,14 @@ pub(crate) fn check_armed_gates_monotone(project_path: &Path) -> ComplianceCheck
 
 /// Judge the two versions of the baseline. `None` = the file is absent there.
 fn judge_armed_gates(base: Option<&str>, head: Option<&str>) -> (CheckStatus, String) {
-    let parse = |text: Option<&str>, at: &str| -> Result<serde_json::Value, String> {
-        match text {
-            None => Ok(serde_json::Value::Object(Default::default())),
-            Some(t) => serde_json::from_str(t)
-                .map_err(|e| format!("{ARMED_GATES_BASELINE} at {at} is not JSON: {e}")),
-        }
-    };
-    let (base_v, head_v) = match (parse(base, "the merge-base"), parse(head, "HEAD")) {
+    let (base_v, head_v) = match (
+        parse_armed_baseline(base, "the merge-base"),
+        parse_armed_baseline(head, "HEAD"),
+    ) {
         (Ok(b), Ok(h)) => (b, h),
         (Err(e), _) | (_, Err(e)) => return (CheckStatus::Fail, e),
     };
-    let mut dropped = Vec::new();
-    for key in ["armed_gates", "armed_shapes"] {
-        // `armed_shapes` absent means every shape is armed (ONT-001 §3.9), so
-        // removing the key widens arming; `armed_gates` has no such default.
-        // That default belongs to a baseline that exists: deleting the file
-        // drops every shape the merge-base armed.
-        if key == "armed_shapes" && head.is_some() && head_v.get(key).is_none() {
-            continue;
-        }
-        let head_names = armed_names(&head_v, key);
-        dropped.extend(
-            armed_names(&base_v, key)
-                .into_iter()
-                .filter(|n| !head_names.contains(n))
-                .map(|n| format!("{key}: {n}")),
-        );
-    }
+    let dropped = dropped_armed_entries(&base_v, &head_v, head.is_some());
     if !dropped.is_empty() {
         return (
             CheckStatus::Fail,
@@ -85,13 +65,47 @@ fn judge_armed_gates(base: Option<&str>, head: Option<&str>) -> (CheckStatus, St
     }
     let armed = armed_names(&head_v, "armed_gates").len() + armed_names(&head_v, "armed_shapes").len();
     if armed == 0 && base.is_none() {
-        (CheckStatus::Pass, "never armed (arming is opt-in)".into())
-    } else {
-        (
-            CheckStatus::Pass,
-            format!("no armed gate or shape dropped since the merge-base ({armed} armed at HEAD)"),
-        )
+        return (CheckStatus::Pass, "never armed (arming is opt-in)".into());
     }
+    (
+        CheckStatus::Pass,
+        format!("no armed gate or shape dropped since the merge-base ({armed} armed at HEAD)"),
+    )
+}
+
+/// The baseline as JSON; an absent file reads as an empty object.
+fn parse_armed_baseline(text: Option<&str>, at: &str) -> Result<serde_json::Value, String> {
+    match text {
+        None => Ok(serde_json::Value::Object(Default::default())),
+        Some(t) => serde_json::from_str(t)
+            .map_err(|e| format!("{ARMED_GATES_BASELINE} at {at} is not JSON: {e}")),
+    }
+}
+
+/// Every `key: name` armed at the merge-base and not at HEAD.
+fn dropped_armed_entries(
+    base_v: &serde_json::Value,
+    head_v: &serde_json::Value,
+    head_exists: bool,
+) -> Vec<String> {
+    let mut dropped = Vec::new();
+    for key in ["armed_gates", "armed_shapes"] {
+        // `armed_shapes` absent means every shape is armed (ONT-001 §3.9), so
+        // removing the key widens arming; `armed_gates` has no such default.
+        // That default belongs to a baseline that exists: deleting the file
+        // drops every shape the merge-base armed.
+        if key == "armed_shapes" && head_exists && head_v.get(key).is_none() {
+            continue;
+        }
+        let head_names = armed_names(head_v, key);
+        dropped.extend(
+            armed_names(base_v, key)
+                .into_iter()
+                .filter(|n| !head_names.contains(n))
+                .map(|n| format!("{key}: {n}")),
+        );
+    }
+    dropped
 }
 
 /// The entries of the list at `key`, each as a string (a non-string entry as

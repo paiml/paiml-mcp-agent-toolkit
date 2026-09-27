@@ -46,3 +46,8 @@ belongs to EV-15, or to a follow-up ticket that names the workflow change.
 - **Required-check wiring.** No workflow runs CB-1201 or CB-2118 in a required job (see above). The rules decide and exit correctly when run. Making a required check run them is EV-15's job.
 - **PVL-001 EV-15** is unbound (EV-14, infra#961, is still open). Nothing here needs it: pmat reads only pv's exit code and its `decline:` / `error:` line.
 - CB-1201's reported severity is still set by `.pmat.yaml` (unconfigured means Warning). The exit code does not depend on it: any `Fail` makes `comply check` exit 1.
+
+## CI fixes after the first run on the PR
+
+- **CB-200 (+1 below A).** `judge_armed_gates` graded A-. It is now split into `parse_armed_baseline`, `dropped_armed_entries` and the verdict. The branch then measures 1680, exactly the baseline, with the same binary that measures master at 1680. `check_pv_lint` now builds its rows through `pv_lint_row`, and maps a run through `pv_lint_verdict`. Its behaviour and its grade (A-, as on master) are unchanged.
+- **CB-2115 (not this ticket's defect).** #1419 was closed as a duplicate of #1285 at 2026-09-26T18:02Z while `roadmap.yaml` still listed GH-1419 `planned`, which turns `traceability` red for every PR. `pmat work edit GH-1419 -s cancelled` records the close (#1285's fix is PR #1453), and CB-2115 then passes (126 ↔ 126).
