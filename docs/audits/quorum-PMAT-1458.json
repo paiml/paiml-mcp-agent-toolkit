@@ -1,0 +1,468 @@
+{
+  "ticket": "PMAT-1458",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 397 commit(s); judged against origin/master",
+  "head": "83d1150dc98dc5310109e5112c77d4779ecc4d72",
+  "diff_sha256": "fcee70b544d0e9d27be51a927417545e2368eb972c65abdf93954fb41f3d4af6",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 11000,
+  "prompt_sha256": "ed5bddf7454cc2b45d7c941b3e5bac4fbc31bfeef0b0961234ec68ddac05a0c0",
+  "author": {
+    "model": "claude-opus-5-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff faithfully implements PMAT-1458 (Release 3.42.0), matching all claims in the receipt exactly. `Cargo.toml`, `Cargo.lock`, `CHANGELOG.md`, and `roadmap.yaml` are correctly updated. No tests assert the opposite, no gates are weakened, and no unrequested features are present.",
+      "findings": [],
+      "raw_bytes": 1878,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "role": "independent",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini",
+      "executor": "agy",
+      "brief_sha256": "ed5bddf7454cc2b45d7c941b3e5bac4fbc31bfeef0b0961234ec68ddac05a0c0",
+      "trace": {
+        "input_sha256": "4259740cb89704bbc534dd9b4183a70671a2d95a577442f55418cd0a4eb0a429",
+        "output_sha256": "5c163d38261f09bd63f9959f4ebd55117fcfe55d93be278e3005e20145183c77",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "gemini-3.1-pro-high",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "gemini-3.1-pro-high",
+            "family": "gemini",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "This is a clean release commit for pmat 3.42.0 (PMAT-1458). It touches exactly 5 files: Cargo.toml (version bump 3.41.1→3.42.0), Cargo.lock (same), CHANGELOG.md (new 3.42.0 section under [Unreleased]), docs/roadmaps/roadmap.yaml (PMAT-678→completed, new PMAT-1458 and GH-1457 entries), and docs/audits/impl-PMAT-1458-receipt.md (the receipt itself). No source code, no tests, no config, no gates are touched. Every receipt claim is backed by the diff. The version bump is a minor bump, consistent with the receipt's justification (new rule CB-2118, new flag --list, new FLOW-03 behaviour = additive features). The CHANGELOG covers the PRs merged since 3.41.1. I found nothing that refutes the ticket.",
+      "findings": [
+        {
+          "claim": "Version bumped from 3.41.1 to 3.42.0 — exactly the one-line change the receipt claims.",
+          "file": "Cargo.toml",
+          "grounding": "cited",
+          "line": 4
+        },
+        {
+          "claim": "pmat package version bumped from 3.41.1 to 3.42.0 — no other Cargo.lock lines changed.",
+          "file": "Cargo.lock",
+          "grounding": "measured",
+          "line": 4998
+        },
+        {
+          "claim": "New section ## [3.42.0] - 2026-09-28 placed immediately after ## [Unreleased], with [Unreleased] left empty as expected for a release commit.",
+          "file": "CHANGELOG.md",
+          "grounding": "cited",
+          "line": 10
+        },
+        {
+          "claim": "CHANGELOG entries cover ONT-11 (#1454), FLOW-03 (#1446), roadmap sync (#1443), validate-book (#1442), release assets (#1438, #1449), publish-from-tag (#1456), and lifecycle PRs. These map to the PRs between 3.41.1 and this release.",
+          "file": "CHANGELOG.md",
+          "grounding": "cited",
+          "line": 14
+        },
+        {
+          "claim": "PMAT-678 (github_issue 1274) status changed from inprogress to completed, matching receipt claim that #1274 was closed by #1456.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 4321
+        },
+        {
+          "claim": "New PMAT-1458 entry: status inprogress, priority high, epic 1457, label kind:code — consistent with receipt claim of filing via `pmat work add --epic 1457 --priority P1 --kind code`.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 7500
+        },
+        {
+          "claim": "New GH-1457 entry: 'Epic: pmat release train', status planned. Receipt explains this epic was created because FLOW-03 requires tickets under epics.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 7518
+        },
+        {
+          "claim": "PMAT-1458 and GH-1457 entries omit the `release` field. This is consistent with existing schema — only 45 of 416 items have it; it is optional.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "measured",
+          "line": 7534
+        },
+        {
+          "claim": "Receipt file is a 40-line markdown document identical to the receipt provided in the review request. It is documentation-only, carries no code or behaviour, and follows the project's existing pattern (25+ receipt files in docs/audits/).",
+          "file": "docs/audits/impl-PMAT-1458-receipt.md",
+          "grounding": "measured",
+          "line": 1
+        },
+        {
+          "claim": "No files changed beyond the 5 expected (Cargo.toml, Cargo.lock, CHANGELOG.md, roadmap.yaml, receipt). Verified via `git diff --name-only origin/master...HEAD`.",
+          "file": "CHANGELOG.md",
+          "grounding": "measured",
+          "line": 1
+        }
+      ],
+      "raw_bytes": 9120,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-opus-4-6-thinking",
+      "model_measured": "claude-opus-4-6-thinking",
+      "model_source": "measured",
+      "family": "claude",
+      "executor": "agy",
+      "brief_sha256": "ed5bddf7454cc2b45d7c941b3e5bac4fbc31bfeef0b0961234ec68ddac05a0c0",
+      "trace": {
+        "input_sha256": "0c7d96dc456e456f990d9831442917046093c525dcf86485dd82c6a89864d693",
+        "output_sha256": "88afa2c0d6541bad1a156a7c992de05606d565fe5c2b92d471a58d6a1abf01f2",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-opus-4-6-thinking",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-opus-4-6-thinking",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Release commit v3.42.0 correctly updates Cargo.toml/Cargo.lock, adds comprehensive CHANGELOG entry covering all six merged feature PRs (ONT-11, FLOW-03, roadmap sync, validate-book, release assets, publish-from-tag), and updates roadmap with PMAT-678 completed and PMAT-1458 filed under epic GH-1457 with correct priority/kind. All receipt requirements met; no scope violations.",
+      "findings": [],
+      "raw_bytes": 1674,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-haiku-4-5",
+      "model_measured": "claude-haiku-4-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "ed5bddf7454cc2b45d7c941b3e5bac4fbc31bfeef0b0961234ec68ddac05a0c0",
+      "trace": {
+        "input_sha256": "78ce7689c8f66ffba90a150a3736c95481c12a21cb3923455903e64fd233fb57",
+        "output_sha256": "3e1976591d1e8cd7073c1dabb0741b5a63238e169a4c56de0a311ad44af2c1d7",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-haiku-4-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-haiku-4-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "CHANGELOG.md",
+      "line": 1,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "No files changed beyond the 5 expected (Cargo.toml, Cargo.lock, CHANGELOG.md, roadmap.yaml, receipt). Verified via `git diff --name-only origin/master...HEAD`."
+      ]
+    },
+    {
+      "file": "CHANGELOG.md",
+      "line": 10,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "New section ## [3.42.0] - 2026-09-28 placed immediately after ## [Unreleased], with [Unreleased] left empty as expected for a release commit."
+      ]
+    },
+    {
+      "file": "CHANGELOG.md",
+      "line": 14,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "CHANGELOG entries cover ONT-11 (#1454), FLOW-03 (#1446), roadmap sync (#1443), validate-book (#1442), release assets (#1438, #1449), publish-from-tag (#1456), and lifecycle PRs. These map to the PRs between 3.41.1 and this release."
+      ]
+    },
+    {
+      "file": "Cargo.lock",
+      "line": 4998,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "pmat package version bumped from 3.41.1 to 3.42.0 — no other Cargo.lock lines changed."
+      ]
+    },
+    {
+      "file": "Cargo.toml",
+      "line": 4,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Version bumped from 3.41.1 to 3.42.0 — exactly the one-line change the receipt claims."
+      ]
+    },
+    {
+      "file": "docs/audits/impl-PMAT-1458-receipt.md",
+      "line": 1,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Receipt file is a 40-line markdown document identical to the receipt provided in the review request. It is documentation-only, carries no code or behaviour, and follows the project's existing pattern (25+ receipt files in docs/audits/)."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 4321,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-678 (github_issue 1274) status changed from inprogress to completed, matching receipt claim that #1274 was closed by #1456."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 7500,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "New PMAT-1458 entry: status inprogress, priority high, epic 1457, label kind:code — consistent with receipt claim of filing via `pmat work add --epic 1457 --priority P1 --kind code`."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 7518,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "New GH-1457 entry: 'Epic: pmat release train', status planned. Receipt explains this epic was created because FLOW-03 requires tickets under epics."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 7534,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-1458 and GH-1457 entries omit the `release` field. This is consistent with existing schema — only 45 of 416 items have it; it is optional."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "fallback": {
+    "same_family_width": 2,
+    "chain": [
+      {
+        "model": "gemini-3.1-pro-high",
+        "family": "gemini",
+        "disposition": "configured"
+      },
+      {
+        "model": "claude-opus-4-6-thinking",
+        "family": "claude",
+        "disposition": "configured"
+      },
+      {
+        "model": "claude-haiku-4-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-sonnet-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-opus-5-5",
+        "family": "claude",
+        "disposition": "excluded-self-review",
+        "why": "the author's own model id (claude-opus-5-5) — a model never reviews its own diff, at any width (R-15a identity bar)"
+      },
+      {
+        "model": "qwen3.5",
+        "family": "qwen",
+        "disposition": "not-run",
+        "why": "no quorum.local_lane in the config — the aprender lane has no model to load"
+      }
+    ],
+    "precheck": [
+      {
+        "family": "gemini",
+        "model": "gemini-3.1-pro-high",
+        "probe": 1,
+        "outcome": "live"
+      },
+      {
+        "family": "claude",
+        "model": "claude-opus-4-6-thinking",
+        "probe": 1,
+        "outcome": "live"
+      }
+    ],
+    "degraded": null,
+    "prah": {
+      "source": "install-receipt",
+      "path": "/home/noah/.claude/skills/paiml-implement/bin/prah"
+    },
+    "bucket": {
+      "ledger": "/home/noah/.local/state/paiml-implement/agy-bucket.jsonl",
+      "window_s": 18000,
+      "pace": "off",
+      "buckets": {
+        "claude-gpt": {
+          "bucket": "claude-gpt",
+          "budget": 0,
+          "basis": "ledger: the calls served before the first 429 of the latest window that reached one",
+          "window_start": null,
+          "window_calls": 0,
+          "window_429": 0,
+          "hour_calls": 0,
+          "share": 1,
+          "want": 2,
+          "state": "empty",
+          "reason": "agy bucket claude-gpt is empty: 0 calls in this window reach its budget 0 (ledger: the calls served before the first 429 of the latest window that reached one)"
+        },
+        "gemini": {
+          "bucket": "gemini",
+          "budget": 86,
+          "basis": "[U] default 30, raised to the 86 calls a window has made without a 429; no window reached one",
+          "window_start": 1790541151,
+          "window_calls": 22,
+          "window_429": 0,
+          "hour_calls": 0,
+          "share": 17,
+          "want": 2,
+          "state": "open",
+          "reason": ""
+        }
+      },
+      "closed": []
+    }
+  },
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "cheap_seat": "claude-haiku-4-5",
+  "canary": {
+    "shape": "canary",
+    "max_brief_bytes": 24576,
+    "brief_bytes": 11000
+  },
+  "advisory_lane": {
+    "state": "answered",
+    "counts": false,
+    "row": {
+      "Verdict": {
+        "verdict": "FAIL",
+        "cell": "gx10-cuda",
+        "backend": "cuda"
+      }
+    },
+    "verdict": "FAIL",
+    "why": null,
+    "served_by": "gx10-cuda",
+    "gpu_proof": {
+      "used_gpu_probe": true,
+      "server_holds_gpu": true,
+      "used_gpu_source": "completions probe (chat omits used_gpu, aprender#4146)",
+      "trace_lines": [
+        "3340528, 309 MiB"
+      ]
+    },
+    "apr": "0.70.0",
+    "apr_binary_sha256": "6b2a7dc66c38adcca20b315beac70a1a31e7bd0af2a1cc5c2a7730ca6086d417",
+    "apr_tag": "v0.70.0-dev.3990584f0",
+    "apr_commit": "3990584f0bf5af6bca34ea9298df92177f3ef79a",
+    "apr_build_why": null,
+    "model": "/home/noah/data/models/Qwen3.5-4B-Q4_K_M.gguf",
+    "model_sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+    "rc": 0,
+    "wall_s": 7,
+    "collected_s": 208,
+    "budget_s": 172,
+    "budget_basis": "ledger: 2 x p95 86 s over 34 gx10-cuda Verdict rows",
+    "brief": {
+      "bytes": 11000,
+      "sent_bytes": 11169,
+      "max_bytes": 196608
+    },
+    "trace": {
+      "input_sha256": "cf527ff0da7d71238b5fe5a1db5917c93b4486416a33a6dad55bf407de3e36a6",
+      "raw": "advisory.json"
+    },
+    "attempts": [
+      {
+        "host": "gx10",
+        "ok": true,
+        "wall_s": 7,
+        "used_gpu": true,
+        "ts": "2026-09-27T22:58:53.860Z",
+        "wall_ms": 6825,
+        "request_id": "01a0e517-beff-71d9-99b1-cc271d8adc1e",
+        "load1": 27.31,
+        "cold": false
+      }
+    ],
+    "ledger": "/home/noah/.local/state/paiml-implement/advisory-ledger.jsonl",
+    "raw": "advisory.json",
+    "agrees_with_counted": false,
+    "counted": "PASS"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5-5/claude same_family=2/2"
+  }
+}
