@@ -1,7 +1,10 @@
 # Implementation receipt — GH-1422 (ONT-001 row ONT-11, R-21, falsifier F-31)
 
-Issue #1422: *"ONT-11: pmat maps pv verdicts in ci / gate, exposes comply rule ids, one
-monotone armed_gates rule — no ontology types (ONT-001 R-21)"*. Scope as the issue states it:
+Issue #1422, as filed from ONT-001 v4.14: *"ONT-11: pmat maps pv verdicts in ci / gate, exposes
+comply rule ids, one monotone armed_gates rule — no ontology types (ONT-001 R-21)"*. It is now
+retitled to the v4.15 row (issue comment 5855543456, and `roadmap.yaml` in this PR): *"ONT-11: pmat
+comply check maps pv verdicts (CB-1201), lists rule ids (--list), one monotone armed_gates rule — no
+ontology types (ONT-001 R-21, v4.15)"*. Scope as the issue body, unchanged since v4.14, states it:
 
 > - (a) The `ci / gate` wrapper maps pv exit 2 (`Unknown`) to non-arming RED and surfaces the `decline:` line.
 > - (b) `pmat comply --list-rules --format json` exposes rule ids, so contracts can `resolves: comply-rule`.
