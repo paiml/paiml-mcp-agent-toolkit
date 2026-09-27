@@ -11,7 +11,16 @@ monotone armed_gates rule — no ontology types (ONT-001 R-21)"*. Scope as the i
 The row's current text (paiml/infra `docs/specifications/paiml-ontology.md`, ONT-11, v4.15)
 refines this, and the row is what was built. Where the issue and the row differ, the row wins:
 the list is `pmat comply check --list --format json` (the probe calls that spelling), and (a)
-lands in CB-1201, the rule `ci / gate` runs.
+lands in CB-1201, the one pv call `pmat comply check` makes.
+
+**What this row does not do: make a required check run these rules.** The row says so itself
+(v4.15, measured): CB-1201 is the one pv call `pmat comply check` makes, "and no required check
+runs it — pmat's `ci.yml` `gate` scopes comply to `--checks CB-2113,CB-2115`, `quality-gate.yml`'s
+unscoped 'Ladder gate' step is `continue-on-error: true` … so the `ci / gate` half is PVL EV-15's
+(sovereign-ci `pv-lint`, fail-closed), not this row's". The same holds for CB-2118, which runs in
+the same unscoped invocation. This PR changes what `pmat comply check` decides and exits with. It
+does not change `.github/workflows/`, and a job that runs these rules without `continue-on-error`
+belongs to EV-15, or to a follow-up ticket that names the workflow change.
 
 ## What changed
 
@@ -34,5 +43,6 @@ lands in CB-1201, the rule `ci / gate` runs.
 
 ## Not done here
 
+- **Required-check wiring.** No workflow runs CB-1201 or CB-2118 in a required job (see above). The rules decide and exit correctly when run. Making a required check run them is EV-15's job.
 - **PVL-001 EV-15** is unbound (EV-14, infra#961, is still open). Nothing here needs it: pmat reads only pv's exit code and its `decline:` / `error:` line.
 - CB-1201's reported severity is still set by `.pmat.yaml` (unconfigured means Warning). The exit code does not depend on it: any `Fail` makes `comply check` exit 1.
