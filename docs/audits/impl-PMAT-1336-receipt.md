@@ -256,3 +256,13 @@ Applying the plan changed 1 file, with 4 insertions and 3 deletions:
 - GH-1451: `updated`, and a new `release: backlog`.
 
 Nothing else changed. After it, `pmat work sync --check-only` reads **coherent** (127/127).
+
+## lifecycle-18: GH-1422 completed (#1454 merged)
+
+#1454 (ONT-11) merged as `fa9373245` and closed #1422. The roadmap row still said `inprogress`, so master's CB-2115 reads `ORPHAN-ROADMAP GH-1422: #1422 is closed`.
+
+Measured at HEAD = origin/master = `fa9373245`, behind=0:
+- `pmat work sync --check-only` reported 126 open items against 125 open issues, with one finding: `ORPHAN-ROADMAP GH-1422`.
+- `pmat work sync --direction github-to-yaml` planned one action, `close-item GH-1422 #1422 → Completed`.
+
+Applying it changed only GH-1422's `status` (`inprogress` → `completed`) and `updated`. After it, `pmat work sync --check-only` reads **coherent** (125/125).
