@@ -64,6 +64,8 @@ arm "5  control: no contracts/ stays Skip, pv is not consulted (exit $rc)" $?
 
 # ── (b) the rule list ───────────────────────────────────────────────────────
 "$PMAT" comply check --list --format json > "$T/rules.json" 2>/dev/null; rc=$?
+# -s slurps: `length==1` says stdout is exactly ONE JSON document, and `.[0]` is that
+# document, which must be a flat array of rule objects.
 [ "$rc" = 0 ] && jq -se 'length==1 and (.[0]|type=="array" and length>100
     and all(.[]; (keys|sort)==["group","id","name"])
     and any(.[]; .id=="CB-1201" and .name=="PV Lint")
