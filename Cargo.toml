@@ -1,7 +1,7 @@
 [package]
 name = "pmat"
 default-run = "pmat"
-version = "3.41.1"
+version = "3.42.0"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
@@ -24,7 +24,10 @@ exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions
     # would have made the crate unpublishable, and an oversized upload does
     # not report a size error, it returns a bare 503.
     "/docs/", "/scripts/", "/rust-docs/", "/golden_traces/", "/ROADMAP.md",
-    "/comprehensive_language_test/", "/artifacts/", "/coverage/", "*.crate"]
+    "/comprehensive_language_test/", "/artifacts/", "/coverage/", "*.crate",
+    # CI definitions: no build.rs or include_str! reads them. 3.42.0 measured
+    # 9,385,367 B (8.951 MiB) with them, over the package-size job's 9.0 budget.
+    "/.github/"]
 # PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
 # Instead, use explicit [[test]] declarations for unified test binaries
 autotests = false

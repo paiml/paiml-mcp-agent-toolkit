@@ -4318,11 +4318,11 @@ roadmap:
   github_issue: 1274
   item_type: task
   title: 'publish poka-yoke: make publish-from-tag TAG=vX.Y.Z publishes only from a detached worktree of the tag; .claude/agent-memory/ gitignored; --locked on release-verify'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-06T07:56:01Z
-  updated: 2026-09-27T15:55:36Z
+  updated: 2026-09-27T22:53:52.746563334+00:00
   spec: null
   acceptance_criteria:
   - '3.38.0: cargo publish --dry-run --locked refused the tree because untracked .claude/agent-memory/ counts as dirty; the operator moved it aside by hand. Structural fix: Makefile target publish-from-tag TAG= that refuses when TAG is absent or not on master, git worktree add --detach, env -u CARGO_REGISTRY_TOKEN cargo publish --dry-run --locked then cargo publish --locked, worktree removed. Belt: .claude/agent-memory/ in .gitignore; --locked on release-verify''s cargo install. Falsifier: with an untracked file in the main tree the target still dry-runs clean from the worktree; a non-existent tag exits 2 before any cargo call; dropping --detach → the zero-untracked-files assertion RED.'
@@ -7497,3 +7497,37 @@ roadmap:
   labels: []
   notes: null
   release: backlog
+- id: PMAT-1458
+  github_issue: 1458
+  item_type: task
+  title: 'release: pmat 3.42.0 — ONT-11 comply pv verdicts, FLOW-03 work add, publish-from-tag'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-27T22:53:25Z
+  updated: 2026-09-27T22:53:30Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
+- id: GH-1457
+  github_issue: 1457
+  item_type: task
+  title: 'Epic: pmat release train'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-27T22:53:52.746563334+00:00
+  updated: 2026-09-27T22:53:52.746563334+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
