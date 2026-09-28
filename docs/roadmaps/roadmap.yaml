@@ -7531,21 +7531,3 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-1461
-  github_issue: 1461
-  item_type: task
-  title: 'release.yml prerelease job cannot dispatch the release listeners (HTTP 403, missing actions: write)'
-  status: planned
-  priority: high
-  assigned_to: null
-  created: 2026-09-28T01:25:44Z
-  updated: 2026-09-28T01:25:44Z
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels:
-  - kind:code
-  notes: null
-  epic: 1457
