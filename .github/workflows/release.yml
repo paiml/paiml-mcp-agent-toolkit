@@ -113,6 +113,13 @@ jobs:
     needs: [create-release, gate, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # actions: write lets the default token dispatch the listeners below. With
+    # contents: write alone the dispatch returned HTTP 403 "Resource not
+    # accessible by integration" on v3.41.1 (run 35351362363) and v3.42.0
+    # (run 36362313430), so no binaries were attached (#1461).
+    permissions:
+      contents: write
+      actions: write
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
