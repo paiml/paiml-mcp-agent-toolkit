@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: dtolnay/rust-toolchain@stable
       # Select the `pmat` package by NAME, not `.packages[0]`. This WAS a
       # 2-member workspace (pmat + pmat-dashboard); `cargo metadata` does not
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       # Derive the MSRV from Cargo.toml's declared `rust-version` instead of
       # hardcoding it here. A hardcoded `1.80.0` went stale when v3.19.1 raised
       # the declared MSRV to 1.95.0 (to match modernized deps), so this job
