@@ -83,7 +83,7 @@ jobs:
           echo "Building pmat for $TAG → ${{ matrix.target }}"
 
       - name: Checkout at tag
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ steps.tag.outputs.tag }}
 

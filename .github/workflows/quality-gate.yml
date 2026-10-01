@@ -31,12 +31,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0  # Full history for git churn/evoscore
 
       - name: Checkout provable-contracts (path dep)
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           repository: paiml/provable-contracts
           path: provable-contracts
@@ -179,7 +179,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -206,7 +206,7 @@ jobs:
           cache-on-failure: true
 
       - name: Checkout provable-contracts (path dep)
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           repository: paiml/provable-contracts
           path: provable-contracts
@@ -316,7 +316,7 @@ jobs:
       contents: read
       issues: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
