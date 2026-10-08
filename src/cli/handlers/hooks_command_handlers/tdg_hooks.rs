@@ -2,6 +2,7 @@
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
+use super::hooks_command::resolve_hooks_dir;
 use crate::tdg::TdgHooksConfig;
 use anyhow::{Context, Result};
 use std::fs;
@@ -48,12 +49,19 @@ fn shell_escape(s: &str) -> String {
 pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
     let project_root = std::env::current_dir()?;
     install_tdg_hooks(&project_root).await?;
+    let hooks_dir = resolve_hooks_dir(&project_root);
 
     println!("✅ TDG enforcement hooks installed successfully");
     println!();
     println!("Hooks installed:");
-    println!("  - .git/hooks/pre-commit (TDG quality checks)");
-    println!("  - .git/hooks/post-commit (baseline auto-update)");
+    println!(
+        "  - {} (TDG quality checks)",
+        hooks_dir.join("pre-commit").display()
+    );
+    println!(
+        "  - {} (baseline auto-update)",
+        hooks_dir.join("post-commit").display()
+    );
     println!();
     println!("Configuration: .pmat/tdg-rules.toml");
 
@@ -64,18 +72,19 @@ pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
     let git_dir = project_root.join(".git");
-    let hooks_dir = git_dir.join("hooks");
 
-    // Verify .git directory exists
+    // Verify .git exists (a directory, or a file in a linked worktree)
     if !git_dir.exists() {
         return Err(anyhow::anyhow!(
             "Not a git repository (no .git directory found)"
         ));
     }
 
-    // Create hooks directory if it doesn't exist
+    // Ask git where hooks go: joining .git/hooks fails in a linked worktree (#1285)
+    let hooks_dir = resolve_hooks_dir(project_root);
     if !hooks_dir.exists() {
-        fs::create_dir_all(&hooks_dir).context("Failed to create .git/hooks directory")?;
+        fs::create_dir_all(&hooks_dir)
+            .with_context(|| format!("Failed to create hooks directory {}", hooks_dir.display()))?;
     }
 
     // Load or create TDG configuration

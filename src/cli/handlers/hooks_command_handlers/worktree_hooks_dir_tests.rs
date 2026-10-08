@@ -3,8 +3,13 @@
 //! names a path under a file. These tests build a real `git worktree add` and
 //! resolve the hooks dir the way git does. Every git call runs with the user's
 //! global and system config switched off, because a global `core.hooksPath` would
-//! otherwise decide the answer.
-use super::hooks_command::{git_hooks_dir, HooksCommand};
+//! otherwise decide the answer, and without the `GIT_DIR` family a git hook exports,
+//! because inherited they would point every call at the repository running the hook.
+use super::hooks_command::{
+    fallback_hooks_dir, git_hooks_dir, git_hooks_dir_command, HooksCommand,
+};
+use super::tdg_hooks::install_tdg_hooks;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -13,8 +18,20 @@ const ISOLATED: &[(&str, &str)] = &[
     ("GIT_CONFIG_NOSYSTEM", "1"),
 ];
 
-fn git(dir: &Path, args: &[&str]) {
-    let out = Command::new("git")
+/// Variables that name a repository outright; git exports them to its hooks.
+const REPO_VARS: &[&str] = &[
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+];
+
+fn git<S: AsRef<OsStr> + std::fmt::Debug>(dir: &Path, args: &[S]) {
+    let mut cmd = Command::new("git");
+    for var in REPO_VARS {
+        cmd.env_remove(var);
+    }
+    let out = cmd
         .current_dir(dir)
         .envs(ISOLATED.iter().copied())
         .args([
@@ -109,4 +126,61 @@ fn outside_a_repo_git_gives_no_answer() {
     let inner = tmp.path().join("x");
     std::fs::create_dir(&inner).expect("mkdir");
     assert_eq!(git_hooks_dir(&inner, &envs), None);
+}
+
+#[test]
+fn tdg_install_from_a_linked_worktree_writes_where_git_runs_hooks() {
+    // install_tdg_hooks resolves with the caller's own git config. Pinning
+    // core.hooksPath in the repository (to git's own default) keeps a global value on
+    // the test host from sending the hook outside the temp dir.
+    let (_tmp, main, wt) = repo_with_worktree();
+    let common_hooks = main.join(".git").join("hooks");
+    git(
+        &wt,
+        &[
+            OsStr::new("config"),
+            OsStr::new("core.hooksPath"),
+            common_hooks.as_os_str(),
+        ],
+    );
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(install_tdg_hooks(&wt))
+        .expect("tdg install from a linked worktree");
+    assert!(common_hooks.join("pre-commit").is_file());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_hooks_path_that_is_not_utf8_still_resolves() {
+    use std::os::unix::ffi::OsStrExt;
+    let (_tmp, _main, wt) = repo_with_worktree();
+    let name = OsStr::from_bytes(b"hooks-\xff");
+    git(
+        &wt,
+        &[OsStr::new("config"), OsStr::new("core.hooksPath"), name],
+    );
+    assert_eq!(git_hooks_dir(&wt, ISOLATED), Some(wt.join(name)));
+}
+
+#[test]
+fn without_git_a_linked_worktree_falls_back_to_the_common_hooks_dir() {
+    let (_tmp, main, wt) = repo_with_worktree();
+    let common_hooks = main.join(".git").join("hooks");
+    std::fs::create_dir_all(&common_hooks).expect("mkdir hooks");
+    assert_eq!(canon(&fallback_hooks_dir(&wt)), canon(&common_hooks));
+    assert_eq!(fallback_hooks_dir(&main), common_hooks);
+}
+
+#[test]
+fn the_git_query_drops_an_inherited_repository() {
+    // Inside a git hook GIT_DIR names the repository running the hook, not `dir`.
+    let cmd = git_hooks_dir_command(Path::new("."), &[]);
+    let removed: Vec<&OsStr> = cmd
+        .get_envs()
+        .filter(|(_, value)| value.is_none())
+        .map(|(key, _)| key)
+        .collect();
+    for var in REPO_VARS {
+        assert!(removed.contains(&OsStr::new(var)), "{var} must be removed");
+    }
 }

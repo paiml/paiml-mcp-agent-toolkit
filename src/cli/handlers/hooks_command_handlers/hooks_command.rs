@@ -16,36 +16,89 @@ use std::process::Command;
 ///
 /// Asks git (`git rev-parse --git-path hooks`) rather than joining `.git/hooks`: in a
 /// linked worktree `.git` is a FILE, so the join fails with "Not a directory (os error
-/// 20)" (#1285), and it would also ignore `core.hooksPath`. Falls back to
-/// `<dir>/.git/hooks` only when git itself cannot answer (not a repo, no git binary).
+/// 20)" (#1285), and it would also ignore `core.hooksPath`. Only when git itself
+/// cannot answer (not a repo, no git binary) does it read `.git` by hand.
 pub(crate) fn resolve_hooks_dir(dir: &Path) -> PathBuf {
-    git_hooks_dir(dir, &[]).unwrap_or_else(|| dir.join(".git").join("hooks"))
+    git_hooks_dir(dir, &[]).unwrap_or_else(|| fallback_hooks_dir(dir))
+}
+
+/// Where the hooks go when git cannot answer: `<dir>/.git/hooks`, or, when `.git` is
+/// a `gitdir: <path>` file (a linked worktree), the hooks dir of that git dir's common
+/// dir — the one git would name — instead of a path under a file.
+pub(super) fn fallback_hooks_dir(dir: &Path) -> PathBuf {
+    let dot_git = dir.join(".git");
+    let Some(git_dir) = gitdir_file_target(&dot_git) else {
+        return dot_git.join("hooks");
+    };
+    let common = fs::read_to_string(git_dir.join("commondir"))
+        .map(|text| git_dir.join(text.trim_end_matches(['\n', '\r'])))
+        .unwrap_or(git_dir);
+    common.join("hooks")
+}
+
+/// The git dir a `.git` file points at; `None` unless `dot_git` is such a file.
+fn gitdir_file_target(dot_git: &Path) -> Option<PathBuf> {
+    if !dot_git.is_file() {
+        return None;
+    }
+    let text = fs::read_to_string(dot_git).ok()?;
+    let target = text.lines().next()?.strip_prefix("gitdir: ")?;
+    Some(dot_git.parent()?.join(target))
+}
+
+/// The `git rev-parse --git-path hooks` process for `dir`, with extra `envs`. Git
+/// exports `GIT_DIR` and its family to every hook; inherited, they would answer for
+/// the repository running the hook, not the one containing `dir`, so they are dropped.
+pub(super) fn git_hooks_dir_command(dir: &Path, envs: &[(&str, &str)]) -> Command {
+    let mut cmd = Command::new("git");
+    for var in [
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_COMMON_DIR",
+        "GIT_INDEX_FILE",
+    ] {
+        cmd.env_remove(var);
+    }
+    cmd.args(["rev-parse", "--git-path", "hooks"])
+        .current_dir(dir)
+        .envs(envs.iter().copied());
+    cmd
 }
 
 /// `git rev-parse --git-path hooks` run in `dir`, with extra `envs` for the git process
 /// (tests use them to isolate from the user's global config). A relative answer is
 /// relative to `dir`; older gits print one, so it is joined rather than trusted as-is.
 pub(super) fn git_hooks_dir(dir: &Path, envs: &[(&str, &str)]) -> Option<PathBuf> {
-    let out = Command::new("git")
-        .args(["rev-parse", "--git-path", "hooks"])
-        .current_dir(dir)
-        .envs(envs.iter().copied())
-        .output()
-        .ok()?;
+    let out = git_hooks_dir_command(dir, envs).output().ok()?;
     if !out.status.success() {
         return None;
     }
-    let text = String::from_utf8(out.stdout).ok()?;
-    let answer = text.trim_end_matches(['\n', '\r']);
-    if answer.is_empty() {
-        return None;
-    }
-    let path = PathBuf::from(answer);
+    let path = path_from_git_stdout(out.stdout)?;
     Some(if path.is_absolute() {
         path
     } else {
         dir.join(path)
     })
+}
+
+/// Git prints a path as raw bytes, so on unix a name that is not UTF-8 is still a
+/// path; elsewhere it must be UTF-8. Trailing newlines are not part of it.
+fn path_from_git_stdout(mut bytes: Vec<u8>) -> Option<PathBuf> {
+    while matches!(bytes.last(), Some(b'\n' | b'\r')) {
+        bytes.pop();
+    }
+    if bytes.is_empty() {
+        return None;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStringExt;
+        Some(PathBuf::from(std::ffi::OsString::from_vec(bytes)))
+    }
+    #[cfg(not(unix))]
+    {
+        String::from_utf8(bytes).ok().map(PathBuf::from)
+    }
 }
 
 /// Hooks command implementation
