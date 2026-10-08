@@ -139,7 +139,7 @@ async fn handle_install(
             println!(
                 "  {} Backup created: {}",
                 c::pass(""),
-                c::path(".git/hooks/pre-commit.pmat-backup")
+                c::path(&hooks_cmd.backup_path().display().to_string())
             );
         }
         println!("{}", c::pass(&result.message));

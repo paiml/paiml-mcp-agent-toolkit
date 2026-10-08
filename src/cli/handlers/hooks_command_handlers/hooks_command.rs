@@ -107,6 +107,11 @@ pub struct HooksCommand {
 }
 
 impl HooksCommand {
+    /// Where `install --backup` saves the previous pre-commit hook.
+    pub(super) fn backup_path(&self) -> PathBuf {
+        self.hooks_dir.join("pre-commit.pmat-backup")
+    }
+
     /// Create new hooks command with specified directories
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -138,7 +143,7 @@ impl HooksCommand {
             self.run_interactive_setup()?;
         }
         let hook_path = self.hooks_dir.join("pre-commit");
-        let backup_path = self.hooks_dir.join("pre-commit.pmat-backup");
+        let backup_path = self.backup_path();
 
         // Create hooks directory if it doesn't exist
         fs::create_dir_all(&self.hooks_dir)?;
@@ -196,7 +201,7 @@ impl HooksCommand {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn uninstall(&self, restore_backup: bool) -> Result<HookUninstallResult> {
         let hook_path = self.hooks_dir.join("pre-commit");
-        let backup_path = self.hooks_dir.join("pre-commit.pmat-backup");
+        let backup_path = self.backup_path();
 
         // `install` writes pre-commit AND pre-push, but uninstall only ever
         // touched pre-commit: users who uninstalled were told "Pre-commit hook

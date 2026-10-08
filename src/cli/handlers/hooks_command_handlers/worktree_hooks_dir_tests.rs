@@ -184,3 +184,24 @@ fn the_git_query_drops_an_inherited_repository() {
         assert!(removed.contains(&OsStr::new(var)), "{var} must be removed");
     }
 }
+
+#[test]
+fn the_backup_is_reported_where_it_was_written() {
+    // The success message names `backup_path()`; it must be the file install wrote
+    // in the common hooks dir, not a literal `.git/hooks/...` that a worktree lacks.
+    let (_tmp, main, wt) = repo_with_worktree();
+    let hooks = git_hooks_dir(&wt, ISOLATED).expect("hooks dir");
+    std::fs::create_dir_all(&hooks).expect("mkdir");
+    std::fs::write(hooks.join("pre-commit"), "#!/bin/sh\nexit 0\n").expect("old hook");
+    let cmd = HooksCommand::new(hooks, wt.join("pmat.toml"));
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    let result = rt
+        .block_on(cmd.install(true, true, false, false))
+        .expect("install with backup");
+    assert!(result.backup_created, "{}", result.message);
+    assert!(cmd.backup_path().is_file());
+    assert_eq!(
+        canon(&cmd.backup_path()),
+        canon(&main.join(".git/hooks/pre-commit.pmat-backup"))
+    );
+}
