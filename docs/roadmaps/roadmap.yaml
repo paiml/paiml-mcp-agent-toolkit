@@ -7549,3 +7549,99 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: GH-1472
+  github_issue: 1472
+  item_type: task
+  title: pmat work start hangs on inherited stdin, moves the ticket to InProgress anyway, then refuses it (InProgress → InProgress), and never writes the lock state
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-08T16:05:07.897840792+00:00
+  updated: 2026-10-08T16:05:07.897840792+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1473
+  github_issue: 1473
+  item_type: task
+  title: 'pmat report: --include-executive-summary and --include-recommendations are accepted and change nothing'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-08T16:05:07.897840792+00:00
+  updated: 2026-10-08T16:05:07.897840792+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1474
+  github_issue: 1474
+  item_type: task
+  title: 'pmat context: --format llm-optimized prints the same bytes as --format markdown'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-08T16:05:07.897840792+00:00
+  updated: 2026-10-08T16:05:07.897840792+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1475
+  github_issue: 1475
+  item_type: task
+  title: diff-scoped complexity refuses a merge commit for functions that arrive unchanged from MERGE_HEAD (compares against HEAD only)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-08T16:05:07.897840792+00:00
+  updated: 2026-10-08T16:05:07.897840792+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1476
+  github_issue: 1476
+  item_type: task
+  title: tdg --with-git-context on a file path exits 0 but records no commit that history --commit can read
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-08T16:05:07.897840792+00:00
+  updated: 2026-10-08T16:05:07.897840792+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1481
+  github_issue: 1481
+  item_type: task
+  title: 'pmat query rebuilds the index on every call: the read-write query connection checkpoints context.db after the manifest is saved'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-08T16:05:07.897840792+00:00
+  updated: 2026-10-08T16:05:07.897840792+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
