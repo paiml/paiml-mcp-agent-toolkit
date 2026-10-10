@@ -1,0 +1,21 @@
+# Look-ahead kit for the train after the open one. One slot (la-3.44), branch la-44/wip.
+# The slot proposes tickets through the cop inbox (PROPOSE-TICKET) and never mints them.
+# During a 3.43.0 release pass it yields CI and opens no PRs.
+train: "3.44.0"
+epic: 1017
+theme: "Interface truth: what pmat exposes is what it ships"
+criteria:
+  - {id: T1, pass: "src/protocol and src/stateless dead surface removed (#1141)", falsifier: "pmat analyze dead-code still lists a symbol #1141 names", command: "cargo build --release && pmat analyze dead-code --format json", ruling: asked}
+  - {id: T2, pass: "every top-level Commands variant has an MCP exposure decision written down (#1136)", falsifier: "a Commands variant with no exposure row", command: "set in the #1136 child done_when", ruling: asked}
+  - {id: T3, pass: "OpenAPI, MCP schemas and docs derived from one source (#1238)", falsifier: "a hand edit to a derived file survives regeneration", command: "set in the #1238 child done_when", ruling: asked}
+baselines:
+  - {criterion: T1, receipt: docs/lookahead/3.44.0/receipts/t1.json}
+must_carry: []
+staged:
+  - {branch: la-44/wip, rows: 0}
+questions:
+  - {id: Q1, text: "Milestone 3.41.0 is open with 36 open issues after v3.41.0 shipped: move them to backlog (release script rule) or close the milestone?", asked: 2026-10-10, answer: open}
+  - {id: Q2, text: "Is #1090 (Deep MCP umbrella) a real epic to label, or is it split into tickets under #1017?", asked: 2026-10-10, answer: open}
+risks:
+  - {risk: "#1238 is large and can stall the train", mechanism: "derive-the-interface touches every command", tripwire: "no merged #1238 PR two weeks after v3.43.0"}
+  - {risk: "crate package near the crates.io 10 MB ceiling", mechanism: "vendored assets grow the .crate (PMAT-702)", tripwire: "cargo package size > 9.9 MB"}

@@ -4659,7 +4659,8 @@ roadmap:
   - deferred:3.41.0
   - kind:code
   notes: 'PMAT-1253 (goal-mode §5.1): paired with #1202, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
-  release: 3.42.0
+  release: 3.43.0
+  epic: 1457
 - id: PMAT-695
   github_issue: 1156
   item_type: task
@@ -4755,6 +4756,7 @@ roadmap:
   - kind:code
   notes: 'PMAT-1253 (goal-mode §5.1): paired with #1141, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
   release: 3.44.0
+  epic: 1017
 - id: PMAT-700
   github_issue: null
   item_type: task
@@ -5421,9 +5423,11 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:triage
   notes: null
-  release: 3.43.0
+  release: 3.44.0
+  epic: 1017
 - id: GH-1118
   github_issue: 1118
   item_type: task
@@ -5557,9 +5561,11 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
-  release: 3.42.0
+  release: 3.43.0
+  epic: 1457
 - id: GH-1129
   github_issue: 1129
   item_type: task
@@ -5693,9 +5699,11 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:triage
   notes: null
-  release: 3.43.0
+  release: 3.44.0
+  epic: 1017
 - id: GH-1138
   github_issue: 1138
   item_type: task
@@ -6022,9 +6030,11 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
-  release: 3.43.0
+  release: 3.44.0
+  epic: 1017
 - id: GH-1239
   github_issue: 1239
   item_type: task
@@ -6768,7 +6778,8 @@ roadmap:
   labels:
   - kind:code
   notes: null
-  release: 3.41.0
+  release: 3.43.0
+  epic: 1457
 - id: PMAT-1359
   github_issue: 1359
   item_type: task
@@ -7380,8 +7391,11 @@ roadmap:
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
+  release: 3.43.0
+  epic: 1457
 - id: GH-1434
   github_issue: 1434
   item_type: task
@@ -7548,4 +7562,5 @@ roadmap:
   labels:
   - kind:code
   notes: null
+  release: 3.43.0
   epic: 1457

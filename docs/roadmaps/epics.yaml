@@ -1,0 +1,18 @@
+# pmat epics: one row per open GitHub issue labelled `epic`.
+#
+# The release identity is the GitHub milestone `X.Y.Z` (goal-mode.md §4.1);
+# a roadmap row's `release:` is its projection and `epic:` names the parent issue.
+# Core vs look-ahead is decided by slot, not by a field on the ticket:
+#   core       = rows on the OPEN train's milestone (train below), worked by the core worker;
+#   look-ahead = rows on the NEXT train's milestone, worked by one look-ahead slot,
+#                whose kit is docs/lookahead/<train>.yaml.
+# budget = max open children. absorbs = open issues this epic is home to without
+# being their GitHub parent (in-flight work that must not fall out of every epic).
+# Plan for the open train: docs/roadmaps/release-3.43.0-plan.md.
+epics:
+  - {id: R43, issue: 1457, name: "pmat release train", train: "3.43.0", budget: 6, successor: L44, absorbs: []}
+  - {id: L44, issue: 1017, name: "pmat cannot see unreachable code", train: "3.44.0", budget: 5, successor: null, absorbs: []}
+  - {id: S1, issue: 1018, name: "tests that cannot fail", train: standing, budget: 4, successor: null, absorbs: [1260, 1261, 1262, 1263]}
+  - {id: S2, issue: 1019, name: "config and contracts nothing reads", train: standing, budget: 40, successor: null, absorbs: [1299, 1303, 1336, 999, 1014, 1031, 1034, 1074, 1118, 1119, 1120, 1121, 1122, 1123, 1124, 1125, 1128, 1129, 1130, 1131, 1132, 1133, 1134, 1135, 1137, 1138, 1139, 1140, 1142, 1143, 1144, 1145, 1156, 1162, 1356, 1425]}
+# Rows with no `release:` are unscheduled backlog (goal-mode.md §11.2 P1) and
+# sit under S2 until triage gives them a milestone and a parent.
