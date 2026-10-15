@@ -7501,11 +7501,11 @@ roadmap:
   github_issue: 1458
   item_type: task
   title: 'release: pmat 3.42.0 — ONT-11 comply pv verdicts, FLOW-03 work add, publish-from-tag'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-27T22:53:25Z
-  updated: 2026-09-27T22:53:30Z
+  updated: 2026-09-28T01:46:33.019657342+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7531,3 +7531,21 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1461
+  github_issue: 1461
+  item_type: task
+  title: 'release.yml prerelease job cannot dispatch the release listeners (HTTP 403, missing actions: write)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-28T01:46:25Z
+  updated: 2026-09-28T01:46:25Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
