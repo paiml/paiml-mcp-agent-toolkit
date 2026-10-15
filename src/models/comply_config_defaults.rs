@@ -385,6 +385,16 @@ fn default_checks() -> HashMap<String, CheckConfig> {
             options: HashMap::new(),
         },
     );
+    // ONT-001 R-21 (c), #1422: arming only ratchets up.
+    checks.insert(
+        "cb-2118".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
 
     // CB-2101: Threshold Coherence — every number `.pmat-metrics.toml` writes
     // down must bound something this tree measures. Declared Error for the same

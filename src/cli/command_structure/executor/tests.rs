@@ -262,6 +262,7 @@ mod tests {
                 include_project: vec![],
                 checks: vec![],
                 github_snapshot: None,
+                list: false,
             }),
         };
 

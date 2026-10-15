@@ -274,6 +274,7 @@ algorithm-competition-corpus/
 
 # Claude Code worktrees (ephemeral, auto-managed)
 .claude/worktrees/
+.claude/agent-memory/
 
 # Generated reports
 satd-report.json

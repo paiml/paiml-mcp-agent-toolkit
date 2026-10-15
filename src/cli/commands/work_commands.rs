@@ -39,15 +39,61 @@ pub enum SyncOutputFormat {
 /// Work priority for CLI (maps to roadmap::Priority)
 #[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq, Default)]
 pub enum WorkPriority {
-    /// Low priority
+    /// Low priority (P3)
+    #[value(alias = "P3", alias = "p3")]
     Low,
-    /// Medium priority (default)
+    /// Medium priority (P2)
     #[default]
+    #[value(alias = "P2", alias = "p2")]
     Medium,
-    /// High priority
+    /// High priority (P1)
+    #[value(alias = "P1", alias = "p1")]
     High,
-    /// Critical priority
+    /// Critical priority (P0)
+    #[value(alias = "P0", alias = "p0")]
     Critical,
+}
+
+/// The kind of work a ticket is (FLOW-03, #1440), recorded as a `kind:<x>`
+/// label — the spelling `pmat work edit` preserves and kind-gate reads.
+#[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq, Eq)]
+pub enum WorkKind {
+    /// Changes code
+    Code,
+    /// Classify and link issues; no code diff
+    Triage,
+    /// Documentation only
+    Docs,
+    /// A measurement
+    Measurement,
+    /// Ticket lifecycle bookkeeping (status rows)
+    Lifecycle,
+}
+
+impl WorkKind {
+    /// The label value: `kind:<as_str>`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            WorkKind::Code => "code",
+            WorkKind::Triage => "triage",
+            WorkKind::Docs => "docs",
+            WorkKind::Measurement => "measurement",
+            WorkKind::Lifecycle => "lifecycle",
+        }
+    }
+
+    /// Parse a label value; `None` for anything that is not a kind.
+    pub fn parse(value: &str) -> Option<Self> {
+        [
+            WorkKind::Code,
+            WorkKind::Triage,
+            WorkKind::Docs,
+            WorkKind::Measurement,
+            WorkKind::Lifecycle,
+        ]
+        .into_iter()
+        .find(|k| k.as_str() == value)
+    }
 }
 
 impl WorkPriority {

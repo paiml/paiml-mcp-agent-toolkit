@@ -61,6 +61,15 @@ pub enum ComplyCommands {
         /// token (goal-mode.md §12).
         #[arg(long, value_name = "FILE")]
         github_snapshot: Option<PathBuf>,
+
+        /// List the rules this binary can check, without checking anything.
+        ///
+        /// ONT-11 (#1422, ONT-001 R-21 (b)). With `--format json`, a JSON array
+        /// of `{id, group, name}`, read from the same group registry `--checks`
+        /// validates against — a consumer asks the binary which rules exist
+        /// instead of keeping its own list.
+        #[arg(long)]
+        list: bool,
     },
 
     /// Migrate project to latest PMAT standards

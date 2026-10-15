@@ -8,10 +8,10 @@ mod tests_select_groups {
     /// A group that counts its runs and emits one check under its first id.
     fn fake(
         name: &'static str,
-        ids: &'static [&'static str],
+        ids: &'static [RuleDecl],
         hits: Arc<AtomicUsize>,
     ) -> CheckGroup<'static> {
-        let first = ids[0];
+        let first = ids[0].0;
         (
             name,
             ids,
@@ -37,9 +37,9 @@ mod tests_select_groups {
     fn a_group_holding_no_selected_rule_is_not_run() {
         let hits = counters(3);
         let groups = vec![
-            fake("one", &["cb-9001"], hits[0].clone()),
-            fake("two", &["cb-9002"], hits[1].clone()),
-            fake("three", &["cb-9003"], hits[2].clone()),
+            fake("one", &[("cb-9001", "rule")], hits[0].clone()),
+            fake("two", &[("cb-9002", "rule")], hits[1].clone()),
+            fake("three", &[("cb-9003", "rule")], hits[2].clone()),
         ];
         let _ = run_check_groups(groups, &["CB-9002".to_string()]);
         let ran: Vec<usize> = hits.iter().map(|h| h.load(Ordering::SeqCst)).collect();
@@ -52,8 +52,8 @@ mod tests_select_groups {
     fn a_skipped_group_still_reports_each_rule_as_not_selected() {
         let hits = counters(2);
         let groups = vec![
-            fake("one", &["cb-9001"], hits[0].clone()),
-            fake("two", &["cb-9002"], hits[1].clone()),
+            fake("one", &[("cb-9001", "rule")], hits[0].clone()),
+            fake("two", &[("cb-9002", "rule")], hits[1].clone()),
         ];
         let checks = run_check_groups(groups, &["CB-9002".to_string()]);
         let one = checks
@@ -70,8 +70,8 @@ mod tests_select_groups {
     fn with_no_selection_every_group_runs() {
         let hits = counters(2);
         let groups = vec![
-            fake("one", &["cb-9001"], hits[0].clone()),
-            fake("two", &["cb-9002"], hits[1].clone()),
+            fake("one", &[("cb-9001", "rule")], hits[0].clone()),
+            fake("two", &[("cb-9002", "rule")], hits[1].clone()),
         ];
         let _ = run_check_groups(groups, &[]);
         assert!(hits.iter().all(|h| h.load(Ordering::SeqCst) == 1));
@@ -98,7 +98,7 @@ mod tests_select_groups {
         for (name, ids, run) in compliance_check_groups(d, &cfg, "3.40.0", &overrides) {
             for c in run() {
                 let id = check_id(&c.name);
-                if !ids.iter().any(|x| x.eq_ignore_ascii_case(id)) {
+                if !ids.iter().any(|(x, _)| x.eq_ignore_ascii_case(id)) {
                     undeclared.push(format!("{name}: {}", c.name));
                 }
             }
@@ -109,12 +109,65 @@ mod tests_select_groups {
         );
     }
 
+    /// ONT-11 (#1422): `comply check --list` prints each rule's declared title,
+    /// so the title a group emits must be the one it declares — one name per
+    /// rule, from one list. A qualifier in brackets (`Custom Score [x]`) names
+    /// the instance, not the rule.
+    #[test]
+    fn every_emitted_rule_carries_its_declared_title() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let d = dir.path();
+        std::fs::write(
+            d.join("Cargo.toml"),
+            "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("write Cargo.toml");
+        std::fs::create_dir_all(d.join("src")).expect("mkdir src");
+        std::fs::write(d.join("src/lib.rs"), "pub fn f() {}\n").expect("write lib.rs");
+        let cfg = crate::models::comply_config::ComplyConfig::default();
+        let overrides = CheckOverrides::default();
+        let mut drifted = vec![];
+        for (name, rules, run) in compliance_check_groups(d, &cfg, "3.40.0", &overrides) {
+            for c in run() {
+                let id = check_id(&c.name);
+                // A rule with no CB id is named by its whole id (`check_id`).
+                let emitted = if id.len() < c.name.len() && id.starts_with("CB-") {
+                    &c.name[id.len() + 2..]
+                } else {
+                    id
+                };
+                let emitted = emitted.split(" [").next().unwrap_or(emitted);
+                if let Some((_, title)) = rules.iter().find(|(x, _)| x.eq_ignore_ascii_case(id)) {
+                    if *title != emitted {
+                        drifted.push(format!("{name}: {} (declared {title:?})", c.name));
+                    }
+                }
+            }
+        }
+        assert!(drifted.is_empty(), "rules emitted under another title: {drifted:#?}");
+    }
+
+    /// Every declared rule has a non-empty title, and no id is declared twice.
+    #[test]
+    fn every_declared_rule_has_one_title() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cfg = crate::models::comply_config::ComplyConfig::default();
+        let overrides = CheckOverrides::default();
+        let mut seen = std::collections::HashSet::new();
+        for (name, rules, _) in compliance_check_groups(dir.path(), &cfg, "3.40.0", &overrides) {
+            for (id, title) in rules {
+                assert!(!title.trim().is_empty(), "{name}: {id} has no title");
+                assert!(seen.insert(*id), "{id} is declared twice");
+            }
+        }
+    }
+
     /// `select_checks` relabels every deselected rule; it must not erase the
     /// reason a rule has no verdict at all (its group was not run). Without this
     /// test nothing reads that message after `select_checks` has run.
     #[test]
     fn select_checks_keeps_the_reason_a_rule_was_not_run() {
-        let mut checks = not_run_rows("codegen", &["cb-1630"]);
+        let mut checks = not_run_rows("codegen", &[("cb-1630", "rule")]);
         checks.push(ComplianceCheck {
             name: "CB-2113: Commit Traceability".into(),
             status: CheckStatus::Pass,

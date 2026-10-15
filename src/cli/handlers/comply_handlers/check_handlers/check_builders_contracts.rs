@@ -14,6 +14,11 @@ fn build_provable_contract_checks(
             comply_config,
         ),
         filter_check_by_config(
+            check_armed_gates_monotone(project_path),
+            "cb-2118",
+            comply_config,
+        ),
+        filter_check_by_config(
             check_contract_coverage(project_path),
             "cb-1202",
             comply_config,

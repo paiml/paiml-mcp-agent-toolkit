@@ -198,3 +198,92 @@ The three issues were closed by the orchestrator, not by any automation — no a
 #1412 is new: an independent `pr-review` session reviewing paiml/aprender#3491 measured that pmat 3.41.1's MCP `pmat_index_stats` deletes a CLI-built index (2/2; 7/7 CLI paths intact). Filed issue-first, rowed with `pmat work add --github-issue 1412` → PMAT-1412.
 
 Then `pmat work sync --direction github-to-yaml`: the dry-run planned exactly `close-item GH-1410 #1410 → Completed`, `close-item PMAT-1401 #1401 → Completed`, `close-item PMAT-1408 #1408 → Completed`; the diff is those three rows' `status`/`updated` lines plus PMAT-1412's 16-line row. After it: 112/112 coherent. Written by the orchestrator session of the 3.41.0 release run — the run whose log is `docs/audits/pmat-3.41.0-run.md` — a file that lives only on the unmerged branch `chore/3.41.0-run-log` (574a1f9a2), not on master — and whose shipped version, after 3.41.0 failed its own clean room, is 3.41.1; the earlier sections' "release-3.41.0 orchestrator session" is this same session, named after the run and not after the version that shipped. keeps-open #1412.
+## lifecycle-14 — PMAT-1370 completed (#1443 merged)
+
+*(An earlier round.)*
+
+PR #1443 merged as `c234a75cb` and GitHub closed #1370. CB-2113 forbids a ticket completing
+itself, so #1443 left the PMAT-1370 row at `inprogress`. That left one CB-2115 ORPHAN-ROADMAP
+finding on master.
+
+Measured at HEAD=`c234a75cb`, origin/master=`c234a75cb`, behind=0: `pmat work sync --direction github-to-yaml --dry-run` reported
+129 open items against 128 open issues, one finding (`ORPHAN-ROADMAP PMAT-1370: #1370 is closed`), and a plan of exactly
+one action, `close-item PMAT-1370 #1370 → Completed`. Applying it changed 1 file with 2
+insertions and 2 deletions: the row's `status` (`inprogress` → `completed`) and `updated`, and nothing else. After it,
+`pmat work sync --check-only` reads **128/128 coherent**.
+
+## lifecycle-15 — PMAT-1428 and GH-1417 completed (#1438 merged)
+
+*(An earlier round.)*
+
+PR #1438 merged as `26cef2be3`. It folded #1432 (PMAT-1428, the glibc 2.35 floor for linux-gnu assets) and the dependabot patch-updates group #1417 (GH-1417, tracked by issue #1445). The PR body said "Refs" rather than using a closing keyword, and CB-2113 forbids a ticket completing itself, so both rows stayed open. After the merge, #1428 and #1445 were closed with a comment naming #1438.
+
+Measured at HEAD=`26cef2be3`, origin/master=`26cef2be3`, behind=0:
+- `pmat work sync --direction github-to-yaml --dry-run` reported 129 open items against 127 open issues.
+- It found two findings: `ORPHAN-ROADMAP GH-1417: #1445 is closed` and `ORPHAN-ROADMAP PMAT-1428: #1428 is closed`.
+- Its plan was exactly those two `close-item` actions.
+
+Applying the plan changed 1 file, with 4 insertions and 4 deletions: each row's `status` (`inprogress`/`planned` → `completed`) and `updated`, and nothing else. After it, `pmat work sync --check-only` reads **coherent**.
+
+## lifecycle-16 — GH-1448 completed (#1449 merged, nightly republished)
+
+*(An earlier round.)*
+
+#1449 merged as `350f1adf4`. It pinned cargo-zigbuild to 0.23.4 so that aarch64-gnu links, and it filed the GH-1448 row.
+
+Nightly run 36231434580 on `350f1adf4` then published fresh assets:
+- both gnu assets pass `sha256sum -c`;
+- the highest GLIBC symbol in each is GLIBC_2.34;
+- both run `pmat --version` on a glibc 2.35 host (aarch64 under qemu).
+
+Master's `traceability` check was green before #1448 was closed as fixed by #1438 and #1449.
+
+Measured at HEAD = origin/master = `350f1adf4`, behind=0:
+- `pmat work sync --direction github-to-yaml --dry-run` reported 128 open items against 127 open issues.
+- It found one finding: `ORPHAN-ROADMAP GH-1448: #1448 is closed`.
+- Its plan was one `close-item` action.
+
+Applying the plan changed 1 file, with 2 insertions and 2 deletions: the row's `status` (`planned` → `completed`) and `updated`. After it, `pmat work sync --check-only` reads **coherent**.
+
+**Addendum: GH-1451 filed.** CI on the first head (`a7fcdc7a7`) went red on CB-2115 with `ORPHAN-GITHUB #1451`, an external issue opened at 09:39Z, after the sync above. Re-measured at origin/master `350f1adf4`, behind=0: 127 open items against 128 open issues, one finding, and a one-action plan (`create-item #1451 → GH-1451`). Applying it adds 16 lines, which is a new `planned` row with no other change. `--check-only` reads **coherent**. The row only files the issue. Triaging it (keep or close as not planned) is left to the operator.
+
+## lifecycle-17 — GH-1440 completed (#1446 merged), GH-1451 release set to backlog
+
+**Current round.** This section describes the diff under review. Everything above it describes earlier rounds.
+
+#1446 merged as `26052b20c`. It makes `pmat work add` refuse a ticket that has no `--priority`, no kind, or no `--epic`, and it links the ticket's issue under the epic before writing the row (FLOW-03). Master's `traceability` check on `26052b20c` (CI run 36237654622) was green before #1440 was closed as completed.
+
+Separately, the cop moved #1451 to the `backlog` milestone. The row still carried no `release:`, so the pair drifted past the 60-minute grace window.
+
+Measured at HEAD = origin/master = `26052b20c`, behind=0:
+- `pmat work sync --direction github-to-yaml --dry-run` reported 128 open items against 127 open issues.
+- It found two findings: `ORPHAN-ROADMAP GH-1440: #1440 is closed` and `DRIFT GH-1451 <-> #1451 release: roadmap "" vs GitHub "backlog"`.
+- Its plan was two actions: `close-item GH-1440 → Completed` and `set-release GH-1451 → backlog`.
+
+Applying the plan changed 1 file, with 4 insertions and 3 deletions:
+- GH-1440: `status` (`planned` → `completed`) and `updated`.
+- GH-1451: `updated`, and a new `release: backlog`.
+
+Nothing else changed. After it, `pmat work sync --check-only` reads **coherent** (127/127).
+
+## lifecycle-18: GH-1422 completed (#1454 merged)
+
+#1454 (ONT-11) merged as `fa9373245` and closed #1422. The roadmap row still said `inprogress`, so master's CB-2115 reads `ORPHAN-ROADMAP GH-1422: #1422 is closed`.
+
+Measured at HEAD = origin/master = `fa9373245`, behind=0:
+- `pmat work sync --check-only` reported 126 open items against 125 open issues, with one finding: `ORPHAN-ROADMAP GH-1422`.
+- `pmat work sync --direction github-to-yaml` planned one action, `close-item GH-1422 #1422 → Completed`.
+
+Applying it changed only GH-1422's `status` (`inprogress` → `completed`) and `updated`. After it, `pmat work sync --check-only` reads **coherent** (125/125).
+
+## lifecycle-19: PMAT-1458 completed (3.42.0 published); PMAT-1461 filed
+
+3.42.0 is out: #1459 merged as `3f3d2695c`, tag `v3.42.0`, crates.io 3.42.0 via `make publish-from-tag`, and the GitHub release promoted to latest. #1458 was closed with that receipt. The roadmap row still said `inprogress`.
+
+#1461 (release.yml's listener dispatch returns 403) was filed during the release. Its fix, PR #1462, is a workflow edit that waits for the operator. The roadmap row for #1461 lands here instead, so master is not `ORPHAN-GITHUB #1461` while that PR waits.
+
+Measured at HEAD = origin/master = `3f3d2695c`, behind=0:
+- `pmat work add --github-issue 1461 --epic 1457 --priority P1 --kind code …` adds PMAT-1461 (`planned`).
+- `pmat work sync --direction github-to-yaml` then plans one action, `close-item PMAT-1458 #1458 → Completed`.
+
+Nothing else changed. After it, `pmat comply check --checks CB-2113,CB-2115` reads CB-2115 **126 ↔ 126, in bijection**.

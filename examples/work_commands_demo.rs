@@ -45,6 +45,7 @@ fn main() -> Result<()> {
 
     let item1 = RoadmapItem {
         release: None,
+        epic: None,
         id: "PERF-001".to_string(),
         github_issue: None,
         item_type: ItemType::Task,
@@ -75,6 +76,7 @@ fn main() -> Result<()> {
 
     let item2 = RoadmapItem {
         release: None,
+        epic: None,
         id: "BUG-042".to_string(),
         github_issue: Some(42),
         item_type: ItemType::Bug,

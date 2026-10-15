@@ -137,7 +137,7 @@ fn common_dir_lock(checkout: &Path) -> PathBuf {
 // ── the command under test ──────────────────────────────────────────────────
 
 async fn add(checkout: &Path, title: &str) -> anyhow::Result<()> {
-    crate::cli::handlers::work_handlers::handle_work_add(
+    crate::cli::handlers::work_handlers::add_ticket_row(
         title.to_string(),
         None,
         WorkPriority::Medium,
@@ -148,6 +148,7 @@ async fn add(checkout: &Path, title: &str) -> anyhow::Result<()> {
         None,
         None,
         true, // --sequential-id: these tests exist to pin the allocator itself
+        None, // no epic: these tests pin the row writer, not the FLOW-03 gate
     )
     .await
 }

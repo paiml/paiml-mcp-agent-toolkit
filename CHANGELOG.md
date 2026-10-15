@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.42.0] - 2026-09-28
+
+### Added
+
+- **ONT-11 (ONT-001 R-21): pmat maps pv verdicts, lists its rules, and holds arming
+  monotone (#1422, #1454).**
+  - `pmat comply check`'s CB-1201 now reads `pv lint`'s exit code. Exit 2 (`Unknown`) is a
+    `Fail` carrying pv's `decline:` line verbatim, exit 3 is a `Fail` carrying its `error:`
+    line, and pv missing while `contracts/` exists is a `Fail` with `decline: pv not found`.
+    All three used to be a `Warn` under the default `pv_lint_is_error = false`, and a `Warn`
+    exits 0.
+  - `pmat comply check --list --format json` prints every rule as `{id, group, name}` (174
+    rules), taken from the same registry `--checks` validates against.
+  - New rule CB-2118 `contracts-armed-gates-monotone`: an entry of `armed_gates[]` or
+    `armed_shapes[]` in `contracts/lint-baseline.json` that was armed at the merge-base and
+    is gone at HEAD is a `Fail` naming each one. No `contracts/` is a `Skip` with
+    `decline: no contracts/`, and a repo that never armed passes, so the rule never forces
+    arming.
+  - pmat takes no ontology types: no `aprender_contracts::` under `src/` (F-31).
+  - No required check runs these rules yet. In the ledger they are NEUTERED behind the
+    `continue-on-error` "Ladder gate" step. Blocking an `Unknown` in `ci / gate` is
+    PVL EV-15's job.
+- **`pmat work add` refuses an untriaged ticket and links it under its epic (FLOW-03,
+  #1440, #1446).**
+- **`pmat roadmap sync` is the one writer of `roadmap.yaml`, and `sync --check` is the
+  parity gate (#1370, #1443).**
+- **`make publish-from-tag TAG=vX.Y.Z [DRY_RUN=1]`: the crates.io publish path that
+  `release.yml` names, which had never existed (PMAT-678, #1274, #1456).** It refuses
+  before running cargo when the tag is missing, badly shaped, not on origin/master, or
+  disagrees with `Cargo.toml`. It publishes with `--locked` from a pristine detached
+  worktree of the tag, under `env -u CARGO_REGISTRY_TOKEN`. `.claude/agent-memory/` is now
+  gitignored, and `make release-verify` installs with `--locked`.
+
+### Fixed
+
+- **`make validate-book` fails when the pmat-book checkout is absent (#1441, #1442).**
+- **Release assets: linux-gnu assets have a glibc 2.35 floor (#1432, #1417, #1438), and
+  cargo-zigbuild 0.23.4 fixes aarch64-gnu linking (#1448, #1449).**
+
+Lifecycle PRs #1444 #1447 #1450 #1452 #1455 carry no user-visible change.
+
 ## [3.41.1] - 2026-09-18
 
 ### Fixed

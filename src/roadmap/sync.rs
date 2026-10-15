@@ -283,6 +283,14 @@ pub fn roadmap_is_stale(project_path: &Path) -> Option<bool> {
     if !ledger.exists() {
         return None; // nothing to be stale against
     }
+    // #1370: with entries/, `sync` writes roadmap.yaml, not ROADMAP.yaml, so
+    // ROADMAP.yaml's age says nothing; `pmat roadmap sync --check` is the gate.
+    if matches!(
+        super::sync_route::sync_target(project_path),
+        super::sync_route::SyncTarget::Fragments(_)
+    ) {
+        return None;
+    }
     let roadmap = project_path.join("ROADMAP.yaml");
     if !roadmap.exists() {
         return Some(true);

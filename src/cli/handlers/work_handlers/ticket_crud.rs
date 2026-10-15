@@ -1,8 +1,61 @@
 /// Handle work add command (CRUD: Create)
 ///
-/// Creates a new work ticket in roadmap.yaml with optional GitHub issue creation.
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// FLOW-03 (#1440): refuses an untriaged ticket — no `--priority`, no kind, or
+/// no `--epic` — before anything is written, then links the ticket's issue
+/// under the epic on GitHub, then writes the row carrying `epic:`, the
+/// priority and a `kind:` label. Contract: `pmat-work-add-triaged-v1`.
+#[provable_contracts_macros::contract("pmat-work-add-triaged-v1.yaml", equation = "refuse_untriaged")]
 pub async fn handle_work_add(
+    title: String,
+    description: Option<String>,
+    triage: WorkAddTriage,
+    tags: Option<String>,
+    path: Option<PathBuf>,
+    create_github: bool,
+    level: Option<String>,
+    explicit_id: Option<String>,
+    github_issue: Option<u64>,
+    sequential_id: bool,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let links = work_add_triage::GhCli::new(&project_path);
+    let triaged = work_add_triage::gate(&triage, tags.as_deref(), github_issue, &links)?;
+    refuse_taken_id(&project_path, triaged.child)?;
+    if work_add_triage::ensure_linked(&triaged, &links)? {
+        println!("linked #{} under epic #{}", triaged.child, triaged.epic);
+    }
+    let tags = work_add_triage::tags_with_kind(tags.as_deref(), triaged.kind);
+    add_ticket_row(
+        title,
+        description,
+        triaged.priority,
+        Some(tags),
+        Some(project_path),
+        create_github,
+        level,
+        explicit_id,
+        github_issue,
+        sequential_id,
+        Some(triaged.epic),
+    )
+    .await
+}
+
+/// Refuse, before GitHub is written to, an issue whose ticket already exists —
+/// the row write would refuse it anyway, after the link was made.
+fn refuse_taken_id(project_path: &Path, issue: u64) -> Result<()> {
+    let id = authority_ticket_id(Some(issue), None)?;
+    let roadmap = open_existing_roadmap(project_path)?.load()?;
+    if roadmap.roadmap.iter().any(|i| i.id == id) {
+        anyhow::bail!("refused: {id} already exists — nothing was linked or written");
+    }
+    Ok(())
+}
+
+/// Write one ticket row: mint the id and append the row (or its fragment).
+/// No triage — [`handle_work_add`] is the gate; the allocator tests call this
+/// directly because they pin the allocator, not the gate.
+pub async fn add_ticket_row(
     title: String,
     description: Option<String>,
     priority: crate::cli::commands::WorkPriority,
@@ -13,6 +66,7 @@ pub async fn handle_work_add(
     explicit_id: Option<String>,
     github_issue: Option<u64>,
     sequential_id: bool,
+    epic: Option<u64>,
 ) -> Result<()> {
     let claimed = level
         .as_deref()
@@ -40,6 +94,7 @@ pub async fn handle_work_add(
     // ticket.
     let build = move |id: String| crate::models::roadmap::RoadmapItem {
         release: None,
+        epic,
         id,
         github_issue,
         item_type: crate::models::roadmap::ItemType::Task,

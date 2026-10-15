@@ -306,3 +306,10 @@ bindings:
   source_file: src/cli/handlers/comply_handlers/check_handlers/check_threshold_coherence.rs
   function: check_threshold_coherence
   status: implemented
+# FLOW-03 (#1440): `pmat work add` refuses an untriaged ticket and links it
+# under its epic before writing the row.
+- contract: pmat-work-add-triaged-v1.yaml
+  equation: refuse_untriaged
+  source_file: src/cli/handlers/work_handlers/ticket_crud.rs
+  function: handle_work_add
+  status: implemented

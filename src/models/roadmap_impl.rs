@@ -136,6 +136,7 @@ impl RoadmapItem {
             labels: Vec::new(),
             notes: None,
             release: None,
+            epic: None,
         }
     }
 
