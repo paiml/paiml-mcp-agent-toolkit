@@ -307,6 +307,7 @@ impl CommandDispatcher {
                     include_project: vec![],
                     checks: vec![],
                     github_snapshot: None,
+                    list: false,
                 });
                 handlers::comply_handlers::handle_comply_command(cmd).await
             }

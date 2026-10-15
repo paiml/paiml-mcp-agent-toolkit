@@ -256,3 +256,25 @@ Applying the plan changed 1 file, with 4 insertions and 3 deletions:
 - GH-1451: `updated`, and a new `release: backlog`.
 
 Nothing else changed. After it, `pmat work sync --check-only` reads **coherent** (127/127).
+
+## lifecycle-18: GH-1422 completed (#1454 merged)
+
+#1454 (ONT-11) merged as `fa9373245` and closed #1422. The roadmap row still said `inprogress`, so master's CB-2115 reads `ORPHAN-ROADMAP GH-1422: #1422 is closed`.
+
+Measured at HEAD = origin/master = `fa9373245`, behind=0:
+- `pmat work sync --check-only` reported 126 open items against 125 open issues, with one finding: `ORPHAN-ROADMAP GH-1422`.
+- `pmat work sync --direction github-to-yaml` planned one action, `close-item GH-1422 #1422 → Completed`.
+
+Applying it changed only GH-1422's `status` (`inprogress` → `completed`) and `updated`. After it, `pmat work sync --check-only` reads **coherent** (125/125).
+
+## lifecycle-19: PMAT-1458 completed (3.42.0 published); PMAT-1461 filed
+
+3.42.0 is out: #1459 merged as `3f3d2695c`, tag `v3.42.0`, crates.io 3.42.0 via `make publish-from-tag`, and the GitHub release promoted to latest. #1458 was closed with that receipt. The roadmap row still said `inprogress`.
+
+#1461 (release.yml's listener dispatch returns 403) was filed during the release. Its fix, PR #1462, is a workflow edit that waits for the operator. The roadmap row for #1461 lands here instead, so master is not `ORPHAN-GITHUB #1461` while that PR waits.
+
+Measured at HEAD = origin/master = `3f3d2695c`, behind=0:
+- `pmat work add --github-issue 1461 --epic 1457 --priority P1 --kind code …` adds PMAT-1461 (`planned`).
+- `pmat work sync --direction github-to-yaml` then plans one action, `close-item PMAT-1458 #1458 → Completed`.
+
+Nothing else changed. After it, `pmat comply check --checks CB-2113,CB-2115` reads CB-2115 **126 ↔ 126, in bijection**.

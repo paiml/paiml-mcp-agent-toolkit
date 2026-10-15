@@ -1,0 +1,443 @@
+{
+  "ticket": "PMAT-1458",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 397 commit(s); judged against origin/master",
+  "head": "94a56d3431df285a7977a6fabac5cd2d7a1ef0ca",
+  "diff_sha256": "f21714a5c6f38a867ff319d42a3abedd3cf29c3c8a0a9e080677104ab670a4e9",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 13543,
+  "prompt_sha256": "43be4ea81010dbe4a6084c57e8608f51e47cbeeef712363484c21709197bc20e",
+  "author": {
+    "model": "claude-opus-5-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff implements the release of pmat 3.42.0 exactly as described in the ticket PMAT-1458 and the accompanying implementation receipt. The version is correctly bumped in Cargo.toml and Cargo.lock, the CHANGELOG is updated with the relevant changes (ONT-11, FLOW-03, publish-from-tag), and the roadmap is correctly synchronized (PMAT-678 marked as completed, PMAT-1458 and GH-1457 epics added). The `.github/` directory is excluded from the package in Cargo.toml to adhere to the package size budget, as justified in the receipt. No unrequested changes or contradictions were found.",
+      "findings": [],
+      "raw_bytes": 2531,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "role": "independent",
+      "model": "gemini-3.1-pro-high",
+      "model_measured": "gemini-3.1-pro-high",
+      "model_source": "measured",
+      "family": "gemini",
+      "executor": "agy",
+      "brief_sha256": "43be4ea81010dbe4a6084c57e8608f51e47cbeeef712363484c21709197bc20e",
+      "trace": {
+        "input_sha256": "845f9a0579687e88e0a9017edc8361f5569b05726128e981f12ff91ac8d5f1bf",
+        "output_sha256": "b8145e2f9f6a06a0caa81dcfff719a2e7ffc5d219d54bc7d092cf5ac1dae63b4",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "gemini-3.1-pro-high",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "gemini-3.1-pro-high",
+            "family": "gemini",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff does exactly what PMAT-1458 asks for — a release commit for pmat 3.42.0 — and nothing the ticket forbids. Version bumped 3.41.1→3.42.0 consistently in Cargo.toml and Cargo.lock. CHANGELOG entry placed correctly under [Unreleased] with accurate date (2026-09-28). The `.github/` exclude is safe: no build.rs or include_str!/include_bytes! reads from .github/ (measured). Tests that reference .github/ use CARGO_MANIFEST_DIR (source tree), not the packaged crate. Roadmap updates are well-formed: PMAT-678→completed, PMAT-1458 added as inprogress with epic 1457, GH-1457 added. No gate is weakened, no threshold is changed, no test assertion is altered. The diff touches exactly 5 files matching the receipt's table. Minor version bump is justified by new features (ONT-11, FLOW-03).",
+      "findings": [
+        {
+          "claim": "Version bumped from 3.41.1 to 3.42.0, consistent with Cargo.lock line 4999",
+          "file": "Cargo.toml",
+          "grounding": "cited",
+          "line": 4
+        },
+        {
+          "claim": "/.github/ added to exclude list. No build.rs references .github, and no include_str!/include_bytes! in src/ reads from .github/. Tests referencing .github use CARGO_MANIFEST_DIR (source tree path), not the packaged crate.",
+          "file": "Cargo.toml",
+          "grounding": "measured",
+          "line": 30
+        },
+        {
+          "claim": "Release entry [3.42.0] - 2026-09-28 placed immediately after [Unreleased], matching the current date in the author's timezone (UTC+2). Content summarises ONT-11, FLOW-03, roadmap sync, publish-from-tag, validate-book, and release assets.",
+          "file": "CHANGELOG.md",
+          "grounding": "cited",
+          "line": 10
+        },
+        {
+          "claim": "PMAT-678 status changed from inprogress to completed. Receipt says #1274 closed by #1456.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "cited",
+          "line": 4321
+        },
+        {
+          "claim": "PMAT-1458 entry added with status inprogress, priority high, epic 1457, labels [kind:code]. Missing release: field is consistent with 371 of 416 existing entries that also lack it.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "measured",
+          "line": 7500
+        },
+        {
+          "claim": "GH-1457 (Epic: pmat release train) added with status planned. No release: field, consistent with majority pattern.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "grounding": "measured",
+          "line": 7517
+        },
+        {
+          "claim": "Receipt file is a new addition documenting the release rationale. Content matches the diff.",
+          "file": "docs/audits/impl-PMAT-1458-receipt.md",
+          "grounding": "cited",
+          "line": 1
+        },
+        {
+          "claim": "Receipt claims 28 workflow files — actually 28 total files in .github/ (20 workflows + 8 other files: templates, dependabot, CONTRIBUTING). Slightly imprecise wording but the count and size impact are correct.",
+          "file": ".github/",
+          "grounding": "measured",
+          "line": 0
+        },
+        {
+          "claim": "No gates weakened: no threshold changes, no test modifications, no dependency alterations. Only version bump and one exclude entry added.",
+          "file": "Cargo.toml",
+          "grounding": "measured",
+          "line": 4
+        }
+      ],
+      "raw_bytes": 11271,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-opus-4-6-thinking",
+      "model_measured": "claude-opus-4-6-thinking",
+      "model_source": "measured",
+      "family": "claude",
+      "executor": "agy",
+      "brief_sha256": "43be4ea81010dbe4a6084c57e8608f51e47cbeeef712363484c21709197bc20e",
+      "trace": {
+        "input_sha256": "d05bd64039164fb7bc91ae694a2f33ed81c0a6a44169f9d9ac4d83251055b3cc",
+        "output_sha256": "ce7419624d3f0ece1f4043c209d41821758dd05de752fa3844cf80d599354ca4",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-opus-4-6-thinking",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-opus-4-6-thinking",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Diff correctly implements PMAT-1458 release commit: version bumped to 3.42.0 across Cargo.toml/Cargo.lock, CHANGELOG entry documents all merged PRs with behavior changes, .github/ added to exclude (reduces package from 9.39 MB to 9.31 MB, ~75 KB), and roadmap synced with PMAT-678 marked completed, PMAT-1458 and GH-1457 (epic) added.",
+      "findings": [],
+      "raw_bytes": 1583,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-haiku-4-5",
+      "model_measured": "claude-haiku-4-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "43be4ea81010dbe4a6084c57e8608f51e47cbeeef712363484c21709197bc20e",
+      "trace": {
+        "input_sha256": "b7f1b7e2cca8066d3b46c30c1372a7f403bed9bb94d746c8e1c10aefe3b63063",
+        "output_sha256": "5dc8e1d782c06dfa43be007740ac9f9cdb3703c8f9ecbc61601346fdd109355d",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-haiku-4-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-haiku-4-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": ".github/",
+      "line": 0,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Receipt claims 28 workflow files — actually 28 total files in .github/ (20 workflows + 8 other files: templates, dependabot, CONTRIBUTING). Slightly imprecise wording but the count and size impact are correct."
+      ]
+    },
+    {
+      "file": "CHANGELOG.md",
+      "line": 10,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Release entry [3.42.0] - 2026-09-28 placed immediately after [Unreleased], matching the current date in the author's timezone (UTC+2). Content summarises ONT-11, FLOW-03, roadmap sync, publish-from-tag, validate-book, and release assets."
+      ]
+    },
+    {
+      "file": "Cargo.toml",
+      "line": 4,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "No gates weakened: no threshold changes, no test modifications, no dependency alterations. Only version bump and one exclude entry added.",
+        "Version bumped from 3.41.1 to 3.42.0, consistent with Cargo.lock line 4999"
+      ]
+    },
+    {
+      "file": "Cargo.toml",
+      "line": 30,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "/.github/ added to exclude list. No build.rs references .github, and no include_str!/include_bytes! in src/ reads from .github/. Tests referencing .github use CARGO_MANIFEST_DIR (source tree path), not the packaged crate."
+      ]
+    },
+    {
+      "file": "docs/audits/impl-PMAT-1458-receipt.md",
+      "line": 1,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Receipt file is a new addition documenting the release rationale. Content matches the diff."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 4321,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-678 status changed from inprogress to completed. Receipt says #1274 closed by #1456."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 7500,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "PMAT-1458 entry added with status inprogress, priority high, epic 1457, labels [kind:code]. Missing release: field is consistent with 371 of 416 existing entries that also lack it."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 7517,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "GH-1457 (Epic: pmat release train) added with status planned. No release: field, consistent with majority pattern."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "fallback": {
+    "same_family_width": 2,
+    "chain": [
+      {
+        "model": "gemini-3.1-pro-high",
+        "family": "gemini",
+        "disposition": "configured"
+      },
+      {
+        "model": "claude-opus-4-6-thinking",
+        "family": "claude",
+        "disposition": "configured"
+      },
+      {
+        "model": "claude-haiku-4-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-sonnet-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-opus-5-5",
+        "family": "claude",
+        "disposition": "excluded-self-review",
+        "why": "the author's own model id (claude-opus-5-5) — a model never reviews its own diff, at any width (R-15a identity bar)"
+      },
+      {
+        "model": "qwen3.5",
+        "family": "qwen",
+        "disposition": "not-run",
+        "why": "no quorum.local_lane in the config — the aprender lane has no model to load"
+      }
+    ],
+    "precheck": [
+      {
+        "family": "gemini",
+        "model": "gemini-3.1-pro-high",
+        "probe": 1,
+        "outcome": "live"
+      },
+      {
+        "family": "claude",
+        "model": "claude-opus-4-6-thinking",
+        "probe": 1,
+        "outcome": "live"
+      }
+    ],
+    "degraded": null,
+    "prah": {
+      "source": "install-receipt",
+      "path": "/home/noah/.claude/skills/paiml-implement/bin/prah"
+    },
+    "bucket": {
+      "ledger": "/home/noah/.local/state/paiml-implement/agy-bucket.jsonl",
+      "window_s": 18000,
+      "pace": "off",
+      "buckets": {
+        "claude-gpt": {
+          "bucket": "claude-gpt",
+          "budget": 0,
+          "basis": "ledger: the calls served before the first 429 of the latest window that reached one",
+          "window_start": 1790549933,
+          "window_calls": 2,
+          "window_429": 0,
+          "hour_calls": 2,
+          "share": 1,
+          "want": 2,
+          "state": "empty",
+          "reason": "agy bucket claude-gpt is empty: 2 calls in this window reach its budget 0 (ledger: the calls served before the first 429 of the latest window that reached one)"
+        },
+        "gemini": {
+          "bucket": "gemini",
+          "budget": 86,
+          "basis": "[U] default 30, raised to the 86 calls a window has made without a 429; no window reached one",
+          "window_start": 1790541151,
+          "window_calls": 24,
+          "window_429": 0,
+          "hour_calls": 2,
+          "share": 17,
+          "want": 2,
+          "state": "open",
+          "reason": ""
+        }
+      },
+      "closed": []
+    }
+  },
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "cheap_seat": "claude-haiku-4-5",
+  "canary": {
+    "shape": "canary",
+    "max_brief_bytes": 24576,
+    "brief_bytes": 13543
+  },
+  "advisory_lane": {
+    "state": "answered",
+    "counts": false,
+    "row": {
+      "Verdict": {
+        "verdict": "PASS",
+        "cell": "gx10-cuda",
+        "backend": "cuda"
+      }
+    },
+    "verdict": "PASS",
+    "why": null,
+    "served_by": "gx10-cuda",
+    "gpu_proof": {
+      "used_gpu_probe": true,
+      "server_holds_gpu": true,
+      "used_gpu_source": "completions probe (chat omits used_gpu, aprender#4146)",
+      "trace_lines": [
+        "3340528, 309 MiB"
+      ]
+    },
+    "apr": "0.70.0",
+    "apr_binary_sha256": "6b2a7dc66c38adcca20b315beac70a1a31e7bd0af2a1cc5c2a7730ca6086d417",
+    "apr_tag": "v0.70.0-dev.3990584f0",
+    "apr_commit": "3990584f0bf5af6bca34ea9298df92177f3ef79a",
+    "apr_build_why": null,
+    "model": "/home/noah/data/models/Qwen3.5-4B-Q4_K_M.gguf",
+    "model_sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+    "rc": 0,
+    "wall_s": 8,
+    "collected_s": 225,
+    "budget_s": 172,
+    "budget_basis": "ledger: 2 x p95 86 s over 37 gx10-cuda Verdict rows",
+    "brief": {
+      "bytes": 13543,
+      "sent_bytes": 13712,
+      "max_bytes": 196608
+    },
+    "trace": {
+      "input_sha256": "5cdcb5cbbefb89dde14f26e4a4c745e54d15148fa531c1f5ebda08b138699a84",
+      "raw": "advisory.json"
+    },
+    "attempts": [
+      {
+        "host": "gx10",
+        "ok": true,
+        "wall_s": 8,
+        "used_gpu": true,
+        "ts": "2026-09-27T23:50:59.476Z",
+        "wall_ms": 7918,
+        "request_id": "01a0e547-7092-781b-ae56-c4e8f1fe886a",
+        "load1": 20.18,
+        "cold": false
+      }
+    ],
+    "ledger": "/home/noah/.local/state/paiml-implement/advisory-ledger.jsonl",
+    "raw": "advisory.json",
+    "agrees_with_counted": true,
+    "counted": "PASS"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5-5/claude same_family=2/2"
+  }
+}

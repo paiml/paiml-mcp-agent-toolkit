@@ -1,0 +1,292 @@
+{
+  "ticket": "PMAT-678",
+  "base": "master",
+  "base_resolved": "origin/master",
+  "base_note": "local master differs from origin/master by 395 commit(s); judged against origin/master",
+  "head": "48a14ca7eb8e0c1e7e5220d8c6730884719a7ca0",
+  "diff_sha256": "0b5655577ef5045cbbf8b77266a8b95b3088d8b302134aa900913478b59e9ec8",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 27093,
+  "prompt_sha256": "77260fd3c832b331977254268cf2c281c608011f87121b5b39991420bfcea83f",
+  "author": {
+    "model": "claude-opus-5-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Diff adds `make publish-from-tag TAG=`, its backing script, an 11-arm audit harness, the .gitignore belt, and --locked on release-verify — all criteria in PMAT-678 are met and nothing forbidden (no --allow-dirty, no token leakage, no workflow publishing) was introduced. The one disclosed deviation (keeping --detach despite its falsifier being unfireable) is correctly reasoned and backed by an equivalent guard that the audit script tests.",
+      "findings": [],
+      "raw_bytes": 1798,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-sonnet-5",
+      "model_measured": "claude-sonnet-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "77260fd3c832b331977254268cf2c281c608011f87121b5b39991420bfcea83f",
+      "trace": {
+        "input_sha256": "9e1a4ee6e52d2eacc207bcc469b913391b758dea409e2445014c8fdee75ac63c",
+        "output_sha256": "c0ce6087418b8d7b634c6e2427ddf2fbe261c0ccb52890857cb0d8fddd4902ff",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-sonnet-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-sonnet-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff implements exactly what PMAT-678 asks: a `make publish-from-tag TAG=` target that shells out to `scripts/publish-from-tag.sh`, which refuses (exit 2) before any cargo call when TAG is empty/malformed/nonexistent/off origin-master/version-mismatched, builds a `git worktree add --detach` checkout, verifies it is pristine (exit 3 otherwise), runs `env -u CARGO_REGISTRY_TOKEN cargo publish --dry-run --locked`, stops there under DRY_RUN=1, otherwise re-checks cleanliness and runs `env -u CARGO_REGISTRY_TOKEN cargo publish --locked`, and removes the worktree via an EXIT trap. Both belt items are present (`.claude/agent-memory/` added to `.gitignore`; `release-verify` now does `cargo install pmat --locked --force`). The accompanying audit harness (`publish-from-tag-audit.sh`) exercises 11 arms with a shim `cargo` and a self-test that is RED against a no-op script, and its logic checks out on inspection (fixture tags an off-master commit and a same-commit/mismatched-version tag correctly, the shim captures cwd git-common-dir/toplevel/status/token to catch a leaked token or a main-tree run). The one disclosed deviation — the ticket's \"dropping --detach → zero-untracked-files assertion RED\" falsifier is explained as untestable because `git worktree add <dir> <tag>` detaches regardless of the flag — is transparently documented in both the receipt and a \"MUTATION GUARD\" comment in the script, and the flag itself is still present in the implementation, so nothing required by the ticket was silently dropped. No test asserts the opposite of the ticket, no gate is weakened (the change adds --locked in two places, never removes a check), and I found no diff content outside the ticket's scope (docs/roadmap bookkeeping aside, which is standard).",
+      "findings": [],
+      "raw_bytes": 4464,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-sonnet-5",
+      "model_measured": "claude-sonnet-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "77260fd3c832b331977254268cf2c281c608011f87121b5b39991420bfcea83f",
+      "trace": {
+        "input_sha256": "b6b4c9b3e9713277288a1e9b02a1df2fc34c7ae86f59b0d4fa19298cff3f75e6",
+        "output_sha256": "f19b7b341d68e8a713efcee8ae9ceb5b71b135f561da9efe0e60457c825fb9b7",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-sonnet-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-sonnet-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": [
+          {
+            "model": "gemini-3.1-pro-high",
+            "why": "family gemini withheld by policy: the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24"
+          }
+        ]
+      },
+      "repeat_of": 1
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Diff implements PMAT-678 completely: publish-from-tag Makefile target with git worktree --detach, env -u CARGO_REGISTRY_TOKEN, --locked flags, and cleanup trap. All falsifiers covered by audit: untracked files in main tree don't block dry-run from worktree (arm 6), non-existent tags exit 2 before cargo (arm 3), zero-untracked-files guard tested (arm 8). Belt items present: .claude/agent-memory/ in .gitignore, --locked on release-verify. Script robustly validates TAG format, existence, ancestry to origin/master, and Cargo.toml version match before creating worktree. No contradictions with ticket or receipt.",
+      "findings": [],
+      "raw_bytes": 2133,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-haiku-4-5",
+      "model_measured": "claude-haiku-4-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "77260fd3c832b331977254268cf2c281c608011f87121b5b39991420bfcea83f",
+      "trace": {
+        "input_sha256": "d658167a601ac5d845ddc6419903e27e9799a2b4ed0d281273ddfcd7d11f7746",
+        "output_sha256": "10556bfb01d2a7bf915ff7f10456fb5b2c124dd8b8a500f95e8a64d8ed9051dd",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-haiku-4-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-haiku-4-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    }
+  ],
+  "dissent": [],
+  "dedup": [],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [
+    "lane models: only 2 distinct model ids across 3 lanes (claude-haiku-4-5, claude-sonnet-5) — lanes sharing an id are resamples, not independent reviewers (PMAT-125)",
+    "lane 2: judged by claude-sonnet-5 after falling through gemini-3.1-pro-high (skipped: family gemini withheld by policy: the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24) (PMAT-321)"
+  ],
+  "fallback": {
+    "same_family_width": 2,
+    "chain": [
+      {
+        "model": "claude-sonnet-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "gemini-3.1-pro-high",
+        "family": "gemini",
+        "disposition": "configured"
+      },
+      {
+        "model": "claude-haiku-4-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-opus-5-5",
+        "family": "claude",
+        "disposition": "excluded-self-review",
+        "why": "the author's own model id (claude-opus-5-5) — a model never reviews its own diff, at any width (R-15a identity bar)"
+      },
+      {
+        "model": "qwen3.5",
+        "family": "qwen",
+        "disposition": "not-run",
+        "why": "no quorum.local_lane in the config — the aprender lane has no model to load"
+      }
+    ],
+    "precheck": [
+      {
+        "family": "gemini",
+        "model": "gemini-3.1-pro-high",
+        "probe": 0,
+        "outcome": "policy",
+        "reason": "the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24"
+      }
+    ],
+    "degraded": {
+      "reason": "same-family (policy: agy reserved for tier-1 diffs)",
+      "lanes": [
+        2
+      ],
+      "families": [
+        {
+          "family": "gemini",
+          "state": "policy",
+          "evidence": "the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24"
+        }
+      ],
+      "rule": "operator standing rule: if agy quota is ever gone, simply use claude code itself (PMAT-360)"
+    },
+    "prah": {
+      "source": "install-receipt",
+      "path": "/home/noah/.claude/skills/paiml-implement/bin/prah"
+    },
+    "tier1": {
+      "agy_tier1_only": true,
+      "tier1": false,
+      "matched": [],
+      "paths": 6,
+      "patterns": [
+        "^\\.github/workflows/",
+        "(^|/)release[^/]*\\.(ya?ml|sh|rs|toml)$",
+        "cuda|kernel|\\.cu$|\\.ptx$",
+        "(^|/)[^/]*(gate|guard)[^/]*\\.(sh|rs|py)$|^hooks/",
+        "security|secret|credential|(^|/)deny\\.toml$",
+        "^skills/quorum-review/|(^|/)(receipt-lint|roadmap-lint|release-lint|kind-gate|model-gate)[^/]*$|^crates/prah-lint/"
+      ],
+      "builtin": "^skills/quorum-review/|(^|/)skills/paiml-implement/config\\.json$|(^|/)(modellib|lane-reduce|lane-fallback|lane-group|agy-lane|cc-lane|receipt-lint|route|quota)\\.sh$|^crates/prah-lint/"
+    },
+    "bucket": {
+      "ledger": "/home/noah/.local/state/paiml-implement/agy-bucket.jsonl",
+      "window_s": 18000,
+      "pace": "off",
+      "buckets": {},
+      "closed": []
+    }
+  },
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "degraded": {
+    "reason": "same-family (policy: agy reserved for tier-1 diffs)",
+    "lanes": [
+      2
+    ],
+    "families": [
+      {
+        "family": "gemini",
+        "state": "policy",
+        "evidence": "the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24"
+      }
+    ],
+    "rule": "operator standing rule: if agy quota is ever gone, simply use claude code itself (PMAT-360)"
+  },
+  "cheap_seat": "claude-haiku-4-5",
+  "canary": {
+    "skipped": "brief 27093 bytes > 24576"
+  },
+  "advisory_lane": {
+    "state": "not-run",
+    "counts": false,
+    "row": {
+      "NotRun": "ContextOverflow"
+    },
+    "verdict": "unavailable",
+    "why": "the brief is 27093 bytes, over quorum.advisory_lane.max_brief_bytes=24576; a cut brief is a different question, so the lane was not launched",
+    "served_by": null,
+    "gpu_proof": null,
+    "apr": null,
+    "apr_binary_sha256": null,
+    "apr_tag": null,
+    "apr_commit": null,
+    "apr_build_why": null,
+    "model": null,
+    "model_sha256": null,
+    "rc": 0,
+    "wall_s": 0,
+    "collected_s": 0,
+    "budget_s": 128,
+    "budget_basis": "ledger: 2 x p95 64 s over 13 gx10-cuda Verdict rows",
+    "brief": {
+      "bytes": 27093,
+      "sent_bytes": 0,
+      "max_bytes": 24576
+    },
+    "trace": null,
+    "attempts": [],
+    "ledger": "/home/noah/.local/state/paiml-implement/advisory-ledger.jsonl",
+    "raw": "advisory.json",
+    "agrees_with_counted": null,
+    "counted": "PASS"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5-5/claude same_family=3/2 degraded=same-family (policy: agy reserved for tier-1 diffs)"
+  }
+}

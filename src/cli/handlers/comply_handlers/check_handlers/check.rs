@@ -378,107 +378,274 @@ fn apply_exit_policy(report: &ComplianceReport, strict: bool) -> Result<()> {
     Ok(())
 }
 
-// Generated from the builders' `"cb-NNNN"` literals (PMAT-1296); the drift test
-// `every_group_declares_every_rule_it_emits` keeps these equal to what each group emits.
-const GROUP_IDS_FOUNDATION: &[&str] = &[
-    "cb-030",
-    "cb-031",
-    "cb-060",
-    "cb-120",
-    "cb-125",
-    "cb-040",
-    "cb-300",
-    "cb-301",
-    "cb-302",
-    "cb-303",
-    "cb-304",
-    "cb-081",
-    "cb-081-f",
-    "cb-400",
-    "cb-533",
-    "cb-148",
-    "cb-130",
-    "cb-140",
-    "cb-141",
-    "cb-142",
-    "cb-200",
+/// One rule a group can emit: its lowercase id and its title, the part of the
+/// check name after `CB-NNNN: `.
+type RuleDecl = (&'static str, &'static str);
+
+// Generated from the builders' `"cb-NNNN"` literals (PMAT-1296) and their
+// `"CB-NNNN: <title>"` names (ONT-11, #1422); the drift tests
+// `every_group_declares_every_rule_it_emits` and `every_emitted_rule_carries_its_declared_title`
+// keep these equal to what each group emits. `comply check --list` prints them.
+const GROUP_IDS_FOUNDATION: &[RuleDecl] = &[
+    ("cb-030", "O(1) Hooks"),
+    ("cb-031", "Cache Health"),
+    ("cb-060", "ComputeBrick Compliance"),
+    ("cb-120", "OIP Tarantula Patterns (CB-120 to CB-124)"),
+    ("cb-125", "Coverage Quality Patterns (CB-125 to CB-127)"),
+    ("cb-040", "File Health"),
+    ("cb-300", "Muda Waste Score"),
+    ("cb-301", "Reproducibility Level"),
+    ("cb-302", "Golden Trace Drift"),
+    ("cb-303", "EDD Compliance"),
+    ("cb-304", "Dead Code Percentage"),
+    ("cb-081", "Dependency Health"),
+    ("cb-081-f", "Workspace Member From Registry"),
+    ("cb-400", "Shell & Makefile Quality"),
+    ("cb-533", "Stale Path References"),
+    ("cb-148", "RETIRED — superseded by CB-2110"),
+    ("cb-130", "Agent Context Adoption"),
+    ("cb-140", "Mono-Spec Structure"),
+    ("cb-141", "Memory Profiling"),
+    ("cb-142", "SWE-CI EvoScore"),
+    ("cb-200", "TDG Grade Gate"),
     // Foundation rules with no CB id: `--checks` selects them by their whole name
     // (`check_id`), so the group must run when one of these names is selected.
-    "Version Currency",
-    "Config Files",
-    "Git Hooks",
-    "Quality Thresholds",
-    "Deprecated Features",
-    "Cargo.lock Present",
-    "MSRV Defined",
-    "CI Configured",
-    "PAIML Deps Workspace",
-    "Sovereign Stack Patterns",
+    // Their title is that name.
+    ("Version Currency", "Version Currency"),
+    ("Config Files", "Config Files"),
+    ("Git Hooks", "Git Hooks"),
+    ("Quality Thresholds", "Quality Thresholds"),
+    ("Deprecated Features", "Deprecated Features"),
+    ("Cargo.lock Present", "Cargo.lock Present"),
+    ("MSRV Defined", "MSRV Defined"),
+    ("CI Configured", "CI Configured"),
+    ("PAIML Deps Workspace", "PAIML Deps Workspace"),
+    ("Sovereign Stack Patterns", "Sovereign Stack Patterns"),
 ];
-const GROUP_IDS_LANGUAGE: &[&str] = &[
-    "cb-500", "cb-600", "cb-700", "cb-800", "cb-900", "cb-950", "cb-1000", "cb-1050",
+const GROUP_IDS_LANGUAGE: &[RuleDecl] = &[
+    ("cb-500", "Rust Best Practices (CB-500 to CB-530)"),
+    ("cb-600", "Lua Best Practices (CB-600 to CB-619)"),
+    ("cb-700", "SQL Best Practices (CB-700 to CB-705)"),
+    ("cb-800", "Scala Best Practices (CB-800 to CB-805)"),
+    ("cb-900", "Markdown Best Practices (CB-900 to CB-904)"),
+    ("cb-950", "YAML Best Practices (CB-950 to CB-954)"),
+    ("cb-1000", "MLOps Model Quality (CB-1000 to CB-1008)"),
+    ("cb-1050", "Lean 4 Best Practices (CB-1050 to CB-1053)"),
 ];
-const GROUP_IDS_CUSTOM_SCORE: &[&str] = &["cb-1100"];
-const GROUP_IDS_PROVABLE_CONTRACTS: &[&str] = &[
-    "cb-1200", "cb-1201", "cb-1202", "cb-1203", "cb-1204", "cb-1205", "cb-1206", "cb-1207",
-    "cb-1208", "cb-1209", "cb-1210", "cb-1211", "cb-1214",
+const GROUP_IDS_CUSTOM_SCORE: &[RuleDecl] = &[("cb-1100", "Custom Score")];
+const GROUP_IDS_PROVABLE_CONTRACTS: &[RuleDecl] = &[
+    ("cb-1200", "Provable Contracts"),
+    ("cb-1201", "PV Lint"),
+    ("cb-1202", "Contract Coverage"),
+    ("cb-1203", "Contract Annotations"),
+    ("cb-1204", "Build.rs Pipeline"),
+    ("cb-1205", "Provability Invariant"),
+    ("cb-1206", "Verification Levels"),
+    ("cb-1207", "Contract Drift"),
+    ("cb-1208", "Binding Existence"),
+    ("cb-1209", "Contract Trait Enforcement"),
+    ("cb-1210", "Precondition Quality"),
+    ("cb-1211", "Codegen Fidelity"),
+    ("cb-1214", "Enforcement Quality"),
+    ("cb-2118", "contracts-armed-gates-monotone"),
 ];
-const GROUP_IDS_CONTRACT_SURFACES: &[&str] = &[
-    "cb-1300", "cb-1302", "cb-1303", "cb-1304", "cb-1305", "cb-1306", "cb-1307", "cb-1308",
+const GROUP_IDS_CONTRACT_SURFACES: &[RuleDecl] = &[
+    ("cb-1300", "CLI Arg Contracts"),
+    ("cb-1302", "MCP Schema Contracts"),
+    ("cb-1303", "Config Contracts"),
+    ("cb-1304", "Sovereign Dep Contracts"),
+    ("cb-1305", "Contract Surface Classification"),
+    ("cb-1306", "TUI Widget Contracts"),
+    ("cb-1307", "WASM FFI Contracts"),
+    ("cb-1308", "Verification Ladder"),
 ];
-const GROUP_IDS_AGENT_CONTRACTS: &[&str] = &[
-    "cb-1400", "cb-1401", "cb-1402", "cb-1403", "cb-1404", "cb-1405", "cb-1406", "cb-1407",
-    "cb-1408", "cb-1409", "cb-1410",
+const GROUP_IDS_AGENT_CONTRACTS: &[RuleDecl] = &[
+    ("cb-1400", "Agent Contract Existence"),
+    ("cb-1401", "Agent Contract Falsifiability"),
+    ("cb-1402", "Agent Verification Level"),
+    ("cb-1403", "Assume-Guarantee Chain"),
+    ("cb-1404", "Agent Comply Usage"),
+    ("cb-1405", "Contract References"),
+    ("cb-1406", "Chain-of-Thought Audit"),
+    ("cb-1407", "Five Whys Linked"),
+    ("cb-1408", "Agent Evidence Executable"),
+    ("cb-1409", "No L0 Autonomous Code"),
+    ("cb-1410", "Sub-Agent Composition"),
 ];
-const GROUP_IDS_COMMIT_ENFORCEMENT: &[&str] = &[
-    "cb-1320", "cb-1321", "cb-1322", "cb-1323", "cb-1324", "cb-1325", "cb-1326", "cb-1331",
-    "cb-1332", "cb-1333", "cb-1334", "cb-1335", "cb-1336", "cb-1337", "cb-1330", "cb-1338",
-    "cb-1339", "cb-1340", "cb-1341", "cb-1343", "cb-1350", "cb-1351", "cb-1352", "cb-1353",
-    "cb-1354", "cb-1342",
+const GROUP_IDS_COMMIT_ENFORCEMENT: &[RuleDecl] = &[
+    ("cb-1320", "README Layout Contract"),
+    ("cb-1321", "Dockerfile Contract"),
+    ("cb-1322", "SVG Asset Contract"),
+    ("cb-1323", "Forjar Config Contract"),
+    ("cb-1324", "mdBook Contract"),
+    ("cb-1325", "CHANGELOG Contract"),
+    ("cb-1326", "Badge Contract"),
+    ("cb-1331", "Work Contract Validity"),
+    ("cb-1332", "Cache Staleness"),
+    ("cb-1333", "Hook Single Writer"),
+    ("cb-1334", "Hook Atomic Writes"),
+    ("cb-1335", "Hook Determinism"),
+    ("cb-1336", "Hook No Injection"),
+    ("cb-1337", "Hook Cold-Start Commands"),
+    ("cb-1330", "L-Level Ratchet"),
+    ("cb-1338", "No Ghost Bindings"),
+    ("cb-1339", "No Placeholder Preconditions"),
+    ("cb-1340", "Enforcement Penetration"),
+    ("cb-1341", "Spec Number Accuracy"),
+    ("cb-1343", "Assertion Placement"),
+    ("cb-1350", "Differential Obligations"),
+    ("cb-1351", "Binding Index Freshness"),
+    ("cb-1352", "Assume-Guarantee Chains"),
+    ("cb-1353", "A/G Cycle Detection"),
+    ("cb-1354", "Contract Query Readiness"),
+    ("cb-1342", "Codegen Compiles"),
 ];
-const GROUP_IDS_BINDING_SCOPE: &[&str] = &[
-    "cb-1600", "cb-1601", "cb-1602", "cb-1603", "cb-1604", "cb-1605", "cb-1606", "cb-1607",
-    "cb-1608", "cb-1609",
+const GROUP_IDS_BINDING_SCOPE: &[RuleDecl] = &[
+    ("cb-1600", "Binding Scope Orphan"),
+    ("cb-1601", "Binding SHA Drift"),
+    ("cb-1602", "Unbind Audit"),
+    ("cb-1603", "Inherited Clause Integrity"),
+    ("cb-1604", "Postcondition Weakening"),
+    ("cb-1605", "Kani Harness Execution"),
+    ("cb-1606", "Lean Theorem Linkage"),
+    ("cb-1607", "Binding Equation Identifier"),
+    ("cb-1608", "Cross-Binding Consistency"),
+    ("cb-1609", "Binding YAML Git-Tracked"),
 ];
-const GROUP_IDS_WORK_LADDER: &[&str] = &[
-    "cb-1610", "cb-1611", "cb-1612", "cb-1613", "cb-1614", "cb-1615", "cb-1616", "cb-1617",
-    "cb-1618", "cb-1619",
+const GROUP_IDS_WORK_LADDER: &[RuleDecl] = &[
+    ("cb-1610", "Verification Level Parses"),
+    ("cb-1611", "Target ≤ Max Attainable"),
+    ("cb-1612", "L1 Test Evidence"),
+    ("cb-1613", "L3 Falsification Evidence"),
+    ("cb-1614", "L4 Kani Evidence"),
+    ("cb-1615", "Kani Harness SHA"),
+    ("cb-1616", "L5 Lean Proof Zero-Sorry"),
+    ("cb-1617", "Downgrade Reason Audit"),
+    ("cb-1618", "Level Monotonicity"),
+    ("cb-1619", "Achieved Level == Target"),
 ];
-const GROUP_IDS_FALSIFICATION: &[&str] = &[
-    "cb-1620", "cb-1621", "cb-1622", "cb-1623", "cb-1624", "cb-1625", "cb-1626", "cb-1627",
-    "cb-1628", "cb-1629",
+const GROUP_IDS_FALSIFICATION: &[RuleDecl] = &[
+    ("cb-1620", "Inherited Roster Coverage"),
+    ("cb-1621", "Expected Snapshot Drift"),
+    ("cb-1622", "Roster Execution Coverage"),
+    ("cb-1623", "No Duplicate ProvableContract Entries"),
+    ("cb-1624", "No Manual Deletion of Inherited Entries"),
+    ("cb-1625", "Inherited Failure Fatal"),
+    ("cb-1626", "Referenced test_id Exists in YAML"),
+    ("cb-1627", "Post-bind YAML Drift"),
+    ("cb-1628", "Per-run Log Line Emitted"),
+    ("cb-1629", "L4 Timeout Gate"),
 ];
-const GROUP_IDS_CODEGEN: &[&str] = &[
-    "cb-1630", "cb-1631", "cb-1632", "cb-1633", "cb-1634", "cb-1635", "cb-1636", "cb-1637",
-    "cb-1638", "cb-1639",
+const GROUP_IDS_CODEGEN: &[RuleDecl] = &[
+    ("cb-1630", "pmat work codegen Succeeds"),
+    ("cb-1631", "Attribute Has Generated Module"),
+    ("cb-1632", "Attribute Clause IDs Exist"),
+    ("cb-1633", "Manifest SHA Drift"),
+    ("cb-1634", "expr Clauses Have binds_to"),
+    ("cb-1635", "binds_to Function Actually Modified"),
+    ("cb-1636", "Generated Macros Compile (debug + release)"),
+    ("cb-1637", "L2+ Public Function Coverage"),
+    ("cb-1638", "Generated Modules Git-Tracked"),
+    ("cb-1639", "Kani Harnesses Reference Generated Macros"),
 ];
-const GROUP_IDS_COT_PROOF: &[&str] = &[
-    "cb-1640", "cb-1641", "cb-1642", "cb-1643", "cb-1644", "cb-1645", "cb-1646", "cb-1647",
-    "cb-1648", "cb-1649",
+const GROUP_IDS_COT_PROOF: &[RuleDecl] = &[
+    ("cb-1640", "Assumption References Resolve"),
+    ("cb-1641", "Step Has Evidence Method"),
+    ("cb-1642", "Existing Test Path Resolves"),
+    ("cb-1643", "L3+ Steps Have Expr"),
+    ("cb-1644", "Agent Run Replayable"),
+    ("cb-1645", "Derived YAML Obligations"),
+    ("cb-1646", "CoT Derivation SHA"),
+    ("cb-1647", "No Orphan CoT Steps"),
+    ("cb-1648", "L4 Axiomatic Discharge Bounded"),
+    ("cb-1649", "L5 Lean Theorem Mapping"),
 ];
-const GROUP_IDS_MACS: &[&str] = &[
-    "cb-1650", "cb-1656", "cb-1657", "cb-1655", "cb-1651", "cb-1653", "cb-1654", "cb-1658",
-    "cb-1663", "cb-1664", "cb-1665", "cb-1666",
+const GROUP_IDS_MACS: &[RuleDecl] = &[
+    ("cb-1650", "Skill Effort Pinned"),
+    ("cb-1656", "MCP Manifest Faithful"),
+    ("cb-1657", "Doc Model Drift"),
+    ("cb-1655", "Canonical Roadmap Fresh"),
+    ("cb-1651", "Receipt Provenance Present"),
+    ("cb-1653", "Ladder Claim Drift"),
+    ("cb-1654", "Refusal Events Acked"),
+    ("cb-1658", "CoT Derivation Completeness"),
+    ("cb-1663", "AGY Directory Structure"),
+    ("cb-1664", "AGY Hooks Schema"),
+    ("cb-1665", "AGY Skill Frontmatter"),
+    ("cb-1666", "AGY MCP Client Config"),
 ];
-const GROUP_IDS_EVIDENCE: &[&str] = &["cb-1700", "cb-1701", "cb-1702", "cb-1703"];
-const GROUP_IDS_GATE_EFFECT: &[&str] = &["cb-2100"];
-const GROUP_IDS_RATCHET: &[&str] = &["cb-2102"];
-const GROUP_IDS_COHERENCE: &[&str] = &["cb-2101"];
-const GROUP_IDS_TRACEABILITY: &[&str] = &["cb-2113"];
-const GROUP_IDS_ROADMAP_COHERENCE: &[&str] = &["cb-2115"];
-const GROUP_IDS_TICKET_RELEASE: &[&str] = &["cb-2112", "cb-2114"];
-const GROUP_IDS_SPEC_EPICS: &[&str] = &["cb-2110"];
-const GROUP_IDS_SPEC_REVIEWS: &[&str] = &["cb-2111"];
-// 162 distinct ids across 21 groups; declared in more than one group: none
+const GROUP_IDS_EVIDENCE: &[RuleDecl] = &[
+    ("cb-1700", "Branch Protection"),
+    ("cb-1701", "Supply Chain"),
+    ("cb-1702", "Review Changeset Size (advisory)"),
+    ("cb-1703", "Documented Rule Count"),
+];
+const GROUP_IDS_GATE_EFFECT: &[RuleDecl] = &[("cb-2100", "Comply Gate Effect")];
+const GROUP_IDS_RATCHET: &[RuleDecl] = &[("cb-2102", "Ratchet Baselines")];
+const GROUP_IDS_COHERENCE: &[RuleDecl] = &[("cb-2101", "Threshold Coherence")];
+const GROUP_IDS_TRACEABILITY: &[RuleDecl] = &[("cb-2113", "Commit Traceability")];
+const GROUP_IDS_ROADMAP_COHERENCE: &[RuleDecl] = &[("cb-2115", "Roadmap Coherence")];
+const GROUP_IDS_TICKET_RELEASE: &[RuleDecl] = &[
+    ("cb-2112", "Ticket Linkage"),
+    ("cb-2114", "Release Binding"),
+];
+const GROUP_IDS_SPEC_EPICS: &[RuleDecl] = &[("cb-2110", "Spec Epics")];
+const GROUP_IDS_SPEC_REVIEWS: &[RuleDecl] = &[("cb-2111", "Spec Reviews")];
+// 174 distinct ids across 21 groups; declared in more than one group: none
 
 /// A named compliance-check group, the rule ids it can emit, and the thunk that
 /// produces its checks. The ids are known before the group runs (PMAT-1296), so
 /// `--checks` can leave a group that holds no selected rule unrun.
 type CheckGroup<'a> = (
     &'static str,
-    &'static [&'static str],
+    &'static [RuleDecl],
     Box<dyn Fn() -> Vec<ComplianceCheck> + Send + Sync + 'a>,
 );
+
+/// Every rule the registry declares, as `(id, group, title)` in declaration
+/// order, CB ids upper-cased as `CB-NNNN` and a rule with no CB id under its
+/// whole name (ONT-11, #1422). The thunks are built
+/// but never run, so listing checks nothing.
+pub(crate) fn declared_rules() -> Vec<(String, &'static str, &'static str)> {
+    let cfg = crate::models::comply_config::ComplyConfig::default();
+    let overrides = CheckOverrides::default();
+    compliance_check_groups(Path::new("."), &cfg, "0.0.0", &overrides)
+        .into_iter()
+        .flat_map(|(group, rules, _)| {
+            rules.iter().map(move |(id, title)| {
+                let id = if id.starts_with("cb-") {
+                    id.to_ascii_uppercase()
+                } else {
+                    (*id).to_string()
+                };
+                (id, group, *title)
+            })
+        })
+        .collect()
+}
+
+/// `pmat comply check --list`: the rule registry, as JSON (`[{id, group, name}]`)
+/// or one rule per line.
+pub(crate) fn print_rule_list(format: ComplyOutputFormat) -> Result<()> {
+    let rules = declared_rules();
+    match format {
+        ComplyOutputFormat::Json => {
+            let rows: Vec<serde_json::Value> = rules
+                .iter()
+                .map(
+                    |(id, group, name)| serde_json::json!({"id": id, "group": group, "name": name}),
+                )
+                .collect();
+            println!("{}", serde_json::to_string_pretty(&rows)?);
+        }
+        _ => {
+            for (id, group, name) in &rules {
+                println!("{id}\t{group}\t{name}");
+            }
+        }
+    }
+    Ok(())
+}
 
 /// A group that was not run: its declaration index and its not-run rows.
 type NotRunGroup = (usize, Vec<ComplianceCheck>);
@@ -831,11 +998,11 @@ fn partition_by_selection<'a>(
     groups: Vec<CheckGroup<'a>>,
     selected: &[String],
 ) -> (Vec<(usize, CheckGroup<'a>)>, Vec<NotRunGroup>) {
-    let holds_a_selected_rule = |ids: &[&str]| {
+    let holds_a_selected_rule = |rules: &[RuleDecl]| {
         selected.is_empty()
-            || ids
+            || rules
                 .iter()
-                .any(|id| selected.iter().any(|s| s.eq_ignore_ascii_case(id)))
+                .any(|(id, _)| selected.iter().any(|s| s.eq_ignore_ascii_case(id)))
     };
     let mut skipped: Vec<(usize, Vec<ComplianceCheck>)> = Vec::new();
     let mut to_run: Vec<(usize, CheckGroup)> = Vec::new();
@@ -851,9 +1018,10 @@ fn partition_by_selection<'a>(
 
 /// One Skip row per rule of a group that was not run under `--checks` (PMAT-1296):
 /// the rule is reported, never absent, and the row says why it has no verdict.
-fn not_run_rows(group: &str, ids: &[&str]) -> Vec<ComplianceCheck> {
-    ids.iter()
-        .map(|id| ComplianceCheck {
+fn not_run_rows(group: &str, rules: &[RuleDecl]) -> Vec<ComplianceCheck> {
+    rules
+        .iter()
+        .map(|(id, _)| ComplianceCheck {
             name: format!(
                 "{}: not run",
                 if id.starts_with("cb-") {
@@ -1744,6 +1912,7 @@ mod build_compliance_report_tests {
 include!("check_pv_enforcement_helpers.rs");
 // Provable-contracts enforcement checks (CB-1201, CB-1203)
 include!("check_pv_enforcement.rs");
+include!("check_armed_gates.rs");
 // Provable-contracts verification ladder (CB-1204 through CB-1207)
 include!("check_pv_verification_ladder.rs");
 // Provable-contracts quality gate (CB-1202, CB-1208, CB-1209)
@@ -1790,6 +1959,8 @@ include!("check_individual_ci.rs");
 
 include!("check_handlers_tests_inline.rs");
 include!("check_pv_enforcement_helpers_tests.rs");
+include!("check_pv_lint_verdict_tests.rs");
+include!("check_armed_gates_tests.rs");
 
 include!("check_path_guard_tests.rs");
 include!("check_empty_project_guard_tests.rs");

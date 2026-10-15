@@ -2,15 +2,16 @@
   "ticket": "PMAT-1336",
   "base": "master",
   "base_resolved": "origin/master",
-  "base_note": "local master and origin/master agree",
-  "head": "c1148c750d80f768326a13b49b86a646790e6114",
-  "diff_sha256": "5875ca25d35e87f98742f1780d5d008a219e6374b6fef0c46cf818778ceeeb57",
+  "base_note": "local master differs from origin/master by 398 commit(s); judged against origin/master",
+  "head": "b82bfcbab771efe05df2e75e63c0757401bfc7a6",
+  "diff_sha256": "ff12d5265fb3b2d968f3872a91ede02487ac82e810a5cb9a8d7014810d21f1c5",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "inline",
-  "prompt_bytes": 27844,
+  "prompt_bytes": 32502,
+  "prompt_sha256": "44ab14404c4bc9334b1b9e919aa5190030b8e8235d679a6372cb4242a5491a4f",
   "author": {
-    "model": "claude-opus-5",
+    "model": "claude-opus-5-5",
     "family": "claude",
     "source": "flag"
   },
@@ -20,97 +21,298 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff correctly resolves the ORPHAN-GITHUB #1410 finding by registering GH-1410 in the roadmap.yaml file with the status 'planned'. The 16 added lines perfectly match the receipt claim. No forbidden or undocumented changes are present.",
-      "findings": [
-        {
-          "claim": "GH-1410 is added to the roadmap with 16 lines and status 'planned', matching the receipt claim exactly.",
-          "file": "docs/roadmaps/roadmap.yaml",
-          "grounding": "cited"
-        },
-        {
-          "claim": "The receipt section for GH-1410 accurately describes the lifecycle addition to fix the CB-2115 ORPHAN-GITHUB finding.",
-          "file": "docs/audits/impl-PMAT-1336-receipt.md",
-          "grounding": "cited"
-        }
-      ],
-      "raw_bytes": 2487,
+      "summary": "The diff is a narrowly-scoped lifecycle round: it completes PMAT-1458 (roadmap row `inprogress`→`completed`, matching the merged 3.42.0 release #1459/3f3d2695c) and registers PMAT-1461 as a new `planned` row under the pre-existing GH-1457 \"Epic: pmat release train\", plus an updated receipt section describing exactly this round. Only `docs/roadmaps/roadmap.yaml` and `docs/audits/impl-PMAT-1336-receipt.md` change, consistent with PMAT-1336's triage-path scope and its \"a ticket cannot complete itself\" premise (PMAT-1336 itself stays open/inprogress; it is completing a different ticket, PMAT-1458, and merely filing PMAT-1461, not completing it). Cross-checked the epic linkage (GH-1457 exists, title 'Epic: pmat release train') and the PMAT-1458 row's prior epic field, both consistent with the receipt's claims. No test/gate weakening, no scope creep into src/, and the receipt does not contradict the diff.",
+      "findings": [],
+      "raw_bytes": 2757,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
+      "executor": "claude-code",
       "grounding_check": "parity",
-      "model": "gemini-3.1-pro-high",
-      "model_measured": "gemini-3.1-pro-high",
-      "model_source": "measured",
-      "family": "gemini"
+      "role": "counted",
+      "model": "claude-sonnet-5",
+      "model_measured": "claude-sonnet-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "44ab14404c4bc9334b1b9e919aa5190030b8e8235d679a6372cb4242a5491a4f",
+      "trace": {
+        "input_sha256": "15ec0bca40690ff364034f6b1788c8f2866a72c9dcd7b3cfa025f157468be238",
+        "output_sha256": "481332f96ce3cbb0cd6804382882e64b80fe806c2453f883818b3a7c9249bbdf",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-sonnet-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-sonnet-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
     },
     {
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "Review for PMAT-1336 (lifecycle-12, PR #1411):\n- Scope & Criteria: PMAT-1336's acceptance criteria require (1) bijection between GitHub issues and roadmap items with zero findings against live GitHub, and (2) touching only docs/roadmaps/roadmap.yaml and docs/audits. The diff strictly adheres to these criteria: it adds the missing row for open issue #1410 (GH-1410, planned status) and updates the receipt docs/audits/impl-PMAT-1336-receipt.md. No source files, gates, or test definitions are modified.\n- Receipt Alignment: The receipt section '2026-09-18 — #1410 registered: 3.41.1 declared, not yet published (lifecycle-12)' accurately describes the exact changes in the diff (16 insertions in roadmap.yaml adding GH-1410 for issue 1410).\n- Refutation Checks: No gates weakened, no tests inverted, no receipt claims unbacked, and nothing done outside the ticket scope. No refutations found. Verdict: PASS.",
+      "summary": "Diff completes PMAT-1458's roadmap row (closed by a separate PR #1459, not self-completed) and registers a new open issue #1461 as PMAT-1461 (planned). Both actions match the receipt's described commands (`pmat work sync --direction github-to-yaml`, `pmat work add --github-issue 1461 --epic 1457 ...`) line-for-line, touch only docs/roadmaps/roadmap.yaml and docs/audits/impl-PMAT-1336-receipt.md (the allow-listed paths for this kind:lifecycle ticket), and follow the exact pattern of ~15 prior rounds on this standing ticket. No src/ changes, no gate weakening, no unsupported claims found.",
       "findings": [],
-      "raw_bytes": 3124,
+      "raw_bytes": 2089,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
+      "executor": "claude-code",
       "grounding_check": "parity",
-      "model": "gemini-3.8-flash-high",
-      "model_measured": "gemini-3.8-flash-high",
-      "model_source": "measured",
-      "family": "gemini"
+      "role": "counted",
+      "model": "claude-sonnet-5",
+      "model_measured": "claude-sonnet-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "44ab14404c4bc9334b1b9e919aa5190030b8e8235d679a6372cb4242a5491a4f",
+      "trace": {
+        "input_sha256": "f3a06a64d662bc816740c6439b32e048bcc1f1fbc08e3ece5f59b28fb375e38e",
+        "output_sha256": "ff06d9b9f5d2ffaa28176fb1cdb3ff8b20ddf0cb44c20665c755f70caec3ceef",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-sonnet-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-sonnet-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": [
+          {
+            "model": "gemini-3.1-pro-high",
+            "why": "family gemini withheld by policy: the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24"
+          }
+        ]
+      },
+      "repeat_of": 1
     },
     {
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "The diff registers orphan GitHub issue #1410 as roadmap item GH-1410 in docs/roadmaps/roadmap.yaml and updates docs/audits/impl-PMAT-1336-receipt.md with the corresponding implementation receipt section for PMAT-1336. The changes precisely match the ticket's lifecycle mandate, no gates or tests are weakened or contradicted, receipt claims are fully backed by the diff, and no extraneous changes were introduced. Verdict is PASS.",
+      "summary": "The diff correctly implements the lifecycle pattern: when a ticket's issue closes, a later lifecycle PR (not the same PR) completes the roadmap row. PMAT-1458 transitions from `inprogress` to `completed` with updated timestamp; PMAT-1461 is registered to maintain the GitHub↔roadmap bijection and prevent new orphan findings. Receipt documents both actions and their measured outcome (126/126 coherent). No ticket criteria violated.",
       "findings": [],
-      "raw_bytes": 2143,
+      "raw_bytes": 1775,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
+      "executor": "claude-code",
       "grounding_check": "parity",
-      "model": "gemini-3.7-flash-high",
-      "model_measured": "gemini-3.7-flash-high",
-      "model_source": "measured",
-      "family": "gemini"
+      "role": "counted",
+      "model": "claude-haiku-4-5",
+      "model_measured": "claude-haiku-4-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "44ab14404c4bc9334b1b9e919aa5190030b8e8235d679a6372cb4242a5491a4f",
+      "trace": {
+        "input_sha256": "1b5d5dc9cd5870efe7ad7cabd16a0753c07987ef9588e919f308e0b2c0fa7ddd",
+        "output_sha256": "b5f6fb398e458aaf32923c13f2404f35ff9b9f3d7618e66fafcbab9a8bc14619",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-haiku-4-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-haiku-4-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
     }
   ],
   "dissent": [],
-  "dedup": [
-    {
-      "file": "docs/audits/impl-PMAT-1336-receipt.md",
-      "line": null,
-      "lanes_agreeing": [
-        1
-      ],
-      "claims": [
-        "The receipt section for GH-1410 accurately describes the lifecycle addition to fix the CB-2115 ORPHAN-GITHUB finding."
-      ]
-    },
-    {
-      "file": "docs/roadmaps/roadmap.yaml",
-      "line": null,
-      "lanes_agreeing": [
-        1
-      ],
-      "claims": [
-        "GH-1410 is added to the roadmap with 16 lines and status 'planned', matching the receipt claim exactly."
-      ]
-    }
-  ],
+  "dedup": [],
   "uncovered": [],
   "coverage_source": "lanes",
   "partial": false,
-  "partial_reasons": [],
+  "partial_reasons": [
+    "lane models: only 2 distinct model ids across 3 lanes (claude-haiku-4-5, claude-sonnet-5) — lanes sharing an id are resamples, not independent reviewers (PMAT-125)",
+    "lane 2: judged by claude-sonnet-5 after falling through gemini-3.1-pro-high (skipped: family gemini withheld by policy: the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24) (PMAT-321)"
+  ],
+  "fallback": {
+    "same_family_width": 2,
+    "chain": [
+      {
+        "model": "claude-sonnet-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "gemini-3.1-pro-high",
+        "family": "gemini",
+        "disposition": "configured"
+      },
+      {
+        "model": "claude-haiku-4-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-opus-5-5",
+        "family": "claude",
+        "disposition": "excluded-self-review",
+        "why": "the author's own model id (claude-opus-5-5) — a model never reviews its own diff, at any width (R-15a identity bar)"
+      },
+      {
+        "model": "qwen3.5",
+        "family": "qwen",
+        "disposition": "not-run",
+        "why": "no quorum.local_lane in the config — the aprender lane has no model to load"
+      }
+    ],
+    "precheck": [
+      {
+        "family": "gemini",
+        "model": "gemini-3.1-pro-high",
+        "probe": 0,
+        "outcome": "policy",
+        "reason": "the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24"
+      }
+    ],
+    "degraded": {
+      "reason": "same-family (policy: agy reserved for tier-1 diffs)",
+      "lanes": [
+        2
+      ],
+      "families": [
+        {
+          "family": "gemini",
+          "state": "policy",
+          "evidence": "the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24"
+        }
+      ],
+      "rule": "operator standing rule: if agy quota is ever gone, simply use claude code itself (PMAT-360)"
+    },
+    "prah": {
+      "source": "install-receipt",
+      "path": "/home/noah/.claude/skills/paiml-implement/bin/prah"
+    },
+    "tier1": {
+      "agy_tier1_only": true,
+      "tier1": false,
+      "matched": [],
+      "paths": 2,
+      "patterns": [
+        "^\\.github/workflows/",
+        "(^|/)release[^/]*\\.(ya?ml|sh|rs|toml)$",
+        "cuda|kernel|\\.cu$|\\.ptx$",
+        "(^|/)[^/]*(gate|guard)[^/]*\\.(sh|rs|py)$|^hooks/",
+        "security|secret|credential|(^|/)deny\\.toml$",
+        "^skills/quorum-review/|(^|/)(receipt-lint|roadmap-lint|release-lint|kind-gate|model-gate)[^/]*$|^crates/prah-lint/"
+      ],
+      "builtin": "^skills/quorum-review/|(^|/)skills/paiml-implement/config\\.json$|(^|/)(modellib|lane-reduce|lane-fallback|lane-group|agy-lane|cc-lane|receipt-lint|route|quota)\\.sh$|^crates/prah-lint/"
+    },
+    "bucket": {
+      "ledger": "/home/noah/.local/state/paiml-implement/agy-bucket.jsonl",
+      "window_s": 18000,
+      "pace": "off",
+      "buckets": {},
+      "closed": []
+    }
+  },
   "auto_merge": {
     "checked": true,
     "was_armed": false,
     "disarmed": false,
     "note": "auto-merge not armed"
   },
+  "degraded": {
+    "reason": "same-family (policy: agy reserved for tier-1 diffs)",
+    "lanes": [
+      2
+    ],
+    "families": [
+      {
+        "family": "gemini",
+        "state": "policy",
+        "evidence": "the diff is not tier-1 (quorum.agy_tier1_only: none of its paths matches quorum.tier1_paths or the built-in policy paths), and agy is reserved for tier-1 diffs — cop ruling of 2026-09-24"
+      }
+    ],
+    "rule": "operator standing rule: if agy quota is ever gone, simply use claude code itself (PMAT-360)"
+  },
+  "cheap_seat": "claude-haiku-4-5",
+  "canary": {
+    "skipped": "brief 32502 bytes > 24576"
+  },
+  "advisory_lane": {
+    "state": "answered",
+    "counts": false,
+    "row": {
+      "Verdict": {
+        "verdict": "PASS",
+        "cell": "gx10-cuda",
+        "backend": "cuda"
+      }
+    },
+    "verdict": "PASS",
+    "why": null,
+    "served_by": "gx10-cuda",
+    "gpu_proof": {
+      "used_gpu_probe": true,
+      "server_holds_gpu": true,
+      "used_gpu_source": "completions probe (chat omits used_gpu, aprender#4146)",
+      "trace_lines": [
+        "1463624, 309 MiB"
+      ]
+    },
+    "apr": "0.70.0",
+    "apr_binary_sha256": "6b2a7dc66c38adcca20b315beac70a1a31e7bd0af2a1cc5c2a7730ca6086d417",
+    "apr_tag": "v0.70.0-dev.3990584f0",
+    "apr_commit": "3990584f0bf5af6bca34ea9298df92177f3ef79a",
+    "apr_build_why": null,
+    "model": "/home/noah/data/models/Qwen3.5-4B-Q4_K_M.gguf",
+    "model_sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+    "rc": 0,
+    "wall_s": 12,
+    "collected_s": 156,
+    "budget_s": 128,
+    "budget_basis": "ledger: 2 x p95 64 s over 41 gx10-cuda Verdict rows",
+    "brief": {
+      "bytes": 32502,
+      "sent_bytes": 32671,
+      "max_bytes": 196608
+    },
+    "trace": {
+      "input_sha256": "71c90014f656af5eba165053ed01c2f94e7e3cfd13323c18fa6041eb87c74e0b",
+      "raw": "advisory.json"
+    },
+    "attempts": [
+      {
+        "host": "gx10",
+        "ok": true,
+        "wall_s": 11,
+        "used_gpu": true,
+        "ts": "2026-09-28T01:56:57.000Z",
+        "wall_ms": 11151,
+        "request_id": "01a0e5ba-c225-7e68-a23c-482fc504002a",
+        "load1": 28.56,
+        "cold": false
+      }
+    ],
+    "ledger": "/home/noah/.local/state/paiml-implement/advisory-ledger.jsonl",
+    "raw": "advisory.json",
+    "agrees_with_counted": true,
+    "counted": "PASS"
+  },
   "lint": {
     "ok": true,
-    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5/claude"
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-opus-5-5/claude same_family=3/2 degraded=same-family (policy: agy reserved for tier-1 diffs)"
   }
 }

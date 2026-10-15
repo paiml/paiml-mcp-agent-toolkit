@@ -27,7 +27,7 @@
 # Delete partially-built files on error for safety (bashrs lint compliance)
 .DELETE_ON_ERROR:
 
-.PHONY: all validate validate-book-selftest format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage clean-profraw build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples examples example clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify coverage-fast coverage-invalidate coverage-full coverage-broad check-install
+.PHONY: all validate validate-book-selftest format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage clean-profraw build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples examples example clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify publish-from-tag coverage-fast coverage-invalidate coverage-full coverage-broad check-install
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -1655,6 +1655,12 @@ release-dry:
 	@echo "🧪 Dry run for release..."
 	@cargo release patch --dry-run
 
+# PMAT-678 (#1274): the one crates.io publish path release.yml names. Publishes
+# from a detached worktree of TAG, with cargo's credentials file, never the env token.
+publish-from-tag: ## PMAT-678: publish TAG to crates.io from a detached worktree of it (make publish-from-tag TAG=vX.Y.Z [DRY_RUN=1])
+	@[ -n "$(TAG)" ] || { echo "usage: make publish-from-tag TAG=vX.Y.Z"; exit 2; }
+	@DRY_RUN=$(DRY_RUN) bash scripts/publish-from-tag.sh "$(TAG)"
+
 # Verify release was successful
 dogfood-published: ## AD-02: install VERSION from crates.io and run the release gate against it (make dogfood-published VERSION=3.36.0)
 	@[ -n "$(VERSION)" ] || (echo "usage: make dogfood-published VERSION=x.y.z" && exit 2)
@@ -1670,7 +1676,7 @@ release-verify:
 	@cargo search pmat | head -1
 	@echo ""
 	@echo "📦 Testing installation from crates.io..."
-	@cargo install pmat --force && pmat --version
+	@cargo install pmat --locked --force && pmat --version
 	@echo "✅ Release verification complete!"
 
 # Create GitHub release with binary artifacts
