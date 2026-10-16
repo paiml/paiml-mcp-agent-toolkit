@@ -14,6 +14,10 @@
 #   arm 3  RED   trailer naming PMAT-999, absent from the roadmap    exit 1, Fail, names PMAT-999
 #   arm 4  RED   trailer naming PMAT-002, a completed item           exit 1, Fail, names PMAT-002
 #   arm 5  N/A   HEAD on master                                      exit 0, Pass, message says not_applicable
+#   arm 6-8 as in PMAT-1356 (bot exempt WITH the runner actor; human beside it judged; foreign address judged)
+#   arm 9  RED   exact dependabot address, no CI actor              exit 1 (fail closed)
+#   arm 10 RED   exact address, actor is not that bot               exit 1
+#   arm 11 N/A   default branch names the exempt count              exit 0
 #
 # Each arm asserts BOTH the process exit code and the CB-2113 entry in the JSON
 # report: the exit code is what CI acts on, the entry is what proves the verdict
@@ -53,9 +57,17 @@ fgit() {
 
 # One run of the gate against the fixture. Sets RC (process exit), STATUS and
 # MESSAGE (the CB-2113 entry). A report with no CB-2113 entry is exit 2.
+# GATE_ACTOR, when set, plays the CI runner: GITHUB_ACTIONS=true and
+# GITHUB_ACTOR=$GATE_ACTOR. Unset, the gate runs with NO CI signal and the
+# ambient GITHUB_ACTIONS/GITHUB_ACTOR are stripped, so a real pipeline's actor
+# can never decide an arm.
+GATE_ACTOR=""
 run_gate() {
   RC=0
-  env -u GITHUB_BASE_REF "$PMAT" comply check --checks CB-2113 --path "$repo" --format json \
+  local ci=()
+  [ -z "$GATE_ACTOR" ] || ci=(GITHUB_ACTIONS=true "GITHUB_ACTOR=$GATE_ACTOR")
+  env -u GITHUB_BASE_REF -u GITHUB_ACTIONS -u GITHUB_ACTOR "${ci[@]}" \
+    "$PMAT" comply check --checks CB-2113 --path "$repo" --format json \
     >"$report" 2>"$work/stderr" || RC=$?
   local entry
   entry=$(jq -c '[.checks[] | select(.name | startswith("CB-2113"))] | first // empty' "$report" 2>/dev/null || true)
@@ -148,6 +160,7 @@ echo "traceability-control: arm 5 N/A   — default branch reported not_applicab
 BOT='dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>'
 fgit switch -q feature
 fgit commit -q --amend --allow-empty --author="$BOT" -m "deps(deps): Bump pollster from 0.4.0 to 1.0.1"
+GATE_ACTOR="dependabot[bot]"
 run_gate
 [ "$RC" -eq 0 ] || fail_arm 6 "a bot-authored untrailered commit must exit 0"
 [ "$STATUS" = "Pass" ] || fail_arm 6 "CB-2113 must be Pass on a bot-authored commit"
@@ -175,4 +188,35 @@ run_gate
 case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm 8 "no exemption may be reported for a non-app address: $MESSAGE";; *) ;; esac
 echo "traceability-control: arm 8 RED   — robot@bot.example.invalid is not a GitHub app account (exit 1)"
 
-echo "traceability-control: all 8 arms behaved — CB-2113 can fail, can pass, and its bot exemption is counted and narrow"
+
+# ── arm 9: RED — a HUMAN using the exact dependabot address, no CI signal ───
+# The defect quorum q-toolkit1496-r1 found: %ae is whatever `--author` said.
+# The address is byte-for-byte the real app's; only the missing runner signal
+# can tell it from the real thing.
+GATE_ACTOR=""
+fgit commit -q --amend --allow-empty --author="$BOT" -m "feat: mine, forged author"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 9 "the exact dependabot address with no CI signal must exit 1 (fail closed)"
+[ "$STATUS" = "Fail" ] || fail_arm 9 "CB-2113 must be Fail on a forged author"
+case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm 9 "no exemption may be reported without a CI signal: $MESSAGE";; *) ;; esac
+echo "traceability-control: arm 9 RED   — exact dependabot address, no CI actor: still judged (exit 1)"
+
+# ── arm 10: RED — the exemption does not apply when the actor is not the bot ─
+for actor in octocat 'renovate[bot]'; do
+  GATE_ACTOR="$actor"
+  run_gate
+  [ "$RC" -eq 1 ] || fail_arm 10 "actor '$actor' running a dependabot-addressed commit must exit 1"
+  case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm 10 "no exemption for actor '$actor': $MESSAGE";; *) ;; esac
+done
+echo "traceability-control: arm 10 RED  — actor octocat / renovate[bot] on a dependabot address: still judged (exit 1)"
+
+# ── arm 11: the exempt count is printed on the default branch too ───────────
+GATE_ACTOR="dependabot[bot]"
+fgit switch -q master
+fgit commit -q --allow-empty --author="$BOT" -m "deps: bump on the default branch"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 11 "the default branch must exit 0"
+case "$MESSAGE" in "not_applicable:"*"1 authored by a GitHub app account, exempt"*) ;; *) fail_arm 11 "the default-branch message must carry the exempt count: $MESSAGE";; esac
+echo "traceability-control: arm 11 N/A  — default branch names the exempt count (exit 0)"
+
+echo "traceability-control: all 11 arms behaved — CB-2113 can fail, can pass, and its bot exemption is counted, narrow and needs a signal the author cannot set"

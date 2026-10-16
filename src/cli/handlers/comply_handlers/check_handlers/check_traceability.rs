@@ -50,28 +50,30 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                 severity: CheckSeverity::Error.into(),
                 message: format!("not_measured: {e} — an input the rule expected and could not read is a failure, not a pass (goal-mode.md doctrine 2)"),
             },
-            Ok(m) => match m.range {
+            Ok(m) => {
+            // PMAT-1356: an exemption nobody can read is indistinguishable
+            // from a rule that stopped running, so the count rides on every
+            // verdict — pass or fail, pull request or default branch.
+            let exempt = if m.bot_exempt > 0 {
+                format!("; {} authored by a GitHub app account, exempt from the trailer (PMAT-1356)", m.bot_exempt)
+            } else {
+                String::new()
+            };
+            match m.range {
                 Range::DefaultBranch { since } => ComplianceCheck {
                     name: literal.to_string(),
                     status: CheckStatus::Pass,
                     severity: CheckSeverity::Info.into(),
                     message: format!(
-                        "not_applicable: HEAD is the default branch; {} of {} non-merge commit(s) since {} carry a Pmat-Ticket trailer — master is not judged until merges are restricted to merge commits (goal-mode.md §8.4)",
+                        "not_applicable: HEAD is the default branch; {} of {} non-merge commit(s) since {} carry a Pmat-Ticket trailer{} — master is not judged until merges are restricted to merge commits (goal-mode.md §8.4)",
                         m.trailered,
                         m.commits,
-                        since.unwrap_or_else(|| "the root commit".to_string())
+                        since.unwrap_or_else(|| "the root commit".to_string()),
+                        exempt
                     ),
                 },
                 Range::PullRequest { base, merge_base } => {
                     let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { &merge_base };
-                    // PMAT-1356: an exemption nobody can read is indistinguishable
-                    // from a rule that stopped running, so the count rides on
-                    // every PullRequest verdict — pass or fail.
-                    let exempt = if m.bot_exempt > 0 {
-                        format!("; {} authored by a GitHub app account, exempt from the trailer (PMAT-1356)", m.bot_exempt)
-                    } else {
-                        String::new()
-                    };
                     if m.commits == 0 {
                         ComplianceCheck {
                             name: literal.to_string(),
@@ -113,7 +115,8 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                             message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability{}: {} — {}", m.findings.len(), m.commits, mb7, base, exempt, joined, traceability_remedy(&m.findings)),
                         }
                     }
-                }
+            }
+            }
             }
         }
     }
