@@ -56,7 +56,7 @@ jobs:
   # `cargo install pmat --features …`. Fast, and blocking.
   bundles:
     name: bundle / ${{ matrix.feature }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -72,7 +72,7 @@ jobs:
           - advanced-analysis
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: featmatrix-${{ matrix.feature }}
@@ -94,7 +94,7 @@ jobs:
   # this job exists to catch.
   individual:
     name: individual / shard ${{ matrix.shard }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -102,7 +102,7 @@ jobs:
         shard: [0, 1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: featmatrix-shard-${{ matrix.shard }}
@@ -168,11 +168,11 @@ jobs:
   # public struct. `--all-targets` is the only invocation that sees them.
   all-targets:
     name: clippy --all-targets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -205,7 +205,7 @@ jobs:
   # entry below records the run that earned it a slot.
   feature-tests:
     name: run the tests / ${{ matrix.features }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # 90, not 60: `full` and `mcp-integration` each spend ~5 min in the test
     # binary alone (303.18s and 302.10s measured locally), on top of a cold
     # dependency compile. 60 was sized for `unified-protocol`, whose delta over
@@ -287,7 +287,7 @@ jobs:
           - features: mcp-integration
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -325,7 +325,7 @@ jobs:
   # "nobody noticed the feature existed" stops being a possible outcome.
   orphan-ledger:
     name: no silent orphan features
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -475,11 +475,11 @@ jobs:
   # weight rather than on whoever next tries to release.
   package-size:
     name: package size
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
       - name: the packaged tarball builds, and fits
         shell: bash
@@ -532,7 +532,7 @@ jobs:
   # subsumes the other.
   dependabot-alerts:
     name: dependabot alerts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -631,11 +631,11 @@ jobs:
   # different reason. One job, one measurement.
   binary-size:
     name: binary size band
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: binary-size
@@ -674,11 +674,11 @@ jobs:
   # neither twin flagged.
   unrun-tests:
     name: no test behind a feature nothing runs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: unrun-tests
@@ -716,11 +716,11 @@ jobs:
   # gate is `if: always()` — a job named only in `needs` cannot fail it.
   reachability-ledger:
     name: every unreachable .rs file is ledgered, and the ledger is current
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: reachability-ledger
@@ -759,7 +759,7 @@ jobs:
   # unrun-tests); it is the general "every leg must pass" gate.
   differential-corpus:
     name: falsification / differential-corpus
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # Pinned so the report path is a fact rather than a coincidence: the harness
     # writes to `std::env::temp_dir()` (differential_corpus.rs:665), which honours
@@ -772,7 +772,7 @@ jobs:
         with:
           # The corpora are git-initialised and `churn`/`bottleneck` read history.
           fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: differential-corpus
@@ -808,7 +808,7 @@ jobs:
   # ~6 minutes: it spawns several hundred processes against three corpora.
   flag-efficacy:
     name: falsification / flag-efficacy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       TMPDIR: /tmp
@@ -816,7 +816,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: flag-efficacy
@@ -841,13 +841,13 @@ jobs:
   # is indistinguishable from the one this replaced.
   cli-doc-sync-falsifier:
     name: falsification / cli-doc-sync
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       TMPDIR: /tmp
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: cli-doc-sync-falsifier
@@ -910,7 +910,7 @@ jobs:
 
   feature-gate:
     name: feature-gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, dependabot-alerts, unrun-tests, reachability-ledger, differential-corpus, flag-efficacy, cli-doc-sync-falsifier]
     if: always()
