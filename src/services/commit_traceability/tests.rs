@@ -6,8 +6,8 @@
 //! below could be an engine that always fails.
 
 use super::{
-    count_trailered, exempts, inputs, measure_against, Inputs, Range, Violation, ROADMAP_PATH,
-    WEB_FLOW_KEY_FPR,
+    count_trailered, exempts, inputs, measure_against, CommitRec, Inputs, Range, Violation,
+    ROADMAP_PATH, WEB_FLOW_KEY_FPR,
 };
 use std::path::Path;
 use std::process::Command;
@@ -454,9 +454,17 @@ fn commit_as(dir: &Path, subject: &str, author: &str, body: Option<&str>) -> Str
 
 const DEPENDABOT: &str = "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>";
 
-/// One `LOG_FORMAT` line: hash, subject, trailers, %ae, %G?, %ce, %GF.
-fn log_line(ae: &str, sig: &str, ce: &str, fpr: &str) -> String {
-    format!("h\x1fdeps: bump\x1f\x1f{ae}\x1f{sig}\x1f{ce}\x1f{fpr}")
+/// A commit record as the gate reads it: subject, %ae, %G?, %ce, %GF.
+fn rec(ae: &str, sig: &str, ce: &str, fpr: &str) -> CommitRec {
+    CommitRec {
+        hash: "h".into(),
+        subject: "deps: bump".into(),
+        author_email: ae.into(),
+        sig_status: sig.into(),
+        committer_email: ce.into(),
+        signer_fpr: fpr.into(),
+        ..Default::default()
+    }
 }
 
 const APP_AE: &str = "49699333+dependabot[bot]@users.noreply.github.com";
@@ -468,11 +476,11 @@ fn a_web_flow_signed_bot_commit_with_no_trailer_is_exempt_and_counted() {
     // author cannot add. Five dependabot PRs held. The only exempt shape is a
     // commit GitHub's own key signed; a real signature cannot be minted here,
     // so the positive path is driven through the log line the gate parses.
-    let good = log_line(APP_AE, "G", "noreply@github.com", WEB_FLOW_KEY_FPR);
-    assert_eq!(count_trailered(&good), (1, 0, 1));
+    let good = rec(APP_AE, "G", "noreply@github.com", WEB_FLOW_KEY_FPR);
+    assert_eq!(count_trailered(std::slice::from_ref(&good)), (1, 0, 1));
     // The exemption is per commit: a human line beside it is not skipped.
-    let human = "h2\x1ffeat: mine\x1f\x1fme@example.com\x1fN\x1fme@example.com\x1f";
-    assert_eq!(count_trailered(&format!("{good}\n{human}")), (2, 0, 1));
+    let human = rec("me@example.com", "N", "me@example.com", "");
+    assert_eq!(count_trailered(&[good, human]), (2, 0, 1));
 }
 
 #[test]
@@ -491,7 +499,7 @@ fn a_good_signature_by_any_other_key_is_not_the_web_flow_key() {
             "fpr {fpr:?} must not exempt"
         );
         assert_eq!(
-            count_trailered(&log_line(APP_AE, "G", "noreply@github.com", fpr)),
+            count_trailered(&[rec(APP_AE, "G", "noreply@github.com", fpr)]),
             (1, 0, 0)
         );
     }
@@ -512,11 +520,8 @@ fn every_leg_of_the_exemption_is_necessary() {
     for st in ["N", "E", "B", "U", "X", "Y", "R", ""] {
         assert!(!exempts(APP_AE, st, "noreply@github.com", f), "{st}");
     }
-    // Old-format lines with no committer/fingerprint fields fail closed.
-    assert_eq!(
-        count_trailered(&format!("h\x1fs\x1f\x1f{APP_AE}")),
-        (1, 0, 0)
-    );
+    // A record with no signature/committer/fingerprint fields fails closed.
+    assert_eq!(count_trailered(&[rec(APP_AE, "", "", "")]), (1, 0, 0));
 }
 
 #[test]
@@ -613,4 +618,64 @@ fn a_bot_trailer_naming_a_completed_item_is_still_a_finding() {
         "{:?}",
         m.findings[0].violation
     );
+}
+
+// r4: the log framing. The r3 gate joined fields with 0x1f and split on it; a
+// 0x1f in the SUBJECT shifted every later field, so an unsigned commit could
+// carry the web-flow fields inside its own subject and be exempted.
+
+fn forged_subject(sep: char) -> String {
+    ["x", "", APP_AE, "G", "noreply@github.com", WEB_FLOW_KEY_FPR].join(&sep.to_string())
+}
+
+#[test]
+fn separator_bytes_in_a_subject_cannot_forge_the_exemption() {
+    // 0x1f is the r3 separator; 0x1e, 0x1d, 0x1c, \t and \u{7f} are its
+    // neighbours. Each must leave the unsigned commit judged.
+    for sep in ['\u{1f}', '\u{1e}', '\u{1d}', '\u{1c}', '\t', '\u{7f}'] {
+        let dir = repo();
+        on_feature(dir.path());
+        commit_as(
+            dir.path(),
+            &forged_subject(sep),
+            "a <a@example.invalid>",
+            None,
+        );
+        let m = measure_against(dir.path(), None).expect("measured");
+        assert_eq!(
+            (m.bot_exempt, m.findings.len()),
+            (0, 1),
+            "sep {:?}: {m:?}",
+            sep
+        );
+        assert!(
+            m.findings[0].subject.chars().all(|c| !c.is_control()),
+            "the subject is printed without control bytes"
+        );
+    }
+}
+
+#[test]
+fn a_control_byte_in_any_field_refuses_the_exemption() {
+    let ok = rec(APP_AE, "G", "noreply@github.com", WEB_FLOW_KEY_FPR);
+    assert!(ok.exempt());
+    for sep in ['\u{0}', '\u{1e}', '\u{1f}', '\n'] {
+        let mut r = ok.clone();
+        r.subject = format!("deps: bump{sep}tail");
+        assert!(!r.exempt(), "subject with {:?}", sep);
+        let mut r = ok.clone();
+        r.author_email = format!("{APP_AE}{sep}");
+        assert!(!r.exempt(), "author with {:?}", sep);
+        let mut r = ok.clone();
+        r.signer_fpr = format!("{WEB_FLOW_KEY_FPR}{sep}");
+        assert!(!r.exempt(), "fpr with {:?}", sep);
+    }
+}
+
+#[test]
+fn a_garbled_commit_id_in_the_log_fails_the_measurement() {
+    let dir = repo();
+    on_feature(dir.path());
+    let bad = super::read_commits(dir.path(), "no-such-ref..HEAD");
+    assert!(bad.is_err(), "an unreadable range is not measured");
 }

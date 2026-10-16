@@ -20,6 +20,9 @@
 #   arm 9  RED   exact dependabot address, no CI env                  exit 1 (fail closed)
 #   arm 10 RED   exact address, actor octocat / other bot / EMPTY      exit 1
 #   arm 11 N/A   default branch, forged address, empty actor           exit 0, NO exempt count
+#   arm 12 RED   0x1f forged fields in the subject                    exit 1
+#   arm 13 RED   0x1e-prefixed 0x1f forged fields in the subject                   exit 1
+#   arm 14 RED   G signature by a non-web-flow key, bot author         exit 1
 #
 # Each arm asserts BOTH the process exit code and the CB-2113 entry in the JSON
 # report: the exit code is what CI acts on, the entry is what proves the verdict
@@ -225,4 +228,54 @@ run_gate
 case "$MESSAGE" in "not_applicable:"*"authored by a GitHub app account"*) fail_arm 11 "a forged address with an empty actor must not be counted exempt: $MESSAGE";; "not_applicable:"*) ;; *) fail_arm 11 "the default-branch message must say not_applicable: $MESSAGE";; esac
 echo "traceability-control: arm 11 N/A  — default branch, forged address, empty actor: nothing exempt (exit 0)"
 
-echo "traceability-control: all 11 arms behaved — CB-2113 can fail, can pass, and no author-settable or env-settable signal exempts a commit"
+
+# ── arms 12-13: RED — separator bytes in the SUBJECT cannot forge the fields ─
+# r3 NO-GO (q-toolkit1496-r3): the gate split one `git log` line on 0x1f, so an
+# UNSIGNED commit whose subject carried "<ae>\x1fG\x1fnoreply@github.com\x1f<fpr>"
+# shifted the real fields and was counted exempt. Each variant below must stay
+# judged; they go GREEN (exempt) under the r3 rule, which is what makes them arms.
+WEBFLOW_FPR=968479A1AFF927E37D1A566BB5690EEEBB952194
+BOTAE='49699333+dependabot[bot]@users.noreply.github.com'
+GATE_ENV=()
+fgit switch -q feature
+fgit reset -q --hard HEAD
+inject_arm() { # <arm> <label> <separator-byte> <lead-byte>
+  local sep lead subj
+  sep=$(printf "$3")
+  lead=$(printf "$4")
+  subj="x${lead}${sep}${sep}${BOTAE}${sep}G${sep}noreply@github.com${sep}${WEBFLOW_FPR}"
+  fgit commit -q --allow-empty --author='human <human@example.invalid>' -m "$subj"
+  run_gate
+  [ "$RC" -eq 1 ] || fail_arm "$1" "a $2 injection in the subject must not exempt an unsigned commit (exit 1)"
+  [ "$STATUS" = "Fail" ] || fail_arm "$1" "CB-2113 must be Fail on a $2-injected subject"
+  case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm "$1" "no exemption may be reported for a $2-injected subject: $MESSAGE";; *) ;; esac
+  fgit reset -q --hard HEAD~1
+  echo "traceability-control: arm $1 RED  — $2 forged fields in the subject: still judged (exit 1)"
+}
+inject_arm 12 "0x1f" '\037' ''
+inject_arm 13 "0x1e-prefixed 0x1f" '\037' '\036'
+
+# ── arm 14: RED — a good signature by ANY OTHER KEY, bot author, noreply committer ─
+# The %GF leg: %G? = G and committer noreply@github.com are both settable locally.
+# A throwaway gpg key is trusted in its own keyring, so git reports G; only the
+# key identity separates it from GitHub's. Green if the fingerprint is not compared.
+if ! command -v gpg >/dev/null 2>&1; then
+  echo "traceability-control: arm 14 cannot run — gpg is absent (not measured, never a pass)" >&2
+  exit 2
+fi
+gnupg="$work/gnupg"; mkdir -m 700 "$gnupg"
+GNUPGHOME="$gnupg" gpg -q --batch --pinentry-mode loopback --passphrase '' \
+  --quick-generate-key 'other <other@example.invalid>' ed25519 sign never >/dev/null 2>&1 \
+  || { echo "traceability-control: arm 14 cannot mint a throwaway key (not measured)" >&2; exit 2; }
+GNUPGHOME="$gnupg" GIT_COMMITTER_EMAIL=noreply@github.com \
+  GIT_COMMITTER_NAME=GitHub GIT_AUTHOR_NAME=dependabot GIT_AUTHOR_EMAIL="$BOTAE" \
+  git -C "$repo" -c commit.gpgsign=false -c gpg.program=gpg -c user.signingkey=other@example.invalid commit -q --allow-empty -S -m "deps: signed by another key"
+sig=$(GNUPGHOME="$gnupg" git -C "$repo" log -1 --format=%G? HEAD)
+[ "$sig" = "G" ] || { echo "traceability-control: arm 14 setup: expected %G?=G, got '$sig' (not measured)" >&2; exit 2; }
+GNUPGHOME="$gnupg" run_gate
+[ "$RC" -eq 1 ] || fail_arm 14 "a good signature by a non-web-flow key must not exempt (exit 1)"
+case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm 14 "no exemption may be reported for another key: $MESSAGE";; *) ;; esac
+echo "traceability-control: arm 14 RED  — G signature by another key, bot author, noreply committer: still judged (exit 1)"
+fgit reset -q --hard HEAD~1
+
+echo "traceability-control: all 14 arms behaved — CB-2113 can fail, can pass, and no author-settable, env-settable or log-framing-settable signal exempts a commit"
