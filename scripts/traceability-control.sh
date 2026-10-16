@@ -14,10 +14,12 @@
 #   arm 3  RED   trailer naming PMAT-999, absent from the roadmap    exit 1, Fail, names PMAT-999
 #   arm 4  RED   trailer naming PMAT-002, a completed item           exit 1, Fail, names PMAT-002
 #   arm 5  N/A   HEAD on master                                      exit 0, Pass, message says not_applicable
-#   arm 6-8 as in PMAT-1356 (bot exempt WITH the runner actor; human beside it judged; foreign address judged)
-#   arm 9  RED   exact dependabot address, no CI actor              exit 1 (fail closed)
-#   arm 10 RED   exact address, actor is not that bot               exit 1
-#   arm 11 N/A   default branch names the exempt count              exit 0
+#   arm 6  RED   forged dependabot address + hostile CI env           exit 1 (env is not a signal)
+#   arm 7  RED   human beside a forged bot commit                      exit 1, names the human
+#   arm 8  RED   self-chosen bot-looking address                       exit 1
+#   arm 9  RED   exact dependabot address, no CI env                  exit 1 (fail closed)
+#   arm 10 RED   exact address, actor octocat / other bot / EMPTY      exit 1
+#   arm 11 N/A   default branch, forged address, empty actor           exit 0, NO exempt count
 #
 # Each arm asserts BOTH the process exit code and the CB-2113 entry in the JSON
 # report: the exit code is what CI acts on, the entry is what proves the verdict
@@ -57,16 +59,15 @@ fgit() {
 
 # One run of the gate against the fixture. Sets RC (process exit), STATUS and
 # MESSAGE (the CB-2113 entry). A report with no CB-2113 entry is exit 2.
-# GATE_ACTOR, when set, plays the CI runner: GITHUB_ACTIONS=true and
-# GITHUB_ACTOR=$GATE_ACTOR. Unset, the gate runs with NO CI signal and the
-# ambient GITHUB_ACTIONS/GITHUB_ACTOR are stripped, so a real pipeline's actor
-# can never decide an arm.
-GATE_ACTOR=""
+# GATE_ENV is a list of VAR=value assignments the gate runs under; it plays a
+# HOSTILE or empty CI environment (a PR workflow can set any of them). Unset,
+# the ambient GITHUB_* are stripped so a real pipeline can never decide an arm.
+# No value of it may ever exempt a commit: only a GitHub web-flow signature can,
+# and a signature by that key cannot be minted in a throwaway repo.
+GATE_ENV=()
 run_gate() {
   RC=0
-  local ci=()
-  [ -z "$GATE_ACTOR" ] || ci=(GITHUB_ACTIONS=true "GITHUB_ACTOR=$GATE_ACTOR")
-  env -u GITHUB_BASE_REF -u GITHUB_ACTIONS -u GITHUB_ACTOR "${ci[@]}" \
+  env -u GITHUB_BASE_REF -u GITHUB_ACTIONS -u GITHUB_ACTOR ${GATE_ENV[@]+"${GATE_ENV[@]}"} \
     "$PMAT" comply check --checks CB-2113 --path "$repo" --format json \
     >"$report" 2>"$work/stderr" || RC=$?
   local entry
@@ -152,20 +153,21 @@ run_gate
 case "$MESSAGE" in "not_applicable:"*) ;; *) fail_arm 5 "the message must start with not_applicable and name the reason";; esac
 echo "traceability-control: arm 5 N/A   — default branch reported not_applicable (exit 0)"
 
-# ── arm 6: GREEN — a bot-authored commit with no trailer is exempt (PMAT-1356) ─
-# Measured on paiml-mcp-agent-toolkit#1347: CB-2113 refused
-# `deps(deps): Bump pollster from 0.4.0 to 1.0.1` for a trailer its author
-# cannot add, holding five dependabot PRs. A rule no member of a class can
-# pass is inoperative, not strict.
+# ── arm 6: RED — a forged dependabot address under a hostile CI env (PMAT-1356) ─
+# Measured on paiml-mcp-agent-toolkit#1347: CB-2113 refused a dependabot bump
+# for a trailer its author cannot add. The exemption that fixes it is for
+# commits GitHub's web-flow key signed. This repo has no such commit, and
+# GITHUB_ACTIONS/GITHUB_ACTOR (which a PR workflow can set) are not a signal:
+# the exact app address with the perfect actor is STILL judged.
 BOT='dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>'
 fgit switch -q feature
 fgit commit -q --amend --allow-empty --author="$BOT" -m "deps(deps): Bump pollster from 0.4.0 to 1.0.1"
-GATE_ACTOR="dependabot[bot]"
+GATE_ENV=(GITHUB_ACTIONS=true "GITHUB_ACTOR=dependabot[bot]")
 run_gate
-[ "$RC" -eq 0 ] || fail_arm 6 "a bot-authored untrailered commit must exit 0"
-[ "$STATUS" = "Pass" ] || fail_arm 6 "CB-2113 must be Pass on a bot-authored commit"
-case "$MESSAGE" in *"1 authored by a GitHub app account, exempt"*) ;; *) fail_arm 6 "the exemption must be COUNTED in the message, never silent: $MESSAGE";; esac
-echo "traceability-control: arm 6 GREEN — bot-authored commit exempt, and the exemption named (exit 0)"
+[ "$RC" -eq 1 ] || fail_arm 6 "a forged bot address under a matching CI env must exit 1 (env is not a signal)"
+[ "$STATUS" = "Fail" ] || fail_arm 6 "CB-2113 must be Fail on a forged bot address"
+case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm 6 "no exemption may be reported without a web-flow signature: $MESSAGE";; *) ;; esac
+echo "traceability-control: arm 6 RED   — forged dependabot address + matching CI env: still judged (exit 1)"
 
 # ── arm 7: RED — the exemption does not widen to the humans beside it ────────
 # The falsifier for arm 6. If the exemption ever becomes "skip a range that
@@ -176,8 +178,8 @@ run_gate
 [ "$RC" -eq 1 ] || fail_arm 7 "a human untrailered commit beside a bot one must still exit 1"
 [ "$STATUS" = "Fail" ] || fail_arm 7 "CB-2113 must be Fail on the human commit"
 case "$MESSAGE" in *"$human"*"no Pmat-Ticket"*) ;; *) fail_arm 7 "the message must name the human commit $human";; esac
-case "$MESSAGE" in *"1 authored by a GitHub app account, exempt"*) ;; *) fail_arm 7 "the failure message must still carry the exemption count";; esac
-echo "traceability-control: arm 7 RED   — human commit beside an exempt bot one still refused (exit 1)"
+case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm 7 "the forged bot commit must not be counted exempt: $MESSAGE";; *) ;; esac
+echo "traceability-control: arm 7 RED   — human commit beside a forged bot one: both refused, none exempt (exit 1)"
 
 # ── arm 8: RED — an address a person can choose buys nothing ────────────────
 # The exemption is GitHub's app-account namespace, not the word "bot".
@@ -193,7 +195,7 @@ echo "traceability-control: arm 8 RED   — robot@bot.example.invalid is not a G
 # The defect quorum q-toolkit1496-r1 found: %ae is whatever `--author` said.
 # The address is byte-for-byte the real app's; only the missing runner signal
 # can tell it from the real thing.
-GATE_ACTOR=""
+GATE_ENV=()
 fgit commit -q --amend --allow-empty --author="$BOT" -m "feat: mine, forged author"
 run_gate
 [ "$RC" -eq 1 ] || fail_arm 9 "the exact dependabot address with no CI signal must exit 1 (fail closed)"
@@ -201,22 +203,26 @@ run_gate
 case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm 9 "no exemption may be reported without a CI signal: $MESSAGE";; *) ;; esac
 echo "traceability-control: arm 9 RED   — exact dependabot address, no CI actor: still judged (exit 1)"
 
-# ── arm 10: RED — the exemption does not apply when the actor is not the bot ─
-for actor in octocat 'renovate[bot]'; do
-  GATE_ACTOR="$actor"
+# ── arm 10: RED — no actor value, including an EMPTY one, exempts the address ─
+# r3: GITHUB_ACTOR is process env; a PR workflow sets it. Every value is judged.
+for actor in octocat 'renovate[bot]' 'dependabot[bot]' ''; do
+  GATE_ENV=(GITHUB_ACTIONS=true "GITHUB_ACTOR=$actor")
   run_gate
   [ "$RC" -eq 1 ] || fail_arm 10 "actor '$actor' running a dependabot-addressed commit must exit 1"
   case "$MESSAGE" in *"authored by a GitHub app account"*) fail_arm 10 "no exemption for actor '$actor': $MESSAGE";; *) ;; esac
 done
-echo "traceability-control: arm 10 RED  — actor octocat / renovate[bot] on a dependabot address: still judged (exit 1)"
+echo "traceability-control: arm 10 RED  — actor octocat / renovate[bot] / dependabot[bot] / empty on a dependabot address: still judged (exit 1)"
 
-# ── arm 11: the exempt count is printed on the default branch too ───────────
-GATE_ACTOR="dependabot[bot]"
+# ── arm 11: default branch, forged address, EMPTY actor: nothing is exempt ───
+# Red under the old %ae-only rule (the message would claim an exemption) and
+# under an actor-trusting rule only when the actor is non-empty, so the empty
+# actor is the variant that a CI-env rule and an address rule both get wrong.
+GATE_ENV=(GITHUB_ACTIONS=true "GITHUB_ACTOR=")
 fgit switch -q master
 fgit commit -q --allow-empty --author="$BOT" -m "deps: bump on the default branch"
 run_gate
 [ "$RC" -eq 0 ] || fail_arm 11 "the default branch must exit 0"
-case "$MESSAGE" in "not_applicable:"*"1 authored by a GitHub app account, exempt"*) ;; *) fail_arm 11 "the default-branch message must carry the exempt count: $MESSAGE";; esac
-echo "traceability-control: arm 11 N/A  — default branch names the exempt count (exit 0)"
+case "$MESSAGE" in "not_applicable:"*"authored by a GitHub app account"*) fail_arm 11 "a forged address with an empty actor must not be counted exempt: $MESSAGE";; "not_applicable:"*) ;; *) fail_arm 11 "the default-branch message must say not_applicable: $MESSAGE";; esac
+echo "traceability-control: arm 11 N/A  — default branch, forged address, empty actor: nothing exempt (exit 0)"
 
-echo "traceability-control: all 11 arms behaved — CB-2113 can fail, can pass, and its bot exemption is counted, narrow and needs a signal the author cannot set"
+echo "traceability-control: all 11 arms behaved — CB-2113 can fail, can pass, and no author-settable or env-settable signal exempts a commit"

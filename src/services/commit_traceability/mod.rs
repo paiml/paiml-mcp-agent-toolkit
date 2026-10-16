@@ -57,70 +57,38 @@ pub fn is_github_bot_account(author_email: &str) -> bool {
     local.ends_with("[bot]")
 }
 
-/// PMAT-1356 (r2) — what a CI run asserts that a commit's author cannot.
+/// Fingerprint of GitHub's `web-flow` commit-signing key (the key GitHub signs
+/// web-UI, merge-button and Dependabot commits with). A `G` signature from any
+/// other key, including one the local keyring trusts, proves nothing.
+pub const WEB_FLOW_KEY_FPR: &str = "968479A1AFF927E37D1A566BB5690EEEBB952194";
+
+/// PMAT-1356 (r3) — is a commit with these `%ae`, `%G?`, `%ce`, `%GF` fields
+/// exempt from the trailer?
 ///
-/// The author email (`%ae`) is whatever `git commit --author` was told, so by
-/// itself it proves nothing: a human can commit as
-/// `<1+dependabot[bot]@users.noreply.github.com>`. The exemption therefore
-/// needs a second, unforgeable signal, and has exactly two:
-///
-/// 1. the CI actor: `GITHUB_ACTIONS=true` and `GITHUB_ACTOR` is the app named
-///    in the commit's own address (set by the runner, not by the PR author);
-/// 2. the commit is signed by GitHub's `web-flow` key: `%G?` is `G` and the
-///    committer is `noreply@github.com`.
-///
-/// With neither, there is NO exemption: the gate fails closed.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct BotTrust {
-    /// `GITHUB_ACTOR`, only when `GITHUB_ACTIONS` is exactly `true`.
-    pub ci_actor: Option<String>,
-}
-
-impl BotTrust {
-    /// No signal at all: outside CI, signature-less, nothing is exempt.
-    pub fn none() -> Self {
-        Self::default()
-    }
-
-    /// Read the runner's own variables.
-    pub fn from_env() -> Self {
-        let in_ci = std::env::var("GITHUB_ACTIONS").is_ok_and(|v| v == "true");
-        let ci_actor = std::env::var("GITHUB_ACTOR")
-            .ok()
-            .map(|a| a.trim().to_string())
-            .filter(|a| in_ci && !a.is_empty());
-        Self { ci_actor }
-    }
-
-    /// Does the CI actor match the app named in this commit's address?
-    fn actor_matches(&self, author_email: &str) -> bool {
-        let Some(actor) = self.ci_actor.as_deref() else {
-            return false;
-        };
-        let email = author_email.trim().to_ascii_lowercase();
-        let Some(local) = email.strip_suffix("@users.noreply.github.com") else {
-            return false;
-        };
-        let app = local.split_once('+').map_or(local, |(_, a)| a);
-        actor.to_ascii_lowercase() == app && actor.ends_with("[bot]")
-    }
-
-    /// Is a commit with these `%ae`, `%G?`, `%ce` fields exempt?
-    fn exempts(&self, author_email: &str, sig_status: &str, committer_email: &str) -> bool {
-        if !is_github_bot_account(author_email) {
-            return false;
-        }
-        let web_flow_signed = sig_status.trim() == "G"
-            && committer_email
-                .trim()
-                .eq_ignore_ascii_case("noreply@github.com");
-        web_flow_signed || self.actor_matches(author_email)
-    }
+/// The author email is whatever `git commit --author` was told, and the
+/// process environment (`GITHUB_ACTOR`) is whatever a PR workflow sets, so
+/// neither proves anything. The one signal a pusher cannot produce is a
+/// signature by GitHub's own key: the exemption needs the app-namespace
+/// author AND `%G?` = `G` AND committer `noreply@github.com` AND the signing
+/// key fingerprint (`%GF`) equal to [`WEB_FLOW_KEY_FPR`]. Anything less fails
+/// closed: the commit is judged like any other.
+pub fn exempts(
+    author_email: &str,
+    sig_status: &str,
+    committer_email: &str,
+    signer_fpr: &str,
+) -> bool {
+    is_github_bot_account(author_email)
+        && sig_status.trim() == "G"
+        && committer_email
+            .trim()
+            .eq_ignore_ascii_case("noreply@github.com")
+        && signer_fpr.trim().eq_ignore_ascii_case(WEB_FLOW_KEY_FPR)
 }
 
 /// `git log` format: hash, subject, trailers, author email, signature status,
-/// committer email.
-const LOG_FORMAT: &str = "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)%x1f%ae%x1f%G?%x1f%ce";
+/// committer email, signing-key fingerprint.
+const LOG_FORMAT: &str = "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)%x1f%ae%x1f%G?%x1f%ce%x1f%GF";
 
 /// Whether the two inputs exist at all. A project with neither a repository
 /// nor a roadmap has nothing for this rule to read, which is a structural
@@ -262,22 +230,12 @@ pub fn measure(project_path: &Path) -> Result<Measurement, String> {
     let env_base = std::env::var(BASE_REF_ENV)
         .ok()
         .filter(|s| !s.trim().is_empty());
-    measure_against_with(project_path, env_base.as_deref(), &BotTrust::from_env())
+    measure_against(project_path, env_base.as_deref())
 }
 
 /// [`measure`] with the base branch named explicitly (`None` = discover it:
 /// `origin/HEAD`, then `origin/master`, `origin/main`, `master`, `main`).
 pub fn measure_against(project_path: &Path, base: Option<&str>) -> Result<Measurement, String> {
-    measure_against_with(project_path, base, &BotTrust::none())
-}
-
-/// [`measure_against`] with the CI trust signals passed in, never read from
-/// the process environment, so tests can plant and withhold them.
-pub fn measure_against_with(
-    project_path: &Path,
-    base: Option<&str>,
-    trust: &BotTrust,
-) -> Result<Measurement, String> {
     let resolved_base = if let Some(b) = base {
         if run_git(
             project_path,
@@ -347,16 +305,16 @@ pub fn measure_against_with(
     let is_default_branch = head_commit == base_commit || current_branch == base_short;
 
     if is_default_branch {
-        default_branch_mode(project_path, trust)
+        default_branch_mode(project_path)
     } else {
-        pr_mode(project_path, resolved_base, trust)
+        pr_mode(project_path, resolved_base)
     }
 }
 
 /// `(commits, trailered, bot_exempt)` over `git log` lines of `\x1f`-separated hash,
 /// subject, trailer values and author email: every non-blank line is a commit, and it is
 /// trailered when its third field names at least one non-empty ticket id.
-fn count_trailered(log: &str, trust: &BotTrust) -> (usize, usize, usize) {
+pub(crate) fn count_trailered(log: &str) -> (usize, usize, usize) {
     let mut commits = 0;
     let mut trailered = 0;
     let mut bot_exempt = 0;
@@ -368,7 +326,7 @@ fn count_trailered(log: &str, trust: &BotTrust) -> (usize, usize, usize) {
             .is_some_and(|tr| tr.split(',').any(|id| !id.trim().is_empty()));
         if names_a_ticket {
             trailered += 1;
-        } else if exempt_by_fields(&line.split('\x1f').collect::<Vec<_>>(), trust) {
+        } else if exempt_by_fields(&line.split('\x1f').collect::<Vec<_>>()) {
             bot_exempt += 1;
         }
     }
@@ -376,12 +334,12 @@ fn count_trailered(log: &str, trust: &BotTrust) -> (usize, usize, usize) {
 }
 
 /// Fields of one `LOG_FORMAT` line: 3 = author email, 4 = `%G?`, 5 = committer.
-fn exempt_by_fields(parts: &[&str], trust: &BotTrust) -> bool {
+fn exempt_by_fields(parts: &[&str]) -> bool {
     let get = |i: usize| parts.get(i).copied().unwrap_or("");
-    trust.exempts(get(3), get(4), get(5))
+    exempts(get(3), get(4), get(5), get(6))
 }
 
-fn default_branch_mode(project_path: &Path, trust: &BotTrust) -> Result<Measurement, String> {
+fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
     let since = run_git(
         project_path,
         &["describe", "--tags", "--abbrev=0", "--match", "v*", "HEAD"],
@@ -398,7 +356,7 @@ fn default_branch_mode(project_path: &Path, trust: &BotTrust) -> Result<Measurem
         project_path,
         &["log", "--no-merges", LOG_FORMAT, &range_arg],
     )?;
-    let (commits, trailered, bot_exempt) = count_trailered(&commits_out, trust);
+    let (commits, trailered, bot_exempt) = count_trailered(&commits_out);
 
     Ok(Measurement {
         range: Range::DefaultBranch { since },
@@ -409,11 +367,7 @@ fn default_branch_mode(project_path: &Path, trust: &BotTrust) -> Result<Measurem
     })
 }
 
-fn pr_mode(
-    project_path: &Path,
-    resolved_base: String,
-    trust: &BotTrust,
-) -> Result<Measurement, String> {
+fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
     use crate::models::roadmap::ItemStatus;
     let merge_base = run_git(project_path, &["merge-base", &resolved_base, "HEAD"])?;
     let commits_out = run_git(
@@ -471,7 +425,7 @@ fn pr_mode(
                 // counted so the exemption is visible in the verdict. Only the
                 // absence is excused: a trailer that is present is judged
                 // below whoever wrote it.
-                if exempt_by_fields(&parts, trust) {
+                if exempt_by_fields(&parts) {
                     bot_exempt += 1;
                 } else {
                     findings.push(Finding {

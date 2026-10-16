@@ -6,7 +6,8 @@
 //! below could be an engine that always fails.
 
 use super::{
-    inputs, measure_against, measure_against_with, BotTrust, Inputs, Range, Violation, ROADMAP_PATH,
+    count_trailered, exempts, inputs, measure_against, Inputs, Range, Violation, ROADMAP_PATH,
+    WEB_FLOW_KEY_FPR,
 };
 use std::path::Path;
 use std::process::Command;
@@ -453,49 +454,101 @@ fn commit_as(dir: &Path, subject: &str, author: &str, body: Option<&str>) -> Str
 
 const DEPENDABOT: &str = "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>";
 
+/// One `LOG_FORMAT` line: hash, subject, trailers, %ae, %G?, %ce, %GF.
+fn log_line(ae: &str, sig: &str, ce: &str, fpr: &str) -> String {
+    format!("h\x1fdeps: bump\x1f\x1f{ae}\x1f{sig}\x1f{ce}\x1f{fpr}")
+}
+
+const APP_AE: &str = "49699333+dependabot[bot]@users.noreply.github.com";
+
 #[test]
-fn a_bot_authored_commit_with_no_trailer_is_exempt_and_the_exemption_is_counted() {
+fn a_web_flow_signed_bot_commit_with_no_trailer_is_exempt_and_counted() {
     // Measured on paiml/paiml-mcp-agent-toolkit#1347 (run 34834456634): CB-2113
-    // refused `deps(deps): Bump pollster from 0.4.0 to 1.0.1` for "no
-    // Pmat-Ticket trailer" and printed a remedy its author cannot perform.
-    // Five dependabot PRs were held, some security-relevant.
-    let dir = repo();
-    on_feature(dir.path());
-    commit_as(
-        dir.path(),
-        "deps: Bump pollster from 0.4.0 to 1.0.1",
-        DEPENDABOT,
-        None,
-    );
-    let m = measure_against_with(dir.path(), None, &ci_dependabot()).expect("measured");
-    assert_eq!(m.commits, 1, "{m:?}");
-    assert_eq!(
-        m.bot_exempt, 1,
-        "the bot commit must be COUNTED, not invisible: {m:?}"
-    );
-    assert!(
-        m.findings.is_empty(),
-        "a bot commit is not a finding: {:?}",
-        m.findings
-    );
-    assert!(m.clean(), "{m:?}");
+    // refused `deps(deps): Bump pollster from 0.4.0 to 1.0.1` for a trailer its
+    // author cannot add. Five dependabot PRs held. The only exempt shape is a
+    // commit GitHub's own key signed; a real signature cannot be minted here,
+    // so the positive path is driven through the log line the gate parses.
+    let good = log_line(APP_AE, "G", "noreply@github.com", WEB_FLOW_KEY_FPR);
+    assert_eq!(count_trailered(&good), (1, 0, 1));
+    // The exemption is per commit: a human line beside it is not skipped.
+    let human = "h2\x1ffeat: mine\x1f\x1fme@example.com\x1fN\x1fme@example.com\x1f";
+    assert_eq!(count_trailered(&format!("{good}\n{human}")), (2, 0, 1));
 }
 
 #[test]
-fn the_exemption_does_not_widen_to_the_humans_in_the_same_range() {
-    // The falsifier for the fix itself. If the exemption ever becomes "skip
-    // the range that contains a bot commit", this goes green while the gate
-    // stops judging anything.
+fn a_good_signature_by_any_other_key_is_not_the_web_flow_key() {
+    // r3 finding 1: %G?==G and a noreply committer are both settable locally
+    // (own key in the keyring + GIT_COMMITTER_EMAIL). Only the key identity
+    // is not.
+    for fpr in [
+        "",
+        "0000000000000000000000000000000000000000",
+        "B5690EEEBB952194",
+        "968479A1AFF927E37D1A566BB5690EEEBB952195",
+    ] {
+        assert!(
+            !exempts(APP_AE, "G", "noreply@github.com", fpr),
+            "fpr {fpr:?} must not exempt"
+        );
+        assert_eq!(
+            count_trailered(&log_line(APP_AE, "G", "noreply@github.com", fpr)),
+            (1, 0, 0)
+        );
+    }
+    assert!(exempts(
+        APP_AE,
+        "G",
+        "noreply@github.com",
+        &WEB_FLOW_KEY_FPR.to_lowercase()
+    ));
+}
+
+#[test]
+fn every_leg_of_the_exemption_is_necessary() {
+    let f = WEB_FLOW_KEY_FPR;
+    assert!(exempts(APP_AE, "G", "noreply@github.com", f));
+    assert!(!exempts("me@example.com", "G", "noreply@github.com", f));
+    assert!(!exempts(APP_AE, "G", "me@example.com", f));
+    for st in ["N", "E", "B", "U", "X", "Y", "R", ""] {
+        assert!(!exempts(APP_AE, st, "noreply@github.com", f), "{st}");
+    }
+    // Old-format lines with no committer/fingerprint fields fail closed.
+    assert_eq!(
+        count_trailered(&format!("h\x1fs\x1f\x1f{APP_AE}")),
+        (1, 0, 0)
+    );
+}
+
+#[test]
+fn the_process_environment_cannot_exempt_a_forged_author() {
+    // r3 finding 2: GITHUB_ACTIONS/GITHUB_ACTOR are set by whatever workflow
+    // runs the gate, including one edited in the PR. They are not read at all.
     let dir = repo();
     on_feature(dir.path());
-    commit_as(dir.path(), "deps: Bump serde", DEPENDABOT, None);
-    let human = commit(dir.path(), "feat: mine, untrailered", None);
-    let m = measure_against_with(dir.path(), None, &ci_dependabot()).expect("measured");
-    assert_eq!((m.commits, m.bot_exempt), (2, 1), "{m:?}");
+    commit_as(dir.path(), "feat: forged", DEPENDABOT, None);
+    std::env::set_var("GITHUB_ACTIONS", "true");
+    std::env::set_var("GITHUB_ACTOR", "dependabot[bot]");
+    let m = measure_against(dir.path(), None);
+    std::env::remove_var("GITHUB_ACTIONS");
+    std::env::remove_var("GITHUB_ACTOR");
+    let m = m.expect("measured");
+    assert_eq!((m.bot_exempt, m.findings.len()), (0, 1), "{m:?}");
+}
+
+#[test]
+fn a_forged_bot_author_is_judged_in_pr_and_default_branch_modes() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(dir.path(), "feat: mine, forged author", DEPENDABOT, None);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.bot_exempt, 0, "a forged address must not exempt: {m:?}");
     assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
-    assert_eq!(m.findings[0].hash, human);
     assert_eq!(m.findings[0].violation, Violation::NoTrailer);
-    assert!(!m.clean(), "{m:?}");
+    let dir = repo();
+    commit_as(dir.path(), "deps: bump on master", DEPENDABOT, None);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert!(matches!(m.range, Range::DefaultBranch { .. }), "{m:?}");
+    assert_eq!((m.commits, m.bot_exempt), (1, 0), "{m:?}");
 }
 
 #[test]
@@ -515,7 +568,7 @@ fn a_human_whose_name_merely_ends_in_bot_is_still_judged() {
         let dir = repo();
         on_feature(dir.path());
         commit_as(dir.path(), "untrailered", author, None);
-        let m = measure_against_with(dir.path(), None, &ci_dependabot()).expect("measured");
+        let m = measure_against(dir.path(), None).expect("measured");
         assert_eq!(m.bot_exempt, 0, "{author} must not be exempt: {m:?}");
         assert_eq!(m.findings.len(), 1, "{author}: {:?}", m.findings);
     }
@@ -535,7 +588,7 @@ fn a_bot_commit_that_does_carry_a_trailer_is_still_read_as_trailered() {
         DEPENDABOT,
         Some("Pmat-Ticket: PMAT-001"),
     );
-    let m = measure_against_with(dir.path(), None, &ci_dependabot()).expect("measured");
+    let m = measure_against(dir.path(), None).expect("measured");
     assert_eq!((m.commits, m.trailered, m.bot_exempt), (1, 1, 0), "{m:?}");
     assert!(m.findings.is_empty(), "{:?}", m.findings);
 }
@@ -552,7 +605,7 @@ fn a_bot_trailer_naming_a_completed_item_is_still_a_finding() {
         DEPENDABOT,
         Some("Pmat-Ticket: PMAT-002"),
     );
-    let m = measure_against_with(dir.path(), None, &ci_dependabot()).expect("measured");
+    let m = measure_against(dir.path(), None).expect("measured");
     assert_eq!(m.bot_exempt, 0, "{m:?}");
     assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
     assert!(
@@ -560,89 +613,4 @@ fn a_bot_trailer_naming_a_completed_item_is_still_a_finding() {
         "{:?}",
         m.findings[0].violation
     );
-}
-
-// ── PMAT-1356 r2: the author email is self-asserted, so it is never enough ──
-// Quorum q-toolkit1496-r1 (NO-GO 2/3): `git commit --author='x <1+dependabot[bot]@users.noreply.github.com>'`
-// skipped the trailer. The exemption now also needs a signal the author
-// cannot set: the CI actor, or a web-flow signature.
-
-/// What the runner asserts on a dependabot-triggered run.
-fn ci_dependabot() -> BotTrust {
-    BotTrust {
-        ci_actor: Some("dependabot[bot]".to_string()),
-    }
-}
-
-#[test]
-fn a_human_using_the_exact_dependabot_address_is_still_judged() {
-    // Control arm 1. Same forged author as the exempt test, no CI signal.
-    let dir = repo();
-    on_feature(dir.path());
-    commit_as(dir.path(), "feat: mine, forged author", DEPENDABOT, None);
-    let m = measure_against_with(dir.path(), None, &BotTrust::none()).expect("measured");
-    assert_eq!(m.bot_exempt, 0, "a forged address must not exempt: {m:?}");
-    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
-    assert_eq!(m.findings[0].violation, Violation::NoTrailer);
-    // measure_against (no trust argument) fails closed the same way.
-    let m = measure_against(dir.path(), None).expect("measured");
-    assert_eq!((m.bot_exempt, m.findings.len()), (0, 1), "{m:?}");
-}
-
-#[test]
-fn the_exemption_does_not_apply_when_the_actor_is_not_the_bot() {
-    // Control arm 2. The address is perfect; the runner says a person (or a
-    // different app) triggered the run.
-    for actor in ["octocat", "renovate[bot]", "dependabot", ""] {
-        let dir = repo();
-        on_feature(dir.path());
-        commit_as(dir.path(), "feat: forged", DEPENDABOT, None);
-        let trust = BotTrust {
-            ci_actor: Some(actor.to_string()),
-        };
-        let m = measure_against_with(dir.path(), None, &trust).expect("measured");
-        assert_eq!(m.bot_exempt, 0, "actor {actor:?} must not exempt: {m:?}");
-        assert_eq!(m.findings.len(), 1, "actor {actor:?}: {:?}", m.findings);
-    }
-}
-
-#[test]
-fn the_actor_must_be_the_app_named_in_the_commit_not_just_any_bot() {
-    // Actor is a real bot, but not the one the commit claims to be.
-    let dir = repo();
-    on_feature(dir.path());
-    commit_as(
-        dir.path(),
-        "feat: other app",
-        "renovate[bot] <1+renovate[bot]@users.noreply.github.com>",
-        None,
-    );
-    let m = measure_against_with(dir.path(), None, &ci_dependabot()).expect("measured");
-    assert_eq!((m.bot_exempt, m.findings.len()), (0, 1), "{m:?}");
-}
-
-#[test]
-fn web_flow_signature_is_the_other_unforgeable_signal() {
-    let t = BotTrust::none();
-    let ae = "49699333+dependabot[bot]@users.noreply.github.com";
-    assert!(t.exempts(ae, "G", "noreply@github.com"));
-    // Good signature, but the committer is a person.
-    assert!(!t.exempts(ae, "G", "me@example.com"));
-    // GitHub committer, but unsigned / unverifiable / bad.
-    for st in ["N", "E", "B", "U", ""] {
-        assert!(!t.exempts(ae, st, "noreply@github.com"), "{st}");
-    }
-    // Signature is not a substitute for the app namespace.
-    assert!(!t.exempts("me@example.com", "G", "noreply@github.com"));
-}
-
-#[test]
-fn default_branch_mode_also_counts_the_exempt_commits() {
-    let dir = repo();
-    commit_as(dir.path(), "deps: bump on master", DEPENDABOT, None);
-    let m = measure_against_with(dir.path(), None, &ci_dependabot()).expect("measured");
-    assert!(matches!(m.range, Range::DefaultBranch { .. }), "{m:?}");
-    assert_eq!((m.commits, m.bot_exempt), (1, 1), "{m:?}");
-    let m = measure_against_with(dir.path(), None, &BotTrust::none()).expect("measured");
-    assert_eq!((m.commits, m.bot_exempt), (1, 0), "{m:?}");
 }
