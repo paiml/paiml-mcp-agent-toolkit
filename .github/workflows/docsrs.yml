@@ -54,7 +54,7 @@ jobs:
   # for rustdoc, and the exact feature set the manifest declares.
   build:
     name: docs build (docs.rs environment)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -152,7 +152,7 @@ jobs:
   published:
     name: published version builds on docs.rs
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7

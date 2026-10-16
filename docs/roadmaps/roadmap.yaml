@@ -4649,7 +4649,7 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:25Z
-  updated: 2026-09-10T19:40:22.098038771+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5417,7 +5417,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5555,7 +5555,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5693,7 +5693,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6024,7 +6024,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6768,7 +6768,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-14T18:03:41Z
-  updated: 2026-09-14T18:03:41Z
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria:
   - 'Every release run since v3.39.0 is cancelled at gate / cpu-gates step 9 after ~30m39s — a timeout-minutes:30 kill, which reads as cancelled rather than failed. prerelease needs [create-release, gate, verify], so no prerelease event fires and binary-release.yml attaches no binaries. Measured on run 34860654284. Fixed upstream in paiml/.github#72: the job budget goes to 90 from a measurement (26.4 min of gates on an idle box) and the clean-room step gets 75, below the job''s, so a timeout FAILS the step by name instead of vanishing as cancelled.'
@@ -7385,7 +7385,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7553,7 +7553,7 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2026-09-28T01:46:25Z
-  updated: 2026-09-28T01:46:25Z
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7571,8 +7571,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7587,8 +7587,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7603,8 +7603,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7619,8 +7619,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7635,8 +7635,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7651,8 +7651,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7667,8 +7667,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7683,8 +7683,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7699,8 +7699,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7715,8 +7715,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7731,8 +7731,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7740,22 +7740,25 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: GH-1490
+- id: PMAT-1490
   github_issue: 1490
   item_type: task
   title: rustls 0.23.46 + quinn-proto 0.11.18 for RUSTSEC-2026-0346..0349/0338..0342 (red-main lockfile fix)
   status: planned
-  priority: medium
+  priority: critical
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-14T13:57:48Z
+  updated: 2026-10-14T13:57:48Z
   spec: null
-  acceptance_criteria: []
+  acceptance_criteria:
+  - 'ci / gate (sovereign-ci lint: cargo deny advisories; security: cargo audit) fails on rustls 0.23.45 and quinn-proto 0.11.15. Lockfile-only bump. Acceptance: cargo audit 0 vulnerabilities on the bumped Cargo.lock.'
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
+  epic: 1457
 - id: GH-1492
   github_issue: 1492
   item_type: task
@@ -7763,8 +7766,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T14:35:36.019828266+00:00
+  updated: 2026-10-16T14:35:36.019828266+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7779,8 +7782,8 @@ roadmap:
   status: planned
   priority: medium
   assigned_to: null
-  created: 2026-10-16T14:28:01.524268917+00:00
-  updated: 2026-10-16T14:28:01.524268917+00:00
+  created: 2026-10-16T14:35:36.019828266+00:00
+  updated: 2026-10-16T14:35:36.019828266+00:00
   spec: null
   acceptance_criteria: []
   phases: []
