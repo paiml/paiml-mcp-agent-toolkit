@@ -613,12 +613,19 @@ mod unified_ast_types_tests {
         }
     }
 
+    // Calls `Clone::clone` through a generic bound so the clone_on_copy lint
+    // (rustc 1.99 clippy) cannot see a Copy receiver, while the test still
+    // exercises the explicit `impl Clone for NodeMetadata` body.
+    fn clone_via_trait<T: Clone>(value: &T) -> T {
+        value.clone()
+    }
+
     #[test]
     fn test_node_metadata_clone() {
         let metadata = NodeMetadata { complexity: 42 };
         // Invoke the explicit Clone impl (not the implicit Copy) so the
         // `impl Clone for NodeMetadata` body is exercised for coverage.
-        let cloned: NodeMetadata = Clone::clone(&metadata);
+        let cloned: NodeMetadata = clone_via_trait(&metadata);
         // SAFETY: Test-only: reading the same union field (`complexity`) that was just written, no UB.
         unsafe {
             assert_eq!(metadata.complexity, cloned.complexity);
