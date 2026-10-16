@@ -4649,7 +4649,7 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:25Z
-  updated: 2026-09-10T19:40:22.098038771+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4659,7 +4659,7 @@ roadmap:
   - deferred:3.41.0
   - kind:code
   notes: 'PMAT-1253 (goal-mode §5.1): paired with #1202, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
-  release: 3.42.0
+  release: 3.43.0
 - id: PMAT-695
   github_issue: 1156
   item_type: task
@@ -5415,7 +5415,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5423,7 +5423,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: 3.43.0
+  release: 3.44.0
 - id: GH-1118
   github_issue: 1118
   item_type: task
@@ -5551,7 +5551,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5559,7 +5559,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: 3.42.0
+  release: 3.43.0
 - id: GH-1129
   github_issue: 1129
   item_type: task
@@ -5687,7 +5687,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5695,7 +5695,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: 3.43.0
+  release: 3.44.0
 - id: GH-1138
   github_issue: 1138
   item_type: task
@@ -6016,7 +6016,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6024,7 +6024,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: 3.43.0
+  release: 3.44.0
 - id: GH-1239
   github_issue: 1239
   item_type: task
@@ -6758,7 +6758,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-14T18:03:41Z
-  updated: 2026-09-14T18:03:41Z
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria:
   - 'Every release run since v3.39.0 is cancelled at gate / cpu-gates step 9 after ~30m39s — a timeout-minutes:30 kill, which reads as cancelled rather than failed. prerelease needs [create-release, gate, verify], so no prerelease event fires and binary-release.yml attaches no binaries. Measured on run 34860654284. Fixed upstream in paiml/.github#72: the job budget goes to 90 from a measurement (26.4 min of gates on an idle box) and the clean-room step gets 75, below the job''s, so a timeout FAILS the step by name instead of vanishing as cancelled.'
@@ -6768,7 +6768,7 @@ roadmap:
   labels:
   - kind:code
   notes: null
-  release: 3.41.0
+  release: 3.43.0
 - id: PMAT-1359
   github_issue: 1359
   item_type: task
@@ -7374,7 +7374,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7382,6 +7382,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.43.0
 - id: GH-1434
   github_issue: 1434
   item_type: task
@@ -7539,7 +7540,7 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2026-09-28T01:46:25Z
-  updated: 2026-09-28T01:46:25Z
+  updated: 2026-10-16T12:10:41.902513022+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7548,4 +7549,229 @@ roadmap:
   labels:
   - kind:code
   notes: null
+  release: 3.43.0
   epic: 1457
+- id: GH-1472
+  github_issue: 1472
+  item_type: task
+  title: pmat work start hangs on inherited stdin, moves the ticket to InProgress anyway, then refuses it (InProgress → InProgress), and never writes the lock state
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1473
+  github_issue: 1473
+  item_type: task
+  title: 'pmat report: --include-executive-summary and --include-recommendations are accepted and change nothing'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1474
+  github_issue: 1474
+  item_type: task
+  title: 'pmat context: --format llm-optimized prints the same bytes as --format markdown'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1475
+  github_issue: 1475
+  item_type: task
+  title: diff-scoped complexity refuses a merge commit for functions that arrive unchanged from MERGE_HEAD (compares against HEAD only)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1476
+  github_issue: 1476
+  item_type: task
+  title: tdg --with-git-context on a file path exits 0 but records no commit that history --commit can read
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1481
+  github_issue: 1481
+  item_type: task
+  title: 'pmat query rebuilds the index on every call: the read-write query connection checkpoints context.db after the manifest is saved'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1482
+  github_issue: 1482
+  item_type: task
+  title: pmat hooks install fails in a git worktree (Not a directory) and exits 0
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1484
+  github_issue: 1484
+  item_type: task
+  title: 'feature-gate red on every PR: stable clippy 1.99 clone_on_copy in test_node_metadata_clone'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1485
+  github_issue: 1485
+  item_type: task
+  title: '`pmat tdg storage migrate` only prints the prospective configuration and exits with success, moving no data'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1486
+  github_issue: 1486
+  item_type: task
+  title: '`sprint85_entropy_reduction_test.rs` checks its own private helper copies instead of the refactored Sprint 85 production code, so a regression there goes unnoticed by the suite'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1489
+  github_issue: 1489
+  item_type: task
+  title: 'master red: cargo deny fails on RUSTSEC-2024-0449 (unsafe-libyaml unmaintained, no patched version)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1490
+  github_issue: 1490
+  item_type: task
+  title: rustls 0.23.46 + quinn-proto 0.11.18 for RUSTSEC-2026-0346..0349/0338..0342 (red-main lockfile fix)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1492
+  github_issue: 1492
+  item_type: task
+  title: migrate YAML to a maintained crate (serde-saphyr candidate) to drop the RUSTSEC-2024-0449 ignore
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-16T12:10:41.902513022+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1494
+  github_issue: 1494
+  item_type: task
+  title: 'master red: CB-2115 roadmap coherence fails (13 ORPHAN-GITHUB, 8 DRIFT), traceability red on every PR'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T12:11:57.672751957+00:00
+  updated: 2026-10-16T12:11:57.672751957+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
