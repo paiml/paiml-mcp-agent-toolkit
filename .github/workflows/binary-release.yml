@@ -49,17 +49,17 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
+            os: ubuntu-24.04
             cross: false
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+            os: ubuntu-24.04
             cross: false
             glibc: '2.35'
           - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest
+            os: ubuntu-24.04
             cross: true
           - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
+            os: ubuntu-24.04
             cross: true
             glibc: '2.35'
           - target: aarch64-apple-darwin
@@ -88,7 +88,7 @@ jobs:
           ref: ${{ steps.tag.outputs.tag }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.98.1
         with:
           targets: ${{ matrix.target }}
 
@@ -214,7 +214,7 @@ jobs:
   summary:
     name: Summary
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     if: always()
     steps:
