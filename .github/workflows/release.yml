@@ -111,7 +111,7 @@ jobs:
     # post-release.yml checks tag == Cargo.toml. Promotion to a full release
     # happens after the crate is on crates.io (`gh release edit --prerelease=false`).
     needs: [create-release, gate, verify]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     # actions: write lets the default token dispatch the listeners below. With
     # contents: write alone the dispatch returned HTTP 403 "Resource not

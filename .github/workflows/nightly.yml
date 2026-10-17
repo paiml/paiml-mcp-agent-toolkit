@@ -21,7 +21,7 @@ permissions:
 jobs:
   # ── Check for recent activity ────────────────────────────
   check-activity:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
       has_commits: ${{ steps.check.outputs.has_commits }}
@@ -55,7 +55,7 @@ jobs:
           # asserted on the result. The runner's own glibc (2.39) would be the
           # floor otherwise — WONT-RUN on 2.35 hosts (#1428).
           - target: x86_64-unknown-linux-gnu
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
             glibc: '2.35'
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-24.04-arm  # native ARM64, GA + free for public repos
@@ -88,7 +88,7 @@ jobs:
         run: New-Item -ItemType Junction -Path "$env:GITHUB_WORKSPACE\..\provable-contracts" -Target "$env:GITHUB_WORKSPACE\provable-contracts" -Force
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.98.1
         with:
           targets: ${{ matrix.target }}
 
@@ -190,7 +190,7 @@ jobs:
   # ── Create/update nightly prerelease ─────────────────────
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout
