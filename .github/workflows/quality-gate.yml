@@ -28,7 +28,7 @@ env:
 jobs:
   score:
     name: pmat score
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -44,7 +44,7 @@ jobs:
       - name: Symlink provable-contracts for Cargo path deps
         run: ln -sf "$GITHUB_WORKSPACE/provable-contracts" "$GITHUB_WORKSPACE/../provable-contracts"
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -176,7 +176,7 @@ jobs:
   # This wires the ladder engine into CI — the audit's highest-leverage move (R0).
   provable-ladder:
     name: provable ladder
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -199,7 +199,7 @@ jobs:
           fi
           echo "Lean proofs are hole-free (0 sorry, 0 admit)."
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -310,7 +310,7 @@ jobs:
   release-check:
     name: release-check
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
