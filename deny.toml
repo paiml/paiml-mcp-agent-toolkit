@@ -47,6 +47,12 @@ ignore = [
     # The version also moved 0.37.5 -> 0.39.4, which is still below the 0.41 fix.
     { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.39.4 quadratic attr check: transitive via syntect->plist (opt-in syntax-highlighting only); fix needs quick-xml>=0.41 upstream; pmat parses no untrusted XML" },
     { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.39.4 NsReader allocation DoS: transitive via syntect->plist (opt-in syntax-highlighting only); fix needs quick-xml>=0.41 upstream; pmat parses no untrusted XML" },
+    # Reviewed 2026-10-16 (#1493). unsafe-libyaml 0.2.11 is informational-unmaintained with
+    # NO patched release. It enters via serde_yaml_ng 0.10 (direct, 72 src files) and via
+    # serde_yaml 0.9 in the aprender 0.64 build/dev deps. The only fix is the serde-saphyr
+    # migration (#1492) here plus aprender#5205. Same interim entry aprender main carries.
+    # DELETE this line in the PR that lands #1492.
+    { id = "RUSTSEC-2024-0449", reason = "unsafe-libyaml: unmaintained, no patched release; via serde_yaml_ng/serde_yaml. Delete when the serde-saphyr migration lands (#1492, aprender#5205)" },
 ]
 
 [licenses]

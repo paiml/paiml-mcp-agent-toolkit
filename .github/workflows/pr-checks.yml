@@ -9,7 +9,7 @@ jobs:
   # title or body is edited (ci.yml does not trigger on `edited`).
   pr-body-closing-keywords:
     name: PR body closes only what its Closes lines name
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
