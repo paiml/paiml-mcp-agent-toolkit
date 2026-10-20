@@ -618,6 +618,7 @@ mod unified_ast_types_tests {
         let metadata = NodeMetadata { complexity: 42 };
         // Invoke the explicit Clone impl (not the implicit Copy) so the
         // `impl Clone for NodeMetadata` body is exercised for coverage.
+        #[allow(clippy::clone_on_copy)]
         let cloned: NodeMetadata = Clone::clone(&metadata);
         // SAFETY: Test-only: reading the same union field (`complexity`) that was just written, no UB.
         unsafe {
