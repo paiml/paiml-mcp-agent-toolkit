@@ -50,3 +50,6 @@ include!("roadmap_service_migrate.rs");
 
 // Unit tests, property-based tests, and edge case tests
 include!("roadmap_service_tests.rs");
+
+// infra#1970: work start / work complete write one row, not the whole file
+include!("roadmap_service_upsert_raw_tests.rs");

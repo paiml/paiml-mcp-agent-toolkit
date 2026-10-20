@@ -280,7 +280,57 @@ impl RoadmapService {
             anyhow::anyhow!("Failed to read roadmap file: {:?}", self.roadmap_path)
         })?;
         crate::services::roadmap_text::check_roadmap_text(&raw, &self.roadmap_path)?;
+        self.replace_row_locked(&lock, &raw, id, item)
+    }
 
+    /// Write ONE ticket's row and leave every other byte as it was found:
+    /// replace the single row declaring `item.id`, or append it when no row
+    /// does. An empty or absent roadmap is the one case with no bytes to keep.
+    ///
+    /// infra#1970 / PMAT-1970: `work start` and `work complete` still saved the
+    /// whole serde model over the file after PMAT-679 moved `work edit` off it.
+    /// One `work start` in paiml/infra re-quoted three strings and deleted two
+    /// `epic: null` lines in rows nobody touched; an older build dropped all 143
+    /// `epic:` keys the model did not then carry. Every concurrent branch then
+    /// conflicted on the roadmap. Same defect, same fix, the two remaining
+    /// writers.
+    ///
+    /// # Errors
+    ///
+    /// The validator's refusal (`duplicate id …`) when the roadmap is not one
+    /// `pmat work validate` accepts; the roadmap is untouched.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    pub fn upsert_item_raw(&self, item: &RoadmapItem) -> Result<()> {
+        let lock = self.acquire_write_lock()?;
+        let raw = self.read_view_unlocked()?.unwrap_or_default();
+        if raw.trim().is_empty() {
+            let mut roadmap = Roadmap::default();
+            roadmap.roadmap.push(item.clone());
+            return self.write_roadmap_unlocked(&lock, &roadmap);
+        }
+        crate::services::roadmap_text::check_roadmap_text(&raw, &self.roadmap_path)?;
+        let declared = self
+            .parse_roadmap_yaml(&raw)?
+            .roadmap
+            .iter()
+            .any(|existing| existing.id == item.id);
+        if declared {
+            self.replace_row_locked(&lock, &raw, &item.id, item)
+        } else {
+            self.persist_new_row(&lock, &raw, item)
+        }
+    }
+
+    /// The body of [`Self::replace_item_raw`], under a lock the caller holds,
+    /// over bytes the caller has already read and checked.
+    fn replace_row_locked(
+        &self,
+        lock: &RoadmapWriteLock,
+        raw: &str,
+        id: &str,
+        item: &RoadmapItem,
+    ) -> Result<()> {
+        let raw = raw.to_string();
         let block = crate::services::roadmap_text::render_item_block(
             item,
             crate::services::roadmap_text::row_indent(&raw),
