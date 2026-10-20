@@ -156,7 +156,7 @@ pub async fn handle_work_start(
     );
     println!();
 
-    let mut roadmap = service.load()?;
+    let roadmap = service.load()?;
 
     // §11.4: Warn if another work item is already in-progress
     let active_items: Vec<_> = roadmap
@@ -200,8 +200,8 @@ pub async fn handle_work_start(
         );
     }
 
-    roadmap.upsert_item(item.clone());
-    service.save(&roadmap)?;
+    // infra#1970: this ticket's row only; every other byte stays as found.
+    service.upsert_item_raw(&item)?;
     println!(
         "{}",
         c::pass(&format!(
@@ -666,9 +666,8 @@ pub async fn handle_work_complete(
     item.status = ItemStatus::Completed;
     item.updated = chrono::Utc::now().to_rfc3339();
 
-    let mut roadmap = service.load()?;
-    roadmap.upsert_item(item.clone());
-    service.save(&roadmap)?;
+    // infra#1970: this ticket's row only; every other byte stays as found.
+    service.upsert_item_raw(&item)?;
 
     println!(
         "{}",
