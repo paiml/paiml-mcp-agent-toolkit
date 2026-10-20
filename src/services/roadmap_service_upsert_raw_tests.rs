@@ -112,8 +112,20 @@ roadmap:
         assert_eq!(row(&after, "PMAT-001"), row(FIXTURE, "PMAT-001"));
         assert_eq!(row(&after, "PMAT-003"), row(FIXTURE, "PMAT-003"));
         assert!(after.contains("# a comment between rows, which no model carries\n"));
-        assert_eq!(after.matches("\n  epic: null\n").count(), 3, "{after}");
+        // The two untouched rows keep their explicit `epic: null`. The started
+        // row is re-rendered from the model, which omits an absent epic — the
+        // same as `work edit` (PMAT-679); its value is unchanged (asserted below).
+        assert!(row(&after, "PMAT-001").contains("\n  epic: null\n"));
+        assert!(row(&after, "PMAT-003").contains("\n  epic: null\n"));
         assert!(row(&after, "PMAT-002").contains("status: inprogress"));
+        let started_row = service
+            .load()
+            .unwrap()
+            .roadmap
+            .into_iter()
+            .find(|i| i.id == "PMAT-002")
+            .unwrap();
+        assert_eq!(started_row.epic, None);
         assert_eq!(
             service.load().unwrap().roadmap.len(),
             3,
