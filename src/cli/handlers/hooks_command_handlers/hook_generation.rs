@@ -190,19 +190,69 @@ if [ -f Cargo.toml ]; then
         exit 1
     fi
 
-    # Content-addressed: ~0.3s when this exact tree already linted green,
-    # a full clippy run when it did not. Never a pass without one or the other.
-    CLIPPY_STATUS=0
-    CLIPPY_OUTPUT=$(pmat verify --stage clippy 2>&1) || CLIPPY_STATUS=$?
-    if [ "$CLIPPY_STATUS" -eq 0 ]; then
-        echo "✅"
+    # PMAT-1518: scope the LOCAL gate to what this commit touches. `ci / lint`
+    # still lints the whole workspace; this hook only decides what a commit
+    # pays for. A one-file YAML commit in forjar sat >5 min here because the
+    # gate linted every crate whatever was staged.
+    #   - nothing lintable staged -> SKIPPED, printed as skipped. A gate that
+    #     did not run is never printed as a pass.
+    #   - Cargo.lock / root Cargo.toml / a file in no package -> the whole
+    #     workspace (no -p): those can change what every crate resolves to, or
+    #     cannot be attributed to a crate, and narrowing would lint nothing.
+    #   - otherwise `-p <crate>` for each crate that owns a staged file, found
+    #     by walking up to the nearest Cargo.toml with a [package] name.
+    if [ -z "$STAGED_LINT" ]; then
+        echo "⏭️  skipped: no Rust files staged"
     else
-        echo "❌"
-        echo "$CLIPPY_OUTPUT" | tail -n 30
-        echo ""
-        echo "   'ci / lint' runs these same lints; this commit could not merge."
-        echo "   Fix: pmat verify --stage clippy --fix"
-        exit 1
+        CLIPPY_PKG_ARGS=""
+        CLIPPY_PKG_NAMES=""
+        CLIPPY_WHOLE=0
+        while IFS= read -r LINT_FILE; do
+            [ -n "$LINT_FILE" ] || continue
+            case "$LINT_FILE" in
+                Cargo.lock|Cargo.toml|*/Cargo.lock) CLIPPY_WHOLE=1; break ;;
+            esac
+            LINT_DIR=$(dirname "$LINT_FILE")
+            LINT_PKG=""
+            while :; do
+                if [ -f "$LINT_DIR/Cargo.toml" ]; then
+                    LINT_PKG=$(sed -n '/^\[package\]/,/^\[/{s/^name[[:space:]]*=[[:space:]]*["'"'"']\([^"'"'"']*\)["'"'"'].*/\1/p;}' "$LINT_DIR/Cargo.toml" | head -n 1)
+                    [ -n "$LINT_PKG" ] && break
+                fi
+                [ "$LINT_DIR" = "." ] && break
+                LINT_DIR=$(dirname "$LINT_DIR")
+            done
+            # A name that is not a plain crate name is not passed to cargo
+            # blind: lint the whole workspace instead.
+            case "$LINT_PKG" in
+                ""|*[!A-Za-z0-9_-]*) CLIPPY_WHOLE=1; break ;;
+            esac
+            case " $CLIPPY_PKG_NAMES " in
+                *" $LINT_PKG "*) ;;
+                *) CLIPPY_PKG_NAMES="$CLIPPY_PKG_NAMES $LINT_PKG"
+                   CLIPPY_PKG_ARGS="$CLIPPY_PKG_ARGS -p $LINT_PKG" ;;
+            esac
+        done <<< "$STAGED_LINT"
+        if [ "$CLIPPY_WHOLE" -eq 1 ]; then
+            CLIPPY_PKG_ARGS=""
+        fi
+
+        # Content-addressed: ~0.3s when this exact tree already linted green,
+        # a clippy run when it did not. Never a pass without one or the other.
+        # $CLIPPY_PKG_ARGS is deliberately unquoted: it is empty or a list of
+        # `-p <plain crate name>` words validated above.
+        CLIPPY_STATUS=0
+        CLIPPY_OUTPUT=$(pmat verify --stage clippy $CLIPPY_PKG_ARGS 2>&1) || CLIPPY_STATUS=$?
+        if [ "$CLIPPY_STATUS" -eq 0 ]; then
+            echo "✅"
+        else
+            echo "❌"
+            echo "$CLIPPY_OUTPUT" | tail -n 30
+            echo ""
+            echo "   'ci / lint' runs these same lints; this commit could not merge."
+            echo "   Fix: pmat verify --stage clippy${CLIPPY_PKG_ARGS} --fix"
+            exit 1
+        fi
     fi
 fi
 # <<< pmat clippy gate (PMAT-630) <<<

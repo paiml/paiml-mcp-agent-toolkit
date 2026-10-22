@@ -46,6 +46,12 @@ pub struct VerifyArgs {
     /// Run only this single stage.
     #[arg(long)]
     pub stage: Option<String>,
+
+    /// Lint only these packages in the clippy stage (`cargo clippy -p <name>`);
+    /// the pre-commit hook passes the crates that own staged Rust files.
+    /// Absent means the whole workspace, which is what CI runs.
+    #[arg(short = 'p', long = "package")]
+    pub package: Vec<String>,
 }
 
 /// CI-faithful stages, cheapest first (fail-fast catches common cases in seconds).
@@ -567,7 +573,25 @@ pub(crate) const CLIPPY_LINTS: &[&str] = &["-D", "warnings", "-A", "unused-varia
 /// The lint question, as one string, for the receipt fingerprint. Changing what
 /// we ask clippy has to invalidate every answer taken under the old question.
 fn clippy_question() -> String {
-    format!("{CLIPPY_TARGETS} {}", CLIPPY_LINTS.join(" "))
+    clippy_question_for(&[])
+}
+
+/// The same question, narrowed to packages. A green taken on `-p a` is not a green
+/// for the workspace, so the packages are part of the receipt key.
+fn clippy_question_for(packages: &[String]) -> String {
+    let mut pkgs: Vec<&str> = packages.iter().map(String::as_str).collect();
+    pkgs.sort_unstable();
+    pkgs.dedup();
+    let scope: String = pkgs.iter().map(|p| format!("-p {p} ")).collect();
+    format!("{scope}{CLIPPY_TARGETS} {}", CLIPPY_LINTS.join(" "))
+}
+
+/// `-p <name>` argument words for cargo, empty for the whole workspace.
+fn clippy_package_args(packages: &[String]) -> Vec<String> {
+    packages
+        .iter()
+        .flat_map(|p| ["-p".to_string(), p.clone()])
+        .collect()
 }
 
 fn stage_clippy(args: &VerifyArgs) -> StageResult {
@@ -583,7 +607,8 @@ fn stage_clippy(args: &VerifyArgs) -> StageResult {
     // handing back a pass for a tree nobody linted. `--fix` deliberately
     // bypasses the reuse: it is asked to change the tree, not to judge it.
     let here = Path::new(".");
-    let question = clippy_question();
+    let question = clippy_question_for(&args.package);
+    let pkg_args = clippy_package_args(&args.package);
     if !args.fix {
         if let Ok(fp) = verify_lint_receipt::fingerprint(here, &question) {
             if verify_lint_receipt::is_proven(here, &fp) {
@@ -593,15 +618,16 @@ fn stage_clippy(args: &VerifyArgs) -> StageResult {
     }
     if args.fix {
         let mut fix = cargo();
-        fix.args([
-            "clippy",
-            CLIPPY_TARGETS,
-            "--fix",
-            "--allow-dirty",
-            "--allow-staged",
-            "--",
-        ])
-        .args(CLIPPY_LINTS);
+        fix.args(["clippy"])
+            .args(&pkg_args)
+            .args([
+                CLIPPY_TARGETS,
+                "--fix",
+                "--allow-dirty",
+                "--allow-staged",
+                "--",
+            ])
+            .args(CLIPPY_LINTS);
         let _ = run(&mut fix);
     }
     // Fingerprint the tree clippy is about to read, not the tree it was asked
@@ -609,7 +635,9 @@ fn stage_clippy(args: &VerifyArgs) -> StageResult {
     let before = verify_lint_receipt::fingerprint(here, &question).ok();
     let mut check = cargo();
     check
-        .args(["clippy", CLIPPY_TARGETS, "--message-format=json", "--"])
+        .arg("clippy")
+        .args(&pkg_args)
+        .args([CLIPPY_TARGETS, "--message-format=json", "--"])
         .args(CLIPPY_LINTS);
     let (ok, out) = run(&mut check);
     let violations = parse_clippy_violations(&out);
@@ -866,6 +894,31 @@ mod clippy_receipt_tests {
         dir
     }
 
+    /// A green taken on `-p a` says nothing about the workspace (or about `-p b`),
+    /// so the scope is part of the question the receipt answers.
+    #[test]
+    fn a_scoped_green_is_not_a_workspace_green() {
+        let dir = scratch();
+        let scoped = clippy_question_for(&["a".to_string()]);
+        assert_ne!(scoped, clippy_question());
+        assert_ne!(scoped, clippy_question_for(&["b".to_string()]));
+        assert_eq!(
+            clippy_question_for(&["b".to_string(), "a".to_string(), "a".to_string()]),
+            clippy_question_for(&["a".to_string(), "b".to_string()]),
+            "order and duplicates must not split one question into two keys"
+        );
+        let fp = verify_lint_receipt::fingerprint(dir.path(), &scoped).expect("fingerprint");
+        verify_lint_receipt::record(dir.path(), &fp).expect("record");
+        let whole =
+            verify_lint_receipt::fingerprint(dir.path(), &clippy_question()).expect("fingerprint");
+        assert!(!verify_lint_receipt::is_proven(dir.path(), &whole));
+        assert_eq!(
+            clippy_package_args(&["a".to_string(), "b".to_string()]),
+            ["-p", "a", "-p", "b"]
+        );
+        assert!(clippy_package_args(&[]).is_empty());
+    }
+
     /// The dangerous direction: a red run must not leave a green proof behind.
     /// If it did, the very next commit would be waved through on a receipt
     /// written before the code went bad — a hook that reports the past.
@@ -1082,6 +1135,7 @@ mod tests {
             no_fail_fast: false,
             skip: Vec::new(),
             stage: None,
+            package: Vec::new(),
         };
         match run_stage("nonexistent", &args) {
             StageResult::Ran { ok, detail, .. } => {

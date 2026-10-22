@@ -614,6 +614,8 @@ mod unified_ast_types_tests {
     }
 
     #[test]
+    // Deliberate: the test exists to call the explicit `Clone` impl (see below).
+    #[allow(clippy::clone_on_copy)]
     fn test_node_metadata_clone() {
         let metadata = NodeMetadata { complexity: 42 };
         // Invoke the explicit Clone impl (not the implicit Copy) so the

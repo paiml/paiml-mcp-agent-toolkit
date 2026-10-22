@@ -7778,3 +7778,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1518
+  github_issue: 1518
+  item_type: task
+  title: 'pre-commit clippy gate: scope to crates with staged Rust changes; skip when none staged'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-10-22T18:06:05.905720018+00:00
+  updated: 2026-10-22T18:06:05.905720018+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

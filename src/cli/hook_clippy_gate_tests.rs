@@ -467,3 +467,166 @@ fn both_hook_installers_embed_the_identical_clippy_gate() {
          ran last would decide whether clippy is enforced"
     );
 }
+
+// ---------------------------------------------------------------------------
+// PMAT-1518: the hook's clippy gate is scoped to what the commit touches.
+//
+// A one-file YAML commit in paiml/forjar sat for more than five minutes at
+// "Clippy check..." because the gate linted the whole workspace whatever was
+// staged. `ci / lint` still lints the whole workspace; this only decides what a
+// LOCAL commit pays for. Two things must stay true: nothing staged to lint is
+// reported as SKIPPED (never as a pass), and a staged crate is linted with `-p`
+// for that crate and no other.
+// ---------------------------------------------------------------------------
+
+/// Build a two-crate workspace plus a YAML file, commit it, apply `edit` to the
+/// worktree, stage everything, run the generated hook, and return
+/// `(exit code, hook output, arguments of every `pmat verify` call)`.
+fn run_hook_in_workspace(edit: &[(&str, &str)]) -> (i32, String, String) {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    let bin = root.join("bin");
+    std::fs::create_dir_all(&bin).expect("mkdir");
+    let log = root.join("verify-args.log");
+    write_exec(
+        &bin.join("pmat"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = verify ]; then echo \"$*\" >> {}; fi\necho 'Total violations: 0'\nexit 0\n",
+            log.display()
+        ),
+    );
+    let git = |args: &[&str]| {
+        assert!(
+            Command::new("git")
+                .args(args)
+                .current_dir(root)
+                .output()
+                .expect("git")
+                .status
+                .success(),
+            "git {args:?} failed"
+        );
+    };
+    let put = |rel: &str, body: &str| {
+        let p = root.join(rel);
+        std::fs::create_dir_all(p.parent().expect("parent")).expect("mkdir");
+        std::fs::write(p, body).expect("write");
+    };
+    git(&["init", "-q"]);
+    git(&["config", "user.email", "t@t"]);
+    git(&["config", "user.name", "t"]);
+    put(
+        "Cargo.toml",
+        "[workspace]\nmembers = [\"crates/a\", \"crates/b\"]\n",
+    );
+    put("Cargo.lock", "# lock\n");
+    put(
+        "crates/a/Cargo.toml",
+        "[package]\nname = \"alpha\"\nversion = \"0.0.0\"\n",
+    );
+    put("crates/a/src/lib.rs", "pub fn a() {}\n");
+    put(
+        "crates/b/Cargo.toml",
+        "[package]\nname = \"beta-two\"\nversion = \"0.0.0\"\n",
+    );
+    put("crates/b/src/lib.rs", "pub fn b() {}\n");
+    put("ci/pipeline.yaml", "a: 1\n");
+    git(&["add", "-A"]);
+    git(&["commit", "-q", "-m", "base", "--no-verify"]);
+
+    for (rel, body) in edit {
+        put(rel, body);
+    }
+    git(&["add", "-A"]);
+
+    let hook = root.join("hook.sh");
+    std::fs::write(&hook, generated_hook()).expect("write hook");
+    let out = Command::new(bash())
+        .arg(&hook)
+        .current_dir(root)
+        .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
+        .output()
+        .expect("run hook");
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let calls = std::fs::read_to_string(&log).unwrap_or_default();
+    (out.status.code().unwrap_or(-1), text, calls)
+}
+
+/// The reported defect: a YAML-only commit must not pay for clippy at all, and
+/// the hook must say it skipped the gate rather than print a pass.
+#[test]
+fn a_yaml_only_commit_does_not_run_clippy_and_says_so() {
+    let (code, out, calls) = run_hook_in_workspace(&[("ci/pipeline.yaml", "a: 2\n")]);
+    assert_eq!(code, 0, "a YAML commit must be allowed; output:\n{out}");
+    assert!(
+        !calls.contains("--stage clippy"),
+        "clippy ran for a commit with no Rust staged: {calls:?}"
+    );
+    assert!(
+        out.contains("Clippy check... ⏭️  skipped: no Rust files staged"),
+        "a skipped gate must be printed as skipped; got:\n{out}"
+    );
+    assert!(
+        !out.contains("Clippy check... ✅"),
+        "a gate that did not run must not be reported as a pass; got:\n{out}"
+    );
+}
+
+/// A change in crate `alpha` lints `-p alpha` only: not beta-two, not the
+/// workspace.
+#[test]
+fn a_rust_change_in_one_crate_runs_clippy_for_that_crate_only() {
+    let (code, out, calls) =
+        run_hook_in_workspace(&[("crates/a/src/lib.rs", "pub fn a() {}\npub fn a2() {}\n")]);
+    assert_eq!(code, 0, "output:\n{out}");
+    assert!(
+        calls.contains("--stage clippy") && calls.contains("-p alpha"),
+        "expected `verify --stage clippy -p alpha`, got {calls:?}"
+    );
+    assert!(
+        !calls.contains("beta-two"),
+        "an untouched crate was linted: {calls:?}"
+    );
+    assert!(
+        out.contains("Clippy check... ✅"),
+        "the gate ran and must say so; got:\n{out}"
+    );
+}
+
+/// Two staged crates are both linted, each exactly once.
+#[test]
+fn rust_changes_in_two_crates_lint_both_once() {
+    let (_, out, calls) = run_hook_in_workspace(&[
+        ("crates/a/src/lib.rs", "pub fn a() {}\npub fn a2() {}\n"),
+        ("crates/a/src/more.rs", "pub fn m() {}\n"),
+        ("crates/b/src/lib.rs", "pub fn b() {}\npub fn b2() {}\n"),
+    ]);
+    assert_eq!(calls.matches("-p alpha").count(), 1, "{calls:?}\n{out}");
+    assert_eq!(calls.matches("-p beta-two").count(), 1, "{calls:?}\n{out}");
+}
+
+/// The lockfile and the root manifest can change what every crate resolves to,
+/// so they are not scoped: the whole workspace is linted (no `-p`).
+#[test]
+fn a_lockfile_change_lints_the_whole_workspace() {
+    let (code, out, calls) = run_hook_in_workspace(&[("Cargo.lock", "# lock 2\n")]);
+    assert_eq!(code, 0, "output:\n{out}");
+    assert!(calls.contains("--stage clippy"), "{calls:?}\n{out}");
+    assert!(
+        !calls.contains("-p "),
+        "a lockfile change must not be narrowed to a crate: {calls:?}"
+    );
+}
+
+/// A staged `.rs` that belongs to no package cannot be scoped honestly, so it
+/// falls back to the whole workspace instead of linting nothing.
+#[test]
+fn a_rust_file_outside_any_package_falls_back_to_the_whole_workspace() {
+    let (_, out, calls) = run_hook_in_workspace(&[("tools/stray.rs", "pub fn s() {}\n")]);
+    assert!(calls.contains("--stage clippy"), "{calls:?}\n{out}");
+    assert!(!calls.contains("-p "), "{calls:?}");
+}
