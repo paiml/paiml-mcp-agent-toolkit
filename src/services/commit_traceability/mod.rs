@@ -38,6 +38,103 @@ pub const TRAILER_KEY: &str = "Pmat-Ticket";
 /// argument so tests never touch the process environment.
 pub const BASE_REF_ENV: &str = "GITHUB_BASE_REF";
 
+/// PMAT-1356 — is this author a GitHub app account?
+///
+/// GitHub mints `<numeric id>+<app name>[bot]@users.noreply.github.com` for
+/// app accounts and for nothing else: the `[bot]` suffix is reserved in the
+/// account namespace, and the host is GitHub's own noreply domain. Both halves
+/// are required here, because either alone is an address a person can choose.
+///
+/// This is not a signature check and is not offered as one — a commit claiming
+/// the address is still just a commit. It is why [`Measurement::bot_exempt`]
+/// is COUNTED and named in the verdict message: an exemption nobody can see is
+/// indistinguishable from a rule that stopped running (goal-mode.md doctrine 2).
+pub fn is_github_bot_account(author_email: &str) -> bool {
+    let email = author_email.trim().to_ascii_lowercase();
+    let Some(local) = email.strip_suffix("@users.noreply.github.com") else {
+        return false;
+    };
+    local.ends_with("[bot]")
+}
+
+/// Fingerprint of GitHub's `web-flow` commit-signing key (the key GitHub signs
+/// web-UI, merge-button and Dependabot commits with). A `G` signature from any
+/// other key, including one the local keyring trusts, proves nothing.
+pub const WEB_FLOW_KEY_FPR: &str = "968479A1AFF927E37D1A566BB5690EEEBB952194";
+
+/// PMAT-1356 (r3) — is a commit with these `%ae`, `%G?`, `%ce`, `%GF` fields
+/// exempt from the trailer?
+///
+/// The author email is whatever `git commit --author` was told, and the
+/// process environment (`GITHUB_ACTOR`) is whatever a PR workflow sets, so
+/// neither proves anything. The one signal a pusher cannot produce is a
+/// signature by GitHub's own key: the exemption needs the app-namespace
+/// author AND `%G?` = `G` AND committer `noreply@github.com` AND the signing
+/// key fingerprint (`%GF`) equal to [`WEB_FLOW_KEY_FPR`]. Anything less fails
+/// closed: the commit is judged like any other.
+pub fn exempts(
+    author_email: &str,
+    sig_status: &str,
+    committer_email: &str,
+    signer_fpr: &str,
+) -> bool {
+    is_github_bot_account(author_email)
+        && sig_status.trim() == "G"
+        && committer_email
+            .trim()
+            .eq_ignore_ascii_case("noreply@github.com")
+        && signer_fpr.trim().eq_ignore_ascii_case(WEB_FLOW_KEY_FPR)
+}
+
+/// One commit, read field by field. Every field is fetched by its OWN `git`
+/// call, so no byte an author puts in a subject, an email or a trailer can
+/// shift, split or forge another field: there is no shared framing to inject
+/// into (r3 NO-GO: a 0x1f in the subject shifted the old `\x1f`-separated
+/// line and forged the exemption).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(crate) struct CommitRec {
+    pub hash: String,
+    pub subject: String,
+    /// `Pmat-Ticket` trailer values, comma-joined.
+    pub trailers: String,
+    pub author_email: String,
+    pub sig_status: String,
+    pub committer_email: String,
+    pub signer_fpr: String,
+}
+
+impl CommitRec {
+    /// Does any field carry a control byte (0x00-0x1f, 0x7f, C1)? Such a commit
+    /// is never exempt: no honest app commit has one, and refusing is the
+    /// fail-closed side of an injection attempt.
+    fn has_control_bytes(&self) -> bool {
+        [
+            &self.hash,
+            &self.subject,
+            &self.author_email,
+            &self.sig_status,
+            &self.committer_email,
+            &self.signer_fpr,
+        ]
+        .iter()
+        .any(|s| s.chars().any(char::is_control))
+    }
+
+    fn names_a_ticket(&self) -> bool {
+        self.trailers.split(',').any(|id| !id.trim().is_empty())
+    }
+
+    fn exempt(&self) -> bool {
+        !self.has_control_bytes()
+            && exempts(
+                &self.author_email,
+                &self.sig_status,
+                &self.committer_email,
+                &self.signer_fpr,
+            )
+    }
+}
+
 /// Whether the two inputs exist at all. A project with neither a repository
 /// nor a roadmap has nothing for this rule to read, which is a structural
 /// absence (Skip), not a measurement failure.
@@ -105,6 +202,11 @@ pub struct Measurement {
     pub commits: usize,
     /// Of those, how many carry at least one `Pmat-Ticket:` trailer.
     pub trailered: usize,
+    /// Of those, how many were authored by a GitHub app account and so are not
+    /// required to carry a trailer (PMAT-1356). Counted, never silent: a bot
+    /// composes its own message and cannot name a roadmap item, so a rule that
+    /// demanded one of it was inoperative for that whole class, not strict.
+    pub bot_exempt: usize,
     pub findings: Vec<Finding>,
 }
 
@@ -254,23 +356,84 @@ pub fn measure_against(project_path: &Path, base: Option<&str>) -> Result<Measur
     }
 }
 
-/// `(commits, trailered)` over `git log` lines of `\x1f`-separated hash,
-/// subject and trailer values: every non-blank line is a commit, and it is
-/// trailered when its third field names at least one non-empty ticket id.
-fn count_trailered(log: &str) -> (usize, usize) {
-    let mut commits = 0;
+/// Raw stdout of git, with no trimming beyond the single newline git appends:
+/// a field's own bytes are the evidence, so none are normalised away.
+fn run_git_raw(project_path: &Path, args: &[&str]) -> Result<String, String> {
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(project_path)
+        .args(args)
+        .env("LC_ALL", "C")
+        .output()
+        .map_err(|e| format!("git {:?} failed: {}", args, e))?;
+    if !out.status.success() {
+        return Err(format!(
+            "git {:?}: {}",
+            args.first().unwrap_or(&""),
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    let mut s = String::from_utf8_lossy(&out.stdout).into_owned();
+    if s.ends_with('\n') {
+        s.pop();
+    }
+    Ok(s)
+}
+
+/// One field of one commit, by its own `git log -1` call.
+fn commit_field(project_path: &Path, hash: &str, format: &str) -> Result<String, String> {
+    run_git_raw(
+        project_path,
+        &["log", "-1", &format!("--format={format}"), hash, "--"],
+    )
+}
+
+/// The non-merge commits of `range`, each read field by field. A hash that is
+/// not 40 or 64 hex digits is a framing failure and fails the measurement
+/// (not measured), never a skip.
+pub(crate) fn read_commits(project_path: &Path, range: &str) -> Result<Vec<CommitRec>, String> {
+    let list = run_git_raw(
+        project_path,
+        &["log", "--no-merges", "--format=%H", range, "--"],
+    )?;
+    let mut recs = vec![];
+    for hash in list.lines().filter(|l| !l.is_empty()) {
+        if !matches!(hash.len(), 40 | 64) || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(format!("unexpected commit id {hash:?} in git log"));
+        }
+        let f = |fmt: &str| commit_field(project_path, hash, fmt);
+        recs.push(CommitRec {
+            hash: hash.to_string(),
+            subject: f("%s")?,
+            trailers: f("%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)")?,
+            author_email: f("%ae")?,
+            sig_status: f("%G?")?,
+            committer_email: f("%ce")?,
+            signer_fpr: f("%GF")?,
+        });
+    }
+    Ok(recs)
+}
+
+/// A subject safe to print in a verdict: control bytes become `?`.
+fn printable(s: &str) -> String {
+    s.chars()
+        .map(|c| if c.is_control() { '?' } else { c })
+        .collect()
+}
+
+/// `(commits, trailered, bot_exempt)` over the commits of the range.
+pub(crate) fn count_trailered(recs: &[CommitRec]) -> (usize, usize, usize) {
     let mut trailered = 0;
-    for line in log.split('\n').filter(|l| !l.trim().is_empty()) {
-        commits += 1;
-        let names_a_ticket = line
-            .split('\x1f')
-            .nth(2)
-            .is_some_and(|tr| tr.split(',').any(|id| !id.trim().is_empty()));
-        if names_a_ticket {
+    let mut bot_exempt = 0;
+    for r in recs {
+        if r.names_a_ticket() {
             trailered += 1;
+        } else if r.exempt() {
+            bot_exempt += 1;
         }
     }
-    (commits, trailered)
+    (recs.len(), trailered, bot_exempt)
 }
 
 fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
@@ -286,21 +449,14 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
         "HEAD".to_string()
     };
 
-    let commits_out = run_git(
-        project_path,
-        &[
-            "log",
-            "--no-merges",
-            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)",
-            &range_arg,
-        ],
-    )?;
-    let (commits, trailered) = count_trailered(&commits_out);
+    let recs = read_commits(project_path, &range_arg)?;
+    let (commits, trailered, bot_exempt) = count_trailered(&recs);
 
     Ok(Measurement {
         range: Range::DefaultBranch { since },
         commits,
         trailered,
+        bot_exempt,
         findings: vec![],
     })
 }
@@ -308,15 +464,7 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
 fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
     use crate::models::roadmap::ItemStatus;
     let merge_base = run_git(project_path, &["merge-base", &resolved_base, "HEAD"])?;
-    let commits_out = run_git(
-        project_path,
-        &[
-            "log",
-            "--no-merges",
-            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)",
-            &format!("{merge_base}..HEAD"),
-        ],
-    )?;
+    let recs = read_commits(project_path, &format!("{merge_base}..HEAD"))?;
 
     let rm_path = project_path.join(ROADMAP_PATH);
     let roadmap = crate::services::roadmap_service::RoadmapService::new(rm_path)
@@ -330,25 +478,15 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
 
     let mut commits = 0;
     let mut trailered = 0;
+    let mut bot_exempt = 0;
     let mut findings = vec![];
 
-    if !commits_out.is_empty() {
-        for line in commits_out.split('\n') {
-            if line.trim().is_empty() {
-                continue;
-            }
+    {
+        for rec in &recs {
             commits += 1;
-            let parts: Vec<&str> = line.split('\x1f').collect();
-            if parts.len() < 2 {
-                continue;
-            }
-            let hash = parts[0].to_string();
-            let subject = parts[1].to_string();
-            let tr = if parts.len() >= 3 {
-                parts[2].trim()
-            } else {
-                ""
-            };
+            let hash = rec.hash.clone();
+            let subject = printable(&rec.subject);
+            let tr = rec.trailers.trim();
 
             let ids: Vec<&str> = tr
                 .split(',')
@@ -356,11 +494,21 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
                 .filter(|s| !s.is_empty())
                 .collect();
             if ids.is_empty() {
-                findings.push(Finding {
-                    hash: hash.clone(),
-                    subject: subject.clone(),
-                    violation: Violation::NoTrailer,
-                });
+                // PMAT-1356: a GitHub app account composes its own message and
+                // has no roadmap item to name — the work was published
+                // upstream, not chosen here. Exempt from the REQUIREMENT, and
+                // counted so the exemption is visible in the verdict. Only the
+                // absence is excused: a trailer that is present is judged
+                // below whoever wrote it.
+                if rec.exempt() {
+                    bot_exempt += 1;
+                } else {
+                    findings.push(Finding {
+                        hash: hash.clone(),
+                        subject: subject.clone(),
+                        violation: Violation::NoTrailer,
+                    });
+                }
             } else {
                 let mut commit_trailered = false;
                 for id in ids {
@@ -405,6 +553,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         },
         commits,
         trailered,
+        bot_exempt,
         findings,
     })
 }

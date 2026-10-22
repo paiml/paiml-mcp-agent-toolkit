@@ -7559,7 +7559,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7567,6 +7567,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1473
   github_issue: 1473
   item_type: task
@@ -7575,7 +7576,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7583,6 +7584,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1474
   github_issue: 1474
   item_type: task
@@ -7591,7 +7593,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7599,6 +7601,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1475
   github_issue: 1475
   item_type: task
@@ -7607,7 +7610,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7615,6 +7618,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1476
   github_issue: 1476
   item_type: task
@@ -7623,7 +7627,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7631,6 +7635,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1481
   github_issue: 1481
   item_type: task
@@ -7639,7 +7644,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7647,6 +7652,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1482
   github_issue: 1482
   item_type: task
@@ -7655,7 +7661,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7663,6 +7669,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1484
   github_issue: 1484
   item_type: task
@@ -7671,7 +7678,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7679,6 +7686,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1485
   github_issue: 1485
   item_type: task
@@ -7687,7 +7695,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7695,6 +7703,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1486
   github_issue: 1486
   item_type: task
@@ -7703,7 +7712,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7711,6 +7720,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1489
   github_issue: 1489
   item_type: task
@@ -7719,7 +7729,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7727,6 +7737,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.43.0
 - id: PMAT-1490
   github_issue: 1490
   item_type: task
@@ -7735,7 +7746,7 @@ roadmap:
   priority: critical
   assigned_to: null
   created: 2026-10-14T13:57:48Z
-  updated: 2026-10-14T13:57:48Z
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria:
   - 'ci / gate (sovereign-ci lint: cargo deny advisories; security: cargo audit) fails on rustls 0.23.45 and quinn-proto 0.11.15. Lockfile-only bump. Acceptance: cargo audit 0 vulnerabilities on the bumped Cargo.lock.'
@@ -7745,6 +7756,7 @@ roadmap:
   labels:
   - kind:code
   notes: null
+  release: 3.43.0
   epic: 1457
 - id: GH-1492
   github_issue: 1492
@@ -7754,7 +7766,7 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T14:35:36.019828266+00:00
-  updated: 2026-10-16T14:35:36.019828266+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7762,6 +7774,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
 - id: GH-1494
   github_issue: 1494
   item_type: task
@@ -7770,7 +7783,72 @@ roadmap:
   priority: medium
   assigned_to: null
   created: 2026-10-16T14:35:36.019828266+00:00
-  updated: 2026-10-16T14:35:36.019828266+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.43.0
+- id: GH-1500
+  github_issue: 1500
+  item_type: task
+  title: 'pmat comply on a small Rust demo crate: CB-200/1204/1308/2100 fail with no applicable fix path'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-21T06:18:09.943062466+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1502
+  github_issue: 1502
+  item_type: task
+  title: 'pmat work start/delegate: refuse at the open-PR cap, drafts included (companion of aprender#5518)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-21T06:18:09.943062466+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1503
+  github_issue: 1503
+  item_type: task
+  title: 'FLOW-009 RC-2: add .flow009/batcher.pub (batcher public key)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-21T06:18:09.943062466+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-1505
+  github_issue: 1505
+  item_type: task
+  title: 'work start / work complete still re-serialise the whole roadmap.yaml (the two writers #1193 did not reach)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-21T06:18:09.943062466+00:00
+  updated: 2026-10-21T06:18:09.943062466+00:00
   spec: null
   acceptance_criteria: []
   phases: []
