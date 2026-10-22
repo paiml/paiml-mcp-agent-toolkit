@@ -5,7 +5,10 @@
 //! of ours. The control comes first: without a fixture that PASSES, every red
 //! below could be an engine that always fails.
 
-use super::{inputs, measure_against, Inputs, Range, Violation, ROADMAP_PATH};
+use super::{
+    count_trailered, exempts, inputs, measure_against, CommitRec, Inputs, Range, Violation,
+    ROADMAP_PATH, WEB_FLOW_KEY_FPR,
+};
 use std::path::Path;
 use std::process::Command;
 use tempfile::TempDir;
@@ -424,4 +427,255 @@ fn a_roadmap_that_was_committed_and_is_now_gone_is_not_an_absence() {
     let dir2 = repo();
     std::fs::remove_file(dir2.path().join(ROADMAP_PATH)).expect("rm");
     assert_eq!(inputs(dir2.path()), Inputs::RoadmapDeleted);
+}
+
+// ── PMAT-1356: a bot cannot add a trailer, and a rule no member of a class
+//    can pass is inoperative, not strict ──────────────────────────────────────
+
+/// Commit as a GitHub app account. `--author` sets the AUTHOR; the committer
+/// stays `cb2113@example.invalid`, which is the real shape — dependabot is the
+/// author, GitHub is the committer.
+fn commit_as(dir: &Path, subject: &str, author: &str, body: Option<&str>) -> String {
+    let mut args = vec![
+        "commit",
+        "-q",
+        "--allow-empty",
+        "--author",
+        author,
+        "-m",
+        subject,
+    ];
+    if let Some(b) = body {
+        args.extend(["-m", b]);
+    }
+    git(dir, &args);
+    git(dir, &["rev-parse", "HEAD"])
+}
+
+const DEPENDABOT: &str = "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>";
+
+/// A commit record as the gate reads it: subject, %ae, %G?, %ce, %GF.
+fn rec(ae: &str, sig: &str, ce: &str, fpr: &str) -> CommitRec {
+    CommitRec {
+        hash: "h".into(),
+        subject: "deps: bump".into(),
+        author_email: ae.into(),
+        sig_status: sig.into(),
+        committer_email: ce.into(),
+        signer_fpr: fpr.into(),
+        ..Default::default()
+    }
+}
+
+const APP_AE: &str = "49699333+dependabot[bot]@users.noreply.github.com";
+
+#[test]
+fn a_web_flow_signed_bot_commit_with_no_trailer_is_exempt_and_counted() {
+    // Measured on paiml/paiml-mcp-agent-toolkit#1347 (run 34834456634): CB-2113
+    // refused `deps(deps): Bump pollster from 0.4.0 to 1.0.1` for a trailer its
+    // author cannot add. Five dependabot PRs held. The only exempt shape is a
+    // commit GitHub's own key signed; a real signature cannot be minted here,
+    // so the positive path is driven through the log line the gate parses.
+    let good = rec(APP_AE, "G", "noreply@github.com", WEB_FLOW_KEY_FPR);
+    assert_eq!(count_trailered(std::slice::from_ref(&good)), (1, 0, 1));
+    // The exemption is per commit: a human line beside it is not skipped.
+    let human = rec("me@example.com", "N", "me@example.com", "");
+    assert_eq!(count_trailered(&[good, human]), (2, 0, 1));
+}
+
+#[test]
+fn a_good_signature_by_any_other_key_is_not_the_web_flow_key() {
+    // r3 finding 1: %G?==G and a noreply committer are both settable locally
+    // (own key in the keyring + GIT_COMMITTER_EMAIL). Only the key identity
+    // is not.
+    for fpr in [
+        "",
+        "0000000000000000000000000000000000000000",
+        "B5690EEEBB952194",
+        "968479A1AFF927E37D1A566BB5690EEEBB952195",
+    ] {
+        assert!(
+            !exempts(APP_AE, "G", "noreply@github.com", fpr),
+            "fpr {fpr:?} must not exempt"
+        );
+        assert_eq!(
+            count_trailered(&[rec(APP_AE, "G", "noreply@github.com", fpr)]),
+            (1, 0, 0)
+        );
+    }
+    assert!(exempts(
+        APP_AE,
+        "G",
+        "noreply@github.com",
+        &WEB_FLOW_KEY_FPR.to_lowercase()
+    ));
+}
+
+#[test]
+fn every_leg_of_the_exemption_is_necessary() {
+    let f = WEB_FLOW_KEY_FPR;
+    assert!(exempts(APP_AE, "G", "noreply@github.com", f));
+    assert!(!exempts("me@example.com", "G", "noreply@github.com", f));
+    assert!(!exempts(APP_AE, "G", "me@example.com", f));
+    for st in ["N", "E", "B", "U", "X", "Y", "R", ""] {
+        assert!(!exempts(APP_AE, st, "noreply@github.com", f), "{st}");
+    }
+    // A record with no signature/committer/fingerprint fields fails closed.
+    assert_eq!(count_trailered(&[rec(APP_AE, "", "", "")]), (1, 0, 0));
+}
+
+#[test]
+fn the_process_environment_cannot_exempt_a_forged_author() {
+    // r3 finding 2: GITHUB_ACTIONS/GITHUB_ACTOR are set by whatever workflow
+    // runs the gate, including one edited in the PR. They are not read at all.
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(dir.path(), "feat: forged", DEPENDABOT, None);
+    std::env::set_var("GITHUB_ACTIONS", "true");
+    std::env::set_var("GITHUB_ACTOR", "dependabot[bot]");
+    let m = measure_against(dir.path(), None);
+    std::env::remove_var("GITHUB_ACTIONS");
+    std::env::remove_var("GITHUB_ACTOR");
+    let m = m.expect("measured");
+    assert_eq!((m.bot_exempt, m.findings.len()), (0, 1), "{m:?}");
+}
+
+#[test]
+fn a_forged_bot_author_is_judged_in_pr_and_default_branch_modes() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(dir.path(), "feat: mine, forged author", DEPENDABOT, None);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.bot_exempt, 0, "a forged address must not exempt: {m:?}");
+    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
+    assert_eq!(m.findings[0].violation, Violation::NoTrailer);
+    let dir = repo();
+    commit_as(dir.path(), "deps: bump on master", DEPENDABOT, None);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert!(matches!(m.range, Range::DefaultBranch { .. }), "{m:?}");
+    assert_eq!((m.commits, m.bot_exempt), (1, 0), "{m:?}");
+}
+
+#[test]
+fn a_human_whose_name_merely_ends_in_bot_is_still_judged() {
+    // The exemption is the GitHub app NAMESPACE, not the word "bot". An
+    // address a person can choose must not buy the exemption.
+    let dir = repo();
+    on_feature(dir.path());
+    for author in [
+        "Abbot <abbot@example.invalid>",
+        "robot <robot@bot.example.invalid>",
+        // The suffix, but not on GitHub's noreply host.
+        "fake <fake[bot]@example.invalid>",
+        // The host, but not the app-account local part.
+        "fake2 <fake2@users.noreply.github.com>",
+    ] {
+        let dir = repo();
+        on_feature(dir.path());
+        commit_as(dir.path(), "untrailered", author, None);
+        let m = measure_against(dir.path(), None).expect("measured");
+        assert_eq!(m.bot_exempt, 0, "{author} must not be exempt: {m:?}");
+        assert_eq!(m.findings.len(), 1, "{author}: {:?}", m.findings);
+    }
+    let _ = dir;
+}
+
+#[test]
+fn a_bot_commit_that_does_carry_a_trailer_is_still_read_as_trailered() {
+    // The exemption removes the REQUIREMENT, not the reading. A bot whose
+    // message names a real item should count toward `trailered`, so the
+    // numbers in the message stay honest.
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(
+        dir.path(),
+        "deps: bump x",
+        DEPENDABOT,
+        Some("Pmat-Ticket: PMAT-001"),
+    );
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.commits, m.trailered, m.bot_exempt), (1, 1, 0), "{m:?}");
+    assert!(m.findings.is_empty(), "{:?}", m.findings);
+}
+
+#[test]
+fn a_bot_trailer_naming_a_completed_item_is_still_a_finding() {
+    // Exemption applies to the ABSENCE of a trailer. A trailer that is present
+    // and wrong is a claim, and a claim is judged whoever made it.
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(
+        dir.path(),
+        "deps: bump x",
+        DEPENDABOT,
+        Some("Pmat-Ticket: PMAT-002"),
+    );
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.bot_exempt, 0, "{m:?}");
+    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
+    assert!(
+        matches!(&m.findings[0].violation, Violation::TerminalTicket { id, .. } if id == "PMAT-002"),
+        "{:?}",
+        m.findings[0].violation
+    );
+}
+
+// r4: the log framing. The r3 gate joined fields with 0x1f and split on it; a
+// 0x1f in the SUBJECT shifted every later field, so an unsigned commit could
+// carry the web-flow fields inside its own subject and be exempted.
+
+fn forged_subject(sep: char) -> String {
+    ["x", "", APP_AE, "G", "noreply@github.com", WEB_FLOW_KEY_FPR].join(&sep.to_string())
+}
+
+#[test]
+fn separator_bytes_in_a_subject_cannot_forge_the_exemption() {
+    // 0x1f is the r3 separator; 0x1e, 0x1d, 0x1c, \t and \u{7f} are its
+    // neighbours. Each must leave the unsigned commit judged.
+    for sep in ['\u{1f}', '\u{1e}', '\u{1d}', '\u{1c}', '\t', '\u{7f}'] {
+        let dir = repo();
+        on_feature(dir.path());
+        commit_as(
+            dir.path(),
+            &forged_subject(sep),
+            "a <a@example.invalid>",
+            None,
+        );
+        let m = measure_against(dir.path(), None).expect("measured");
+        assert_eq!(
+            (m.bot_exempt, m.findings.len()),
+            (0, 1),
+            "sep {:?}: {m:?}",
+            sep
+        );
+        assert!(
+            m.findings[0].subject.chars().all(|c| !c.is_control()),
+            "the subject is printed without control bytes"
+        );
+    }
+}
+
+#[test]
+fn a_control_byte_in_any_field_refuses_the_exemption() {
+    let ok = rec(APP_AE, "G", "noreply@github.com", WEB_FLOW_KEY_FPR);
+    assert!(ok.exempt());
+    for sep in ['\u{0}', '\u{1e}', '\u{1f}', '\n'] {
+        let mut r = ok.clone();
+        r.subject = format!("deps: bump{sep}tail");
+        assert!(!r.exempt(), "subject with {:?}", sep);
+        let mut r = ok.clone();
+        r.author_email = format!("{APP_AE}{sep}");
+        assert!(!r.exempt(), "author with {:?}", sep);
+        let mut r = ok.clone();
+        r.signer_fpr = format!("{WEB_FLOW_KEY_FPR}{sep}");
+        assert!(!r.exempt(), "fpr with {:?}", sep);
+    }
+}
+
+#[test]
+fn a_garbled_commit_id_in_the_log_fails_the_measurement() {
+    let dir = repo();
+    on_feature(dir.path());
+    let bad = super::read_commits(dir.path(), "no-such-ref..HEAD");
+    assert!(bad.is_err(), "an unreadable range is not measured");
 }
