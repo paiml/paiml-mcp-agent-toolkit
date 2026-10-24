@@ -7797,3 +7797,22 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: PMAT-1529
+  github_issue: 1529
+  item_type: task
+  title: 'pmat sign: T1 signer (sign.json writer, refusals, --rearm)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-10-24T14:12:53Z
+  updated: 2026-10-24T14:12:53Z
+  spec: null
+  acceptance_criteria:
+  - FLOW-011 rev7.2 T1 signer per T1-signer-shape.md. Local commit only.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
