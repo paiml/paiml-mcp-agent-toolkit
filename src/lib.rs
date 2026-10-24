@@ -157,6 +157,7 @@ pub mod mcp_integration; // MCP protocol integration
 pub mod mcp_pmcp; // Now always available with pmcp 1.0
 #[cfg(feature = "standard-deps")]
 pub mod mcp_server;
+pub mod merge_train; // FLOW-011 T2: PRE receipt, review tiers
 #[cfg(feature = "standard-deps")]
 pub mod models;
 // Feature-gated: Only used by agents and mcp_integration modules (~921 lines)

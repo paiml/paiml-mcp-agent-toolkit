@@ -7778,3 +7778,22 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1521
+  github_issue: 1521
+  item_type: task
+  title: 'R71-1 T2 tooling: PRE receipt, review tiers, size gate (advisory, off by default)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-10-24T09:24:27Z
+  updated: 2026-10-24T09:24:27Z
+  spec: null
+  acceptance_criteria:
+  - 'FLOW-011 rev7.1 R71-1 / rev7 T2: MT-1, MT-2, MT-11, MT-13. Advisory-first behind off-by-default switch.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
