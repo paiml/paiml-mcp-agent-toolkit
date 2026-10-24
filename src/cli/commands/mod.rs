@@ -48,9 +48,11 @@ pub use semantic_search::*;
 pub mod agy_commands;
 pub mod mcp_commands;
 pub mod org_prompt;
+pub mod sign_commands;
 pub use agy_commands::*;
 pub use mcp_commands::*;
 pub use org_prompt::*;
+pub use sign_commands::SignArgs;
 
 // Work commands
 pub mod work_commands;
