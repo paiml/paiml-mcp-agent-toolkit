@@ -1,0 +1,17 @@
+# Review tier table (FLOW-011 MT-13). Tier is derived from changed paths, highest wins.
+# Patterns: "dir/" = prefix, "*.ext" = extension, otherwise exact path.
+# Unlisted paths are Standard. Authors cannot set the tier.
+light:
+  - "docs/"
+  - "*.md"
+  - "examples/"
+sensitive:
+  - ".github/workflows/"
+  - "scripts/"
+  - "Makefile"
+  - "Cargo.toml"
+  - "Cargo.lock"
+  - "deny.toml"
+  - "CODEOWNERS"
+  - ".pmat/review-tiers.yaml"
+  - "src/merge_train/"
