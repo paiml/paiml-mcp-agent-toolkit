@@ -298,3 +298,7 @@ fn run(dir: &Path, prog: &str, args: &[&str]) -> Result<String, String> {
         Err(String::from_utf8_lossy(&o.stderr).into_owned())
     }
 }
+
+#[cfg(test)]
+#[path = "sign_tests.rs"]
+mod tests;
