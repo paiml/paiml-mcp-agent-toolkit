@@ -7778,3 +7778,34 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1530
+  github_issue: 1530
+  item_type: task
+  title: Fix clone_on_copy clippy failure on master (unified_ast_types_tests.rs:621)
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-10-24T14:54:15Z
+  updated: 2026-10-24T14:54:15Z
+  spec: null
+  acceptance_criteria:
+  - 'Master fails pre-commit clippy gate; NodeMetadata test deliberately calls explicit Clone impl for coverage. Epic #1457.'
+- id: PMAT-1528
+  github_issue: 1528
+  item_type: task
+  title: EMR-1 read-only verifier emr1-verify.sh
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-10-24T14:06:05Z
+  updated: 2026-10-24T14:06:05Z
+  spec: null
+  acceptance_criteria:
+  - Shell verifier for EMR-001 contract EMR-1
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
