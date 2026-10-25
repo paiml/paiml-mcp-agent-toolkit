@@ -61,6 +61,7 @@ use super::roadmap_agent::{AgentCommands, RoadmapCommands, ServeTransport, TestS
 #[cfg(feature = "mutation-testing")]
 use super::semantic_search::MutateArgs;
 use super::semantic_search::{EmbedCommands, SemanticCommands};
+use super::sign_commands::SignArgs;
 use super::work_commands::{QaWorkCommands, TestDiscoveryCommands, WorkCommands};
 
 include!("definition.rs");

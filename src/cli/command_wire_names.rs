@@ -224,6 +224,7 @@ pub fn classify_command(command: &Commands) -> (CommandCategory, &'static str) {
         Commands::Explain { .. } => (System, "explain"),
         Commands::Mcp(_) => (System, "mcp"),
         Commands::Agy(_) => (System, "agy"), // Anti-Gravity translator
+        Commands::Sign(_) => (System, "sign"),
         Commands::Init { .. } => (System, "init"),
 
         // Configuration and setup
