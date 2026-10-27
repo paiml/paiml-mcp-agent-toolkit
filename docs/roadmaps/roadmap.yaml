@@ -7797,3 +7797,22 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: PMAT-1544
+  github_issue: 1544
+  item_type: task
+  title: PVB-PMAT-001 v1.0 spec lands in docs
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-27T11:23:05Z
+  updated: 2026-10-27T11:23:05Z
+  spec: null
+  acceptance_criteria:
+  - Land PVB-PMAT-001 spec (sha c1c5fda8c480); docs only
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:docs
+  notes: null
+  epic: 1457
