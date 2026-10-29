@@ -8431,3 +8431,23 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1559
+  github_issue: 1559
+  item_type: task
+  title: 'refactor commit_traceability/mod.rs (cc 55 / cog 87) so the #1356 bot-commit exemption can land'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-29T20:52:21Z
+  updated: 2026-10-29T20:52:21Z
+  spec: null
+  acceptance_criteria:
+  - 'this change registers issue #1559 in the roadmap and does nothing else, so CB-2115 reads a bijection for it; the branch touches only docs/roadmaps/roadmap.yaml'
+  - 'the commit_traceability refactor itself is not part of this change; it lands under #1559 in its own PR, and no completion is claimed here'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:lifecycle
+  notes: null
+  epic: 1457
