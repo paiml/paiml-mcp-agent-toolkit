@@ -24,7 +24,7 @@ The scope widening is the cop's ruling, relayed in the pmat-w1 session: "APPROVE
 This PR is a three-part stack, approved by the cop (a written-rule application, no gate waived):
 
 1. GH-1494: roadmap/GitHub sync clearing CB-2115 (`docs/roadmaps/roadmap.yaml`).
-2. PMAT-1530: `#[allow(clippy::clone_on_copy)]` on the deliberate explicit Clone in `test_node_metadata_clone`. Quorum AGREED, 3 PASS (`docs/audits/quorum-PMAT-1530.json`, judged on its own branch; copied into this tree).
+2. PMAT-1530: `test_node_metadata_clone` reaches the explicit Clone impl through `clone_from`, so clippy `clone_on_copy` is clean with NO new `#[allow(`; the `allow_attributes_src` ratchet stays at 497 (the first form, an allow, measured 498 and failed `the_committed_ratchet_holds_at_head` in CI). The PMAT-1530 receipt below judged the earlier allow form. Quorum AGREED, 3 PASS (`docs/audits/quorum-PMAT-1530.json`, judged on its own branch; copied into this tree).
 3. PMAT-1548: RUSTSEC ignores in `deny.toml` and `.cargo/audit.toml` plus surgical `Cargo.lock` bumps. Quorum AGREED, 3 PASS (`docs/audits/quorum-PMAT-1548.json`, judged on its own branch; copied into this tree).
 
 Why stacked: PR #1549 (part 3) fails `traceability` on CB-2115, which part 1 clears; this PR fails lint, security and tests on the advisories part 3 clears. Neither can go green alone.
