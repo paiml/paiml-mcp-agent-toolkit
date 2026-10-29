@@ -3,13 +3,13 @@
   "base": "origin/master",
   "base_resolved": "origin/master",
   "base_note": "no origin/origin/master exists; judged against the local ref",
-  "head": "7d37e7ea81daaf687ef5794204d0e8bd3057685e",
-  "diff_sha256": "7396420e0022c51957e03dfab5c1293f995fde86d2a6399a0dfc32bbc8c7ebee",
+  "head": "8c7bd2b727b50df426affb06a594b76c67511b98",
+  "diff_sha256": "a6d41c839490209ce2f0e914f2cbf63326d94f87cbea4ece3319813182beda65",
   "width": 3,
   "executor": "agy",
   "prompt_mode": "file",
-  "prompt_bytes": 164421,
-  "prompt_sha256": "c28f381e285673f74f9de1dc905352b00d789217ff746bebc4011b563b2431ac",
+  "prompt_bytes": 163581,
+  "prompt_sha256": "21784445b4e2a55da8c1ffd8d1ef04ef60155141d6adba492a06b423d635de18",
   "author": {
     "model": "claude-sonnet-5-5",
     "family": "claude",
@@ -21,44 +21,44 @@
       "lane": 1,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "I read the whole brief: the ticket, the receipt and all 164 KB of diff (audit.toml, Cargo.lock, deny.toml, the receipt, three quorum JSONs, roadmap.yaml, unified_ast_types_tests.rs). This round fixes the three refuting findings from the prior FAIL round. (1) docs/audits/quorum-PMAT-1530.json and quorum-PMAT-1548.json are now in the diff and in the tree, both \"agreed\": true with 3 PASS. Their lanes were gemini-3.8-flash-high, claude-opus-5-5 and claude-haiku-4-5, and the author, claude-sonnet-5-5, was excluded. (2) The receipt now records a measured gate result: CB-2115 had 141 findings before; after `pmat work sync --direction github-to-yaml`, CB-2113 and CB-2115 pass with 165 open items and 165 open issues in bijection. (3) The roadmap diff matches a mechanical github-to-yaml sync. It backfills release and epic, adds the 30 orphan GitHub rows (GH-1500…GH-1546, PMAT-1530, PMAT-1548), and moves 5 items to cancelled or completed. Every hunk is in roadmap.yaml, and none touches gate content. The only code change is one statement-scoped `#[allow(clippy::clone_on_copy)]` with a reason. The lockfile bumps and the four RUSTSEC ignores are exactly what PMAT-1548 specifies and what its own quorum approved. Each ignore carries a reason, and the bumps are surgical. Bundling the three tickets goes beyond GH-1494's title, but the parts are mutually blocking (the traceability gate needs CB-2115, and lint and security need the advisory fix), and each part has its own AGREED receipt in the tree, so I do not count the bundling as unauthorized scope. The remaining findings are documentation drift and an unverifiable governance phrase. None of them refutes the diff. No tree_witness: the paiml-lane-witness file is absent from .git.",
+      "summary": "I read the whole brief: the ticket, the receipt, and every diff hunk (audit.toml, Cargo.lock, deny.toml, the receipt, three quorum JSONs, roadmap.yaml lines 1437–4146, unified_ast_types_tests.rs). I found nothing that refutes the diff.\n\n**GH-1494 (the roadmap sync).** The roadmap.yaml changes look like a mechanical github-to-yaml sync:\n- `updated` stamps are refreshed.\n- Every `release: 3.41.0` that changed became `release: backlog`, and items without a release got one (3.43.0, 3.44.0 or backlog).\n- Five statuses were retired (four planned→cancelled, one inprogress→completed).\n- 30 orphan GitHub rows were appended (GH-1500…GH-1546, PMAT-1530, PMAT-1548).\n\n**Gate evidence.** The receipt now carries the raw `pmat comply check --checks CB-2113,CB-2115` output: both pass, with 165 open items and 165 open issues in bijection and 0 tolerated. This answers the previous round's lane-3 FAIL, which said the result was asserted without evidence. I checked the base: `.git/refs/remotes/origin/master` is 659f6ae, which is the same commit as origin/chore/k2-contracts-paiml-mcp-agent-toolkit, the base named in the CB-2113 line. So the two outputs and the diff are judged against the same base.\n\n**Scope widening.** The diff includes two other tickets' changes, and GH-1494's acceptance text was written in this diff, which is the self-authorisation lane 3 objected to. It is now backed outside the diff:\n- The blocked/stack proposal is logged in the cop inbox (`/mnt/nvme-raid0/cop-inbox/inbox.md:36695`).\n- The receipt quotes the cop's APPROVED ruling verbatim. I could not find the ruling itself in the inbox; it was relayed in the session.\n- Each stacked part has its own AGREED 3-PASS receipt in the tree. Both name claude-sonnet-5-5 as author and exclude it from the lanes. The PMAT-1548 receipt's head 4cd8b4691 matches the commit merged into this branch.\n\n**The other two parts.**\n- PMAT-1530: the only code change, a single `#[allow(clippy::clone_on_copy)]` scoped to one statement, with a reason.\n- PMAT-1548: seven patch-level lockfile bumps and no other edges. The four RUSTSEC ignores each carry a reason in both deny.toml and audit.toml.\n\n**Tests.** No test was weakened, and none asserts the opposite of the ticket.\n\nThe findings below are minor accuracy and drift notes. None of them refutes the diff.\n\nThe lane witness file is absent from .git, so I cannot supply a tree_witness.",
       "findings": [
         {
           "file": "docs/audits/impl-GH-1494-receipt.md",
-          "line": 3,
-          "claim": "The receipt says the stack was 'approved by the cop (a written-rule application, no gate waived)' but cites no ruling path, inbox line or rule id. The prior round's lane 1 asked for 'a cop ruling with a path', and that is still missing. The authorization that can actually be checked is the two in-tree AGREED receipts plus this quorum. The cop-approval phrase is asserted, not backed, but nothing depends on it.",
+          "line": 10,
+          "claim": "The receipt says 'No gate content changed.' Strictly, the deny.toml and .cargo/audit.toml ignores widen what the advisories gate accepts: four RUSTSEC ids that failed it now pass. Two things mitigate this. The audit.toml header policy explicitly provides for reviewed ignores of unfixable advisories, and PMAT-1548 got its sign-off from a non-author quorum (quorum-PMAT-1548.json, agreed: true). So the change follows the gate's existing policy rather than altering the gate, but the sentence overstates it.",
           "grounding": "cited",
-          "fix": "Cite the ruling's path (cop-inbox line or handoff file), or drop the phrase and rely on the in-tree quorum receipts."
+          "fix": "Reword to: 'no gate definition changed; four advisory ignores were added under the existing audit.toml policy and approved by the PMAT-1548 quorum.'"
         },
         {
           "file": "docs/roadmaps/roadmap.yaml",
-          "line": 8231,
-          "claim": "After the sync, PMAT-1530 has no `epic:` field and has `release: backlog`. Its own quorum (quorum-PMAT-1530.json, lane 2) approved an entry 'with status planned and epic 1457', and its acceptance text still says 'Epic #1457.' The sync dropped the epic, presumably because GitHub #1530 is not a sub-issue of #1457. This is drift between what the 1530 quorum saw and what lands. It is not a CB-2115 failure, since the receipt measures a pass.",
-          "grounding": "measured",
-          "fix": "Add #1530 as a sub-issue of #1457 on GitHub and re-sync, or remove 'Epic #1457' from the acceptance text."
+          "line": 4014,
+          "claim": "PMAT-1548 is the only appended row without a `release:` field, and its `updated` (14:09:55Z) predates the 15:30:59 sync stamp that every neighbouring row carries. PMAT-1530 (line 3996) has `release: backlog` but no `epic`, although its acceptance text still says 'Epic #1457.' This is drift relative to what the part quorums saw. The receipt's measured CB-2115 pass shows it does not break bijection.",
+          "grounding": "cited",
+          "fix": "Set the milestone of #1548 and the sub-issue link of #1530 on GitHub, then re-sync."
         },
         {
-          "file": "docs/roadmaps/roadmap.yaml",
-          "line": 8249,
-          "claim": "PMAT-1548 is the only newly added row with no `release:` field. Every other new row carries `release: backlog`, and its `updated` stamp (14:09:55Z) shows the 15:30 sync did not touch it. CB-2112/2114 are withheld from CI (PMAT-725 note), so this blocks nothing, but the row is inconsistent with its neighbours.",
+          "file": "docs/audits/quorum-GH-1494.json",
+          "line": 230,
+          "claim": "The diff commits the previous round's receipt, which has `agreed: false`, head 7d37e7e and one FAIL lane. The working tree shows that file deleted (`D docs/audits/quorum-GH-1494.json`) and pending replacement by this round. If this round agrees, the committed receipt has to be the new one, bound to the final head (8c7bd2b or later). Merging with the stale FAIL receipt in the tree would leave the merge without an AGREED receipt.",
           "grounding": "measured",
-          "fix": "Set the #1548 milestone on GitHub and re-sync so the row carries a release."
+          "fix": "Commit this round's receipt over the stale one before arming the merge."
         },
         {
-          "file": ".cargo/audit.toml",
-          "line": 33,
-          "claim": "The RUSTSEC-2026-0391 comment says the fix 'needs zstd>=0.14.3 via an aprender-common upstream bump; mirrors deny.toml', but deny.toml:28 names both aprender-common and batuta-common. Commit 4cd8b4691 ('name batuta-common as a zstd dependent') updated only deny.toml, so the 'mirrors' claim is slightly off. This is comment-only and has no effect on the gate.",
+          "file": "docs/audits/impl-GH-1494-receipt.md",
+          "line": 27,
+          "claim": "The quoted cop ruling ('APPROVED. Merge work/PMAT-1548-advisories into #1532 branch...') is not itself in the cop inbox. Only the proposal is there, at inbox.md:36695 ('Proposal: cop-approved stack ... I will not do it without cop ack'). So the ruling can be traced as a request but not as a logged answer. It is non-blocking, because each stacked part carries its own non-author AGREED receipt.",
           "grounding": "measured",
-          "fix": "Add batuta-common to the audit.toml comment."
+          "fix": "Append an inbox line, or cite a handoff path, that records the cop's APPROVED reply."
         },
         {
           "file": ".git/paiml-lane-witness",
-          "claim": "The PMAT-065 lane witness file is absent: a glob for paiml-lane-witness* under .git found nothing, so this lane can supply no tree_witness.",
+          "claim": "The PMAT-065 lane witness file is absent: a glob for paiml-lane-witness* under .git found nothing, so this lane cannot supply a tree_witness.",
           "grounding": "measured",
           "fix": "Have the harness write the witness before launching lanes."
         }
       ],
-      "raw_bytes": 9500,
+      "raw_bytes": 11454,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -69,10 +69,10 @@
       "model_measured": "claude-opus-5-5",
       "model_source": "flag",
       "family": "claude",
-      "brief_sha256": "c28f381e285673f74f9de1dc905352b00d789217ff746bebc4011b563b2431ac",
+      "brief_sha256": "21784445b4e2a55da8c1ffd8d1ef04ef60155141d6adba492a06b423d635de18",
       "trace": {
-        "input_sha256": "3726221815de07ecc135cabca8ad3533107cc9f23cfa2e168b08873f9be2eebe",
-        "output_sha256": "b9e67517aa838f9bcb3120bfae254a1ee5dde3a64388b0030c22b640eb6a42d0",
+        "input_sha256": "a9d0850be579b7efb630872bf535c4d7b7ec368ceb16856feb04cee94c480c2c",
+        "output_sha256": "65803e5cb348a5cfc6d6d6bd4b00982a21fa569c7cd32b3932ed92d650bb03c3",
         "store": null,
         "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
       },
@@ -93,36 +93,51 @@
       "lane": 2,
       "status": "SUCCESS",
       "verdict": "PASS",
-      "summary": "Independent review (Lane 2 of 3) for GH-1494.\n\nThe diff against origin/master...HEAD was audited under the refutation doctrine against ticket GH-1494, the implementation receipt, and the acceptance criteria:\n\n1. Stack Scope and Authorization:\n- Ticket GH-1494 resolves master red on CB-2115 roadmap coherence (orphan issues and drift).\n- The PR implements a cop-approved three-part stack (GH-1494, PMAT-1530, and PMAT-1548) necessitated by mutual blocking on master: PR #1549 (PMAT-1548) failed traceability on CB-2115, while pure roadmap PRs failed lint/security/test gates on the unresolved advisories and clippy warnings.\n- The previous round's deficiency (missing quorum receipt files) is fully resolved: both `docs/audits/quorum-PMAT-1530.json` and `docs/audits/quorum-PMAT-1548.json` are now committed in the tree, verifying that both stacked components achieved unanimous 3-PASS AGREED quorums on their respective branches.\n- The accompanying changes (`src/models/unified_ast_types_tests.rs:621` clippy allow, `.cargo/audit.toml` and `deny.toml` RUSTSEC ignores, and 7 surgical `Cargo.lock` bumps) strictly mirror what was approved in those quorums with zero unrelated diff churn.\n\n2. Roadmap Coherence & Measured Gate Result:\n- `docs/roadmaps/roadmap.yaml` synchronizes open issues, backfills release/epic fields, and reconciles all 141 findings (7 ORPHAN-GITHUB, 134 DRIFT), achieving exact 165/165 bijection. YAML syntax is valid.\n- `docs/audits/impl-GH-1494-receipt.md` now records the measured gate result (`pmat comply check --checks CB-2113,CB-2115` PASS, 0 findings).\n\n3. Refutation Checks:\n- No test asserts the opposite of the ticket.\n- No CI or repository quality gate is weakened or waived.\n- All receipt claims are backed by the diff and tree artifacts.\n- Note: $(git rev-parse --git-dir)/paiml-lane-witness was not present in this workspace, so tree_witness is omitted.\n\nVerdict: PASS.",
+      "summary": "Independent review (Lane 2 of 3) for GH-1494.\n\nThe diff against origin/master...HEAD (163,581 bytes) was audited under the refutation doctrine against ticket GH-1494, the implementation receipt, and the acceptance criteria:\n\n1. Stack Scope and Authorization:\n- Ticket GH-1494 resolves master red on CB-2115 roadmap coherence (orphan issues and drift).\n- The PR implements a cop-approved three-part stack (GH-1494, PMAT-1530, and PMAT-1548) necessitated by mutual blocking on master: PR #1549 (PMAT-1548) failed traceability on CB-2115, while pure roadmap PRs failed lint/security/test gates on the unresolved advisories and clippy warnings.\n- The stack components are fully backed by committed 3-PASS AGREED quorum receipts in `docs/audits/quorum-PMAT-1530.json` and `docs/audits/quorum-PMAT-1548.json`.\n- Accompanying changes strictly match what those quorums approved: statement-scoped `#[allow(clippy::clone_on_copy)]` in `src/models/unified_ast_types_tests.rs:621`, reviewed RUSTSEC ignores in `.cargo/audit.toml` and `deny.toml`, and 7 surgical `Cargo.lock` dependency bumps.\n\n2. Roadmap Coherence & Measured Gate Result:\n- `docs/roadmaps/roadmap.yaml` synchronizes open issues, backfills release/epic fields, and reconciles all drift and orphan findings.\n- `docs/audits/impl-GH-1494-receipt.md` now records the raw measured gate output for `pmat comply check --checks CB-2113,CB-2115`, verifying that 165 open items and 165 open issues are in exact bijection with 0 findings.\n\n3. Refutation Checks:\n- No test asserts the opposite of the ticket.\n- No CI or quality gate is weakened or waived.\n- All receipt claims are backed by the diff and tree artifacts.\n- No out-of-scope or unrequested changes were introduced.\n- Note: $(git rev-parse --git-dir)/paiml-lane-witness was not present in this workspace.\n\nVerdict: PASS.",
       "findings": [
         {
-          "claim": "The receipt's claim of cop-approved stacked changes for PMAT-1530 and PMAT-1548 is fully backed by committed 3-PASS AGREED quorum receipts in docs/audits/quorum-PMAT-1530.json and docs/audits/quorum-PMAT-1548.json.",
+          "claim": "The receipt's claim of a cop-approved three-part stack (GH-1494, PMAT-1530, PMAT-1548) is backed by committed 3-PASS AGREED quorum receipts in docs/audits/quorum-PMAT-1530.json and docs/audits/quorum-PMAT-1548.json, both evaluated on their respective branches with the author excluded.",
           "file": "docs/audits/impl-GH-1494-receipt.md",
           "fix": "None needed",
           "grounding": "measured",
-          "line": 5
+          "line": 3
         },
         {
-          "claim": "docs/roadmaps/roadmap.yaml synchronizes 140+ roadmap entries to resolve CB-2115 drift and orphan GitHub findings; syntax validated clean with python safe_load. Acceptance criteria explicitly declare the stack scope and CB-2113/CB-2115 compliance.",
-          "file": "docs/roadmaps/roadmap.yaml",
-          "fix": "None needed",
-          "grounding": "cited",
-          "line": 3626
-        },
-        {
-          "claim": "The receipt records the measured gate result for CB-2113 and CB-2115 confirming 165 open items and 165 open issues are in exact bijection with 0 findings.",
+          "claim": "The receipt records the raw measured gate output for CB-2113 and CB-2115 on this branch, confirming 165 open items and 165 open issues are in exact bijection with 0 findings.",
           "file": "docs/audits/impl-GH-1494-receipt.md",
           "fix": "None needed",
           "grounding": "cited",
-          "line": 183
+          "line": 39
         },
         {
-          "claim": "The token required by PMAT-065 at $(git rev-parse --git-dir)/paiml-lane-witness was not present in this workspace.",
+          "claim": "docs/roadmaps/roadmap.yaml synchronizes 140+ roadmap entries clearing CB-2115 drift and orphan GitHub findings. Acceptance criteria for GH-1494 explicitly declare the stack scope and mutual blocking resolution.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "None needed",
+          "grounding": "cited",
+          "line": 3631
+        },
+        {
+          "claim": ".cargo/audit.toml and deny.toml add reviewed ignores with justifications for the 4 unfixable transitive advisories (RUSTSEC-2026-0387, RUSTSEC-2026-0391, RUSTSEC-2026-0398, RUSTSEC-2026-0403), and Cargo.lock applies surgical bumps for the 7 fixable advisories with zero extraneous edge changes.",
+          "file": ".cargo/audit.toml",
+          "fix": "None needed",
+          "grounding": "cited",
+          "line": 56
+        },
+        {
+          "claim": "Statement-scoped #[allow(clippy::clone_on_copy)] at line 621 resolves the clippy failure on master while preserving intentional coverage test semantics for NodeMetadata explicit Clone.",
+          "file": "src/models/unified_ast_types_tests.rs",
+          "fix": "None needed",
+          "grounding": "cited",
+          "line": 4155
+        },
+        {
+          "claim": "The PMAT-065 witness token file at $(git rev-parse --git-dir)/paiml-lane-witness was not present in this workspace, so tree_witness is omitted.",
           "file": ".git/paiml-lane-witness",
+          "fix": "None needed",
           "grounding": "measured"
         }
       ],
-      "raw_bytes": 7371,
+      "raw_bytes": 8815,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -133,10 +148,10 @@
       "model_source": "measured",
       "family": "gemini",
       "executor": "agy",
-      "brief_sha256": "c28f381e285673f74f9de1dc905352b00d789217ff746bebc4011b563b2431ac",
+      "brief_sha256": "21784445b4e2a55da8c1ffd8d1ef04ef60155141d6adba492a06b423d635de18",
       "trace": {
-        "input_sha256": "87db0e1a33f82183f66cb43055d34d3a90d2a4f30b265e8dc2052952b247de9e",
-        "output_sha256": "2a394281e06143056e154c035365778832445dbc0c1b8cf89a69f69d0145d3ed",
+        "input_sha256": "008f4cc7c794e0d8746f97bddb66191b1fc20ee5b5820909aed42a9e280d79aa",
+        "output_sha256": "6d65fed45ae9f95526642126fdc2bda928bc00e088023133870562192fa600b2",
         "store": null,
         "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
       },
@@ -157,31 +172,31 @@
       "lane": 3,
       "status": "SUCCESS",
       "verdict": "FAIL",
-      "summary": "All three lanes agree the PR self-authorizes scope expansion: the original GH-1494 ticket requests only CB-2115 roadmap coherence, but the diff adds PMAT-1530 and PMAT-1548 changes and then modifies GH-1494's own acceptance criteria within the same diff to justify this broader scope. While the quorum receipt files for PMAT-1530 and PMAT-1548 ARE present in the diff (contrary to lanes 1–2's findings), no direct cop authorization is cited in the tree itself, and the measured CB-2115 gate result is asserted but not evidenced with command output.",
+      "summary": "The diff self-authorizes scope expansion by writing GH-1494's acceptance criteria within the diff itself to justify including PMAT-1530 and PMAT-1548 (lines 3630-3631 of roadmap.yaml). The original ticket requests only CB-2115 roadmap coherence; the PR adds advisory and clippy fixes, then modifies the ticket's acceptance criteria to declare them part of the stack. While the accompanying quorum receipt files (PMAT-1530 and PMAT-1548, both 3-PASS AGREED) ARE present in the diff, the PR provides no verifiable cop authorization path in the tree and asserts the measured gate result (CB-2113/CB-2115 pass with 165/165 bijection) without backing command output. The refutation doctrine forbids a PR from authorizing its own scope expansion within the diff.",
       "findings": [
         {
           "file": "docs/roadmaps/roadmap.yaml",
-          "line": 7787,
-          "claim": "Acceptance criteria for GH-1494 are written by the diff itself to justify including PMAT-1530 and PMAT-1548 as parts of this PR: '+  acceptance_criteria:\\n+  - \\'pmat comply check --checks CB-2113,CB-2115 reports no findings ... This PR also carries two other fixes, as a cop-approved stack...\\''. The original ticket only asked for CB-2115 coherence and does not mention these fixes.",
+          "line": 3630,
+          "claim": "GH-1494's acceptance criteria are written by the diff itself to justify including PMAT-1530 and PMAT-1548 as parts of this PR. The criterion states 'This PR also carries two other fixes, as a cop-approved stack,' but the original ticket title (GH-1494) requests only 'master red: CB-2115 roadmap coherence fails'; it does not mention advisory fixes or clippy warnings. The diff modifies the ticket's own acceptance criteria to expand its scope, a self-authorization that violates governance.",
           "grounding": "cited",
-          "fix": "Obtain formal scope authorization on GitHub issue GH-1494 (not in the diff) before including unrelated tickets, or file GH-1494 and PMAT-1530/1548 as separate PRs."
+          "fix": "Obtain explicit scope authorization on the original GitHub issue GH-1494 (outside the diff), or file GH-1494 and PMAT-1530/1548 as separate PRs."
         },
         {
           "file": "docs/audits/impl-GH-1494-receipt.md",
           "line": 5,
-          "claim": "The receipt claims 'After: CB-2113 pass; CB-2115 pass, 165 open items and 165 open issues in bijection, 0 tolerated' but provides no evidence: no `pmat comply check --checks CB-2115` output, no before/after ORPHAN-GITHUB/DRIFT counts, no CI link. This is asserted without backing.",
+          "claim": "The receipt asserts 'After: CB-2113 pass; CB-2115 pass, 165 open items and 165 open issues in bijection, 0 tolerated' but provides no backing evidence: no actual `pmat comply check --checks CB-2113,CB-2115` command output, no ORPHAN-GITHUB/DRIFT counts, no CI job link. This is asserted, not backed.",
           "grounding": "cited",
-          "fix": "Add command output and counts to the receipt, e.g., `pmat comply check --checks CB-2115` result on the final commit."
+          "fix": "Add the actual command output and numeric counts to the receipt to back the claim."
         },
         {
-          "file": "docs/audits/quorum-GH-1494.json",
-          "line": 1,
-          "claim": "Lane 1 and Lane 2 both reported that quorum-PMAT-1530.json and quorum-PMAT-1548.json do not exist in the repository. This finding is incorrect: both files ARE present as new files in the diff at lines 706 and 1044. The 3-PASS verdicts for PMAT-1530 and PMAT-1548 are in the tree.",
-          "grounding": "measured",
-          "fix": "No action needed—the files exist. Prior lane findings on this point should be disregarded."
+          "file": "docs/audits/impl-GH-1494-receipt.md",
+          "line": 3,
+          "claim": "The receipt claims the stack was 'approved by the cop (a written-rule application, no gate waived)' but cites no path that can be verified in the tree: no cop-inbox line, no handoff file, no ruling ID. Lane 1 asked for this in the prior round; it remains unverified.",
+          "grounding": "asserted",
+          "fix": "Cite the cop ruling's verifiable path (e.g., /mnt/nvme-raid0/cop-inbox/handoff/... or a specific cop-inbox line), or rely only on the in-tree AGREED quorum receipts."
         }
       ],
-      "raw_bytes": 5286,
+      "raw_bytes": 5960,
       "err_bytes": 0,
       "envelope_status": "SUCCESS",
       "verdict_source": "structured_output",
@@ -192,10 +207,10 @@
       "model_measured": "claude-haiku-4-5",
       "model_source": "flag",
       "family": "claude",
-      "brief_sha256": "c28f381e285673f74f9de1dc905352b00d789217ff746bebc4011b563b2431ac",
+      "brief_sha256": "21784445b4e2a55da8c1ffd8d1ef04ef60155141d6adba492a06b423d635de18",
       "trace": {
-        "input_sha256": "f37a73416eaf471a59d562dcf61b5370632edf9242628304a21e8327eb39dc9a",
-        "output_sha256": "f7c941c12c444bc0d08b6ebd74443a5ce8ea8b8059f4b895ba0ab8c7093bee4b",
+        "input_sha256": "19716b52d55cc2213028c62e17c50aec77fc991023aa94627ef196dba732cfe0",
+        "output_sha256": "9870a54f41ef071a61fa12235f5f8acedbfce05e2839d13401eb653555c38c0c",
         "store": null,
         "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
       },
@@ -217,28 +232,28 @@
     {
       "lane": 3,
       "verdict": "FAIL",
-      "summary": "All three lanes agree the PR self-authorizes scope expansion: the original GH-1494 ticket requests only CB-2115 roadmap coherence, but the diff adds PMAT-1530 and PMAT-1548 changes and then modifies GH-1494's own acceptance criteria within the same diff to justify this broader scope. While the quorum receipt files for PMAT-1530 and PMAT-1548 ARE present in the diff (contrary to lanes 1–2's findings), no direct cop authorization is cited in the tree itself, and the measured CB-2115 gate result is asserted but not evidenced with command output.",
+      "summary": "The diff self-authorizes scope expansion by writing GH-1494's acceptance criteria within the diff itself to justify including PMAT-1530 and PMAT-1548 (lines 3630-3631 of roadmap.yaml). The original ticket requests only CB-2115 roadmap coherence; the PR adds advisory and clippy fixes, then modifies the ticket's acceptance criteria to declare them part of the stack. While the accompanying quorum receipt files (PMAT-1530 and PMAT-1548, both 3-PASS AGREED) ARE present in the diff, the PR provides no verifiable cop authorization path in the tree and asserts the measured gate result (CB-2113/CB-2115 pass with 165/165 bijection) without backing command output. The refutation doctrine forbids a PR from authorizing its own scope expansion within the diff.",
       "findings": [
         {
           "file": "docs/roadmaps/roadmap.yaml",
-          "line": 7787,
-          "claim": "Acceptance criteria for GH-1494 are written by the diff itself to justify including PMAT-1530 and PMAT-1548 as parts of this PR: '+  acceptance_criteria:\\n+  - \\'pmat comply check --checks CB-2113,CB-2115 reports no findings ... This PR also carries two other fixes, as a cop-approved stack...\\''. The original ticket only asked for CB-2115 coherence and does not mention these fixes.",
+          "line": 3630,
+          "claim": "GH-1494's acceptance criteria are written by the diff itself to justify including PMAT-1530 and PMAT-1548 as parts of this PR. The criterion states 'This PR also carries two other fixes, as a cop-approved stack,' but the original ticket title (GH-1494) requests only 'master red: CB-2115 roadmap coherence fails'; it does not mention advisory fixes or clippy warnings. The diff modifies the ticket's own acceptance criteria to expand its scope, a self-authorization that violates governance.",
           "grounding": "cited",
-          "fix": "Obtain formal scope authorization on GitHub issue GH-1494 (not in the diff) before including unrelated tickets, or file GH-1494 and PMAT-1530/1548 as separate PRs."
+          "fix": "Obtain explicit scope authorization on the original GitHub issue GH-1494 (outside the diff), or file GH-1494 and PMAT-1530/1548 as separate PRs."
         },
         {
           "file": "docs/audits/impl-GH-1494-receipt.md",
           "line": 5,
-          "claim": "The receipt claims 'After: CB-2113 pass; CB-2115 pass, 165 open items and 165 open issues in bijection, 0 tolerated' but provides no evidence: no `pmat comply check --checks CB-2115` output, no before/after ORPHAN-GITHUB/DRIFT counts, no CI link. This is asserted without backing.",
+          "claim": "The receipt asserts 'After: CB-2113 pass; CB-2115 pass, 165 open items and 165 open issues in bijection, 0 tolerated' but provides no backing evidence: no actual `pmat comply check --checks CB-2113,CB-2115` command output, no ORPHAN-GITHUB/DRIFT counts, no CI job link. This is asserted, not backed.",
           "grounding": "cited",
-          "fix": "Add command output and counts to the receipt, e.g., `pmat comply check --checks CB-2115` result on the final commit."
+          "fix": "Add the actual command output and numeric counts to the receipt to back the claim."
         },
         {
-          "file": "docs/audits/quorum-GH-1494.json",
-          "line": 1,
-          "claim": "Lane 1 and Lane 2 both reported that quorum-PMAT-1530.json and quorum-PMAT-1548.json do not exist in the repository. This finding is incorrect: both files ARE present as new files in the diff at lines 706 and 1044. The 3-PASS verdicts for PMAT-1530 and PMAT-1548 are in the tree.",
-          "grounding": "measured",
-          "fix": "No action needed—the files exist. Prior lane findings on this point should be disregarded."
+          "file": "docs/audits/impl-GH-1494-receipt.md",
+          "line": 3,
+          "claim": "The receipt claims the stack was 'approved by the cop (a written-rule application, no gate waived)' but cites no path that can be verified in the tree: no cop-inbox line, no handoff file, no ruling ID. Lane 1 asked for this in the prior round; it remains unverified.",
+          "grounding": "asserted",
+          "fix": "Cite the cop ruling's verifiable path (e.g., /mnt/nvme-raid0/cop-inbox/handoff/... or a specific cop-inbox line), or rely only on the in-tree AGREED quorum receipts."
         }
       ]
     }
@@ -246,12 +261,12 @@
   "dedup": [
     {
       "file": ".cargo/audit.toml",
-      "line": 33,
+      "line": 56,
       "lanes_agreeing": [
-        1
+        2
       ],
       "claims": [
-        "The RUSTSEC-2026-0391 comment says the fix 'needs zstd>=0.14.3 via an aprender-common upstream bump; mirrors deny.toml', but deny.toml:28 names both aprender-common and batuta-common. Commit 4cd8b4691 ('name batuta-common as a zstd dependent') updated only deny.toml, so the 'mirrors' claim is slightly off. This is comment-only and has no effect on the gate."
+        ".cargo/audit.toml and deny.toml add reviewed ignores with justifications for the 4 unfixable transitive advisories (RUSTSEC-2026-0387, RUSTSEC-2026-0391, RUSTSEC-2026-0398, RUSTSEC-2026-0403), and Cargo.lock applies surgical bumps for the 7 fixable advisories with zero extraneous edge changes."
       ]
     },
     {
@@ -262,90 +277,110 @@
         2
       ],
       "claims": [
-        "The PMAT-065 lane witness file is absent: a glob for paiml-lane-witness* under .git found nothing, so this lane can supply no tree_witness.",
-        "The token required by PMAT-065 at $(git rev-parse --git-dir)/paiml-lane-witness was not present in this workspace."
+        "The PMAT-065 lane witness file is absent: a glob for paiml-lane-witness* under .git found nothing, so this lane cannot supply a tree_witness.",
+        "The PMAT-065 witness token file at $(git rev-parse --git-dir)/paiml-lane-witness was not present in this workspace, so tree_witness is omitted."
       ]
     },
     {
       "file": "docs/audits/impl-GH-1494-receipt.md",
       "line": 3,
       "lanes_agreeing": [
-        1
+        2,
+        3
       ],
       "claims": [
-        "The receipt says the stack was 'approved by the cop (a written-rule application, no gate waived)' but cites no ruling path, inbox line or rule id. The prior round's lane 1 asked for 'a cop ruling with a path', and that is still missing. The authorization that can actually be checked is the two in-tree AGREED receipts plus this quorum. The cop-approval phrase is asserted, not backed, but nothing depends on it."
+        "The receipt claims the stack was 'approved by the cop (a written-rule application, no gate waived)' but cites no path that can be verified in the tree: no cop-inbox line, no handoff file, no ruling ID. Lane 1 asked for this in the prior round; it remains unverified.",
+        "The receipt's claim of a cop-approved three-part stack (GH-1494, PMAT-1530, PMAT-1548) is backed by committed 3-PASS AGREED quorum receipts in docs/audits/quorum-PMAT-1530.json and docs/audits/quorum-PMAT-1548.json, both evaluated on their respective branches with the author excluded."
       ]
     },
     {
       "file": "docs/audits/impl-GH-1494-receipt.md",
       "line": 5,
       "lanes_agreeing": [
-        2,
         3
       ],
       "claims": [
-        "The receipt claims 'After: CB-2113 pass; CB-2115 pass, 165 open items and 165 open issues in bijection, 0 tolerated' but provides no evidence: no `pmat comply check --checks CB-2115` output, no before/after ORPHAN-GITHUB/DRIFT counts, no CI link. This is asserted without backing.",
-        "The receipt's claim of cop-approved stacked changes for PMAT-1530 and PMAT-1548 is fully backed by committed 3-PASS AGREED quorum receipts in docs/audits/quorum-PMAT-1530.json and docs/audits/quorum-PMAT-1548.json."
+        "The receipt asserts 'After: CB-2113 pass; CB-2115 pass, 165 open items and 165 open issues in bijection, 0 tolerated' but provides no backing evidence: no actual `pmat comply check --checks CB-2113,CB-2115` command output, no ORPHAN-GITHUB/DRIFT counts, no CI job link. This is asserted, not backed."
       ]
     },
     {
       "file": "docs/audits/impl-GH-1494-receipt.md",
-      "line": 183,
+      "line": 10,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The receipt says 'No gate content changed.' Strictly, the deny.toml and .cargo/audit.toml ignores widen what the advisories gate accepts: four RUSTSEC ids that failed it now pass. Two things mitigate this. The audit.toml header policy explicitly provides for reviewed ignores of unfixable advisories, and PMAT-1548 got its sign-off from a non-author quorum (quorum-PMAT-1548.json, agreed: true). So the change follows the gate's existing policy rather than altering the gate, but the sentence overstates it."
+      ]
+    },
+    {
+      "file": "docs/audits/impl-GH-1494-receipt.md",
+      "line": 27,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "The quoted cop ruling ('APPROVED. Merge work/PMAT-1548-advisories into #1532 branch...') is not itself in the cop inbox. Only the proposal is there, at inbox.md:36695 ('Proposal: cop-approved stack ... I will not do it without cop ack'). So the ruling can be traced as a request but not as a logged answer. It is non-blocking, because each stacked part carries its own non-author AGREED receipt."
+      ]
+    },
+    {
+      "file": "docs/audits/impl-GH-1494-receipt.md",
+      "line": 39,
       "lanes_agreeing": [
         2
       ],
       "claims": [
-        "The receipt records the measured gate result for CB-2113 and CB-2115 confirming 165 open items and 165 open issues are in exact bijection with 0 findings."
+        "The receipt records the raw measured gate output for CB-2113 and CB-2115 on this branch, confirming 165 open items and 165 open issues are in exact bijection with 0 findings."
       ]
     },
     {
       "file": "docs/audits/quorum-GH-1494.json",
-      "line": 1,
+      "line": 230,
       "lanes_agreeing": [
-        3
+        1
       ],
       "claims": [
-        "Lane 1 and Lane 2 both reported that quorum-PMAT-1530.json and quorum-PMAT-1548.json do not exist in the repository. This finding is incorrect: both files ARE present as new files in the diff at lines 706 and 1044. The 3-PASS verdicts for PMAT-1530 and PMAT-1548 are in the tree."
+        "The diff commits the previous round's receipt, which has `agreed: false`, head 7d37e7e and one FAIL lane. The working tree shows that file deleted (`D docs/audits/quorum-GH-1494.json`) and pending replacement by this round. If this round agrees, the committed receipt has to be the new one, bound to the final head (8c7bd2b or later). Merging with the stale FAIL receipt in the tree would leave the merge without an AGREED receipt."
       ]
     },
     {
       "file": "docs/roadmaps/roadmap.yaml",
-      "line": 3626,
+      "line": 3630,
+      "lanes_agreeing": [
+        3
+      ],
+      "claims": [
+        "GH-1494's acceptance criteria are written by the diff itself to justify including PMAT-1530 and PMAT-1548 as parts of this PR. The criterion states 'This PR also carries two other fixes, as a cop-approved stack,' but the original ticket title (GH-1494) requests only 'master red: CB-2115 roadmap coherence fails'; it does not mention advisory fixes or clippy warnings. The diff modifies the ticket's own acceptance criteria to expand its scope, a self-authorization that violates governance."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 3631,
       "lanes_agreeing": [
         2
       ],
       "claims": [
-        "docs/roadmaps/roadmap.yaml synchronizes 140+ roadmap entries to resolve CB-2115 drift and orphan GitHub findings; syntax validated clean with python safe_load. Acceptance criteria explicitly declare the stack scope and CB-2113/CB-2115 compliance."
+        "docs/roadmaps/roadmap.yaml synchronizes 140+ roadmap entries clearing CB-2115 drift and orphan GitHub findings. Acceptance criteria for GH-1494 explicitly declare the stack scope and mutual blocking resolution."
       ]
     },
     {
       "file": "docs/roadmaps/roadmap.yaml",
-      "line": 7787,
-      "lanes_agreeing": [
-        3
-      ],
-      "claims": [
-        "Acceptance criteria for GH-1494 are written by the diff itself to justify including PMAT-1530 and PMAT-1548 as parts of this PR: '+  acceptance_criteria:\\n+  - \\'pmat comply check --checks CB-2113,CB-2115 reports no findings ... This PR also carries two other fixes, as a cop-approved stack...\\''. The original ticket only asked for CB-2115 coherence and does not mention these fixes."
-      ]
-    },
-    {
-      "file": "docs/roadmaps/roadmap.yaml",
-      "line": 8231,
+      "line": 4014,
       "lanes_agreeing": [
         1
       ],
       "claims": [
-        "After the sync, PMAT-1530 has no `epic:` field and has `release: backlog`. Its own quorum (quorum-PMAT-1530.json, lane 2) approved an entry 'with status planned and epic 1457', and its acceptance text still says 'Epic #1457.' The sync dropped the epic, presumably because GitHub #1530 is not a sub-issue of #1457. This is drift between what the 1530 quorum saw and what lands. It is not a CB-2115 failure, since the receipt measures a pass."
+        "PMAT-1548 is the only appended row without a `release:` field, and its `updated` (14:09:55Z) predates the 15:30:59 sync stamp that every neighbouring row carries. PMAT-1530 (line 3996) has `release: backlog` but no `epic`, although its acceptance text still says 'Epic #1457.' This is drift relative to what the part quorums saw. The receipt's measured CB-2115 pass shows it does not break bijection."
       ]
     },
     {
-      "file": "docs/roadmaps/roadmap.yaml",
-      "line": 8249,
+      "file": "src/models/unified_ast_types_tests.rs",
+      "line": 4155,
       "lanes_agreeing": [
-        1
+        2
       ],
       "claims": [
-        "PMAT-1548 is the only newly added row with no `release:` field. Every other new row carries `release: backlog`, and its `updated` stamp (14:09:55Z) shows the 15:30 sync did not touch it. CB-2112/2114 are withheld from CI (PMAT-725 note), so this blocks nothing, but the row is inconsistent with its neighbours."
+        "Statement-scoped #[allow(clippy::clone_on_copy)] at line 621 resolves the clippy failure on master while preserving intentional coverage test semantics for NodeMetadata explicit Clone."
       ]
     }
   ],
@@ -438,7 +473,7 @@
   },
   "cheap_seat": "claude-haiku-4-5",
   "canary": {
-    "skipped": "brief 164421 bytes > 24576"
+    "skipped": "brief 163581 bytes > 24576"
   },
   "advisory_lane": {
     "state": "unavailable",
@@ -459,16 +494,16 @@
     "model_sha256": null,
     "rc": 2,
     "wall_s": 1,
-    "collected_s": 224,
+    "collected_s": 159,
     "budget_s": 196,
     "budget_basis": "ledger: 2 x p95 98 s over 126 gx10-cuda Verdict rows",
     "brief": {
-      "bytes": 164421,
-      "sent_bytes": 164590,
+      "bytes": 163581,
+      "sent_bytes": 163750,
       "max_bytes": 196608
     },
     "trace": {
-      "input_sha256": "fb75d75bf4011a51c3c84f37b2c3d27aadee577c57ba5aed1d2c5f17a36f53bb",
+      "input_sha256": "627a3c3d15337c8311181baf92cd535d2cdf8bdf2a7163c6cd3fff441a18dd3b",
       "raw": "advisory.json"
     },
     "attempts": [
@@ -477,10 +512,10 @@
         "ok": false,
         "wall_s": 1,
         "error": "busy: executor yielded (unit inactive; last yield: 2026-10-03T00:47:22Z host=gx10-a5b5 event=stopped gpu-priority lock=/tmp/apr-gpu.priority)",
-        "ts": "2026-10-29T15:36:10.691Z",
-        "wall_ms": 615,
-        "request_id": "01a1884d-ecc0-750d-8781-7e607798d08f",
-        "load1": 2.29,
+        "ts": "2026-10-29T15:40:30.618Z",
+        "wall_ms": 436,
+        "request_id": "01a18851-e414-7a7f-aeec-1342c9b3ca2a",
+        "load1": 4.39,
         "cold": null
       }
     ],
