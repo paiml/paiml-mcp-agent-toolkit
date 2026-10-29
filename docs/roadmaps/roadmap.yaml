@@ -7856,11 +7856,11 @@ roadmap:
   github_issue: 1494
   item_type: task
   title: 'master red: CB-2115 roadmap coherence fails (13 ORPHAN-GITHUB, 8 DRIFT), traceability red on every PR'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-10-16T14:35:36.019828266+00:00
-  updated: 2026-10-24T16:32:24.162502257+00:00
+  updated: 2026-10-29T17:38:21.165011541+00:00
   spec: null
   acceptance_criteria:
   - 'pmat comply check --checks CB-2113,CB-2115 reports no findings once the PR is on master. The roadmap sync (release/epic backfill, orphan GitHub rows, retired closed items) is the ticket. This PR also carries two other fixes, as a cop-approved stack, because the three are mutually blocking: the PMAT-1530 clippy fix (no new allow attribute), and the PMAT-1548 RUSTSEC ignores plus surgical Cargo.lock bumps. PMAT-1548 cannot pass the traceability gate without this sync, and this sync cannot pass lint, security or tests without PMAT-1548. PMAT-1548 has its own AGREED receipt in docs/audits; the whole diff is judged by the GH-1494 round. No gate logic is changed and no gate is waived; the four reasoned RUSTSEC ignores are the only advisory-gate edit.'
