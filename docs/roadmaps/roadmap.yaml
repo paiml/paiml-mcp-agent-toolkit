@@ -8383,3 +8383,21 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1555
+  github_issue: 1555
+  item_type: task
+  title: 'land the #1435/#1436 content: provability sampled readdir order, tdg check-regression flagged rescored files'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-29T18:37:55Z
+  updated: 2026-10-29T18:37:55Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457

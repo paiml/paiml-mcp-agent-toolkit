@@ -73,6 +73,14 @@ pub struct BaselineComparison {
 
     /// Files removed since baseline
     pub removed: Vec<PathBuf>,
+
+    /// Files whose bytes are identical to the baseline's but whose score
+    /// changed: the SCORER changed, not the code (#1162). A new detector rule
+    /// (e.g. the critical-defect cap) or metric re-scores an untouched file, and
+    /// counting that as a regression failed every commit in a repo whose
+    /// baseline predated the rule, whatever the commit touched.
+    #[serde(default)]
+    pub rescored: Vec<FileComparison>,
 }
 
 /// Detailed comparison for a single file
