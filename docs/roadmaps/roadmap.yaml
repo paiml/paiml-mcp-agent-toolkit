@@ -8442,8 +8442,8 @@ roadmap:
   updated: 2026-10-29T20:52:21Z
   spec: null
   acceptance_criteria:
-  - this change registers issue #1559 in the roadmap and does nothing else, so CB-2115 reads a bijection for it; the branch touches only docs/roadmaps/roadmap.yaml
-  - the commit_traceability refactor itself is not part of this change; it lands under #1559 in its own PR, and no completion is claimed here
+  - 'this change registers issue #1559 in the roadmap and does nothing else, so CB-2115 reads a bijection for it; the branch touches only docs/roadmaps/roadmap.yaml'
+  - 'the commit_traceability refactor itself is not part of this change; it lands under #1559 in its own PR, and no completion is claimed here'
   phases: []
   subtasks: []
   estimated_effort: null
