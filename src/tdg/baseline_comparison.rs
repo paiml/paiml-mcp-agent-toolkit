@@ -64,6 +64,24 @@ impl BaselineComparison {
             }
         }
 
+        if !self.rescored.is_empty() {
+            output.push_str(&format!(
+                "🔁 Rescored with unchanged content: {} files (the scorer changed, not the code; refresh the baseline)\n",
+                self.rescored.len()
+            ));
+            for cmp in &self.rescored {
+                output.push_str(&format!(
+                    "   - {}: {} ({:.1}) → {} ({:.1}) [{:+.1}]\n",
+                    cmp.path.display(),
+                    cmp.grade_change.0,
+                    cmp.old_score.total,
+                    cmp.grade_change.1,
+                    cmp.new_score.total,
+                    cmp.delta
+                ));
+            }
+        }
+
         output
     }
 }
