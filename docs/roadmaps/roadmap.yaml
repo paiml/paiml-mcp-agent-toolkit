@@ -7863,7 +7863,7 @@ roadmap:
   updated: 2026-10-24T16:32:24.162502257+00:00
   spec: null
   acceptance_criteria:
-  - 'pmat comply check --checks CB-2113,CB-2115 reports no findings once the PR is on master. The roadmap sync (release/epic backfill, orphan GitHub rows, retired closed items) is the ticket. This PR also carries two other fixes, as a cop-approved stack, because the three are mutually blocking: the PMAT-1530 clippy fix (no new allow attribute), and the PMAT-1548 RUSTSEC ignores plus surgical Cargo.lock bumps. PMAT-1548 cannot pass the traceability gate without this sync, and this sync cannot pass lint, security or tests without PMAT-1548. PMAT-1548 has its own AGREED receipt in docs/audits; the whole diff is judged by the GH-1494 round. No gate content is changed and no gate is waived.'
+  - 'pmat comply check --checks CB-2113,CB-2115 reports no findings once the PR is on master. The roadmap sync (release/epic backfill, orphan GitHub rows, retired closed items) is the ticket. This PR also carries two other fixes, as a cop-approved stack, because the three are mutually blocking: the PMAT-1530 clippy fix (no new allow attribute), and the PMAT-1548 RUSTSEC ignores plus surgical Cargo.lock bumps. PMAT-1548 cannot pass the traceability gate without this sync, and this sync cannot pass lint, security or tests without PMAT-1548. PMAT-1548 has its own AGREED receipt in docs/audits; the whole diff is judged by the GH-1494 round. No gate logic is changed and no gate is waived; the four reasoned RUSTSEC ignores are the only advisory-gate edit.'
   phases: []
   subtasks: []
   estimated_effort: null
