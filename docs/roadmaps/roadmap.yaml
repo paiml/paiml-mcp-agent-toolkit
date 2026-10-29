@@ -7789,7 +7789,7 @@ roadmap:
   updated: 2026-10-29T14:09:55Z
   spec: null
   acceptance_criteria:
-  - 'Lockfile bumps (rustls-webpki, webpki-roots, webpki-root-certs, zstd-sys, pulldown-cmark, tokio 1.53.3, libz-sys) for fixable advisories; reviewed ignores in deny.toml and .cargo/audit.toml for crypto-bigint 0.5.5 and zstd 0.13/zstd-safe 7 needing upstream majors (RUSTSEC-2026-0387/0391/0398/0403). Authorized by pmat-cop directive 2026-10-29: ''fix each root cause on its own branch+PR (advisory ignores/bumps in deny.toml/Cargo.lock)''. Surgical lockfile: no unrelated edge changes vs master. cargo deny check advisories and cargo audit report no errors.'
+  - 'Lockfile bumps (rustls-webpki, webpki-roots, webpki-root-certs, zstd-sys, pulldown-cmark, tokio 1.53.3, libz-sys) for fixable advisories; reviewed ignores in deny.toml and .cargo/audit.toml for crypto-bigint 0.5.5 and zstd 0.13/zstd-safe 7 needing upstream majors (RUSTSEC-2026-0387/0391/0398/0403). Policy (.cargo/audit.toml header): fixable advisories are bumped, only genuinely unfixable ones are ignored, each with a reviewed reason; the four ignores here have no semver-compatible fix. Surgical lockfile: no unrelated edge changes vs master. cargo deny check advisories and cargo audit report no errors.'
   phases: []
   subtasks: []
   estimated_effort: null

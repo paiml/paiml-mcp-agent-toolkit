@@ -24,7 +24,7 @@ no-default-features = false
 ignore = [
     # Reviewed 2026-10-29 (PMAT master-red since 10-16): no semver-compatible fix exists here;
     # each needs an upstream major bump. Remove when the owning crate moves.
-    { id = "RUSTSEC-2026-0387", reason = "crypto-bigint 0.5.5: fix is >=0.7.6 (two majors); reachable only with all-features via octocrab->jsonwebtoken->p256/p384 (absent with default features), and pmat only signs outgoing GitHub App JWTs with it" },
+    { id = "RUSTSEC-2026-0387", reason = "crypto-bigint 0.5.5: fix is >=0.7.6 (two majors); reachable only with all-features via octocrab->jsonwebtoken->p256/p384 (absent with default features), and pmat's GitHub client uses a personal token or no auth (github_client.rs), so no JWT signing runs" },
     { id = "RUSTSEC-2026-0391", reason = "zstd 0.13.3 via aprender-common: fix is zstd >=0.14.3, needs aprender-common upstream bump" },
     { id = "RUSTSEC-2026-0398", reason = "zstd-safe 7.x via zstd 0.13: fix is >=8.2.0, needs zstd 0.14 upstream; Seekable API not used" },
     { id = "RUSTSEC-2026-0403", reason = "zstd-safe 7.x via zstd 0.13: fix is >=8.2.0, needs zstd 0.14 upstream; legacy-frame streaming not used" },

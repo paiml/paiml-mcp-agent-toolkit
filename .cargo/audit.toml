@@ -29,7 +29,7 @@ ignore = [
   "RUSTSEC-2026-0195",  # quick-xml 0.37.5 NsReader allocation DoS: transitive via aprender-orchestrate 0.50, fix needs quick-xml>=0.41 upstream, pmat parses no untrusted XML
   "RUSTSEC-2026-0187",  # lopdf 0.38 stack overflow on deeply nested PDF: transitive via pdf-extract 0.10 which pins lopdf<0.42, fix needs a breaking pdf-extract bump
   "RUSTSEC-2026-0192",  # ttf-parser 0.25 unmaintained: transitive font parser, no fixed release
-  "RUSTSEC-2026-0387",  # crypto-bigint 0.5.5 timing variability: fix is >=0.7.6 (two majors); reachable only with all-features via octocrab->jsonwebtoken->p256/p384 (absent with default features, `cargo tree -i` finds no match), and pmat only signs outgoing GitHub App JWTs with it
+  "RUSTSEC-2026-0387",  # crypto-bigint 0.5.5 timing variability: fix is >=0.7.6 (two majors); reachable only with all-features via octocrab->jsonwebtoken->p256/p384 (absent with default features, `cargo tree -i` finds no match), and pmat's GitHub client uses a personal token or no auth (github_client.rs), so no JWT signing runs
   "RUSTSEC-2026-0391",  # zstd 0.13.3 stream leak: fix needs zstd>=0.14.3 via an aprender-common upstream bump; mirrors deny.toml
   "RUSTSEC-2026-0398",  # zstd-safe 7.x Seekable::decompress: fix needs zstd-safe>=8.2.0 (zstd 0.14 upstream); Seekable API unused
   "RUSTSEC-2026-0403",  # zstd-safe 7.x legacy-frame streaming: fix needs zstd-safe>=8.2.0 (zstd 0.14 upstream); legacy frames unused
