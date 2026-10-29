@@ -8415,3 +8415,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: GH-1557
+  github_issue: 1557
+  item_type: task
+  title: 'deps: bump the tokio-ecosystem group (tokio 1.54.1, hyper 1.12.0, hyper-util 0.1.21, tokio-test 0.4.6, tokio-util 0.7.20)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-29T19:35:10.093100435+00:00
+  updated: 2026-10-29T19:35:10.093100435+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
