@@ -16,3 +16,12 @@ The only conflict in the merge was `roadmap.yaml`, resolved by keeping both appe
 - Action: `pmat work sync --direction github-to-yaml` (140 roadmap changes, `docs/roadmaps/roadmap.yaml` only), and GitHub issue #1548's title aligned to the roadmap title.
 - After: CB-2113 pass; CB-2115 pass, 165 open items and 165 open issues in bijection, 0 tolerated.
 - Why the ticket text names the stack: see `acceptance_criteria` of GH-1494.
+
+## Raw output (command above, run on this branch's head after the re-sync)
+
+```
+  ✓ CB-2113: Commit Traceability: all 9 non-merge commit(s) in 659f6ae..HEAD (base origin/chore/k2-contracts-paiml-mcp-agent-toolkit) carry a Pmat-Ticket trailer naming an open roadmap item
+  ✓ CB-2115: Roadmap Coherence: 165 open item(s) and 165 open issue(s) are in bijection: matched 165, tolerated 0 inside the 60-minute grace window (goal-mode.md §5); snapshot: gh paiml/paiml-mcp-agent-toolkit taken 2026-10-29T15:40:18Z
+```
+
+The scope widening is the cop's ruling, relayed in the pmat-w1 session: "APPROVED. Merge work/PMAT-1548-advisories into #1532 branch (merge, no rebase/force), re-run quorum on the combined diff vs the ticket it names (non-author lanes), and squash-merge #1532 only when all required checks are green." The parts' own receipts are in this tree: `docs/audits/quorum-PMAT-1530.json`, `docs/audits/quorum-PMAT-1548.json`.
