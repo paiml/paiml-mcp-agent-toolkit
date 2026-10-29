@@ -7778,3 +7778,22 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1489
+  github_issue: 1489
+  item_type: task
+  title: Clear RUSTSEC-2026 advisories on master (cargo deny + cargo audit red since 10-16)
+  status: planned
+  priority: critical
+  assigned_to: null
+  created: 2026-10-29T13:43:21Z
+  updated: 2026-10-29T13:43:21Z
+  spec: null
+  acceptance_criteria:
+  - Bump rustls-webpki, webpki-roots, webpki-root-certs, zstd-sys, pulldown-cmark, zstd-safe, tokio; ignore crypto-bigint/zstd advisories needing upstream majors in deny.toml and .cargo/audit.toml.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
