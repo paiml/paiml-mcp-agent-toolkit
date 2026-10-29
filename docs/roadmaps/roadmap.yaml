@@ -8140,6 +8140,18 @@ roadmap:
   spec: null
   acceptance_criteria:
   - 'Master fails pre-commit clippy gate; NodeMetadata test deliberately calls explicit Clone impl for coverage. Epic #1457.'
+- id: PMAT-1548
+  github_issue: 1548
+  item_type: task
+  title: 'master red: cargo deny + cargo audit fail on RUSTSEC-2026-0381..0418 (rustls-webpki, webpki-roots, zstd, tokio, libz-sys, pulldown-cmark, crypto-bigint)'
+  status: planned
+  priority: critical
+  assigned_to: null
+  created: 2026-10-29T14:09:55Z
+  updated: 2026-10-29T14:09:55Z
+  spec: null
+  acceptance_criteria:
+  - 'Lockfile bumps (rustls-webpki, webpki-roots, webpki-root-certs, zstd-sys, pulldown-cmark, tokio 1.53.3, libz-sys) for fixable advisories; reviewed ignores in deny.toml and .cargo/audit.toml for crypto-bigint 0.5.5 and zstd 0.13/zstd-safe 7 needing upstream majors (RUSTSEC-2026-0387/0391/0398/0403). Policy (.cargo/audit.toml header): fixable advisories are bumped, only genuinely unfixable ones are ignored, each with a reviewed reason; the four ignores here have no semver-compatible fix. Surgical lockfile: no unrelated edge changes vs master. cargo deny check advisories and cargo audit report no errors (measured). The other ten unsound zstd-safe 7.x advisories (0395-0397, 0399-0402, 0404-0406) are not reported by cargo deny (default unsound=workspace; measured: advisories ok) and are warnings only in cargo audit (measured: 0 errors), so they need no ignore.'
   phases: []
   subtasks: []
   estimated_effort: null
