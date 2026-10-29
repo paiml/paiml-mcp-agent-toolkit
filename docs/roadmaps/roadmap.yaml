@@ -7778,3 +7778,22 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1548
+  github_issue: 1548
+  item_type: task
+  title: 'master red: cargo deny + cargo audit fail on RUSTSEC-2026-0381..0414 (rustls-webpki, webpki-roots, zstd, tokio, crypto-bigint)'
+  status: planned
+  priority: critical
+  assigned_to: null
+  created: 2026-10-29T14:09:55Z
+  updated: 2026-10-29T14:09:55Z
+  spec: null
+  acceptance_criteria:
+  - Lockfile bumps (rustls-webpki, webpki-roots, webpki-root-certs, zstd-sys, pulldown-cmark, tokio 1.53.3, libz-sys) for fixable advisories; cargo re-resolves some windows-sys/unicode-width edges as a side effect of the tokio and pulldown-cmark patch bumps; reviewed ignores in deny.toml and .cargo/audit.toml for crypto-bigint 0.5.5 and zstd 0.13/zstd-safe 7 needing upstream majors.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
