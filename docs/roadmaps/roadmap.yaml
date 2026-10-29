@@ -8431,3 +8431,21 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1559
+  github_issue: 1559
+  item_type: task
+  title: 'refactor commit_traceability/mod.rs (cc 55 / cog 87) so the #1356 bot-commit exemption can land'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-29T20:52:21Z
+  updated: 2026-10-29T20:52:21Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
