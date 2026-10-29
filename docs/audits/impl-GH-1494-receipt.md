@@ -1,6 +1,6 @@
 # GH-1494 implementation receipt
 
-EVIDENCE FIRST (read this before judging): the CB-2113/CB-2115 gate output and the cop ruling are quoted verbatim below; the ruling is also logged as `/mnt/nvme-raid0/cop-inbox/inbox.md` (pmat-w1 lines, 2026-10-29), and the parts' own receipts are `docs/audits/quorum-PMAT-1530.json` and `docs/audits/quorum-PMAT-1548.json` in this diff.
+EVIDENCE FIRST (read this before judging): the CB-2113/CB-2115 gate output and the cop ruling are quoted verbatim below; the ruling is also logged as `/mnt/nvme-raid0/cop-inbox/inbox.md` (pmat-w1 lines, 2026-10-29), and the parts' own receipts are `docs/audits/quorum-PMAT-1548.json` in this diff.
 
 ## Raw output (command above, run on this branch's head after the re-sync)
 
@@ -24,7 +24,7 @@ The scope widening is the cop's ruling, relayed in the pmat-w1 session: "APPROVE
 This PR is a three-part stack, approved by the cop (a written-rule application, no gate waived):
 
 1. GH-1494: roadmap/GitHub sync clearing CB-2115 (`docs/roadmaps/roadmap.yaml`).
-2. PMAT-1530: `test_node_metadata_clone` reaches the explicit Clone impl through `clone_from`, so clippy `clone_on_copy` is clean with NO new `#[allow(`; the `allow_attributes_src` ratchet stays at 497 (the first form, an allow, measured 498 and failed `the_committed_ratchet_holds_at_head` in CI). The PMAT-1530 receipt below judged the earlier allow form. Quorum AGREED, 3 PASS (`docs/audits/quorum-PMAT-1530.json`, judged on its own branch; copied into this tree).
+2. PMAT-1530: `test_node_metadata_clone` reaches the explicit Clone impl through `clone_from`, so clippy `clone_on_copy` is clean with NO new `#[allow(`; the `allow_attributes_src` ratchet stays at 497 (the first form, an allow, measured 498 and failed `the_committed_ratchet_holds_at_head` in CI). Judged here, with the whole diff (the earlier allow form had its own AGREED round on its branch, but that receipt describes code this PR no longer carries, so it is not committed).
 3. PMAT-1548: RUSTSEC ignores in `deny.toml` and `.cargo/audit.toml` plus surgical `Cargo.lock` bumps. Quorum AGREED, 3 PASS (`docs/audits/quorum-PMAT-1548.json`, judged on its own branch; copied into this tree).
 
 Why stacked: PR #1549 (part 3) fails `traceability` on CB-2115, which part 1 clears; this PR fails lint, security and tests on the advisories part 3 clears. Neither can go green alone.
