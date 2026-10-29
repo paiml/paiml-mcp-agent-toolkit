@@ -7778,3 +7778,41 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1530
+  github_issue: 1530
+  item_type: task
+  title: Fix clone_on_copy clippy failure on master (unified_ast_types_tests.rs:621)
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-10-24T14:54:15Z
+  updated: 2026-10-24T14:54:15Z
+  spec: null
+  acceptance_criteria:
+  - 'Master fails pre-commit clippy gate; NodeMetadata test deliberately calls explicit Clone impl for coverage. Epic #1457.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
+- id: PMAT-1548
+  github_issue: 1548
+  item_type: task
+  title: 'master red: cargo deny + cargo audit fail on RUSTSEC-2026-0381..0414 (rustls-webpki, webpki-roots, zstd, tokio, crypto-bigint)'
+  status: planned
+  priority: critical
+  assigned_to: null
+  created: 2026-10-29T14:09:55Z
+  updated: 2026-10-29T14:09:55Z
+  spec: null
+  acceptance_criteria:
+  - Lockfile bumps for fixable advisories; reviewed ignores in deny.toml and .cargo/audit.toml for crypto-bigint 0.5.5 and zstd 0.13/zstd-safe 7 needing upstream majors.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
