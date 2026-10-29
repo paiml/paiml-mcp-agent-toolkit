@@ -7781,7 +7781,7 @@ roadmap:
 - id: PMAT-1548
   github_issue: 1548
   item_type: task
-  title: 'master red: cargo deny + cargo audit fail on RUSTSEC-2026-0381..0414 (rustls-webpki, webpki-roots, zstd, tokio, crypto-bigint)'
+  title: 'master red: cargo deny + cargo audit fail on RUSTSEC-2026-0381..0418 (rustls-webpki, webpki-roots, zstd, tokio, libz-sys, pulldown-cmark, crypto-bigint)'
   status: planned
   priority: critical
   assigned_to: null
@@ -7789,7 +7789,7 @@ roadmap:
   updated: 2026-10-29T14:09:55Z
   spec: null
   acceptance_criteria:
-  - Lockfile bumps (rustls-webpki, webpki-roots, webpki-root-certs, zstd-sys, pulldown-cmark, tokio 1.53.3, libz-sys) for fixable advisories; cargo re-resolves some windows-sys/unicode-width edges as a side effect of the tokio and pulldown-cmark patch bumps; reviewed ignores in deny.toml and .cargo/audit.toml for crypto-bigint 0.5.5 and zstd 0.13/zstd-safe 7 needing upstream majors.
+  - Lockfile bumps (rustls-webpki, webpki-roots, webpki-root-certs, zstd-sys, pulldown-cmark, tokio 1.53.3, libz-sys) for fixable advisories; reviewed ignores in deny.toml and .cargo/audit.toml for crypto-bigint 0.5.5 and zstd 0.13/zstd-safe 7 needing upstream majors (RUSTSEC-2026-0387/0391/0398/0403). Authorized by pmat-cop directive 2026-10-29: 'fix each root cause on its own branch+PR (advisory ignores/bumps in deny.toml/Cargo.lock)'. Surgical lockfile: no unrelated edge changes vs master. cargo deny check advisories and cargo audit report no errors.
   phases: []
   subtasks: []
   estimated_effort: null
