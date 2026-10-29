@@ -1,0 +1,332 @@
+{
+  "ticket": "PMAT-1530",
+  "base": "origin/master",
+  "base_resolved": "origin/master",
+  "base_note": "no origin/origin/master exists; judged against the local ref",
+  "head": "01494dfefbb0e9ea30cce6b6af689ff0b56b6972",
+  "diff_sha256": "88b29b7ac1b0d42d22466aef423823f58b34f74374bf8fa69ce96f1b1d1b7fa9",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 2811,
+  "prompt_sha256": "9a9da1b74a33a598be53b48f3692f2008096b4ed0a28c70007cf3a80a7f471d0",
+  "author": {
+    "model": "claude-sonnet-5-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Independent Review (Lane 1 of 3) for PMAT-1530.\n\nThe diff against origin/master...HEAD was audited under the refutation doctrine against ticket PMAT-1530:\n1. Ticket Scope & Implementation:\n- PMAT-1530 requests: \"Fix clone_on_copy clippy failure on master (unified_ast_types_tests.rs:621)\".\n- The test `test_node_metadata_clone` deliberately invokes `Clone::clone(&metadata)` on `NodeMetadata` (which implements both `Copy` and explicit `Clone`) so that the explicit `impl Clone for NodeMetadata` body is exercised for test coverage.\n- The diff adds `#[allow(clippy::clone_on_copy)]` directly to the `let cloned: NodeMetadata = Clone::clone(&metadata);` statement at line 621, specifically targeting the clippy warning without altering test semantics or disabling lints globally.\n- `docs/roadmaps/roadmap.yaml` registers the task entry for PMAT-1530 with valid YAML syntax.\n\n2. Refutation Checks:\n- No test asserts the opposite of the ticket.\n- No CI/repository quality gate was weakened.\n- No unbacked receipt claims or out-of-scope modifications exist (diff is strictly +20 lines across the 2 intended files).\n- Note: $(git rev-parse --git-dir)/paiml-lane-witness was not present in this review worktree.\n\nVerdict: PASS.",
+      "findings": [
+        {
+          "claim": "Added `#[allow(clippy::clone_on_copy)]` attribute to suppress clippy warning on explicit `Clone::clone(&metadata)` call on Copy-enabled `NodeMetadata` union, preserving intentional coverage test for the Clone implementation.",
+          "file": "src/models/unified_ast_types_tests.rs",
+          "fix": "None needed",
+          "grounding": "cited",
+          "line": 621
+        },
+        {
+          "claim": "Added PMAT-1530 task entry in docs/roadmaps/roadmap.yaml tracking the clippy fix for unified_ast_types_tests.rs:621 under epic #1457; validated valid YAML syntax via python safe_load.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "None needed",
+          "grounding": "measured",
+          "line": 7781
+        }
+      ],
+      "raw_bytes": 5006,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "role": "independent",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini",
+      "executor": "agy",
+      "brief_sha256": "9a9da1b74a33a598be53b48f3692f2008096b4ed0a28c70007cf3a80a7f471d0",
+      "trace": {
+        "input_sha256": "aa1ac3840e5bdc2b68468defec1f96b0c8332036440a83f9240b88b524c2a434",
+        "output_sha256": "5bd7fe19b53ea2f583c976a6481f4952ab407eafc06f032032cec0a51482552f",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "gemini-3.8-flash-high",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "gemini-3.8-flash-high",
+            "family": "gemini",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "The diff does what PMAT-1530 asks and nothing beyond it. It adds one statement-scoped `#[allow(clippy::clone_on_copy)]` on the deliberate `Clone::clone(&metadata)` call in `test_node_metadata_clone`, at src/models/unified_ast_types_tests.rs:621. The test's intent is unchanged: it still calls the explicit `impl Clone for NodeMetadata` (src/models/unified_ast_node.rs:39) for coverage, and its assertion is unchanged. No gate is weakened, because the allow covers only one test statement and leaves the crate-level clippy config alone. The roadmap.yaml change only registers the ticket entry. I found nothing that refutes it. I could not provide a tree witness: there is no paiml-lane-witness file in the worktree's git dir (/home/noah/src/pmat-w1/.git/worktrees/wt1531), so tree_witness is left empty.",
+      "findings": [
+        {
+          "file": "src/models/unified_ast_types_tests.rs",
+          "line": 621,
+          "claim": "The allow is scoped to the single `let cloned = Clone::clone(&metadata);` statement, so the clone_on_copy lint stays active everywhere else. A lint attribute on a let statement is valid stable Rust.",
+          "grounding": "cited"
+        },
+        {
+          "file": "src/models/unified_ast_node.rs",
+          "line": 39,
+          "claim": "The explicit `impl Clone for NodeMetadata { fn clone(&self) -> Self { *self } }` exists, so the reason given in the comment (exercising the explicit Clone body for coverage) is accurate and suppressing the lint is better than switching the test to a Copy.",
+          "grounding": "measured"
+        },
+        {
+          "file": "docs/roadmaps/roadmap.yaml",
+          "line": 7781,
+          "claim": "This only adds the PMAT-1530 entry with status planned and epic 1457. It does not change any other roadmap item.",
+          "grounding": "cited"
+        }
+      ],
+      "raw_bytes": 4246,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-opus-5-5",
+      "model_measured": "claude-opus-5-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "9a9da1b74a33a598be53b48f3692f2008096b4ed0a28c70007cf3a80a7f471d0",
+      "trace": {
+        "input_sha256": "20a976e873a131f05fa46a7bccb91bc0cd1d9a5da036902fcfcac59c1aeb46ad",
+        "output_sha256": "95154988aa0044702fae0c997fce7696152f47d046049f742ce2eee59a5f2c29",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-opus-5-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-opus-5-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Diff correctly implements PMAT-1530: adds a narrowly-scoped #[allow(clippy::clone_on_copy)] attribute with clear documentation at unified_ast_types_tests.rs:622. The suppress is paired with a comment explaining it's deliberate to exercise the explicit Clone impl for coverage, exactly matching the ticket's acceptance criteria. No gates weakened, no unintended changes.",
+      "findings": [],
+      "raw_bytes": 1726,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-haiku-4-5",
+      "model_measured": "claude-haiku-4-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "9a9da1b74a33a598be53b48f3692f2008096b4ed0a28c70007cf3a80a7f471d0",
+      "trace": {
+        "input_sha256": "0869423c628189d2d2d0b00c151b93d68af3869b04f3ba05c75487c80748328b",
+        "output_sha256": "4e6369f9e190a6d627546276c0dc5403c00a3eb8c9a659e184c823370f4a88fb",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-haiku-4-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-haiku-4-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 7781,
+      "lanes_agreeing": [
+        1,
+        2
+      ],
+      "claims": [
+        "Added PMAT-1530 task entry in docs/roadmaps/roadmap.yaml tracking the clippy fix for unified_ast_types_tests.rs:621 under epic #1457; validated valid YAML syntax via python safe_load.",
+        "This only adds the PMAT-1530 entry with status planned and epic 1457. It does not change any other roadmap item."
+      ]
+    },
+    {
+      "file": "src/models/unified_ast_node.rs",
+      "line": 39,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The explicit `impl Clone for NodeMetadata { fn clone(&self) -> Self { *self } }` exists, so the reason given in the comment (exercising the explicit Clone body for coverage) is accurate and suppressing the lint is better than switching the test to a Copy."
+      ]
+    },
+    {
+      "file": "src/models/unified_ast_types_tests.rs",
+      "line": 621,
+      "lanes_agreeing": [
+        1,
+        2
+      ],
+      "claims": [
+        "Added `#[allow(clippy::clone_on_copy)]` attribute to suppress clippy warning on explicit `Clone::clone(&metadata)` call on Copy-enabled `NodeMetadata` union, preserving intentional coverage test for the Clone implementation.",
+        "The allow is scoped to the single `let cloned = Clone::clone(&metadata);` statement, so the clone_on_copy lint stays active everywhere else. A lint attribute on a let statement is valid stable Rust."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "fallback": {
+    "same_family_width": 2,
+    "chain": [
+      {
+        "model": "gemini-3.8-flash-high",
+        "family": "gemini",
+        "disposition": "configured"
+      },
+      {
+        "model": "claude-opus-5-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-haiku-4-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-sonnet-5-5",
+        "family": "claude",
+        "disposition": "excluded-self-review",
+        "why": "the author's own model id (claude-sonnet-5-5) — a model never reviews its own diff, at any width (R-15a identity bar)"
+      },
+      {
+        "model": "qwen3.5",
+        "family": "qwen",
+        "disposition": "not-run",
+        "why": "no quorum.local_lane in the config — the aprender lane has no model to load"
+      }
+    ],
+    "precheck": [
+      {
+        "family": "gemini",
+        "model": "gemini-3.8-flash-high",
+        "probe": 1,
+        "outcome": "live"
+      }
+    ],
+    "degraded": null,
+    "prah": {
+      "source": "install-receipt",
+      "path": "/home/noah/.claude/skills/paiml-implement/bin/prah"
+    },
+    "bucket": {
+      "ledger": "/home/noah/.local/state/paiml-implement/agy-bucket.jsonl",
+      "window_s": 18000,
+      "pace": "off",
+      "buckets": {
+        "gemini": {
+          "bucket": "gemini",
+          "state": "unmeasured",
+          "reason": "agy-bucket.sh could not read the ledger; the bucket is not consulted this round"
+        }
+      },
+      "closed": []
+    }
+  },
+  "auto_merge": {
+    "checked": true,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "auto-merge not armed"
+  },
+  "cheap_seat": "claude-haiku-4-5",
+  "canary": {
+    "shape": "canary",
+    "max_brief_bytes": 24576,
+    "brief_bytes": 2811
+  },
+  "advisory_lane": {
+    "state": "unavailable",
+    "counts": false,
+    "row": {
+      "NotRun": "Busy"
+    },
+    "verdict": "unavailable",
+    "why": "no host answered inside the budget",
+    "served_by": null,
+    "gpu_proof": null,
+    "apr": null,
+    "apr_binary_sha256": null,
+    "apr_tag": null,
+    "apr_commit": null,
+    "apr_build_why": null,
+    "model": null,
+    "model_sha256": null,
+    "rc": 2,
+    "wall_s": 1,
+    "collected_s": 395,
+    "budget_s": 196,
+    "budget_basis": "ledger: 2 x p95 98 s over 126 gx10-cuda Verdict rows",
+    "brief": {
+      "bytes": 2811,
+      "sent_bytes": 2980,
+      "max_bytes": 196608
+    },
+    "trace": {
+      "input_sha256": "f98c8d0925b4f401a49180a3c4552f55645da26e6d54200d74a64b076a06cbf5",
+      "raw": "advisory.json"
+    },
+    "attempts": [
+      {
+        "host": "gx10",
+        "ok": false,
+        "wall_s": 0,
+        "error": "busy: executor yielded (unit inactive; last yield: 2026-10-03T00:47:22Z host=gx10-a5b5 event=stopped gpu-priority lock=/tmp/apr-gpu.priority)",
+        "ts": "2026-10-29T13:34:39.473Z",
+        "wall_ms": 509,
+        "request_id": "01a187de-ab6c-74db-b3bb-48ab2208e090",
+        "load1": 2.86,
+        "cold": null
+      }
+    ],
+    "ledger": "/home/noah/.local/state/paiml-implement/advisory-ledger.jsonl",
+    "raw": "advisory.json",
+    "agrees_with_counted": null,
+    "counted": "PASS"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-sonnet-5-5/claude same_family=2/2"
+  }
+}
