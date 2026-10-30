@@ -132,7 +132,7 @@ async fn tdg_enforcement_install_from_a_linked_worktree_succeeds() {
 
 /// `std::env::set_current_dir` is process-wide; this keeps the one test that needs it
 /// from racing another user of this lock, and puts the old directory back on any exit.
-static CWD_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static CWD_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 struct CwdGuard(PathBuf);
 
@@ -154,7 +154,7 @@ async fn the_tdg_wrapper_installs_both_hooks_where_git_says() {
         &wt,
         &["config", "core.hooksPath", hooks.to_str().expect("utf-8")],
     );
-    let _lock = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _lock = CWD_LOCK.lock().await;
     let _restore = CwdGuard(std::env::current_dir().expect("cwd"));
     std::env::set_current_dir(&wt).expect("cd into the worktree");
     super::tdg_hooks::install_tdg_hooks_wrapper()
