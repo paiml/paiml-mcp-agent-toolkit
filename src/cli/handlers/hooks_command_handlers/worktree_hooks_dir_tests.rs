@@ -49,7 +49,7 @@ fn repo_with_worktree() -> (tempfile::TempDir, PathBuf, PathBuf) {
 }
 
 fn canon(p: &Path) -> PathBuf {
-    std::fs::canonicalize(p).unwrap_or_else(|e| panic!("canonicalize {}: {e}", p.display()))
+    std::fs::canonicalize(p).expect("canonicalize")
 }
 
 #[test]
