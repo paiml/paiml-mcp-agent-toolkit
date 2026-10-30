@@ -8492,9 +8492,9 @@ roadmap:
   updated: 2026-10-30T01:05:53Z
   spec: null
   acceptance_criteria:
-  - "pmat work start and pmat work complete change one ticket's status by splicing only that row into docs/roadmaps/roadmap.yaml (RoadmapService::upsert_item_in_place); no other row is re-serialised or re-quoted"
-  - "unit tests in roadmap_service_in_place_tests.rs pin that a state change leaves every other row byte-identical"
-  - "pmat work add is out of scope (covered by GH-1292)"
+  - pmat work start and pmat work complete change one ticket's status by splicing only that row into docs/roadmaps/roadmap.yaml (RoadmapService::upsert_item_in_place); no other row is re-serialised or re-quoted
+  - unit tests in roadmap_service_in_place_tests.rs pin that a state change leaves every other row byte-identical
+  - pmat work add is out of scope (covered by GH-1292)
   phases: []
   subtasks: []
   estimated_effort: null
