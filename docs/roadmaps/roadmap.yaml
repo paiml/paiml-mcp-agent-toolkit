@@ -8434,7 +8434,7 @@ roadmap:
 - id: GH-1559
   github_issue: 1559
   item_type: task
-  title: 'refactor: commit_traceability/mod.rs (cyclomatic 55, cognitive 87) so the #1356 bot-commit exemption can land'
+  title: 'refactor commit_traceability/mod.rs (cc 55 / cog 87) so the #1356 bot-commit exemption can land'
   status: planned
   priority: medium
   assigned_to: null
@@ -8463,3 +8463,21 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-1564
+  github_issue: 1564
+  item_type: task
+  title: remove the stale RUSTSEC-2023-0071 and RUSTSEC-2026-0387 ignores from deny.toml and .cargo/audit.toml
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-29T22:55:40Z
+  updated: 2026-10-29T22:55:40Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
