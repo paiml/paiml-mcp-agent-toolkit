@@ -8521,3 +8521,22 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: PMAT-1576
+  github_issue: 1576
+  item_type: task
+  title: 'flake: scaffold tests leave the process cwd in a deleted tempdir, red test_sloc_path_resolution_ignores_the_process_cwd on master'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-10-30T15:26:56Z
+  updated: 2026-10-30T15:26:56Z
+  spec: null
+  acceptance_criteria:
+  - scaffold tests restore the cwd on drop and the cwd-reading lint_hotspot test is serial, so no parallel test sees a moved or deleted cwd
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
