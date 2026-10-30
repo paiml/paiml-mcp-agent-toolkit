@@ -48,12 +48,19 @@ fn shell_escape(s: &str) -> String {
 pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
     let project_root = std::env::current_dir()?;
     install_tdg_hooks(&project_root).await?;
+    let hooks_dir = super::hooks_command::resolve_hooks_dir(&project_root);
 
     println!("✅ TDG enforcement hooks installed successfully");
     println!();
     println!("Hooks installed:");
-    println!("  - .git/hooks/pre-commit (TDG quality checks)");
-    println!("  - .git/hooks/post-commit (baseline auto-update)");
+    println!(
+        "  - {} (TDG quality checks)",
+        hooks_dir.join("pre-commit").display()
+    );
+    println!(
+        "  - {} (baseline auto-update)",
+        hooks_dir.join("post-commit").display()
+    );
     println!();
     println!("Configuration: .pmat/tdg-rules.toml");
 
@@ -64,7 +71,8 @@ pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
     let git_dir = project_root.join(".git");
-    let hooks_dir = git_dir.join("hooks");
+    // Ask git: in a linked worktree `.git` is a file, so joining `.git/hooks` fails (#1285).
+    let hooks_dir = super::hooks_command::resolve_hooks_dir(project_root);
 
     // Verify .git directory exists
     if !git_dir.exists() {
