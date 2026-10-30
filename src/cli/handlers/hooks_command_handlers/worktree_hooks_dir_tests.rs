@@ -4,8 +4,8 @@
 //! resolve the hooks dir the way git does. Every git call runs with the user's
 //! global and system config switched off, because a global `core.hooksPath` would
 //! otherwise decide the answer.
-use super::hooks_command::{git_hooks_dir, resolve_hooks_dir, HooksCommand};
-use super::tdg_hooks::install_tdg_hooks;
+use super::hooks_command::{git_hooks_dir, HooksCommand};
+use super::tdg_hooks::install_tdg_hooks_in;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -116,10 +116,10 @@ async fn tdg_enforcement_install_from_a_linked_worktree_succeeds() {
     // `hooks install --tdg-enforcement` returns early into `install_tdg_hooks`, which
     // used to join `.git/hooks` itself and fail with ENOTDIR in a worktree (#1285).
     let (_tmp, _main, wt) = repo_with_worktree();
-    install_tdg_hooks(&wt)
+    let hooks = git_hooks_dir(&wt, ISOLATED).expect("git answers inside a worktree");
+    install_tdg_hooks_in(&wt, &hooks)
         .await
         .expect("tdg hooks install in a linked worktree");
-    let hooks = resolve_hooks_dir(&wt);
     assert!(
         hooks.join("pre-commit").is_file(),
         "pre-commit at {hooks:?}"

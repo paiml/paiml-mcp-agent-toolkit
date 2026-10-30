@@ -70,9 +70,15 @@ pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
 /// Install TDG enforcement hooks
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
-    let git_dir = project_root.join(".git");
     // Ask git: in a linked worktree `.git` is a file, so joining `.git/hooks` fails (#1285).
     let hooks_dir = super::hooks_command::resolve_hooks_dir(project_root);
+    install_tdg_hooks_in(project_root, &hooks_dir).await
+}
+
+/// [`install_tdg_hooks`] into an explicit hooks directory (tests pass one resolved
+/// with the user's git config switched off).
+pub(crate) async fn install_tdg_hooks_in(project_root: &Path, hooks_dir: &Path) -> Result<()> {
+    let git_dir = project_root.join(".git");
 
     // Verify .git directory exists
     if !git_dir.exists() {
@@ -83,7 +89,7 @@ pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
 
     // Create hooks directory if it doesn't exist
     if !hooks_dir.exists() {
-        fs::create_dir_all(&hooks_dir).context("Failed to create .git/hooks directory")?;
+        fs::create_dir_all(hooks_dir).context("Failed to create .git/hooks directory")?;
     }
 
     // Load or create TDG configuration
@@ -97,10 +103,10 @@ pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
     };
 
     // Install pre-commit hook
-    install_tdg_pre_commit_hook(&hooks_dir, &config)?;
+    install_tdg_pre_commit_hook(hooks_dir, &config)?;
 
     // Install post-commit hook
-    install_tdg_post_commit_hook(&hooks_dir, &config)?;
+    install_tdg_post_commit_hook(hooks_dir, &config)?;
 
     Ok(())
 }
