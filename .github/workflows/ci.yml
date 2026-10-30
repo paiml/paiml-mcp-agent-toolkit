@@ -472,7 +472,7 @@ jobs:
   #   5. ratchet from the measured baseline, not the absolute 80.0
   #   6. only then remove both `continue-on-error`
   mutants:
-    runs-on: [self-hosted, clean-room]
+    runs-on: [self-hosted, clean-room, mutants]
     continue-on-error: true
     container:
       image: localhost:5000/sovereign-ci:stable
