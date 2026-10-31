@@ -33,6 +33,59 @@ const CLIPPY_TIMEOUT: Duration = if cfg!(test) {
     Duration::from_secs(60)
 };
 
+/// Environment a child `cargo clippy` must NOT inherit from the process that runs the proxy.
+///
+/// Under `cargo llvm-cov` the parent carries `RUSTFLAGS=-C instrument-coverage`,
+/// `LLVM_PROFILE_FILE`, `CARGO_LLVM_COV*` and a `CARGO_TARGET_DIR`. Inherited, the one-file
+/// temp crate is compiled instrumented, writes profraw into the host's profile directory and
+/// queues on the host's build-directory lock behind every sibling test doing the same, which
+/// is how a seconds-long lint blew its 600 s deadline (#1202, #1127).
+const CLIPPY_ENV_SCRUBBED: &[&str] = &[
+    "LLVM_PROFILE_FILE",
+    "CARGO_LLVM_COV",
+    "CARGO_LLVM_COV_TARGET_DIR",
+    "CARGO_LLVM_COV_BUILD_DIR",
+    "CARGO_LLVM_COV_SHOW_ENV",
+    "RUSTFLAGS",
+    "CARGO_ENCODED_RUSTFLAGS",
+    "CARGO_BUILD_RUSTFLAGS",
+    "RUSTC_WRAPPER",
+    "RUSTC_WORKSPACE_WRAPPER",
+    "CARGO_TARGET_DIR",
+    "CARGO_BUILD_TARGET_DIR",
+];
+
+/// Address-space ceiling for the child, via `prlimit --as` (#1127). Generous, because rustc
+/// reserves far more virtual memory than it touches; it is there to stop a runaway, not to
+/// fit a budget.
+const CLIPPY_ADDRESS_SPACE_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+
+/// The `cargo clippy` command for the temp crate at `project_dir`: its own `target/` inside
+/// the crate (deleted with it), none of [`CLIPPY_ENV_SCRUBBED`], and an address-space limit
+/// when `prlimit` is installed.
+fn clippy_command(project_dir: &std::path::Path) -> std::process::Command {
+    use std::process::Command;
+
+    let mut cmd = if cfg!(target_os = "linux") && prlimit_on_path() {
+        let mut c = Command::new("prlimit");
+        c.arg(format!("--as={CLIPPY_ADDRESS_SPACE_BYTES}")).arg("cargo");
+        c
+    } else {
+        Command::new("cargo")
+    };
+    cmd.arg("clippy").current_dir(project_dir);
+    for var in CLIPPY_ENV_SCRUBBED {
+        cmd.env_remove(var);
+    }
+    cmd.env("CARGO_TARGET_DIR", project_dir.join("target"));
+    cmd
+}
+
+fn prlimit_on_path() -> bool {
+    std::env::var_os("PATH")
+        .is_some_and(|paths| std::env::split_paths(&paths).any(|d| d.join("prlimit").is_file()))
+}
+
 /// rustfmt over a single file is milliseconds; ten seconds is already
 /// pathological. Reachable from AutoFix mode on the same caller-supplied
 /// content, and unbounded before this for the same reason clippy was.
@@ -559,7 +612,6 @@ impl QualityProxyService {
     async fn run_lint_checks(&self, content: &str) -> Result<Vec<(usize, String)>> {
         use std::fs;
         use std::io::Write;
-        use std::process::Command;
 
         // Create a temporary Rust project
         let temp_dir = tempfile::TempDir::new()?;
@@ -631,8 +683,7 @@ edition = "2021"
         // report is the only answer that invents neither a pass nor a finding.
         let project_dir = temp_dir.path().to_path_buf();
         let spawned = tokio::task::spawn_blocking(move || {
-            let mut cmd = Command::new("cargo");
-            cmd.arg("clippy").current_dir(&project_dir);
+            let mut cmd = clippy_command(&project_dir);
             crate::cli::handlers::work_falsification::deny_refresh::run_with_timeout(
                 &mut cmd,
                 CLIPPY_TIMEOUT,
@@ -809,6 +860,47 @@ mod analysis_measurement_tests {
                 matches!(lint_line_severity(line), ViolationSeverity::Error),
                 "{line} must fail a strict gate"
             );
+        }
+    }
+
+    #[test]
+    fn clippy_child_gets_its_own_target_dir_and_no_coverage_environment() {
+        // #1202: under llvm-cov the child inherited RUSTFLAGS/LLVM_PROFILE_FILE/CARGO_TARGET_DIR,
+        // so a one-file lint was instrumented and queued on the host's build lock.
+        let dir = std::path::Path::new("/nonexistent/proxy-crate");
+        let cmd = clippy_command(dir);
+        let envs: std::collections::HashMap<_, _> = cmd
+            .get_envs()
+            .map(|(k, v)| (k.to_string_lossy().into_owned(), v.map(|v| v.to_owned())))
+            .collect();
+        for var in CLIPPY_ENV_SCRUBBED.iter().filter(|v| **v != "CARGO_TARGET_DIR") {
+            assert_eq!(
+                envs.get(*var),
+                Some(&None),
+                "{var} must be removed from the child, not inherited"
+            );
+        }
+        assert_eq!(
+            envs.get("CARGO_TARGET_DIR"),
+            Some(&Some(dir.join("target").into_os_string())),
+            "the child must build into the temp crate's own target dir"
+        );
+        assert_eq!(cmd.get_current_dir(), Some(dir));
+    }
+
+    #[test]
+    fn clippy_child_is_address_space_bounded_when_prlimit_exists() {
+        let args: Vec<_> = clippy_command(std::path::Path::new("/x"))
+            .get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        if cfg!(target_os = "linux") && prlimit_on_path() {
+            assert_eq!(
+                args.first().map(String::as_str),
+                Some(format!("--as={CLIPPY_ADDRESS_SPACE_BYTES}").as_str())
+            );
+        } else {
+            assert_eq!(args, ["clippy"]);
         }
     }
 
