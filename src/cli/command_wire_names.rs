@@ -22,6 +22,20 @@
 //! means the compiler enforces totality on every ordinary build and the guard
 //! runs in the default test suite.
 //!
+//! # Why there is no MCP-exposure column (#1136, decided: won't do)
+//!
+//! `AnalyzeCommands` declares its MCP exposure in
+//! [`crate::cli::analyze_mcp_exposure`] (#1029). The top-level `Commands`
+//! enum deliberately has no such column. docs/specifications/
+//! pmat-architecture-crux-audit.md §9.2 item 2 puts it this way: the residual
+//! is "prevention, not a live wrong answer". Declaring 70 rows would be 70
+//! product guesses with no failure behind them.
+//!
+//! Revisit when a live wrong answer appears, or when a top-level command that
+//! should be on MCP is not (`pmat tdg` is the first candidate). Candidates to
+//! expose: tdg, verify, context, comply, score. CLI-only: refactor, hooks,
+//! init, serve. Tracking: #1136, #1029.
+//!
 //! # The invariant
 //!
 //! Both matches below are total: **no catch-all arm**. That is deliberate and
@@ -248,4 +262,21 @@ pub fn qdd_command_name(qdd_cmd: &QddCommands) -> &'static str {
 #[must_use]
 pub fn command_name(command: &Commands) -> &'static str {
     classify_command(command).1
+}
+
+#[cfg(test)]
+mod mcp_exposure_decision_tests {
+    /// #1136: the won't-do decision must stay written next to the table.
+    #[test]
+    fn mcp_exposure_decision_is_written_down() {
+        // Only the text above the test module counts, so the needles below
+        // cannot satisfy themselves.
+        let full = include_str!("command_wire_names.rs");
+        let src = full
+            .split("#[cfg(test)]\nmod mcp_exposure_decision_tests")
+            .next()
+            .expect("split");
+        assert!(src.contains("#1136, decided: won't do"));
+        assert!(src.contains("no MCP-exposure column"));
+    }
 }

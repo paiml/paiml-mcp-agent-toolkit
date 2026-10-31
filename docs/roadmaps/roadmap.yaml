@@ -5715,7 +5715,7 @@ roadmap:
   github_issue: 1136
   item_type: task
   title: 70 of 71 top-level Commands variants have no MCP exposure declaration — decide it or write the decision down
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
@@ -5726,7 +5726,7 @@ roadmap:
   subtasks: []
   estimated_effort: null
   labels: []
-  notes: null
+  notes: "Decided as won't-do (option b): no MCP column outside analyze; decision written in src/cli/command_wire_names.rs module docs, per crux-audit 9.2 item 2."
   release: 3.44.0
 - id: GH-1138
   github_issue: 1138
