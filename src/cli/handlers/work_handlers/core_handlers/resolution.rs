@@ -323,7 +323,7 @@ mod restart_in_progress_tests {
     use crate::models::roadmap::Roadmap;
 
     fn service_with(status: ItemStatus) -> (tempfile::TempDir, RoadmapService, Roadmap) {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("roadmap.yaml");
         let mut item = RoadmapItem::new("T-1".to_string(), "t one".to_string());
         item.status = status;
@@ -332,7 +332,7 @@ mod restart_in_progress_tests {
             ..Roadmap::default()
         };
         let service = RoadmapService::new(&path);
-        service.save(&roadmap).unwrap();
+        service.save(&roadmap).expect("save roadmap");
         (dir, service, roadmap)
     }
 
