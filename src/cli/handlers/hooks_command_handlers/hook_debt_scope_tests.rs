@@ -516,6 +516,62 @@ mod staged_repo {
         );
     }
 
+    /// #1475: `main` lands a over-limit function; `feature` (which never touched that file)
+    /// merges it. HEAD has no counterpart, so the old rule called it new and refused.
+    fn merge_with_debt_from_main() -> tempfile::TempDir {
+        let repo = repo_with_committed_debt();
+        let p = repo.path();
+        git(p, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(p.join("other.txt"), "x").expect("write");
+        git(p, &["add", "-A"]);
+        git(p, &["commit", "-q", "-m", "feature work"]);
+        git(p, &["checkout", "-q", "main"]);
+        std::fs::write(p.join("src/added.rs"), HEAD_VERSION).expect("write");
+        git(p, &["add", "-A"]);
+        git(p, &["commit", "-q", "-m", "debt lands on main"]);
+        git(p, &["checkout", "-q", "feature"]);
+        git(p, &["merge", "-q", "--no-ff", "--no-commit", "main"]);
+        repo
+    }
+
+    #[test]
+    fn staged_verdict_does_not_charge_a_merge_for_a_function_that_arrives_from_merge_head() {
+        let repo = merge_with_debt_from_main();
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/added.rs"), LIMITS).expect("verdict");
+        assert!(
+            verdict.is_allowed(),
+            "byte-identical to MERGE_HEAD, so not authored by this merge: {:?}",
+            verdict.rendered()
+        );
+    }
+
+    #[test]
+    fn staged_verdict_still_refuses_debt_the_merge_itself_edited() {
+        let repo = merge_with_debt_from_main();
+        // A conflict resolution that grows the function beyond MERGE_HEAD's copy.
+        let grown = HEAD_VERSION.replace("fn debted", "fn debted_more").replace(
+            "fn innocent",
+            "fn innocent_extra(x: i32) -> i32 {\n    let mut n = x;\n    if x > 0 { n += 1; }\n    if x > 1 { n += 1; }\n    if x > 2 { n += 1; }\n    if x > 3 { n += 1; }\n    if x > 4 { n += 1; }\n    if x > 5 { n += 1; }\n    n\n}\n\nfn innocent",
+        );
+        std::fs::write(repo.path().join("src/added.rs"), grown).expect("write");
+        git(repo.path(), &["add", "src/added.rs"]);
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/added.rs"), LIMITS).expect("verdict");
+        assert!(
+            !verdict.is_allowed(),
+            "new over-limit code written in the merge is still refused"
+        );
+        assert!(
+            verdict
+                .rendered()
+                .iter()
+                .any(|l| l.contains("innocent_extra")),
+            "{:?}",
+            verdict.rendered()
+        );
+    }
+
     /// A path git does not have staged is NOT "no violations": say so.
     #[test]
     fn staged_verdict_refuses_to_grade_an_unstaged_path() {
@@ -762,42 +818,29 @@ fn hook_debt_scope_pairing_mutant_bare_name_find() {
 
     assert!(mutant_verdict.is_allowed(), "the mutant allows the growth because it matches against the first 'new' (cyc=7), hiding the growth of the second 'new' (cyc=6)");
 }
+/// `fn deleted_debted` with `ifs` sequential `if` statements after `first`.
+fn branchy_fn(first: &str, ifs: usize) -> String {
+    let mut src = format!("fn deleted_debted(x: i32) -> i32 {{\n    {first}\n");
+    for i in 0..ifs {
+        src.push_str(&format!("    if x > {i} {{ n += 1; }}\n"));
+    }
+    src.push_str("    n\n}\n");
+    src
+}
+
 #[test]
 fn hook_debt_scope_rename_to_deleted_name_inherits_baseline_pin() {
     // PIN: This asserts the CURRENT (wrong) behaviour where a touched function renamed to the name of a
     // DELETED function inherits the deleted one's baseline. This is an accepted limitation of name-keyed pairing.
 
-    let old_source = "\
-fn deleted_debted(x: i32) -> i32 {
-    let mut n = x;
-    if x > 0 { n += 1; }
-    if x > 1 { n += 1; }
-    if x > 2 { n += 1; }
-    if x > 3 { n += 1; }
-    if x > 4 { n += 1; }
-    if x > 5 { n += 1; }
-    if x > 6 { n += 1; }
-    if x > 7 { n += 1; }
-    if x > 8 { n += 1; }
-    n
-}
-fn will_rename(x: i32) -> i32 {
-    x + 1
-}
-";
-
-    let new_source = "\
-fn deleted_debted(x: i32) -> i32 {
-    let mut n = x + 1; // touched
-    if x > 0 { n += 1; }
-    if x > 1 { n += 1; }
-    if x > 2 { n += 1; }
-    if x > 3 { n += 1; }
-    if x > 4 { n += 1; }
-    if x > 5 { n += 1; }
-    n
-}
-";
+    // Built, not written inline: the complexity gate parses Rust text inside a string literal
+    // as if it were this test's own code.
+    let old_source = format!(
+        "{}fn will_rename(x: i32) -> i32 {{\n    x + 1\n}}\n",
+        branchy_fn("let mut n = x;", 9)
+    );
+    let new_source = branchy_fn("let mut n = x + 1; // touched", 6);
+    let (old_source, new_source) = (old_source.as_str(), new_source.as_str());
     let diff = "@@ -1,14 +1,9 @@\n";
     let verdict = diff_scoped_verdict(Some(old_source), new_source, diff, LIMITS).expect("parse");
     // Under correct identity tracking (it's actually `will_rename`), it grew from cyc=1 to cyc=7, limit=5. Should be REFUSED.

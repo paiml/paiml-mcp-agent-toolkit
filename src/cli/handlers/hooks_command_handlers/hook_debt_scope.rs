@@ -349,7 +349,8 @@ fn grew(
 ///   hook judges what is being COMMITTED; an unstaged edit sitting in the
 ///   working tree is not part of this commit and must not change the verdict.
 /// * OLD source is `git show HEAD:<path>`, `None` when the file has no
-///   counterpart there (added, renamed, or an unborn branch).
+///   counterpart there (added, renamed, or an unborn branch). During a merge the
+///   same file is also judged against `MERGE_HEAD` (#1475).
 /// * The diff is `git diff --cached -U0 -- <path>`.
 ///
 /// # Errors
@@ -385,7 +386,58 @@ pub fn staged_verdict(
     // code never measured.
     let diff = git_read(repo_root, &["diff", "--cached", "-U0", "--", &spec])?
         .ok_or_else(|| anyhow!("`git diff --cached -U0 -- {spec}` failed in {repo_root:?}"))?;
-    diff_scoped_verdict(old_source.as_deref(), &new_source, &diff, thresholds)
+    let verdict = diff_scoped_verdict(old_source.as_deref(), &new_source, &diff, thresholds)?;
+    clear_what_a_merge_parent_authored(repo_root, &spec, &new_source, verdict, thresholds)
+}
+
+/// #1475: in a merge commit HEAD is only one parent, so a function that arrives unchanged
+/// from `MERGE_HEAD` has no HEAD counterpart and reads as new. Judge the same staged file
+/// against `MERGE_HEAD` too and charge the merge only with growth that BOTH parents see:
+/// a function equal to its `MERGE_HEAD` copy was authored by that parent, while one the
+/// merge edited (a conflict resolution) still grows against both and stays refused.
+///
+/// Outside a merge, or when `MERGE_HEAD` is absent or ambiguous (an octopus merge has
+/// several), the HEAD-only verdict stands: the check refuses rather than guesses.
+fn clear_what_a_merge_parent_authored(
+    repo_root: &Path,
+    spec: &str,
+    new_source: &str,
+    head_verdict: DebtVerdict,
+    thresholds: DebtThresholds,
+) -> Result<DebtVerdict> {
+    let DebtVerdict::Refused(head_growths) = &head_verdict else {
+        return Ok(head_verdict);
+    };
+    let Some(merge_head) = git_read(repo_root, &["rev-parse", "-q", "--verify", "MERGE_HEAD"])?
+    else {
+        return Ok(head_verdict);
+    };
+    let merge_head = merge_head.trim();
+    let parent_source = git_read(repo_root, &["show", &format!("{merge_head}:{spec}")])?;
+    let parent_diff = git_read(
+        repo_root,
+        &["diff", "--cached", "-U0", merge_head, "--", spec],
+    )?
+    .ok_or_else(|| anyhow!("`git diff --cached -U0 {merge_head} -- {spec}` failed"))?;
+    let against_parent = diff_scoped_verdict(
+        parent_source.as_deref(),
+        new_source,
+        &parent_diff,
+        thresholds,
+    )?;
+    let DebtVerdict::Refused(parent_growths) = against_parent else {
+        return Ok(DebtVerdict::Allowed);
+    };
+    let still_ours: Vec<DebtGrowth> = head_growths
+        .iter()
+        .filter(|g| parent_growths.contains(g))
+        .cloned()
+        .collect();
+    Ok(if still_ours.is_empty() {
+        DebtVerdict::Allowed
+    } else {
+        DebtVerdict::Refused(still_ours)
+    })
 }
 
 /// The HEAD-side path of `spec` in `git diff --cached -M --name-status -z`
