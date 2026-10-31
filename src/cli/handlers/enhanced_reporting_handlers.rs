@@ -655,20 +655,23 @@ mod tests {
     #[test]
     fn section_flags_are_false_unless_typed() {
         use clap::Parser;
-        let parse = |extra: &[&str]| {
-            let mut argv = vec!["pmat", "report"];
-            argv.extend_from_slice(extra);
-            match crate::cli::Cli::try_parse_from(argv)
-                .expect("parses")
-                .command
-            {
-                crate::cli::Commands::Report {
-                    include_executive_summary,
-                    include_recommendations,
-                    ..
-                } => (include_executive_summary, include_recommendations),
-                _ => panic!("not the report command"),
-            }
+        let parse = |extra: &'static [&'static str]| {
+            // clap's derive parse of `Cli` needs more than a test thread's stack.
+            crate::cli::commands::on_big_stack(move || {
+                let mut argv = vec!["pmat", "report"];
+                argv.extend_from_slice(extra);
+                match crate::cli::Cli::try_parse_from(argv)
+                    .expect("parses")
+                    .command
+                {
+                    crate::cli::Commands::Report {
+                        include_executive_summary,
+                        include_recommendations,
+                        ..
+                    } => (include_executive_summary, include_recommendations),
+                    _ => panic!("not the report command"),
+                }
+            })
         };
         assert_eq!(parse(&[]), (false, false));
         assert_eq!(
