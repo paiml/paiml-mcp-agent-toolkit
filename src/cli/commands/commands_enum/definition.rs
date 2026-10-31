@@ -634,12 +634,12 @@ pub enum Commands {
         #[arg(long)]
         include_visualizations: bool,
 
-        /// Include executive summary
-        #[arg(long, default_value_t = true)]
+        /// Include executive summary (not implemented: refused when passed; the summary is always emitted)
+        #[arg(long)]
         include_executive_summary: bool,
 
-        /// Include actionable recommendations
-        #[arg(long, default_value_t = true)]
+        /// Include actionable recommendations (not implemented: refused when passed; the report has no recommendations section)
+        #[arg(long)]
         include_recommendations: bool,
 
         /// Analysis types to include
