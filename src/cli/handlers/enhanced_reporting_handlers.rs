@@ -667,7 +667,7 @@ mod tests {
                         include_recommendations,
                         ..
                     } => (include_executive_summary, include_recommendations),
-                    _ => panic!("not the report command"),
+                    _ => unreachable!("not the report command"),
                 }
             })
         };
