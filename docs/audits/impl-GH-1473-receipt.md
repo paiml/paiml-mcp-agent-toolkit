@@ -14,5 +14,8 @@ Both lanes were right: the clap args were `default_value_t = true`, so both flag
 ## Round 3 (quorum round 2 NOT AGREED: 1 FAIL)
 The `--include-recommendations` help said "always emitted", contradicting the error text (the report has no recommendations section); help corrected. The handler rustdoc still recommended the two flags in CLI examples and a `true,true` call; those examples and the parameter docs now say the flags are refused.
 
+## CI follow-up
+`docs/status/unrun-tests-ledger.md` rendered text moved because this diff adds 2 lib tests (24407/27534 -> 24409/27536 executed; unrun 3127 unchanged); regenerated with `pmat analyze unrun-tests --executed '' --write-ledger`. No new `.unwrap()` in the diff. No baseline raised.
+
 ## Scope
 Two source files: `src/cli/handlers/enhanced_reporting_handlers.rs` (new `reject_unimplemented_sections`, called beside `reject_unimplemented_visualizations`, plus two tests) and `src/cli/commands/commands_enum/definition.rs` (two clap defaults removed, help text says not implemented). No gate content touched.
