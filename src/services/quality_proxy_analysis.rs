@@ -68,7 +68,8 @@ fn clippy_command(project_dir: &std::path::Path) -> std::process::Command {
 
     let mut cmd = if cfg!(target_os = "linux") && prlimit_on_path() {
         let mut c = Command::new("prlimit");
-        c.arg(format!("--as={CLIPPY_ADDRESS_SPACE_BYTES}")).arg("cargo");
+        // `N:` sets the soft limit only, so a host whose hard limit is lower is not refused.
+        c.arg(format!("--as={CLIPPY_ADDRESS_SPACE_BYTES}:")).arg("cargo");
         c
     } else {
         Command::new("cargo")
@@ -240,6 +241,19 @@ pub(crate) fn interpret_clippy_output(
             let message = line.to_string();
             violations.push((line_num, message));
         }
+    }
+
+    // A child that failed without a single diagnostic never linted anything (a wrapper such
+    // as `prlimit` that could not start `cargo` writes its own text, not rustc's). Empty
+    // findings from it would read as a pass for code nobody checked.
+    if violations.is_empty() && !output.status.success() {
+        anyhow::bail!(
+            "the quality proxy's lint stage did not run: `cargo clippy` exited with {} and \
+             printed no diagnostic (stderr: {}). No lint verdict was produced, so none is \
+             reported.",
+            output.status,
+            stderr.trim()
+        );
     }
 
     Ok(violations)
@@ -633,15 +647,10 @@ impl QualityProxyService {
         lib_file.write_all(content.as_bytes())?;
         lib_file.flush()?;
 
-        let cargo_toml = r#"[package]
-name = "temp_quality_check"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-
-[workspace]
-"#;
+        // The committed fixture's manifest is the one source (own `[workspace]` root included).
+        // Stored as `Cargo.toml.fixture`: a nested `Cargo.toml` would make cargo drop the
+        // directory from the published package and break this `include_str!`.
+        let cargo_toml = include_str!("../../tests/fixtures/quality_proxy/Cargo.toml.fixture");
 
         let cargo_path = temp_dir.path().join("Cargo.toml");
         let mut cargo_file = fs::File::create(&cargo_path)?;
@@ -904,8 +913,8 @@ mod analysis_measurement_tests {
             .join("tests/fixtures/quality_proxy");
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir(tmp.path().join("src")).expect("mkdir");
-        for rel in ["Cargo.toml", "src/lib.rs"] {
-            std::fs::copy(fixture.join(rel), tmp.path().join(rel)).expect("copy fixture");
+        for (from, to) in [("Cargo.toml.fixture", "Cargo.toml"), ("src/lib.rs", "src/lib.rs")] {
+            std::fs::copy(fixture.join(from), tmp.path().join(to)).expect("copy fixture");
         }
         let out = run_clippy(tmp.path(), CLIPPY_TIMEOUT)
             .expect("clippy spawns")
@@ -913,6 +922,23 @@ mod analysis_measurement_tests {
         let text = String::from_utf8_lossy(&out.stderr);
         assert!(text.contains("ptr_arg"), "fixture finding missing: {text}");
         assert!(tmp.path().join("target").is_dir(), "own target dir was used");
+    }
+
+    #[test]
+    fn a_failed_clippy_run_with_no_diagnostic_is_not_a_pass() {
+        use std::os::unix::process::ExitStatusExt;
+        let out = |code: i32, stderr: &str| std::process::Output {
+            status: std::process::ExitStatus::from_raw(code << 8),
+            stdout: Vec::new(),
+            stderr: stderr.as_bytes().to_vec(),
+        };
+        let err = interpret_clippy_output(&out(1, "prlimit: failed to execute cargo: No such file"))
+            .expect_err("a wrapper failure must not read as zero findings");
+        assert!(err.to_string().contains("did not run"), "{err}");
+        assert!(interpret_clippy_output(&out(0, "")).expect("clean run").is_empty());
+        let found = interpret_clippy_output(&out(1, "error: could not compile `x`"))
+            .expect("a real compile error is a finding");
+        assert_eq!(found.len(), 1);
     }
 
     #[test]
@@ -924,7 +950,7 @@ mod analysis_measurement_tests {
         if cfg!(target_os = "linux") && prlimit_on_path() {
             assert_eq!(
                 args.first().map(String::as_str),
-                Some(format!("--as={CLIPPY_ADDRESS_SPACE_BYTES}").as_str())
+                Some(format!("--as={CLIPPY_ADDRESS_SPACE_BYTES}:").as_str())
             );
         } else {
             assert_eq!(args, ["clippy"]);
