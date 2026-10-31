@@ -70,7 +70,9 @@ pub(super) async fn resolve_yaml_ticket(
         // #1472: starting a ticket that is already InProgress re-activates it.
         if existing.status == ItemStatus::InProgress {
             println!("   {}", c::dim("Already InProgress: re-activating"));
-            return Ok(existing);
+            let mut item = existing;
+            item.updated = chrono::Utc::now().to_rfc3339();
+            return Ok(item);
         }
         // DBC §work_lifecycle: Validate state transition before starting
         if !existing.status.can_transition_to(ItemStatus::InProgress) {
@@ -322,11 +324,14 @@ mod restart_in_progress_tests {
     use super::*;
     use crate::models::roadmap::Roadmap;
 
+    const STALE_UPDATED: &str = "2000-01-01T00:00:00Z";
+
     fn service_with(status: ItemStatus) -> (tempfile::TempDir, RoadmapService, Roadmap) {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("roadmap.yaml");
         let mut item = RoadmapItem::new("T-1".to_string(), "t one".to_string());
         item.status = status;
+        item.updated = STALE_UPDATED.to_string();
         let roadmap = Roadmap {
             roadmap: vec![item],
             ..Roadmap::default()
@@ -343,6 +348,7 @@ mod restart_in_progress_tests {
             .await
             .expect("re-starting an InProgress ticket must succeed");
         assert_eq!(item.status, ItemStatus::InProgress);
+        assert_ne!(item.updated, STALE_UPDATED, "a restart must bump `updated`");
     }
 
     #[tokio::test]
