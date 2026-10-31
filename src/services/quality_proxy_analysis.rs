@@ -79,6 +79,9 @@ fn clippy_command(project_dir: &std::path::Path) -> std::process::Command {
         cmd.env_remove(var);
     }
     cmd.env("CARGO_TARGET_DIR", project_dir.join("target"));
+    // CI exports CARGO_TERM_COLOR=always; ANSI codes in front of `error:` hide every finding
+    // from the line parser, which then reads a failed lint as a clean one.
+    cmd.env("CARGO_TERM_COLOR", "never");
     cmd
 }
 
@@ -902,6 +905,11 @@ mod analysis_measurement_tests {
             Some(&Some(dir.join("target").into_os_string())),
             "the child must build into the temp crate's own target dir"
         );
+        assert_eq!(
+            envs.get("CARGO_TERM_COLOR"),
+            Some(&Some("never".into())),
+            "colour codes would hide rustc's `error:` prefix from the parser"
+        );
         assert_eq!(cmd.get_current_dir(), Some(dir));
     }
 
@@ -913,7 +921,7 @@ mod analysis_measurement_tests {
             .join("tests/fixtures/quality_proxy");
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir(tmp.path().join("src")).expect("mkdir");
-        for (from, to) in [("Cargo.toml.fixture", "Cargo.toml"), ("src/lib.rs", "src/lib.rs")] {
+        for (from, to) in [("Cargo.toml.fixture", "Cargo.toml"), ("lib.rs.fixture", "src/lib.rs")] {
             std::fs::copy(fixture.join(from), tmp.path().join(to)).expect("copy fixture");
         }
         let out = run_clippy(tmp.path(), CLIPPY_TIMEOUT)
