@@ -27,8 +27,8 @@ use tracing::info;
 /// * `markdown` - Force Markdown output format (overrides `output_format`)
 /// * `csv` - Force CSV output format (overrides `output_format`)
 /// * `include_visualizations` - Include charts and graphs in the report
-/// * `include_executive_summary` - Include high-level executive summary
-/// * `include_recommendations` - Include actionable improvement recommendations
+/// * `include_executive_summary` - Not implemented: refused when true (the summary is always emitted)
+/// * `include_recommendations` - Not implemented: refused when true (the report has no recommendations section)
 /// * `analyses` - Specific analysis types to include in the report
 /// * `confidence_threshold` - Minimum confidence level for including findings (0-100)
 /// * `output` - Optional output file path; when None the report is written to
@@ -97,8 +97,8 @@ use tracing::info;
 ///     false, // not markdown shortcut
 ///     false, // not csv shortcut
 ///     false, // include visualizations (rejected: not implemented for any format)
-///     true,  // include executive summary
-///     true,  // include recommendations
+///     false, // executive summary flag (true is refused: not implemented)
+///     false, // recommendations flag (true is refused: not implemented)
 ///     vec![AnalysisType::Complexity, AnalysisType::TechnicalDebt],
 ///     80,    // 80% confidence threshold
 ///     Some(dir.path().join("project-report.md")),
@@ -139,10 +139,9 @@ use tracing::info;
 /// # CLI Usage Examples
 ///
 /// ```bash
-/// # Comprehensive executive report
+/// # Markdown report written to a file
 /// pmat generate report /path/to/project --format markdown \
-///   --include-executive-summary \
-///   --include-recommendations --output project-health.md
+///   --output project-health.md
 ///
 /// # Quick CSV export for data analysis
 /// pmat generate report /path/to/project --csv \
@@ -154,8 +153,7 @@ use tracing::info;
 ///   --output ci-quality-report.json
 ///
 /// # Management dashboard (legacy HTML format)
-/// pmat generate report /path/to/project --format dashboard \
-///   --include-executive-summary
+/// pmat generate report /path/to/project --format dashboard
 /// ```ignore
 ///
 /// # Integration Examples

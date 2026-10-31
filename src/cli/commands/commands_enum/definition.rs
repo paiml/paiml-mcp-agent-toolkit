@@ -638,7 +638,7 @@ pub enum Commands {
         #[arg(long)]
         include_executive_summary: bool,
 
-        /// Include actionable recommendations (not implemented: refused when passed; always emitted)
+        /// Include actionable recommendations (not implemented: refused when passed; the report has no recommendations section)
         #[arg(long)]
         include_recommendations: bool,
 
