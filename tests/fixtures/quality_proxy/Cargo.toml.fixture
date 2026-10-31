@@ -1,0 +1,9 @@
+[package]
+name = "temp_quality_check"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+# Its own workspace root: cargo must never walk up into the host workspace.
+[workspace]

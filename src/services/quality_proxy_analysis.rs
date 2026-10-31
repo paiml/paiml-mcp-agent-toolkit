@@ -33,6 +33,73 @@ const CLIPPY_TIMEOUT: Duration = if cfg!(test) {
     Duration::from_secs(60)
 };
 
+/// Environment a child `cargo clippy` must NOT inherit from the process that runs the proxy.
+///
+/// Under `cargo llvm-cov` the parent carries `RUSTFLAGS=-C instrument-coverage`,
+/// `LLVM_PROFILE_FILE`, `CARGO_LLVM_COV*` and a `CARGO_TARGET_DIR`. Inherited, the one-file
+/// temp crate is compiled instrumented, writes profraw into the host's profile directory and
+/// queues on the host's build-directory lock behind every sibling test doing the same, which
+/// is how a seconds-long lint blew its 600 s deadline (#1202, #1127).
+const CLIPPY_ENV_SCRUBBED: &[&str] = &[
+    "LLVM_PROFILE_FILE",
+    "CARGO_LLVM_COV",
+    "CARGO_LLVM_COV_TARGET_DIR",
+    "CARGO_LLVM_COV_BUILD_DIR",
+    "CARGO_LLVM_COV_SHOW_ENV",
+    "RUSTFLAGS",
+    "CARGO_ENCODED_RUSTFLAGS",
+    "CARGO_BUILD_RUSTFLAGS",
+    "RUSTC_WRAPPER",
+    "RUSTC_WORKSPACE_WRAPPER",
+    "CARGO_TARGET_DIR",
+    "CARGO_BUILD_TARGET_DIR",
+];
+
+/// Address-space ceiling for the child, via `prlimit --as` (#1127). Generous, because rustc
+/// reserves far more virtual memory than it touches; it is there to stop a runaway, not to
+/// fit a budget.
+const CLIPPY_ADDRESS_SPACE_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+
+/// The `cargo clippy` command for the temp crate at `project_dir`: its own `target/` inside
+/// the crate (deleted with it), none of [`CLIPPY_ENV_SCRUBBED`], and an address-space limit
+/// when `prlimit` is installed.
+fn clippy_command(project_dir: &std::path::Path) -> std::process::Command {
+    use std::process::Command;
+
+    let mut cmd = if cfg!(target_os = "linux") && prlimit_on_path() {
+        let mut c = Command::new("prlimit");
+        // `N:` sets the soft limit only, so a host whose hard limit is lower is not refused.
+        c.arg(format!("--as={CLIPPY_ADDRESS_SPACE_BYTES}:")).arg("cargo");
+        c
+    } else {
+        Command::new("cargo")
+    };
+    cmd.arg("clippy").current_dir(project_dir);
+    for var in CLIPPY_ENV_SCRUBBED {
+        cmd.env_remove(var);
+    }
+    cmd.env("CARGO_TARGET_DIR", project_dir.join("target"));
+    // CI exports CARGO_TERM_COLOR=always; ANSI codes in front of `error:` hide every finding
+    // from the line parser, which then reads a failed lint as a clean one.
+    cmd.env("CARGO_TERM_COLOR", "never");
+    cmd
+}
+
+/// The one spawn function: scrubbed environment, own target dir and `prlimit --as` from
+/// [`clippy_command`], and the deadline plus process group from `run_with_timeout`.
+fn run_clippy(
+    project_dir: &std::path::Path,
+    deadline: Duration,
+) -> std::io::Result<Option<std::process::Output>> {
+    let mut cmd = clippy_command(project_dir);
+    crate::cli::handlers::work_falsification::deny_refresh::run_with_timeout(&mut cmd, deadline)
+}
+
+fn prlimit_on_path() -> bool {
+    std::env::var_os("PATH")
+        .is_some_and(|paths| std::env::split_paths(&paths).any(|d| d.join("prlimit").is_file()))
+}
+
 /// rustfmt over a single file is milliseconds; ten seconds is already
 /// pathological. Reachable from AutoFix mode on the same caller-supplied
 /// content, and unbounded before this for the same reason clippy was.
@@ -177,6 +244,19 @@ pub(crate) fn interpret_clippy_output(
             let message = line.to_string();
             violations.push((line_num, message));
         }
+    }
+
+    // A child that failed without a single diagnostic never linted anything (a wrapper such
+    // as `prlimit` that could not start `cargo` writes its own text, not rustc's). Empty
+    // findings from it would read as a pass for code nobody checked.
+    if violations.is_empty() && !output.status.success() {
+        anyhow::bail!(
+            "the quality proxy's lint stage did not run: `cargo clippy` exited with {} and \
+             printed no diagnostic (stderr: {}). No lint verdict was produced, so none is \
+             reported.",
+            output.status,
+            stderr.trim()
+        );
     }
 
     Ok(violations)
@@ -559,7 +639,6 @@ impl QualityProxyService {
     async fn run_lint_checks(&self, content: &str) -> Result<Vec<(usize, String)>> {
         use std::fs;
         use std::io::Write;
-        use std::process::Command;
 
         // Create a temporary Rust project
         let temp_dir = tempfile::TempDir::new()?;
@@ -571,13 +650,10 @@ impl QualityProxyService {
         lib_file.write_all(content.as_bytes())?;
         lib_file.flush()?;
 
-        let cargo_toml = r#"[package]
-name = "temp_quality_check"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#;
+        // The committed fixture's manifest is the one source (own `[workspace]` root included).
+        // Stored as `Cargo.toml.fixture`: a nested `Cargo.toml` would make cargo drop the
+        // directory from the published package and break this `include_str!`.
+        let cargo_toml = include_str!("../../tests/fixtures/quality_proxy/Cargo.toml.fixture");
 
         let cargo_path = temp_dir.path().join("Cargo.toml");
         let mut cargo_file = fs::File::create(&cargo_path)?;
@@ -631,12 +707,7 @@ edition = "2021"
         // report is the only answer that invents neither a pass nor a finding.
         let project_dir = temp_dir.path().to_path_buf();
         let spawned = tokio::task::spawn_blocking(move || {
-            let mut cmd = Command::new("cargo");
-            cmd.arg("clippy").current_dir(&project_dir);
-            crate::cli::handlers::work_falsification::deny_refresh::run_with_timeout(
-                &mut cmd,
-                CLIPPY_TIMEOUT,
-            )
+            run_clippy(&project_dir, CLIPPY_TIMEOUT)
         })
         .await
         .context("the cargo clippy worker thread panicked")?;
@@ -809,6 +880,88 @@ mod analysis_measurement_tests {
                 matches!(lint_line_severity(line), ViolationSeverity::Error),
                 "{line} must fail a strict gate"
             );
+        }
+    }
+
+    #[test]
+    fn clippy_child_gets_its_own_target_dir_and_no_coverage_environment() {
+        // #1202: under llvm-cov the child inherited RUSTFLAGS/LLVM_PROFILE_FILE/CARGO_TARGET_DIR,
+        // so a one-file lint was instrumented and queued on the host's build lock.
+        let dir = std::path::Path::new("/nonexistent/proxy-crate");
+        let cmd = clippy_command(dir);
+        let envs: std::collections::HashMap<_, _> = cmd
+            .get_envs()
+            .map(|(k, v)| (k.to_string_lossy().into_owned(), v.map(|v| v.to_owned())))
+            .collect();
+        for var in CLIPPY_ENV_SCRUBBED.iter().filter(|v| **v != "CARGO_TARGET_DIR") {
+            assert_eq!(
+                envs.get(*var),
+                Some(&None),
+                "{var} must be removed from the child, not inherited"
+            );
+        }
+        assert_eq!(
+            envs.get("CARGO_TARGET_DIR"),
+            Some(&Some(dir.join("target").into_os_string())),
+            "the child must build into the temp crate's own target dir"
+        );
+        assert_eq!(
+            envs.get("CARGO_TERM_COLOR"),
+            Some(&Some("never".into())),
+            "colour codes would hide rustc's `error:` prefix from the parser"
+        );
+        assert_eq!(cmd.get_current_dir(), Some(dir));
+    }
+
+    #[test]
+    fn run_clippy_lints_the_committed_fixture_crate_and_reports_its_finding() {
+        // Control for the env/target/prlimit tests above: the wrapped command really runs
+        // clippy and really reports. The fixture is copied so no target/ lands in the repo.
+        let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/quality_proxy");
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir(tmp.path().join("src")).expect("mkdir");
+        for (from, to) in [("Cargo.toml.fixture", "Cargo.toml"), ("lib.rs.fixture", "src/lib.rs")] {
+            std::fs::copy(fixture.join(from), tmp.path().join(to)).expect("copy fixture");
+        }
+        let out = run_clippy(tmp.path(), CLIPPY_TIMEOUT)
+            .expect("clippy spawns")
+            .expect("clippy finishes within the deadline");
+        let text = String::from_utf8_lossy(&out.stderr);
+        assert!(text.contains("ptr_arg"), "fixture finding missing: {text}");
+        assert!(tmp.path().join("target").is_dir(), "own target dir was used");
+    }
+
+    #[test]
+    fn a_failed_clippy_run_with_no_diagnostic_is_not_a_pass() {
+        use std::os::unix::process::ExitStatusExt;
+        let out = |code: i32, stderr: &str| std::process::Output {
+            status: std::process::ExitStatus::from_raw(code << 8),
+            stdout: Vec::new(),
+            stderr: stderr.as_bytes().to_vec(),
+        };
+        let err = interpret_clippy_output(&out(1, "prlimit: failed to execute cargo: No such file"))
+            .expect_err("a wrapper failure must not read as zero findings");
+        assert!(err.to_string().contains("did not run"), "{err}");
+        assert!(interpret_clippy_output(&out(0, "")).expect("clean run").is_empty());
+        let found = interpret_clippy_output(&out(1, "error: could not compile `x`"))
+            .expect("a real compile error is a finding");
+        assert_eq!(found.len(), 1);
+    }
+
+    #[test]
+    fn clippy_child_is_address_space_bounded_when_prlimit_exists() {
+        let args: Vec<_> = clippy_command(std::path::Path::new("/x"))
+            .get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        if cfg!(target_os = "linux") && prlimit_on_path() {
+            assert_eq!(
+                args.first().map(String::as_str),
+                Some(format!("--as={CLIPPY_ADDRESS_SPACE_BYTES}:").as_str())
+            );
+        } else {
+            assert_eq!(args, ["clippy"]);
         }
     }
 
