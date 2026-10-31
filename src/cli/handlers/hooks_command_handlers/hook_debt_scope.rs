@@ -430,7 +430,13 @@ fn clear_what_a_merge_parent_authored(
     };
     let still_ours: Vec<DebtGrowth> = head_growths
         .iter()
-        .filter(|g| parent_growths.contains(g))
+        // Identity is function + metric + measured value: `previous` is each side's own
+        // baseline and legitimately differs between the two parents.
+        .filter(|g| {
+            parent_growths.iter().any(|p| {
+                p.function == g.function && p.metric == g.metric && p.measured == g.measured
+            })
+        })
         .cloned()
         .collect();
     Ok(if still_ours.is_empty() {

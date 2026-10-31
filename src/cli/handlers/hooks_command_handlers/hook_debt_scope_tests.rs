@@ -572,6 +572,34 @@ mod staged_repo {
         );
     }
 
+    #[test]
+    fn staged_verdict_refuses_a_merge_that_grows_a_function_whose_baseline_differs_per_parent() {
+        // `debted` is over the limit in both parents but at different values (7 here, 8 on
+        // main), so the two verdicts carry different `previous`; the merge then grows it.
+        let repo = repo_with_committed_debt();
+        let p = repo.path();
+        let more = |extra: &str| HEAD_VERSION.replace("    n\n}\n\nfn innocent", extra);
+        git(p, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(p.join("src/lib.rs"), HEAD_VERSION.replace("x + 1", "x + 2"))
+            .expect("write");
+        git(p, &["commit", "-q", "-am", "feature work"]);
+        git(p, &["checkout", "-q", "main"]);
+        let main_version = more("    if x > 6 { n += 1; }\n    n\n}\n\nfn innocent");
+        std::fs::write(p.join("src/lib.rs"), main_version).expect("write");
+        git(p, &["commit", "-q", "-am", "main grows debt"]);
+        git(p, &["checkout", "-q", "feature"]);
+        git(p, &["merge", "-q", "--no-ff", "--no-commit", "main"]);
+        let resolved = more("    if x > 6 { n += 1; }\n    if x > 7 { n += 1; }\n    if x > 8 { n += 1; }\n    n\n}\n\nfn innocent")
+            .replace("x + 1", "x + 2");
+        stage(p, &resolved);
+        let verdict = staged_verdict(p, Path::new("src/lib.rs"), LIMITS).expect("verdict");
+        assert!(
+            !verdict.is_allowed(),
+            "the merge grew `debted` past both parents: {:?}",
+            verdict.rendered()
+        );
+    }
+
     /// A path git does not have staged is NOT "no violations": say so.
     #[test]
     fn staged_verdict_refuses_to_grade_an_unstaged_path() {
