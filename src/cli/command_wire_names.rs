@@ -32,9 +32,10 @@
 //! product guesses with no failure behind them.
 //!
 //! Revisit when a live wrong answer appears, or when a top-level command that
-//! should be on MCP is not (`pmat tdg` is the first candidate). Candidates to
-//! expose: tdg, verify, context, comply, score. CLI-only: refactor, hooks,
-//! init, serve. Tracking: #1136, #1029.
+//! should be on MCP is not (`pmat verify` is the first candidate). Measured
+//! against the tools registered in `src/mcp_pmcp/server.rs`: verify, comply
+//! and score have no MCP tool today; tdg and context already do. CLI-only by
+//! intent: refactor, hooks, init, serve. Tracking: #1136, #1029.
 //!
 //! # The invariant
 //!
