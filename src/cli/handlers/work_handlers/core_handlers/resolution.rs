@@ -67,6 +67,11 @@ pub(super) async fn resolve_yaml_ticket(
 
     if let Some(existing) = service.find_item(id)? {
         println!("   {}", c::pass("Found existing ticket"));
+        // #1472: starting a ticket that is already InProgress re-activates it.
+        if existing.status == ItemStatus::InProgress {
+            println!("   {}", c::dim("Already InProgress: re-activating"));
+            return Ok(existing);
+        }
         // DBC §work_lifecycle: Validate state transition before starting
         if !existing.status.can_transition_to(ItemStatus::InProgress) {
             anyhow::bail!(
@@ -307,5 +312,46 @@ mod resolution_pure_tests {
         let r = report(vec![fail_claim(1, "warn-only", false)]);
         let unoverrideable: Vec<&ClaimResult> = vec![];
         print_blocked_result(&r, &unoverrideable, "PMAT-300");
+    }
+}
+
+#[cfg(test)]
+mod restart_in_progress_tests {
+    //! #1472: `pmat work start` on a ticket that is already InProgress used to
+    //! bail with "InProgress → InProgress ... terminal state".
+    use super::*;
+    use crate::models::roadmap::Roadmap;
+
+    fn service_with(status: ItemStatus) -> (tempfile::TempDir, RoadmapService, Roadmap) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("roadmap.yaml");
+        let mut item = RoadmapItem::new("T-1".to_string(), "t one".to_string());
+        item.status = status;
+        let roadmap = Roadmap {
+            roadmap: vec![item],
+            ..Roadmap::default()
+        };
+        let service = RoadmapService::new(&path);
+        service.save(&roadmap).unwrap();
+        (dir, service, roadmap)
+    }
+
+    #[tokio::test]
+    async fn start_is_idempotent_for_in_progress() {
+        let (_d, service, roadmap) = service_with(ItemStatus::InProgress);
+        let item = resolve_yaml_ticket(&service, "T-1", &roadmap, false)
+            .await
+            .expect("re-starting an InProgress ticket must succeed");
+        assert_eq!(item.status, ItemStatus::InProgress);
+    }
+
+    #[tokio::test]
+    async fn start_still_refuses_terminal_states() {
+        let (_d, service, roadmap) = service_with(ItemStatus::Completed);
+        let err = resolve_yaml_ticket(&service, "T-1", &roadmap, false)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("Completed"), "{err}");
     }
 }
