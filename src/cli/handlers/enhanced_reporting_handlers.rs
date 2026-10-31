@@ -184,8 +184,8 @@ pub async fn handle_generate_report(
     markdown: bool,
     csv: bool,
     include_visualizations: bool,
-    _include_executive_summary: bool,
-    _include_recommendations: bool,
+    include_executive_summary: bool,
+    include_recommendations: bool,
     _analyses: Vec<AnalysisType>,
     _confidence_threshold: u8,
     output: Option<PathBuf>,
@@ -201,6 +201,7 @@ pub async fn handle_generate_report(
 
     let actual_format = determine_output_format(output_format, text, markdown, csv);
     reject_unimplemented_visualizations(include_visualizations)?;
+    reject_unimplemented_sections(include_executive_summary, include_recommendations)?;
     log_report_generation_start(&project_path, &actual_format);
 
     let service = DefectReportService::new();
@@ -280,6 +281,35 @@ fn reject_unimplemented_visualizations(include_visualizations: bool) -> Result<(
             "--include-visualizations is not implemented for `pmat report`: it changed \
              nothing in json, csv, markdown or text, and the formats that could embed \
              charts (html, pdf, dashboard) are not implemented either. Re-run without it."
+        );
+    }
+    Ok(())
+}
+
+/// Refuse `--include-executive-summary` and `--include-recommendations` rather
+/// than accepting them and doing nothing (#1473).
+///
+/// Measured on 3.42.0: `pmat report --md` with and without either flag differs
+/// only in "Analysis Duration". The Executive Summary is always emitted, so
+/// "include" adds nothing, and the report has no recommendations section at all.
+/// Same rule as `--include-visualizations`: a declared option must do what it
+/// says or be refused, never silently no-op.
+fn reject_unimplemented_sections(
+    include_executive_summary: bool,
+    include_recommendations: bool,
+) -> Result<()> {
+    if include_executive_summary {
+        anyhow::bail!(
+            "--include-executive-summary is not implemented for `pmat report`: the \
+             Executive Summary is always emitted, so the flag changed nothing. \
+             Re-run without it."
+        );
+    }
+    if include_recommendations {
+        anyhow::bail!(
+            "--include-recommendations is not implemented for `pmat report`: the \
+             report has no recommendations section, so the flag changed nothing. \
+             Re-run without it."
         );
     }
     Ok(())
@@ -587,6 +617,37 @@ mod tests {
             err.to_string().contains("not implemented"),
             "unexpected error: {err}"
         );
+    }
+
+    /// #1473: `--include-executive-summary` and `--include-recommendations`
+    /// were accepted and changed nothing; each must now fail loudly, named.
+    #[tokio::test]
+    async fn test_generate_report_refuses_the_section_flags() {
+        for (es, rec, flag) in [
+            (true, false, "--include-executive-summary"),
+            (false, true, "--include-recommendations"),
+        ] {
+            let dir = tempfile::tempdir().expect("tempdir");
+            std::fs::write(dir.path().join("lib.rs"), "fn main() {}").expect("write");
+            let err = handle_generate_report(
+                dir.path().to_path_buf(),
+                ReportOutputFormat::Markdown,
+                false,
+                false,
+                false,
+                false,
+                es,
+                rec,
+                vec![],
+                50,
+                None,
+                false,
+            )
+            .await
+            .expect_err("a flag that changes nothing must not succeed as a no-op");
+            assert!(err.to_string().contains(flag), "{flag}: {err}");
+        }
+        assert!(reject_unimplemented_sections(false, false).is_ok());
     }
 
     #[tokio::test]
