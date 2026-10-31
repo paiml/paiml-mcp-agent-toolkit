@@ -650,6 +650,33 @@ mod tests {
         assert!(reject_unimplemented_sections(false, false).is_ok());
     }
 
+    /// #1473: the section flags must be false unless the user typed them,
+    /// otherwise the refusal fires on every plain `pmat report`.
+    #[test]
+    fn section_flags_are_false_unless_typed() {
+        use clap::Parser;
+        let parse = |extra: &[&str]| {
+            let mut argv = vec!["pmat", "report"];
+            argv.extend_from_slice(extra);
+            match crate::cli::Cli::try_parse_from(argv)
+                .expect("parses")
+                .command
+            {
+                crate::cli::Commands::Report {
+                    include_executive_summary,
+                    include_recommendations,
+                    ..
+                } => (include_executive_summary, include_recommendations),
+                _ => panic!("not the report command"),
+            }
+        };
+        assert_eq!(parse(&[]), (false, false));
+        assert_eq!(
+            parse(&["--include-executive-summary", "--include-recommendations"]),
+            (true, true)
+        );
+    }
+
     #[tokio::test]
     async fn test_write_report_output_writes_explicit_path() {
         let dir = tempfile::tempdir().expect("tempdir");
