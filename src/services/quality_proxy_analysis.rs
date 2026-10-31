@@ -81,6 +81,16 @@ fn clippy_command(project_dir: &std::path::Path) -> std::process::Command {
     cmd
 }
 
+/// The one spawn function: scrubbed environment, own target dir and `prlimit --as` from
+/// [`clippy_command`], and the deadline plus process group from `run_with_timeout`.
+fn run_clippy(
+    project_dir: &std::path::Path,
+    deadline: Duration,
+) -> std::io::Result<Option<std::process::Output>> {
+    let mut cmd = clippy_command(project_dir);
+    crate::cli::handlers::work_falsification::deny_refresh::run_with_timeout(&mut cmd, deadline)
+}
+
 fn prlimit_on_path() -> bool {
     std::env::var_os("PATH")
         .is_some_and(|paths| std::env::split_paths(&paths).any(|d| d.join("prlimit").is_file()))
@@ -629,6 +639,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+
+[workspace]
 "#;
 
         let cargo_path = temp_dir.path().join("Cargo.toml");
@@ -683,11 +695,7 @@ edition = "2021"
         // report is the only answer that invents neither a pass nor a finding.
         let project_dir = temp_dir.path().to_path_buf();
         let spawned = tokio::task::spawn_blocking(move || {
-            let mut cmd = clippy_command(&project_dir);
-            crate::cli::handlers::work_falsification::deny_refresh::run_with_timeout(
-                &mut cmd,
-                CLIPPY_TIMEOUT,
-            )
+            run_clippy(&project_dir, CLIPPY_TIMEOUT)
         })
         .await
         .context("the cargo clippy worker thread panicked")?;
@@ -886,6 +894,25 @@ mod analysis_measurement_tests {
             "the child must build into the temp crate's own target dir"
         );
         assert_eq!(cmd.get_current_dir(), Some(dir));
+    }
+
+    #[test]
+    fn run_clippy_lints_the_committed_fixture_crate_and_reports_its_finding() {
+        // Control for the env/target/prlimit tests above: the wrapped command really runs
+        // clippy and really reports. The fixture is copied so no target/ lands in the repo.
+        let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/quality_proxy");
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir(tmp.path().join("src")).expect("mkdir");
+        for rel in ["Cargo.toml", "src/lib.rs"] {
+            std::fs::copy(fixture.join(rel), tmp.path().join(rel)).expect("copy fixture");
+        }
+        let out = run_clippy(tmp.path(), CLIPPY_TIMEOUT)
+            .expect("clippy spawns")
+            .expect("clippy finishes within the deadline");
+        let text = String::from_utf8_lossy(&out.stderr);
+        assert!(text.contains("ptr_arg"), "fixture finding missing: {text}");
+        assert!(tmp.path().join("target").is_dir(), "own target dir was used");
     }
 
     #[test]
