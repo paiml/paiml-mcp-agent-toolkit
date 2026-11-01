@@ -44,7 +44,7 @@ jobs:
       - name: Symlink provable-contracts for Cargo path deps
         run: ln -sf "$GITHUB_WORKSPACE/provable-contracts" "$GITHUB_WORKSPACE/../provable-contracts"
 
-      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: dtolnay/rust-toolchain@1.120.0
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -199,7 +199,7 @@ jobs:
           fi
           echo "Lean proofs are hole-free (0 sorry, 0 admit)."
 
-      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: dtolnay/rust-toolchain@1.120.0
 
       - uses: Swatinem/rust-cache@v2
         with:

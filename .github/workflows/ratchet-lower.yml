@@ -44,7 +44,7 @@ jobs:
           # unable to read what the file used to say.
           fetch-depth: 0
 
-      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: dtolnay/rust-toolchain@1.120.0
 
       - name: Build pmat
         run: cargo build --release --bin pmat
