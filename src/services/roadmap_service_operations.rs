@@ -312,6 +312,65 @@ impl RoadmapService {
         // Lock released automatically
     }
 
+    /// #1426: add or update ONE row, leaving every other byte of the roadmap as
+    /// it was found.
+    ///
+    /// `pmat work start` and `pmat work complete` changed one ticket's status
+    /// through `load` + [`Self::save`], which re-serialises the whole document:
+    /// every other row's scalars were re-quoted (`- 'machines/…'` became
+    /// `- machines/…`, `''` was unescaped), so a +17-line ticket edit showed as
+    /// +107/−90 on the file every pull request appends to. The row is now
+    /// rendered alone and spliced in — [`Self::replace_item_raw`]'s edit when
+    /// one row declares its id, [`Self::persist_new_row`]'s append when none
+    /// does — under one exclusive lock, on the bytes just read. In a repository
+    /// that has opted in to `entries/`, the fragment writer already touches only
+    /// the changed row, so that path is unchanged.
+    ///
+    /// # Errors
+    ///
+    /// The validator's refusal when the roadmap does not pass
+    /// `pmat work validate` (a duplicated id included); nothing is written.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    pub fn upsert_item_in_place(&self, item: &RoadmapItem) -> Result<()> {
+        let lock = self.acquire_write_lock()?;
+        if self.fragment_dir()?.is_some() {
+            let mut roadmap = match self.read_view_unlocked()? {
+                Some(contents) => self.parse_roadmap_yaml(&contents)?,
+                None => Roadmap::default(),
+            };
+            roadmap.upsert_item(item.clone());
+            return self.write_roadmap_unlocked(&lock, &roadmap);
+        }
+        let raw = self.read_view_unlocked()?.unwrap_or_default();
+        if raw.trim().is_empty() {
+            let mut roadmap = Roadmap::default();
+            roadmap.upsert_item(item.clone());
+            return self.write_roadmap_unlocked(&lock, &roadmap);
+        }
+        self.parse_roadmap_yaml(&raw)?;
+        crate::services::roadmap_text::check_roadmap_text(&raw, &self.roadmap_path)?;
+        let declared = crate::services::roadmap_text::id_lines(&raw)
+            .iter()
+            .any(|(_, id)| *id == item.id);
+        if !declared {
+            return self.persist_new_row(&lock, &raw, item);
+        }
+        let block = crate::services::roadmap_text::render_item_block(
+            item,
+            crate::services::roadmap_text::row_indent(&raw),
+        );
+        let updated = crate::services::roadmap_text::replace_item_block(&raw, &item.id, &block)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No single row declares {} in {:?}: it is declared more than once",
+                    item.id,
+                    self.roadmap_path
+                )
+            })?;
+        lock.write(&self.roadmap_path, updated)
+            .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))
+    }
+
     /// Serialise and write the roadmap, under the lock `lock` proves is held.
     ///
     /// PMAT-1363: the ONE model-level writer — `save`, `upsert_item`,

@@ -1,0 +1,384 @@
+{
+  "ticket": "PMAT-1548",
+  "base": "origin/master",
+  "base_resolved": "origin/master",
+  "base_note": "no origin/origin/master exists; judged against the local ref",
+  "head": "4cd8b46917ca1064bb57c6ac5e0c47e9d1afde2a",
+  "diff_sha256": "5619fbcbc4b3fe4ea733740836604a47008bd0e9cf3fd64d2afe1d9afad87fd8",
+  "width": 3,
+  "executor": "agy",
+  "prompt_mode": "inline",
+  "prompt_bytes": 8744,
+  "prompt_sha256": "51d9718a5a9ae8422bf2871e1e2be80c1cd50e30d9ef6504102a466210285a55",
+  "author": {
+    "model": "claude-sonnet-5-5",
+    "family": "claude",
+    "source": "flag"
+  },
+  "agreed": true,
+  "lanes": [
+    {
+      "lane": 1,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Independent review (Lane 1 of 3) for PMAT-1548.\n\nThe diff against origin/master...HEAD was audited against all refutation criteria and ticket acceptance criteria:\n1. Lockfile Bumps: Cargo.lock applies surgical version bumps for all fixable dependencies named in the ticket (rustls-webpki 0.103.16, webpki-roots 1.0.11, webpki-root-certs 1.0.11, zstd-sys 2.1.2, pulldown-cmark 0.13.5, tokio 1.53.3, and libz-sys 1.1.31) without introducing extraneous dependency or edge changes.\n2. Advisory Ignores & Policy: .cargo/audit.toml and deny.toml add reviewed ignores for unfixable transitive advisories needing upstream major version bumps (RUSTSEC-2026-0387, RUSTSEC-2026-0391, RUSTSEC-2026-0398, RUSTSEC-2026-0403), fully compliant with the repository audit policy and formatting constraints.\n3. Scope & Integrity: No test asserts the opposite of the ticket, no gate is weakened, no receipt claim is unbacked, and no out-of-scope modifications exist. Note: $(git rev-parse --git-dir)/paiml-lane-witness was absent in this review worktree.\n\nVerdict: PASS.",
+      "findings": [
+        {
+          "claim": "Cargo.lock applies surgical bumps for all 7 fixable advisories: libz-sys (1.1.29 -> 1.1.31), pulldown-cmark (0.13.4 -> 0.13.5), rustls-webpki (0.103.15 -> 0.103.16), tokio (1.53.1 -> 1.53.3), webpki-root-certs (1.0.8 -> 1.0.11), webpki-roots (1.0.8 -> 1.0.11), and zstd-sys (2.0.16+zstd.1.5.7 -> 2.1.2+zstd.1.5.7), with zero unrelated crate modifications.",
+          "file": "Cargo.lock",
+          "fix": "None needed",
+          "grounding": "cited",
+          "line": 3794
+        },
+        {
+          "claim": ".cargo/audit.toml adds four reviewed ignores for genuinely unfixable transitive advisories requiring upstream major versions (RUSTSEC-2026-0387, RUSTSEC-2026-0391, RUSTSEC-2026-0398, RUSTSEC-2026-0403) strictly adhering to the repository audit policy header without spurious RUSTSEC tokens in prose comments.",
+          "file": ".cargo/audit.toml",
+          "fix": "None needed",
+          "grounding": "cited",
+          "line": 32
+        },
+        {
+          "claim": "deny.toml registers matching advisory ignores for RUSTSEC-2026-0387, RUSTSEC-2026-0391, RUSTSEC-2026-0398, and RUSTSEC-2026-0403 with detailed rationale.",
+          "file": "deny.toml",
+          "fix": "None needed",
+          "grounding": "cited",
+          "line": 27
+        },
+        {
+          "claim": "docs/roadmaps/roadmap.yaml registers PMAT-1548 with status planned and acceptance criteria matching the implemented changes.",
+          "file": "docs/roadmaps/roadmap.yaml",
+          "fix": "None needed",
+          "grounding": "cited",
+          "line": 7781
+        }
+      ],
+      "raw_bytes": 6076,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "grounding_check": "parity",
+      "role": "independent",
+      "model": "gemini-3.8-flash-high",
+      "model_measured": "gemini-3.8-flash-high",
+      "model_source": "measured",
+      "family": "gemini",
+      "executor": "agy",
+      "brief_sha256": "51d9718a5a9ae8422bf2871e1e2be80c1cd50e30d9ef6504102a466210285a55",
+      "trace": {
+        "input_sha256": "56f3afda7e67bdc3bf6c9370183d2aafe95219f15092e734e80d4b23a103d589",
+        "output_sha256": "f450cb7a998151fea8ae177150b77f23fe70b2a1e6e5067aa6983cf2e3a3f847",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "gemini-3.8-flash-high",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "gemini-3.8-flash-high",
+            "family": "gemini",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 2,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "I found nothing that refutes the diff against PMAT-1548. The Cargo.lock diff only touches the packages the ticket names: rustls-webpki 0.103.16, webpki-roots and webpki-root-certs 1.0.11, tokio 1.53.3, libz-sys 1.1.31, pulldown-cmark 0.13.5 and zstd-sys 2.1.2. No other dependency edge moves, so the lockfile is surgical. The four ignores (RUSTSEC-2026-0387/0391/0398/0403) are exactly the ones the ticket lists. They appear in both deny.toml and .cargo/audit.toml, and each has a reason. The lock still pins crypto-bigint 0.5.5, zstd 0.13.3 and zstd-safe 7.2.4, which matches the claim that only upstream major bumps fix them. octocrab is optional behind `github-api`, and github_client.rs builds the client with `.personal_token(token)`, which supports the reachability argument for 0387. No gate is weakened and no test is touched. I could not check the claim that `cargo deny check advisories` and `cargo audit` report no errors: this lane may not run them, and the receipt gives no recorded gate result. That claim is asserted, not refuted. There are two minor non-blocking notes below. I found no paiml-lane-witness file in the worktree git dir, so tree_witness is left out.",
+      "findings": [
+        {
+          "file": ".cargo/audit.toml",
+          "line": 33,
+          "claim": "The RUSTSEC-2026-0391 comment says the fix 'needs zstd>=0.14.3 via an aprender-common upstream bump; mirrors deny.toml'. The deny.toml reason names both aprender-common and batuta-common, and Cargo.lock shows both depend on zstd (lines 259 and 905). So the audit.toml comment does not fully mirror deny.toml. This is documentation drift only and has no effect on the gate.",
+          "grounding": "measured",
+          "fix": "Name batuta-common in the audit.toml comment as well."
+        },
+        {
+          "file": "Cargo.lock",
+          "line": 5397,
+          "claim": "A second pulldown-cmark 0.9.6 stays in the lock. It is pulled in by another crate (around Cargo.lock:5911), and the diff only bumps 0.13.4 to 0.13.5. If the pulldown-cmark advisory's affected range covers 0.9.x, cargo deny/audit would still fail. The ticket's 'no errors (measured)' claim says it does not, but this lane could not run the tools to confirm.",
+          "grounding": "measured",
+          "fix": "Attach the cargo deny/cargo audit output to the receipt so the 'no errors' claim is backed by evidence."
+        },
+        {
+          "file": "src/services/github_client.rs",
+          "line": 54,
+          "claim": "Supports the 0387 ignore reason: the client is built with `Octocrab::builder().personal_token(token)`, and octocrab is optional (`github-api = [\"octocrab\"]`, Cargo.toml:618). No JWT/app auth path was found.",
+          "grounding": "measured"
+        }
+      ],
+      "raw_bytes": 6003,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-opus-5-5",
+      "model_measured": "claude-opus-5-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "51d9718a5a9ae8422bf2871e1e2be80c1cd50e30d9ef6504102a466210285a55",
+      "trace": {
+        "input_sha256": "388e8efac1d275dbaff6b79e2456212744092aa7d6965dc2a3a13ee620f61c54",
+        "output_sha256": "d89af18ca3c0b70c12160c2f3d6b439004fe862650524ffc72b0481fee53bb08",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-opus-5-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-opus-5-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "lane": 3,
+      "status": "SUCCESS",
+      "verdict": "PASS",
+      "summary": "Diff correctly implements PMAT-1548 acceptance criteria: all 7 lockfile bumps present, 4 unfixable advisories ignored with reviewed reasons in both deny.toml and .cargo/audit.toml, surgical lockfile (only advisory-related packages), and roadmap entry accurately documented. Reasons explain why each advisory requires upstream major bumps. Consistency verified between .cargo/audit.toml and deny.toml ignore entries.",
+      "findings": [],
+      "raw_bytes": 1943,
+      "err_bytes": 0,
+      "envelope_status": "SUCCESS",
+      "verdict_source": "structured_output",
+      "executor": "claude-code",
+      "grounding_check": "parity",
+      "role": "counted",
+      "model": "claude-haiku-4-5",
+      "model_measured": "claude-haiku-4-5",
+      "model_source": "flag",
+      "family": "claude",
+      "brief_sha256": "51d9718a5a9ae8422bf2871e1e2be80c1cd50e30d9ef6504102a466210285a55",
+      "trace": {
+        "input_sha256": "75efdcc4d0efa11f7a2ed53fad5ed0f567fec9ad0bf2bfadd3ec91957e903983",
+        "output_sha256": "8d923ee95656b18131056309232c662f8d6926cd1e23956d31f3ad7602f19a6c",
+        "store": null,
+        "store_why": "almacen not provisioned yet (infra-27): the blobs stay in the round's gitignored .lanes dir"
+      },
+      "fallback": {
+        "judged_by": "claude-haiku-4-5",
+        "exhausted": false,
+        "attempts": [
+          {
+            "model": "claude-haiku-4-5",
+            "family": "claude",
+            "outcome": "answered"
+          }
+        ],
+        "skipped": []
+      }
+    }
+  ],
+  "dissent": [],
+  "dedup": [
+    {
+      "file": ".cargo/audit.toml",
+      "line": 32,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        ".cargo/audit.toml adds four reviewed ignores for genuinely unfixable transitive advisories requiring upstream major versions (RUSTSEC-2026-0387, RUSTSEC-2026-0391, RUSTSEC-2026-0398, RUSTSEC-2026-0403) strictly adhering to the repository audit policy header without spurious RUSTSEC tokens in prose comments."
+      ]
+    },
+    {
+      "file": ".cargo/audit.toml",
+      "line": 33,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "The RUSTSEC-2026-0391 comment says the fix 'needs zstd>=0.14.3 via an aprender-common upstream bump; mirrors deny.toml'. The deny.toml reason names both aprender-common and batuta-common, and Cargo.lock shows both depend on zstd (lines 259 and 905). So the audit.toml comment does not fully mirror deny.toml. This is documentation drift only and has no effect on the gate."
+      ]
+    },
+    {
+      "file": "Cargo.lock",
+      "line": 3794,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "Cargo.lock applies surgical bumps for all 7 fixable advisories: libz-sys (1.1.29 -> 1.1.31), pulldown-cmark (0.13.4 -> 0.13.5), rustls-webpki (0.103.15 -> 0.103.16), tokio (1.53.1 -> 1.53.3), webpki-root-certs (1.0.8 -> 1.0.11), webpki-roots (1.0.8 -> 1.0.11), and zstd-sys (2.0.16+zstd.1.5.7 -> 2.1.2+zstd.1.5.7), with zero unrelated crate modifications."
+      ]
+    },
+    {
+      "file": "Cargo.lock",
+      "line": 5397,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "A second pulldown-cmark 0.9.6 stays in the lock. It is pulled in by another crate (around Cargo.lock:5911), and the diff only bumps 0.13.4 to 0.13.5. If the pulldown-cmark advisory's affected range covers 0.9.x, cargo deny/audit would still fail. The ticket's 'no errors (measured)' claim says it does not, but this lane could not run the tools to confirm."
+      ]
+    },
+    {
+      "file": "deny.toml",
+      "line": 27,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "deny.toml registers matching advisory ignores for RUSTSEC-2026-0387, RUSTSEC-2026-0391, RUSTSEC-2026-0398, and RUSTSEC-2026-0403 with detailed rationale."
+      ]
+    },
+    {
+      "file": "docs/roadmaps/roadmap.yaml",
+      "line": 7781,
+      "lanes_agreeing": [
+        1
+      ],
+      "claims": [
+        "docs/roadmaps/roadmap.yaml registers PMAT-1548 with status planned and acceptance criteria matching the implemented changes."
+      ]
+    },
+    {
+      "file": "src/services/github_client.rs",
+      "line": 54,
+      "lanes_agreeing": [
+        2
+      ],
+      "claims": [
+        "Supports the 0387 ignore reason: the client is built with `Octocrab::builder().personal_token(token)`, and octocrab is optional (`github-api = [\"octocrab\"]`, Cargo.toml:618). No JWT/app auth path was found."
+      ]
+    }
+  ],
+  "uncovered": [],
+  "coverage_source": "lanes",
+  "partial": false,
+  "partial_reasons": [],
+  "fallback": {
+    "same_family_width": 2,
+    "chain": [
+      {
+        "model": "gemini-3.8-flash-high",
+        "family": "gemini",
+        "disposition": "configured"
+      },
+      {
+        "model": "claude-opus-5-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-haiku-4-5",
+        "family": "claude",
+        "disposition": "claude-code",
+        "why": "run by Claude Code on its own budget: a configured seat runs every round, a fallback step only when every non-Claude family is measured out (PMAT-360, operator standing rule)"
+      },
+      {
+        "model": "claude-sonnet-5-5",
+        "family": "claude",
+        "disposition": "excluded-self-review",
+        "why": "the author's own model id (claude-sonnet-5-5) — a model never reviews its own diff, at any width (R-15a identity bar)"
+      },
+      {
+        "model": "qwen3.5",
+        "family": "qwen",
+        "disposition": "not-run",
+        "why": "no quorum.local_lane in the config — the aprender lane has no model to load"
+      }
+    ],
+    "precheck": [
+      {
+        "family": "gemini",
+        "model": "gemini-3.8-flash-high",
+        "probe": 1,
+        "outcome": "live"
+      }
+    ],
+    "degraded": null,
+    "prah": {
+      "source": "install-receipt",
+      "path": "/home/noah/.claude/skills/paiml-implement/bin/prah"
+    },
+    "bucket": {
+      "ledger": "/home/noah/.local/state/paiml-implement/agy-bucket.jsonl",
+      "window_s": 18000,
+      "pace": "off",
+      "buckets": {
+        "gemini": {
+          "bucket": "gemini",
+          "state": "unmeasured",
+          "reason": "agy-bucket.sh could not read the ledger; the bucket is not consulted this round"
+        }
+      },
+      "closed": []
+    }
+  },
+  "auto_merge": {
+    "checked": false,
+    "was_armed": false,
+    "disarmed": false,
+    "note": "no --pr given: nothing to disarm"
+  },
+  "cheap_seat": "claude-haiku-4-5",
+  "canary": {
+    "shape": "canary",
+    "max_brief_bytes": 24576,
+    "brief_bytes": 8744
+  },
+  "advisory_lane": {
+    "state": "unavailable",
+    "counts": false,
+    "row": {
+      "NotRun": "Busy"
+    },
+    "verdict": "unavailable",
+    "why": "no host answered inside the budget",
+    "served_by": null,
+    "gpu_proof": null,
+    "apr": null,
+    "apr_binary_sha256": null,
+    "apr_tag": null,
+    "apr_commit": null,
+    "apr_build_why": null,
+    "model": null,
+    "model_sha256": null,
+    "rc": 2,
+    "wall_s": 0,
+    "collected_s": 214,
+    "budget_s": 196,
+    "budget_basis": "ledger: 2 x p95 98 s over 126 gx10-cuda Verdict rows",
+    "brief": {
+      "bytes": 8744,
+      "sent_bytes": 8913,
+      "max_bytes": 196608
+    },
+    "trace": {
+      "input_sha256": "a57f69b909d41cd269c4f0b96550f29ed5f165de11e330b3e89aca22b67ef966",
+      "raw": "advisory.json"
+    },
+    "attempts": [
+      {
+        "host": "gx10",
+        "ok": false,
+        "wall_s": 0,
+        "error": "busy: executor yielded (unit inactive; last yield: 2026-10-03T00:47:22Z host=gx10-a5b5 event=stopped gpu-priority lock=/tmp/apr-gpu.priority)",
+        "ts": "2026-10-29T15:32:17.316Z",
+        "wall_ms": 641,
+        "request_id": "01a1884a-5d22-798c-9bf4-a1b295c59c12",
+        "load1": 11.26,
+        "cold": null
+      }
+    ],
+    "ledger": "/home/noah/.local/state/paiml-implement/advisory-ledger.jsonl",
+    "raw": "advisory.json",
+    "agrees_with_counted": null,
+    "counted": "PASS"
+  },
+  "lint": {
+    "ok": true,
+    "output": "receipt complete: kind=artifact lanes=3 author=claude-sonnet-5-5/claude same_family=2/2"
+  }
+}

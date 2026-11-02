@@ -1,0 +1,5 @@
+# FLOW-009 RC-2: the public half of the lambda batcher receipt key. The private half lives only on
+# lambda-labs (~/.config/pmat-batcher/receipt_ed25519, paiml/infra forjar resource pmat-batcher-receipt-key)
+# and never enters git. Fingerprint: SHA256:8un1DYXhrsJ0e+6UM3w8KSE9CKBpfDVSRG41yL9wS5o (ED25519).
+# Receipts verify against this file only once this repo's gate carries the FLOW-009 receipt check.
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINna9SBgvdA0Te1LhyTa6jXbDu8SgJmiDDPhHkLmljw7 flow009-batcher
