@@ -112,12 +112,60 @@ fn continue_and_complete_on_main_refuse_with_the_fix() {
     }
 }
 
-/// continue with no id resolves from the branch (the item is absent from the
-/// empty roadmap, so it fails, but it must fail NAMING the derived ticket).
+/// continue with no id resolves from the branch (the item is in the roadmap, so it
+/// succeeds and must name the derived ticket).
 #[test]
 fn continue_on_a_work_branch_uses_the_branch_ticket() {
     let (_tmp, _main, wt) = fixture("work/PMAT-123");
-    let (_ok, out, err) = run(&wt, &["work", "continue"]);
+    write_roadmap(&wt, true);
+    let (ok, out, err) = run(&wt, &["work", "continue"]);
+    assert!(ok, "continue failed: {out}{err}");
     let all = format!("{out}{err}");
     assert!(all.contains("PMAT-123"), "{all}");
+}
+
+fn write_roadmap(wt: &Path, with_branch_ticket: bool) {
+    let dir = wt.join("docs/roadmaps");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut y = String::from("roadmap_version: '1.0'\ngithub_enabled: false\nroadmap:\n");
+    let mut ids = vec!["OTHER-1"];
+    if with_branch_ticket {
+        ids.push("PMAT-123");
+    }
+    for id in ids {
+        y.push_str(&format!(
+            "- id: {id}\n  github_issue: null\n  item_type: task\n  title: 't {id}'\n  status: planned\n  priority: medium\n  assigned_to: null\n  created: 2026-01-01T00:00:00Z\n  updated: 2026-01-01T00:00:00Z\n  spec: null\n  acceptance_criteria: []\n  phases: []\n  subtasks: []\n  estimated_effort: null\n  labels: []\n  notes: null\n"
+        ));
+    }
+    std::fs::write(dir.join("roadmap.yaml"), y).unwrap();
+}
+
+/// B3: the branch ticket is shown IN ADDITION to the roadmap listing.
+#[test]
+fn status_on_a_work_branch_still_lists_the_roadmap() {
+    for known in [false, true] {
+        let (_tmp, _main, wt) = fixture("work/PMAT-123");
+        write_roadmap(&wt, known);
+        let (ok, out, err) = run(&wt, &["work", "status"]);
+        assert!(ok, "status failed: {err}");
+        assert!(out.contains("Active ticket: "), "no active ticket: {out}");
+        assert!(
+            out.contains("OTHER-1"),
+            "roadmap listing lost (known={known}): {out}"
+        );
+    }
+}
+
+/// B4: status with an explicit id that differs from the branch prints the note.
+#[test]
+fn status_with_a_differing_explicit_id_prints_the_note() {
+    let (_tmp, _main, wt) = fixture("work/PMAT-123");
+    write_roadmap(&wt, false);
+    let (_ok, _out, err) = run(&wt, &["work", "status", "OTHER-1"]);
+    assert!(
+        err.contains("note: explicit id OTHER-1 used; branch work/PMAT-123 names PMAT-123"),
+        "no note: {err}"
+    );
+    let (_ok, _out, err) = run(&wt, &["work", "status", "PMAT-123"]);
+    assert!(!err.contains("note: explicit id"), "spurious note: {err}");
 }

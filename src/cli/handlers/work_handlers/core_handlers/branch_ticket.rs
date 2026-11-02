@@ -39,15 +39,21 @@ pub fn branch_ticket(dir: &Path) -> Option<(String, String)> {
     ticket_from_branch(&branch).map(|t| (t, branch))
 }
 
+/// Print the stderr note when an explicit id differs from the branch ticket.
+/// Shared by every verb that takes an explicit id, status included.
+pub fn note_if_explicit_differs(id: &str, dir: &Path) {
+    if let Some((derived, branch)) = branch_ticket(dir) {
+        if derived != id {
+            eprintln!("note: explicit id {id} used; branch {branch} names {derived}");
+        }
+    }
+}
+
 /// Resolve the ticket id for a verb. Priority: explicit argument, then the
 /// branch. Off a `work/PMAT-NNNN` branch there is no guess: an error with the fix.
 pub fn resolve_ticket_id(explicit: Option<String>, dir: &Path) -> Result<String> {
     if let Some(id) = explicit {
-        if let Some((derived, branch)) = branch_ticket(dir) {
-            if derived != id {
-                eprintln!("note: explicit id {id} used; branch {branch} names {derived}");
-            }
-        }
+        note_if_explicit_differs(&id, dir);
         return Ok(id);
     }
     match branch_ticket(dir) {
@@ -78,6 +84,9 @@ pub async fn handle_work_status_derived(
     } else {
         None
     };
+    if let Some(explicit) = id.as_deref() {
+        note_if_explicit_differs(explicit, &dir);
+    }
     let Some((ticket, branch)) = derived else {
         return super::handlers::handle_work_status(id, path, active).await;
     };
@@ -95,14 +104,19 @@ pub async fn handle_work_status_derived(
         .load()
         .ok()
         .is_some_and(|r| r.find_item(&ticket).is_some());
-    if !known {
+    if known {
+        super::handlers::handle_work_status(Some(ticket), path.clone(), active).await?;
+    } else {
         println!(
             "   {}",
             c::dim("Not in docs/roadmaps/roadmap.yaml on this branch; add it with: pmat work add")
         );
-        return Ok(());
     }
-    super::handlers::handle_work_status(Some(ticket), path, active).await
+    // In addition to, never instead of, the normal roadmap listing.
+    if roadmap.load().is_ok() {
+        super::handlers::handle_work_status(None, path, active).await?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -136,7 +150,7 @@ mod tests {
     fn explicit_id_wins_without_git() {
         let d = std::env::temp_dir();
         assert_eq!(
-            resolve_ticket_id(Some("PMAT-9".into()), &d).unwrap(),
+            resolve_ticket_id(Some("PMAT-9".into()), &d).expect("explicit id resolves"),
             "PMAT-9"
         );
     }

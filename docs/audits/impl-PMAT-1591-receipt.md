@@ -1,6 +1,7 @@
 # Receipt: PMAT-1591 (GH-1591), FLOW-012 P1 "the branch is the ticket"
 
 Spec row (verbatim): "The active ticket is derived from the branch name work/PMAT-NNNN. Declaration and key files are retired."
+Scope of this change: only the first sentence (derivation from the branch). Retiring declaration and key files is NOT done here and is follow-up.
 Falsifier (verbatim): "A fresh worktree on work/PMAT-123 with no setup: pmat work status reports PMAT-123".
 Source: infra#2853. Feeds W1 (infra#2871) and H1.
 
