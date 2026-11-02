@@ -6,6 +6,23 @@ use crate::scaffold::config::{AgentFramework, Feature};
 use serial_test::serial;
 use tempfile::TempDir;
 
+/// Enters `dir` and puts the previous directory back on drop. The cwd is process-wide, so a
+/// test that left it inside a deleted tempdir broke every later test that reads a
+/// cwd-relative path (`lint_hotspot` `test_sloc_path_resolution_ignores_the_process_cwd`).
+struct CwdGuard(std::path::PathBuf);
+
+impl Drop for CwdGuard {
+    fn drop(&mut self) {
+        let _ = std::env::set_current_dir(&self.0);
+    }
+}
+
+fn enter_dir(dir: &std::path::Path) -> CwdGuard {
+    let guard = CwdGuard(std::env::current_dir().unwrap());
+    std::env::set_current_dir(dir).unwrap();
+    guard
+}
+
 #[test]
 fn test_scaffold_engine_creation() {
     let engine = ScaffoldEngine::new();
@@ -85,7 +102,7 @@ fn test_create_directory_success() {
     let engine = ScaffoldEngine::new().unwrap();
 
     // Change CWD directly for isolated test
-    std::env::set_current_dir(temp_dir.path()).unwrap();
+    let _cwd = enter_dir(temp_dir.path());
 
     let result = engine.create_directory(project_name);
 
@@ -109,7 +126,7 @@ fn test_create_directory_already_exists() {
     let engine = ScaffoldEngine::new().unwrap();
 
     // Change CWD directly for isolated test
-    std::env::set_current_dir(temp_dir.path()).unwrap();
+    let _cwd = enter_dir(temp_dir.path());
 
     let result = engine.create_directory(project_name);
 
@@ -134,7 +151,7 @@ fn test_init_git_success() {
 #[serial] // Process-global CWD modification requires serial execution
 fn test_scaffold_full_workflow() {
     let temp_dir = TempDir::new().unwrap();
-    std::env::set_current_dir(temp_dir.path()).unwrap();
+    let _cwd = enter_dir(temp_dir.path());
 
     let config = ScaffoldConfig {
         project_name: "full-test-project".into(),
@@ -163,7 +180,7 @@ fn test_scaffold_full_workflow() {
 #[serial] // Process-global CWD modification requires serial execution
 fn test_scaffold_pforge_project() {
     let temp_dir = TempDir::new().unwrap();
-    std::env::set_current_dir(temp_dir.path()).unwrap();
+    let _cwd = enter_dir(temp_dir.path());
 
     let config = ScaffoldConfig {
         project_name: "my-agent".into(),
@@ -199,7 +216,7 @@ fn test_scaffold_pforge_project() {
 #[serial] // Process-global CWD modification requires serial execution
 fn test_scaffold_wasm_project() {
     let temp_dir = TempDir::new().unwrap();
-    std::env::set_current_dir(temp_dir.path()).unwrap();
+    let _cwd = enter_dir(temp_dir.path());
 
     let config = ScaffoldConfig {
         project_name: "my-wasm".into(),
@@ -287,7 +304,7 @@ fn test_write_file() {
 #[serial] // Process-global CWD modification requires serial execution
 fn test_scaffold_pforge_installs_hooks() {
     let temp_dir = TempDir::new().unwrap();
-    std::env::set_current_dir(temp_dir.path()).unwrap();
+    let _cwd = enter_dir(temp_dir.path());
 
     let config = ScaffoldConfig {
         project_name: "hook-test-agent".into(),
@@ -325,7 +342,7 @@ fn test_scaffold_pforge_installs_hooks() {
 #[serial] // Process-global CWD modification requires serial execution
 fn test_scaffold_wasm_installs_hooks() {
     let temp_dir = TempDir::new().unwrap();
-    std::env::set_current_dir(temp_dir.path()).unwrap();
+    let _cwd = enter_dir(temp_dir.path());
 
     let config = ScaffoldConfig {
         project_name: "hook-test-wasm".into(),
