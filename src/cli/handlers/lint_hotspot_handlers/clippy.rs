@@ -471,13 +471,15 @@ mod lint_hotspot_measurement_tests {
     // ── output must not depend on the process's cwd ──────────────────────────
 
     #[test]
+    #[serial_test::serial] // reads a cwd-relative decoy; cwd-changing tests are serial too
     fn test_sloc_path_resolution_ignores_the_process_cwd() {
         // PRE-FIX `resolve_file_path` began with `if file_path.exists()`, which
         // resolves cargo's relative `src/lib.rs` against the CALLER's directory.
         // Observed: analysing a 23-line fixture from inside the pmat repo
         // measured pmat's own 414-line src/lib.rs.
         // `cargo test` runs with the crate root as cwd, so the decoy is pmat's
-        // own src/lib.rs — no set_current_dir (and no cross-test race) needed.
+        // own src/lib.rs — no set_current_dir needed here, but the decoy only exists while no
+        // serial test has moved the cwd, hence #[serial].
         assert!(
             Path::new("src/lib.rs").exists(),
             "test needs a cwd-relative decoy at src/lib.rs to be meaningful"
