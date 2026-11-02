@@ -154,7 +154,7 @@ pmcp = { version = "2.17", features = ["websocket", "http", "sse", "validation"]
 #    cannot be dropped from this file at all.
 
 # Caching
-lru = { version = "0.18", features = ["hashbrown"], optional = true }
+lru = { version = "0.19", features = ["hashbrown"], optional = true }
 
 # Error handling
 thiserror = "2.0"
