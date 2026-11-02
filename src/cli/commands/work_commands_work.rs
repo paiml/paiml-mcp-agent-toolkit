@@ -254,8 +254,8 @@ pub enum WorkCommands {
     /// Continue work on existing issue/ticket
     #[command(visible_aliases = &["cont", "c", "resume"])]
     Continue {
-        /// Issue number or ticket ID
-        id: String,
+        /// Issue number or ticket ID (default: derived from branch work/PMAT-NNNN)
+        id: Option<String>,
 
         /// Project path (default: current directory)
         #[arg(short, long)]
@@ -280,8 +280,8 @@ pub enum WorkCommands {
     /// Complete work on issue/ticket
     #[command(visible_aliases = &["done", "finish", "f"])]
     Complete {
-        /// Issue number or ticket ID
-        id: String,
+        /// Issue number or ticket ID (default: derived from branch work/PMAT-NNNN)
+        id: Option<String>,
 
         /// Skip quality gates (not recommended, falsification still runs)
         #[arg(long)]

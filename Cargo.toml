@@ -776,6 +776,11 @@ path = "tests/init_workspace_t.rs"
 name = "falsification_version_identifies_the_binary"
 path = "tests/falsification_version_identifies_the_binary.rs"
 
+# FLOW-012 P1 (GH-1591): the branch is the ticket. Own target because `autotests = false`.
+[[test]]
+name = "falsification_branch_is_the_ticket"
+path = "tests/falsification_branch_is_the_ticket.rs"
+
 # Examples for deterministic MCP agents course
 [[example]]
 name = "scaffold_agent_basics"

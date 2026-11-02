@@ -52,7 +52,14 @@ impl CommandDispatcher {
                 .await
             }
             WorkCommands::Continue { id, path } => {
-                work_handlers::handle_work_continue(id.clone(), path.clone()).await
+                let dir = path
+                    .clone()
+                    .unwrap_or_else(|| std::path::PathBuf::from("."));
+                let id = work_handlers::core_handlers::branch_ticket::resolve_ticket_id(
+                    id.clone(),
+                    &dir,
+                )?;
+                work_handlers::handle_work_continue(id, path.clone()).await
             }
             WorkCommands::Delegate { id, agy, path } => {
                 work_handlers::handle_work_delegate(id.clone(), *agy, path.clone()).await
@@ -69,8 +76,15 @@ impl CommandDispatcher {
                 agent,
                 path,
             } => {
-                work_handlers::handle_work_complete(
+                let dir = path
+                    .clone()
+                    .unwrap_or_else(|| std::path::PathBuf::from("."));
+                let id = work_handlers::core_handlers::branch_ticket::resolve_ticket_id(
                     id.clone(),
+                    &dir,
+                )?;
+                work_handlers::handle_work_complete(
+                    id,
                     *skip_quality,
                     override_claims.clone(),
                     ticket.clone(),
@@ -151,7 +165,12 @@ impl CommandDispatcher {
                 .await
             }
             WorkCommands::Status { id, path, active } => {
-                work_handlers::handle_work_status(id.clone(), path.clone(), *active).await
+                work_handlers::core_handlers::branch_ticket::handle_work_status_derived(
+                    id.clone(),
+                    path.clone(),
+                    *active,
+                )
+                .await
             }
             WorkCommands::Sync {
                 direction,

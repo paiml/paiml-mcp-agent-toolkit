@@ -8540,3 +8540,22 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: PMAT-1591
+  github_issue: 1591
+  item_type: task
+  title: 'FLOW-012 P1: active ticket derived from branch work/PMAT-NNNN'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-02T14:24:09Z
+  updated: 2026-11-02T14:24:09Z
+  spec: null
+  acceptance_criteria:
+  - Derive active ticket from branch name; see GH-1591, infra#2853
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
