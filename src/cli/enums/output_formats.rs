@@ -140,6 +140,7 @@ pub enum ContextFormat {
     Markdown,
     Json,
     Sarif,
+    /// Alias of markdown: byte-identical output (no separate rendering exists)
     #[value(name = "llm-optimized")]
     LlmOptimized,
 }
@@ -313,5 +314,26 @@ impl fmt::Display for DebugOutputFormat {
             DebugOutputFormat::Json => write!(f, "json"),
             DebugOutputFormat::Markdown => write!(f, "markdown"),
         }
+    }
+}
+
+#[cfg(test)]
+mod context_format_alias_tests {
+    use super::*;
+    use clap::ValueEnum;
+
+    /// #1474: `llm-optimized` renders exactly like markdown, so `--help` must
+    /// say so instead of listing it as a distinct format.
+    #[test]
+    fn llm_optimized_is_documented_as_a_markdown_alias() {
+        let help = ContextFormat::LlmOptimized
+            .to_possible_value()
+            .and_then(|v| v.get_help().map(|h| h.to_string()))
+            .expect("llm-optimized carries help text");
+        assert!(help.to_lowercase().contains("alias of markdown"), "{help}");
+        assert!(ContextFormat::Markdown
+            .to_possible_value()
+            .and_then(|v| v.get_help().map(|h| h.to_string()))
+            .is_none());
     }
 }

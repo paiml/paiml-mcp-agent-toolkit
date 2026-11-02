@@ -8,7 +8,7 @@ targets = []
 #
 # With `all-features = false` cargo-deny resolves only the DEFAULT feature graph,
 # so every optional-feature dependency is invisible to it. On this tree that hid
-# three live advisories — including RUSTSEC-2023-0071, a vulnerability, reachable
+# three live advisories — including RUSTSEC-2023-0071 (rsa, since gone from the lock), a vulnerability, reachable
 # through `octocrab` behind the optional `github-api` feature. `cargo deny check`
 # printed "advisories ok" while `cargo deny --all-features check` printed
 # "advisories FAILED". pmat ships `--features full`, so the default graph is not
@@ -24,7 +24,6 @@ no-default-features = false
 ignore = [
     # Reviewed 2026-10-29 (PMAT master-red since 10-16): no semver-compatible fix exists here;
     # each needs an upstream major bump. Remove when the owning crate moves.
-    { id = "RUSTSEC-2026-0387", reason = "crypto-bigint 0.5.5: fix is >=0.7.6 (two majors); reachable only with all-features via octocrab->jsonwebtoken->p256/p384 (absent with default features), and pmat's GitHub client uses a personal token or no auth (github_client.rs), so no JWT signing runs" },
     { id = "RUSTSEC-2026-0391", reason = "zstd 0.13.3 via aprender-common and batuta-common: fix is zstd >=0.14.3, needs an aprender-common and batuta-common upstream bump" },
     { id = "RUSTSEC-2026-0398", reason = "zstd-safe 7.x via zstd 0.13: fix is >=8.2.0, needs zstd 0.14 upstream; Seekable API not used" },
     { id = "RUSTSEC-2026-0403", reason = "zstd-safe 7.x via zstd 0.13: fix is >=8.2.0, needs zstd 0.14 upstream; legacy-frame streaming not used" },
@@ -44,7 +43,6 @@ ignore = [
     # three were always in the shipped `--features full` graph, and none was
     # visible to the default-graph check. cargo-deny reports "No safe upgrade is
     # available!" for each.
-    { id = "RUSTSEC-2023-0071", reason = "rsa Marvin Attack: transitive via jsonwebtoken→octocrab. The timing sidechannel requires RSA PRIVATE-KEY operations, which pmat never performs — github_client.rs builds Octocrab with `.personal_token()` or unauthenticated, never GitHub App JWT signing. No safe upgrade exists upstream." },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser: unmaintained, transitive via lopdf→pdf-extract, no safe upgrade available" },
     { id = "RUSTSEC-2024-0320", reason = "yaml-rust: unmaintained, transitive via syntect, no safe upgrade available" },
     # Re-verified 2026-07-31 against Cargo.lock. The path changed: aprender-orchestrate

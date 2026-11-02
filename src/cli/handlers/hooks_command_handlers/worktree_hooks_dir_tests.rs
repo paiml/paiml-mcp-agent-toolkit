@@ -5,6 +5,7 @@
 //! global and system config switched off, because a global `core.hooksPath` would
 //! otherwise decide the answer.
 use super::hooks_command::{git_hooks_dir, HooksCommand};
+use super::tdg_hooks::install_tdg_hooks_in;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -48,7 +49,7 @@ fn repo_with_worktree() -> (tempfile::TempDir, PathBuf, PathBuf) {
 }
 
 fn canon(p: &Path) -> PathBuf {
-    std::fs::canonicalize(p).unwrap_or_else(|e| panic!("canonicalize {}: {e}", p.display()))
+    std::fs::canonicalize(p).expect("canonicalize")
 }
 
 #[test]
@@ -108,4 +109,61 @@ fn outside_a_repo_git_gives_no_answer() {
     let inner = tmp.path().join("x");
     std::fs::create_dir(&inner).expect("mkdir");
     assert_eq!(git_hooks_dir(&inner, &envs), None);
+}
+
+#[tokio::test]
+async fn tdg_enforcement_install_from_a_linked_worktree_succeeds() {
+    // `hooks install --tdg-enforcement` returns early into `install_tdg_hooks`, which
+    // used to join `.git/hooks` itself and fail with ENOTDIR in a worktree (#1285).
+    let (_tmp, _main, wt) = repo_with_worktree();
+    let hooks = git_hooks_dir(&wt, ISOLATED).expect("git answers inside a worktree");
+    install_tdg_hooks_in(&wt, &hooks)
+        .await
+        .expect("tdg hooks install in a linked worktree");
+    assert!(
+        hooks.join("pre-commit").is_file(),
+        "pre-commit at {hooks:?}"
+    );
+    assert!(
+        hooks.join("post-commit").is_file(),
+        "post-commit at {hooks:?}"
+    );
+}
+
+/// Puts the old directory back on any exit (`set_current_dir` is process-wide; the
+/// test that changes it is `#[serial_test::serial]`, like every other cwd user).
+struct CwdGuard(PathBuf);
+
+impl Drop for CwdGuard {
+    fn drop(&mut self) {
+        let _ = std::env::set_current_dir(&self.0);
+    }
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn the_tdg_wrapper_installs_both_hooks_where_git_says() {
+    // The wrapper is what `pmat hooks install --tdg-enforcement` runs. A test that
+    // never calls it lets `-> Ok(())` survive mutation (mutation-diff, master ff4563719).
+    let (tmp, _main, wt) = repo_with_worktree();
+    // A repo-local absolute core.hooksPath wins over any global one, so the hooks land
+    // in the temp dir whatever the developer's own git config says.
+    let hooks = tmp.path().join("hooks-here");
+    git(
+        &wt,
+        &["config", "core.hooksPath", hooks.to_str().expect("utf-8")],
+    );
+    let _restore = CwdGuard(std::env::current_dir().expect("cwd"));
+    std::env::set_current_dir(&wt).expect("cd into the worktree");
+    super::tdg_hooks::install_tdg_hooks_wrapper()
+        .await
+        .expect("the wrapper installs in a linked worktree");
+    assert!(
+        hooks.join("pre-commit").is_file(),
+        "pre-commit at {hooks:?}"
+    );
+    assert!(
+        hooks.join("post-commit").is_file(),
+        "post-commit at {hooks:?}"
+    );
 }
