@@ -9,7 +9,44 @@ use super::types::{
 use anyhow::Result;
 use chrono::Local;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+/// The directory git runs hooks from, for the repository containing `dir`.
+///
+/// Asks git (`git rev-parse --git-path hooks`) rather than joining `.git/hooks`: in a
+/// linked worktree `.git` is a FILE, so the join fails with "Not a directory (os error
+/// 20)" (#1285), and it would also ignore `core.hooksPath`. Falls back to
+/// `<dir>/.git/hooks` only when git itself cannot answer (not a repo, no git binary).
+pub(crate) fn resolve_hooks_dir(dir: &Path) -> PathBuf {
+    git_hooks_dir(dir, &[]).unwrap_or_else(|| dir.join(".git").join("hooks"))
+}
+
+/// `git rev-parse --git-path hooks` run in `dir`, with extra `envs` for the git process
+/// (tests use them to isolate from the user's global config). A relative answer is
+/// relative to `dir`; older gits print one, so it is joined rather than trusted as-is.
+pub(super) fn git_hooks_dir(dir: &Path, envs: &[(&str, &str)]) -> Option<PathBuf> {
+    let out = Command::new("git")
+        .args(["rev-parse", "--git-path", "hooks"])
+        .current_dir(dir)
+        .envs(envs.iter().copied())
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let text = String::from_utf8(out.stdout).ok()?;
+    let answer = text.trim_end_matches(['\n', '\r']);
+    if answer.is_empty() {
+        return None;
+    }
+    let path = PathBuf::from(answer);
+    Some(if path.is_absolute() {
+        path
+    } else {
+        dir.join(path)
+    })
+}
 
 /// Hooks command implementation
 pub struct HooksCommand {
@@ -28,8 +65,7 @@ impl HooksCommand {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn for_current_repo() -> Result<Self> {
         let current_dir = std::env::current_dir()?;
-        let git_dir = current_dir.join(".git");
-        let hooks_dir = git_dir.join("hooks");
+        let hooks_dir = resolve_hooks_dir(&current_dir);
         let config_path = current_dir.join("pmat.toml");
 
         Ok(Self::new(hooks_dir, config_path))
