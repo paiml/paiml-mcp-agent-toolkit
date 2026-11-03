@@ -93,7 +93,21 @@ fn is_included_by_sibling(path: &Path, name: &str) -> bool {
             return true;
         }
     }
-    false
+    // The parent name need not share a prefix with the fragment name
+    // (`arxiv_db.rs` includes `arxiv_entries.rs`, GH #1293): fall back to any
+    // sibling `.rs` file that names it in an `include!`.
+    any_sibling_includes(dir, path, &needle)
+}
+
+/// Does any other `.rs` file in `dir` contain `needle`?
+fn any_sibling_includes(dir: &Path, path: &Path, needle: &str) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    entries
+        .flatten()
+        .map(|e| e.path())
+        .any(|p| p != path && p.extension().is_some_and(|x| x == "rs") && file_contains(&p, needle))
 }
 
 /// Does `path` exist, read as UTF-8, and contain `needle`?
@@ -430,5 +444,39 @@ pub fn second_function() {
                 .map(|f| &f.name)
                 .collect::<Vec<_>>()
         );
+    }
+}
+
+#[cfg(test)]
+mod include_fragment_gh1293_tests {
+    use super::is_include_fragment;
+    use std::fs;
+    use tempfile::TempDir;
+
+    /// GH #1293: `arxiv_entries.rs` is `include!`d by `arxiv_db.rs`. The names
+    /// share only the `arxiv` stem, so the prefix-strip rule never reached
+    /// `arxiv_db.rs`, and the fragment was reported as "walked, not measured".
+    #[test]
+    fn fragment_included_by_sibling_with_unrelated_suffix_is_detected() {
+        let dir = TempDir::new().expect("tempdir");
+        fs::write(
+            dir.path().join("arxiv_db.rs"),
+            "fn all() -> Vec<u8> { include!(\"arxiv_entries.rs\") }\n",
+        )
+        .expect("write parent");
+        let frag = dir.path().join("arxiv_entries.rs");
+        fs::write(&frag, "    vec![\n 1u8,\n ]\n").expect("write fragment");
+        assert!(is_include_fragment(&frag));
+    }
+
+    /// COUNTER-TEST: a file no sibling includes is real code and stays
+    /// subject to grading (and to disclosure when it fails to parse).
+    #[test]
+    fn file_nobody_includes_is_not_a_fragment() {
+        let dir = TempDir::new().expect("tempdir");
+        fs::write(dir.path().join("other.rs"), "fn x() {}\n").expect("write other");
+        let lone = dir.path().join("arxiv_entries.rs");
+        fs::write(&lone, "fn broken( {\n").expect("write lone");
+        assert!(!is_include_fragment(&lone));
     }
 }
