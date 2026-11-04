@@ -1,7 +1,7 @@
 - id: PMAT-1598
   github_issue: 1598
   item_type: task
-  title: 'HF2/HF5: no-hot-aggregate comply rule (nightly LAB) + fragment layout (docs/roadmaps/entries/) scaffold'
+  title: 'HF2: no-hot-aggregate comply rule (nightly LAB) + roadmap render from entries/* + scaffold in fragment layout'
   status: planned
   priority: high
   assigned_to: null
@@ -17,4 +17,3 @@
   labels:
   - kind:code
   notes: null
-  release: backlog
