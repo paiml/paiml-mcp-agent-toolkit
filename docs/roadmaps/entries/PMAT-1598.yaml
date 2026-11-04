@@ -1,0 +1,20 @@
+- id: PMAT-1598
+  github_issue: 1598
+  item_type: task
+  title: 'HF2/HF5: no-hot-aggregate comply rule (nightly LAB) + fragment layout (docs/roadmaps/entries/) scaffold'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-04T07:00:00Z
+  updated: 2026-11-04T07:00:00Z
+  spec: null
+  acceptance_criteria:
+  - docs/roadmaps/entries/ exists in the tree (.gitkeep) so the fragment layout is opt-in ready; roadmap.yaml stays tracked
+  - CB-2119 no-hot-aggregate is registered disabled by default and run only by the nightly LAB, never on a PR or release path
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: backlog
