@@ -479,3 +479,11 @@ CB-130 validates agent context adoption via `pmat comply check`:
 - Index exists at `.pmat/context.idx` and is fresh (< 24 hours)
 - CLAUDE.md contains required patterns (`pmat query`, `NEVER use grep`, `--faults`)
 - Index auto-built on first `pmat query`
+
+---
+
+## RAX-INTERIM (operator via arbiter-cop, 2026-11-04) — intake and PR hygiene
+
+- **No `gh issue create` by workers or seats.** Findings go to `docs/findings/<session>.jsonl` or the cop inbox. Only cops mint tickets, under an epic with a budget.
+- **Pull signal:** a repo over cap (open PRs > 15 or open issues > 100) gets no new feature PRs and no new feature workers. Only fixes, expedite and triage folds.
+- **Every new PR body** carries `Closes #N` or `no-issue: <reason>`.
