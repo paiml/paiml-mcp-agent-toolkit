@@ -53,6 +53,7 @@ include!("check_macs_agy_hooks.rs");
 include!("check_macs_agy_skills.rs");
 
 include!("check_macs_agy_mcp.rs");
+include!("check_macs_toolchain.rs");
 
 include!("check_macs_tests_provenance.rs");
 
@@ -65,3 +66,4 @@ include!("check_macs_tests_skill_effort.rs");
 include!("check_macs_tests_artifacts.rs");
 
 include!("check_macs_tests_agy.rs");
+include!("check_macs_tests_toolchain.rs");
