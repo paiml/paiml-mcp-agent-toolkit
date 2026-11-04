@@ -8540,3 +8540,22 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: PMAT-1600
+  github_issue: 1600
+  item_type: task
+  title: 'Pinned toolchains: comply check requires rust-toolchain.toml (KZ-001 a)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-04T15:17:49Z
+  updated: 2026-11-04T15:17:49Z
+  spec: null
+  acceptance_criteria:
+  - 'KZ-001 a: comply check fails without pinned rust-toolchain.toml'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457

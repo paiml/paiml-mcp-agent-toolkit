@@ -212,5 +212,10 @@ fn build_macs_checks(
             "cb-1666",
             comply_config,
         ),
+        filter_check_by_config(
+            macs::check_toolchain_pinned(project_path),
+            "cb-1667",
+            comply_config,
+        ),
     ]
 }

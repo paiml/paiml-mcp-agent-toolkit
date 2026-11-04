@@ -573,6 +573,7 @@ const GROUP_IDS_MACS: &[RuleDecl] = &[
     ("cb-1664", "AGY Hooks Schema"),
     ("cb-1665", "AGY Skill Frontmatter"),
     ("cb-1666", "AGY MCP Client Config"),
+    ("cb-1667", "Pinned Rust Toolchain"),
 ];
 const GROUP_IDS_EVIDENCE: &[RuleDecl] = &[
     ("cb-1700", "Branch Protection"),
