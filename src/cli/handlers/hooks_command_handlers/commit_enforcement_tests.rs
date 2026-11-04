@@ -372,3 +372,68 @@ fn without_a_roadmap_the_hook_keeps_the_ticket_pattern_and_cb2113_skips() {
         "strict still refuses a message that names no ticket"
     );
 }
+
+// ── PMAT-1594 / #1594: staged roadmap fragments count as roadmap rows ────────
+
+/// Stage a roadmap fragment `docs/roadmaps/entries/<id>.yaml` in `d`.
+fn stage_fragment(d: &Path, id: &str) {
+    std::fs::create_dir_all(d.join("docs/roadmaps/entries")).expect("mkdir entries");
+    std::fs::write(
+        d.join(format!("docs/roadmaps/entries/{id}.yaml")),
+        format!("- id: {id}\n  item_type: task\n  title: {id} work\n  status: planned\n"),
+    )
+    .expect("write fragment");
+    assert!(git(d, &["add", "docs/roadmaps/entries"]).status.success());
+}
+
+/// The hook's message file after it ran, and whether it refused.
+fn hook_run(d: &Path, msg: &str) -> (bool, String) {
+    let refused = hook_refuses(d, msg);
+    let after = std::fs::read_to_string(d.join(".git").join("PMAT727_HOOK_MSG")).expect("read");
+    (refused, after)
+}
+
+#[test]
+fn a_ticket_that_exists_only_as_a_staged_fragment_is_accepted() {
+    let tmp = roadmap_repo(&[("PMAT-1", "planned")]);
+    let d = tmp.path();
+    stage_fragment(d, "GH-1594");
+    assert!(
+        !hook_refuses(d, "fix: x\n\nPmat-Ticket: GH-1594\n"),
+        "a ticket staged as a fragment is in the roadmap (#1594)"
+    );
+}
+
+#[test]
+fn a_ticket_in_neither_roadmap_nor_fragments_is_still_refused() {
+    let tmp = roadmap_repo(&[("PMAT-1", "planned")]);
+    let d = tmp.path();
+    stage_fragment(d, "GH-1594");
+    assert!(hook_refuses(d, "fix: x\n\nPmat-Ticket: GH-777\n"));
+    // An unstaged fragment does not count.
+    let tmp2 = roadmap_repo(&[("PMAT-1", "planned")]);
+    std::fs::create_dir_all(tmp2.path().join("docs/roadmaps/entries")).expect("mkdir");
+    std::fs::write(
+        tmp2.path().join("docs/roadmaps/entries/GH-5.yaml"),
+        "- id: GH-5\n  status: planned\n",
+    )
+    .expect("write");
+    assert!(hook_refuses(tmp2.path(), "fix: x\n\nPmat-Ticket: GH-5\n"));
+}
+
+#[test]
+fn the_trailer_is_added_only_when_exactly_one_fragment_is_staged() {
+    let tmp = roadmap_repo(&[("PMAT-1", "planned")]);
+    let d = tmp.path();
+    stage_fragment(d, "GH-1594");
+    let (refused, after) = hook_run(d, "fix: x\n");
+    assert!(!refused, "one staged fragment names the ticket");
+    assert!(after.contains("Pmat-Ticket: GH-1594"), "{after}");
+    stage_fragment(d, "GH-1595");
+    let (refused, after) = hook_run(d, "fix: x\n");
+    assert!(
+        refused,
+        "two fragments are ambiguous: no trailer is guessed"
+    );
+    assert!(!after.contains("Pmat-Ticket"), "{after}");
+}

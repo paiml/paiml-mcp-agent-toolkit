@@ -570,9 +570,28 @@ refuse() {
     echo "  (warning only: set [hooks] strict = true, or pmat hooks install --strict, to refuse)" >&2
     exit 0
 }
-tickets=$(git interpret-trailers --parse < "$MSG_FILE" 2>/dev/null | grep -iE '^Pmat-Ticket:' | sed 's/^[^:]*:[[:space:]]*//' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$')
+read_tickets() {
+    git interpret-trailers --parse < "$MSG_FILE" 2>/dev/null | grep -iE '^Pmat-Ticket:' | sed 's/^[^:]*:[[:space:]]*//' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$'
+}
+tickets=$(read_tickets)
 roadmap=$(git show ":$ROADMAP" 2>/dev/null)
 if [ -z "$roadmap" ] && [ -f "$ROADMAP" ]; then roadmap=$(cat "$ROADMAP"); fi
+# #1594: a ticket filed as a staged docs/roadmaps/entries/ fragment is in the
+# roadmap as far as this commit goes; read the staged blobs, not the worktree.
+frags=$(git diff --cached --name-only --diff-filter=AM -- docs/roadmaps/entries 2>/dev/null | grep -E '\.ya?ml$')
+if [ -n "$frags" ]; then
+    while IFS= read -r frag; do
+        roadmap=$(printf '%s\n%s' "$roadmap" "$(git show ":$frag" 2>/dev/null)")
+    done <<< "$frags"
+    # Exactly one staged fragment and no trailer: that fragment is the ticket.
+    if [ -z "$tickets" ] && [ "$(printf '%s\n' "$frags" | wc -l)" -eq 1 ]; then
+        fid=$(git show ":$frags" 2>/dev/null | sed -n "s/^[[:space:]]*-[[:space:]]*id:[[:space:]]*['\"]\{0,1\}\([^'\" ]*\)['\"]\{0,1\}[[:space:]]*$/\1/p" | head -n 1)
+        if [ -n "$fid" ]; then
+            git interpret-trailers --in-place --trailer "Pmat-Ticket: $fid" "$MSG_FILE" 2>/dev/null
+            tickets=$(read_tickets)
+        fi
+    fi
+fi
 if [ -z "$roadmap" ]; then
     # No roadmap: CB-2113 does not judge here, and the pattern is this repository's convention.
     [ -n "$tickets" ] && exit 0
