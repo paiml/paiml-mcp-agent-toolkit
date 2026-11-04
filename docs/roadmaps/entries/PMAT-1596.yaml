@@ -1,7 +1,7 @@
 - id: PMAT-1596
   github_issue: 1596
   item_type: task
-  title: 'master red: cargo deny RUSTSEC-2026-0433 on pulldown-cmark 0.13.5 fails the pmat score job; bump Cargo.lock to 0.13.6'
+  title: 'master red: cargo deny RUSTSEC-2026-0433 pulldown-cmark 0.13.5 (pmat score job, C61 ANDON)'
   status: in_progress
   priority: critical
   assigned_to: null
