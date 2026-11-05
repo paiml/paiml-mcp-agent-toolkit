@@ -489,6 +489,9 @@ pub enum Commands {
     #[command(subcommand, visible_aliases = &["antigravity"])]
     Agy(AgyCommands),
 
+    /// FLOW-011 T1 signer: verify per-commit receipts, write receipts/sign.json
+    Sign(SignArgs),
+
     /// Bootstrap an agent-ready workspace: quality hook, MCP registration,
     /// skill and root rules file
     ///
