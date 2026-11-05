@@ -278,6 +278,11 @@ fn jaccard(a: &BTreeSet<String>, b: &BTreeSet<String>) -> f64 {
     a.intersection(b).count() as f64 / a.union(b).count() as f64
 }
 
+/// Do the two titles share at least one non-stopword token?
+pub fn titles_share_a_word(a: &str, b: &str) -> bool {
+    jaccard(&tokens(a), &tokens(b)) > 0.0
+}
+
 /// R5: the open ticket in `issues` that `title` duplicates, if any: the best title
 /// match at or above `threshold` (token Jaccard). `exclude` is the ticket being filed
 /// (already open on GitHub, so it must not match itself).

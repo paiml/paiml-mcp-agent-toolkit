@@ -251,6 +251,7 @@ pub struct Report {
     pub not_measured: Vec<String>,
 }
 
+pub mod backfill;
 mod rules;
 pub mod source;
 pub use rules::*;
@@ -262,3 +263,7 @@ mod tests;
 #[cfg(test)]
 #[path = "github_comply_source_tests.rs"]
 mod source_tests;
+
+#[cfg(test)]
+#[path = "github_comply_backfill_tests.rs"]
+mod backfill_tests;

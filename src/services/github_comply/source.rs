@@ -29,6 +29,10 @@ pageInfo{hasNextPage endCursor} \
 nodes{number title isDraft createdAt headRefName body labels(first:20){nodes{name}} \
 commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}}";
 
+const MERGED_QUERY: &str = "query($owner:String!,$name:String!,$after:String){\
+repository(owner:$owner,name:$name){pullRequests(states:MERGED,first:100,after:$after){\
+pageInfo{hasNextPage endCursor} nodes{number title body}}}}";
+
 /// One GraphQL round trip, so tests can stand in for GitHub.
 pub trait Graphql {
     fn query(&self, query: &str, vars: &[(&str, &str)]) -> Result<Value>;
@@ -144,6 +148,27 @@ pub fn fetch_snapshot(g: &dyn Graphql, repo: &str, now: DateTime<Utc>) -> Result
         open_issues,
         open_prs,
     })
+}
+
+/// Every merged PR of `repo` (`owner/name`): number, title, body. Budget checked first;
+/// a PR node without a number is an error, never skipped.
+pub fn fetch_merged_prs(g: &dyn Graphql, repo: &str) -> Result<Vec<super::backfill::MergedPr>> {
+    let (owner, name) = repo
+        .split_once('/')
+        .filter(|(o, n)| !o.is_empty() && !n.is_empty() && !n.contains('/'))
+        .with_context(|| format!("repo must be owner/name, got {repo:?}"))?;
+    check_budget(g)?;
+    let mut out = Vec::new();
+    for page in pages(g, MERGED_QUERY, owner, name, "pullRequests")? {
+        for node in nodes(&page)? {
+            out.push(super::backfill::MergedPr {
+                number: node["number"].as_u64().context("merged PR has no number")?,
+                title: node["title"].as_str().unwrap_or_default().to_string(),
+                body: node["body"].as_str().unwrap_or_default().to_string(),
+            });
+        }
+    }
+    Ok(out)
 }
 
 fn nodes(page: &Value) -> Result<&Vec<Value>> {

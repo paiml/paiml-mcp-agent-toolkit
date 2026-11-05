@@ -77,6 +77,30 @@ pub(crate) fn handle_github(
     Ok(())
 }
 
+/// `pmat comply github --backfill`: read open issues and merged PRs over GraphQL and
+/// print the DONE / PARTIAL / WRONG-LINK table. Classifies only; writes nothing.
+pub(crate) fn handle_github_backfill(
+    path: &Path,
+    repo: Option<&str>,
+    format: crate::cli::commands::GithubComplyFormat,
+) -> Result<()> {
+    let repo = match repo {
+        Some(r) => r.to_string(),
+        None => ghc_source::current_repo(path)?,
+    };
+    let g = ghc_source::GhGraphql;
+    let snap = ghc_source::fetch_snapshot(&g, &repo, chrono::Utc::now())?;
+    let merged = ghc_source::fetch_merged_prs(&g, &repo)?;
+    let report = ghc::backfill::backfill(&snap, &merged);
+    match format {
+        crate::cli::commands::GithubComplyFormat::Text => print!("{}", report.render_text()),
+        crate::cli::commands::GithubComplyFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&report)?)
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod github_handler_tests {
     use super::*;

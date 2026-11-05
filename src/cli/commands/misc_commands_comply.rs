@@ -488,6 +488,11 @@ pub enum ComplyCommands {
         /// runs only: a file is not evidence for the repository)
         #[arg(long, value_name = "FILE")]
         snapshot: Option<PathBuf>,
+
+        /// Backfill table instead of the rules: open issues with >= 1 merged referencing
+        /// PR, as DONE / PARTIAL / WRONG-LINK. Reads only; closes nothing.
+        #[arg(long, conflicts_with_all = ["pr", "rules", "snapshot"])]
+        backfill: bool,
     },
 }
 
