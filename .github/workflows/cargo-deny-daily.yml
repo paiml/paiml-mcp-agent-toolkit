@@ -1,0 +1,11 @@
+# FLOW-010 F2: nightly cargo-deny via the fleet reusable workflow in paiml/infra.
+name: Cargo Deny Daily
+on:
+  schedule:
+    - cron: '23 4 * * *'
+concurrency: { group: 'cargo-deny-daily-${{ github.ref }}', cancel-in-progress: false }
+permissions: { contents: read }
+jobs:
+  advisories:
+    uses: paiml/infra/.github/workflows/cargo-deny-daily.yml@main
+    with: { runs-on: '["self-hosted","clean-room"]', manifest-paths: 'Cargo.toml' }
