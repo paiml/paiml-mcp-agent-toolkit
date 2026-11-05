@@ -9,7 +9,6 @@ on:
   # queue is a gate the queue bypasses. No queue is known to be enabled; the
   # trigger costs nothing and closes the hole before anyone opens it.
   merge_group:
-    types: [checks_requested]
   workflow_dispatch:
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
