@@ -19,7 +19,9 @@ use super::*;
 use chrono::{Duration, TimeZone};
 
 fn t0() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap()
+    Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0)
+        .single()
+        .expect("fixture")
 }
 
 fn issue(n: u64, title: &str) -> IssueRec {
@@ -89,9 +91,9 @@ fn policy_is_per_repo_and_layers_over_defaults() {
         [repo."paiml/x"]
         max_open_issues = 30
     "#;
-    let x = Policy::from_toml(text, "paiml/x").unwrap();
+    let x = Policy::from_toml(text, "paiml/x").expect("fixture");
     assert_eq!((x.max_open_issues, x.max_open_prs), (30, 6));
-    let other = Policy::from_toml(text, "paiml/y").unwrap();
+    let other = Policy::from_toml(text, "paiml/y").expect("fixture");
     assert_eq!((other.max_open_issues, other.max_open_prs), (100, 6));
 }
 
@@ -110,16 +112,24 @@ fn policy_rejects_out_of_range_values() {
 
 #[test]
 fn policy_load_reads_the_file_and_absent_means_defaults() {
-    let dir = tempfile::tempdir().unwrap();
-    assert_eq!(Policy::load(dir.path(), "a/b").unwrap(), Policy::default());
-    std::fs::create_dir_all(dir.path().join(".pmat")).unwrap();
+    let dir = tempfile::tempdir().expect("fixture");
+    assert_eq!(
+        Policy::load(dir.path(), "a/b").expect("fixture"),
+        Policy::default()
+    );
+    std::fs::create_dir_all(dir.path().join(".pmat")).expect("fixture");
     std::fs::write(
         dir.path().join(POLICY_PATH),
         "[repo.\"a/b\"]\nmax_open_prs = 9\n",
     )
-    .unwrap();
-    assert_eq!(Policy::load(dir.path(), "a/b").unwrap().max_open_prs, 9);
-    std::fs::write(dir.path().join(POLICY_PATH), "max_open_prs = ").unwrap();
+    .expect("fixture");
+    assert_eq!(
+        Policy::load(dir.path(), "a/b")
+            .expect("fixture")
+            .max_open_prs,
+        9
+    );
+    std::fs::write(dir.path().join(POLICY_PATH), "max_open_prs = ").expect("fixture");
     assert!(Policy::load(dir.path(), "a/b").is_err());
 }
 
@@ -378,7 +388,7 @@ fn falsify_ghc_005_control_a_distinct_title_under_the_cap_is_admitted() {
         Some(50),
         Some(3),
     )
-    .unwrap();
+    .expect("fixture");
 }
 
 #[test]
@@ -392,7 +402,7 @@ fn r5_a_ticket_never_matches_itself() {
         Some(2),
         Some(3),
     )
-    .unwrap();
+    .expect("fixture");
 }
 
 #[test]
@@ -406,7 +416,7 @@ fn r1_at_creation_counts_the_others_so_the_ticket_itself_is_not_the_101st() {
         Some(100),
         Some(3),
     )
-    .unwrap();
+    .expect("fixture");
 }
 
 #[test]
@@ -426,7 +436,8 @@ fn r3_at_creation_needs_an_epic_or_a_milestone_on_the_ticket() {
         guard_new_ticket(&Policy::default(), &s, "fresh work item", Some(50), None).unwrap_err();
     assert!(format!("{err:#}").contains("R3"));
     // with an epic to be linked under, the ticket will be a sub-issue
-    guard_new_ticket(&Policy::default(), &s, "fresh work item", Some(50), Some(3)).unwrap();
+    guard_new_ticket(&Policy::default(), &s, "fresh work item", Some(50), Some(3))
+        .expect("fixture");
 }
 
 // ---- report -------------------------------------------------------------
@@ -445,13 +456,14 @@ fn report_text_names_each_rule_and_the_verdict() {
 #[test]
 fn report_round_trips_through_json() {
     let r = run(&snap(n_issues(101), vec![]), &[Rule::R1]);
-    let back: Report = serde_json::from_str(&serde_json::to_string(&r).unwrap()).unwrap();
+    let back: Report =
+        serde_json::from_str(&serde_json::to_string(&r).expect("fixture")).expect("fixture");
     assert_eq!(back, r);
 }
 
 #[test]
 fn rule_parse_accepts_the_snapshot_rules_only() {
-    assert_eq!(Rule::parse("r3").unwrap(), Rule::R3);
+    assert_eq!(Rule::parse("r3").expect("fixture"), Rule::R3);
     assert!(Rule::parse("R5").is_err());
     assert!(Rule::parse("R9").is_err());
 }
@@ -459,6 +471,7 @@ fn rule_parse_accepts_the_snapshot_rules_only() {
 #[test]
 fn snapshot_json_round_trips() {
     let s = snap(vec![issue(1, "a")], vec![pr(2, 1, CheckState::Fail)]);
-    let back: RepoSnapshot = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+    let back: RepoSnapshot =
+        serde_json::from_str(&serde_json::to_string(&s).expect("fixture")).expect("fixture");
     assert_eq!(back, s);
 }

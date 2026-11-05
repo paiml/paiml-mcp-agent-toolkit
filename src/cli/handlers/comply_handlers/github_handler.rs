@@ -93,13 +93,13 @@ mod github_handler_tests {
 
     #[test]
     fn default_rules_are_the_reconciler_set_and_pr_is_the_pr_check() {
-        assert_eq!(github_rules(None, &[]).unwrap(), ghc::Rule::RECONCILER);
+        assert_eq!(github_rules(None, &[]).expect("fixture"), ghc::Rule::RECONCILER);
         assert_eq!(
-            github_rules(Some(3), &[]).unwrap(),
+            github_rules(Some(3), &[]).expect("fixture"),
             [ghc::Rule::R3, ghc::Rule::R6]
         );
         assert_eq!(
-            github_rules(None, &["r1".into(), "R6".into()]).unwrap(),
+            github_rules(None, &["r1".into(), "R6".into()]).expect("fixture"),
             [ghc::Rule::R1, ghc::Rule::R6]
         );
         assert!(github_rules(None, &["R5".into()]).is_err());
@@ -108,18 +108,18 @@ mod github_handler_tests {
     #[test]
     fn report_is_labelled_with_its_source_and_fails_on_a_violation() {
         let p = ghc::Policy::default();
-        let r = github_report(&p, &snap(101), None, &[], "snapshot-file").unwrap();
+        let r = github_report(&p, &snap(101), None, &[], "snapshot-file").expect("fixture");
         assert_eq!(r.source, "snapshot-file");
         assert!(!r.ok());
-        assert!(github_report(&p, &snap(100), None, &[], "x").unwrap().ok());
+        assert!(github_report(&p, &snap(100), None, &[], "x").expect("fixture").ok());
     }
 
     #[test]
     fn snapshot_file_for_another_repo_is_refused() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("fixture");
         let file = dir.path().join("s.json");
-        std::fs::write(&file, serde_json::to_string(&snap(1)).unwrap()).unwrap();
-        let ok = github_snapshot(dir.path(), Some("PAIML/x"), Some(&file)).unwrap();
+        std::fs::write(&file, serde_json::to_string(&snap(1)).expect("fixture")).expect("fixture");
+        let ok = github_snapshot(dir.path(), Some("PAIML/x"), Some(&file)).expect("fixture");
         assert_eq!(ok.1, "snapshot-file");
         assert!(github_snapshot(dir.path(), Some("paiml/y"), Some(&file)).is_err());
     }

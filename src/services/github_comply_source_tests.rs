@@ -39,7 +39,9 @@ impl Graphql for Fake {
 }
 
 fn now() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap()
+    Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0)
+        .single()
+        .expect("fixture")
 }
 
 fn rate(remaining: u64) -> Result<Value, String> {
@@ -73,7 +75,7 @@ fn reads_every_page_and_keeps_graphql_totalcount() {
         issues_page(3, None, &[3]),
         prs_page(json!([])),
     ]);
-    let s = fetch_snapshot(&g, "paiml/x", now()).unwrap();
+    let s = fetch_snapshot(&g, "paiml/x", now()).expect("fixture");
     assert_eq!(s.open_issue_total, 3);
     assert_eq!(
         s.open_issues.iter().map(|i| i.number).collect::<Vec<_>>(),
@@ -155,7 +157,7 @@ fn prs_carry_draft_age_branch_labels_body_and_the_rollup() {
             node(4, Value::Null),
         ])),
     ]);
-    let s = fetch_snapshot(&g, "paiml/x", now()).unwrap();
+    let s = fetch_snapshot(&g, "paiml/x", now()).expect("fixture");
     let checks: Vec<CheckState> = s.open_prs.iter().map(|p| p.checks).collect();
     assert_eq!(
         checks,
@@ -180,7 +182,7 @@ fn only_queries_reach_github() {
 
 #[test]
 fn snapshot_file_round_trip_and_errors() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = tempfile::tempdir().expect("fixture");
     let path = dir.path().join("s.json");
     let s = RepoSnapshot {
         repo: "a/b".into(),
@@ -189,10 +191,10 @@ fn snapshot_file_round_trip_and_errors() {
         open_issues: vec![],
         open_prs: vec![],
     };
-    std::fs::write(&path, serde_json::to_string(&s).unwrap()).unwrap();
-    assert_eq!(load_snapshot_file(&path).unwrap(), s);
+    std::fs::write(&path, serde_json::to_string(&s).expect("fixture")).expect("fixture");
+    assert_eq!(load_snapshot_file(&path).expect("fixture"), s);
     assert!(load_snapshot_file(&dir.path().join("missing.json")).is_err());
-    std::fs::write(&path, "{").unwrap();
+    std::fs::write(&path, "{").expect("fixture");
     assert!(load_snapshot_file(&path).is_err());
 }
 
@@ -213,7 +215,7 @@ fn filing_guard_refuses_a_fitting_title_admits_a_distinct_one_and_fails_closed()
     // issues_page titles are "t1", "t2": a title of exactly "t2" fits #2
     let err = filing("t2", open()).unwrap_err();
     assert!(format!("{err:#}").contains("R5"), "{err:#}");
-    filing("wholly different work item", open()).unwrap();
+    filing("wholly different work item", open()).expect("fixture");
     let err = filing("anything", vec![rate(4000), Err("HTTP 502".into())]).unwrap_err();
     assert!(
         format!("{err:#}").contains("nothing was linked or written"),
