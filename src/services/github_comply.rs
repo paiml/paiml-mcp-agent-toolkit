@@ -169,28 +169,18 @@ impl Policy {
         }
     }
 
+    /// Layer `t` over `self`: a key present in `t` wins, an absent one keeps the value.
     fn apply(&mut self, t: &PolicyTable) {
-        if let Some(v) = t.max_open_issues {
-            self.max_open_issues = v;
-        }
-        if let Some(v) = t.target_open_issues {
-            self.target_open_issues = v;
-        }
-        if let Some(v) = t.max_open_prs {
-            self.max_open_prs = v;
-        }
-        if let Some(v) = &t.pr_exempt {
-            self.pr_exempt = v.clone();
-        }
-        if let Some(v) = t.pr_max_age_hours {
-            self.pr_max_age_hours = v;
-        }
-        if let Some(v) = t.draft_ttl_hours {
-            self.draft_ttl_hours = v;
-        }
-        if let Some(v) = t.fit_similarity {
-            self.fit_similarity = v;
-        }
+        self.max_open_issues = t.max_open_issues.unwrap_or(self.max_open_issues);
+        self.target_open_issues = t.target_open_issues.unwrap_or(self.target_open_issues);
+        self.max_open_prs = t.max_open_prs.unwrap_or(self.max_open_prs);
+        self.pr_exempt = t
+            .pr_exempt
+            .clone()
+            .unwrap_or_else(|| self.pr_exempt.clone());
+        self.pr_max_age_hours = t.pr_max_age_hours.unwrap_or(self.pr_max_age_hours);
+        self.draft_ttl_hours = t.draft_ttl_hours.unwrap_or(self.draft_ttl_hours);
+        self.fit_similarity = t.fit_similarity.unwrap_or(self.fit_similarity);
     }
 
     fn validate(&self) -> Result<()> {
