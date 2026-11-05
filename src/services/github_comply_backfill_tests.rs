@@ -16,6 +16,7 @@ fn issue(n: u64, title: &str) -> IssueRec {
         parent: None,
         labels: vec![],
         sub_issues: 0,
+        sub_issues_closed: None,
     }
 }
 

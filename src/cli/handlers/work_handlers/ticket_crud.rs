@@ -42,8 +42,8 @@ pub async fn handle_work_add(
     .await
 }
 
-/// GHC-001 (OUT-204): R1 (repo at its open-issue cap), R3 (a milestone or an epic) and
-/// R5 (an open ticket already fits the title), judged from the repo's open issues read
+/// GHC-001 (OUT-204): R1 (repo at its open-issue cap) and R3 (a milestone or an epic) refuse;
+/// R5 (an open ticket already fits the title) only warns on stderr (OUT-281), judged from the open issues read
 /// through GraphQL, before the epic link or the row is written. Policy:
 /// `.pmat/github-comply.toml`. There is no bypass flag; an unreadable repo refuses.
 fn guard_ghc_001(
@@ -54,14 +54,18 @@ fn guard_ghc_001(
     use crate::services::github_comply::{source, Policy};
     let repo = source::current_repo(project_path)?;
     let policy = Policy::load(project_path, &repo)?;
-    source::guard_filing(
+    let advisory = source::guard_filing(
         &source::GhGraphql,
         &repo,
         &policy,
         title,
         triaged.child,
         triaged.epic,
-    )
+    )?;
+    if let Some(note) = advisory {
+        eprintln!("{note}");
+    }
+    Ok(())
 }
 
 /// Refuse, before GitHub is written to, an issue whose ticket already exists —

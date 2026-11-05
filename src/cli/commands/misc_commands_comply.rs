@@ -456,11 +456,11 @@ pub enum ComplyCommands {
         save_baseline: bool,
     },
 
-    /// Judge a GitHub repository against the GHC-001 rules (R1-R6)
+    /// Judge a GitHub repository against the GHC-001 rules (R1-R6, R4d, R6b)
     ///
     /// Reads open issues and PRs through GraphQL and exits 1 on any violation
     /// (or on anything it could not measure). Without `--pr` it runs the
-    /// reconciler set R1, R2, R4; with `--pr N` it runs the PR check, R3 on the
+    /// reconciler set R1, R2, R4, R4d (draft TTL), R6b (finished epic); with `--pr N` it runs the PR check, R3 on the
     /// tickets PR N references and R6 on its body. `--rules` picks rules
     /// explicitly. Policy: `.pmat/github-comply.toml`.
     Github {
@@ -472,7 +472,7 @@ pub enum ComplyCommands {
         #[arg(long, value_name = "N", conflicts_with = "rules")]
         pr: Option<u64>,
 
-        /// Run only these rules, e.g. `R1,R3` (R1 R2 R3 R4 R6). Default: R1,R2,R4
+        /// Run only these rules, e.g. `R1,R3` (R1 R2 R3 R4 R4d R6 R6b). Default: R1,R2,R4,R4d,R6b
         #[arg(long, value_name = "RULES", value_delimiter = ',')]
         rules: Vec<String>,
 

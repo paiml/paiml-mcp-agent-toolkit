@@ -8551,7 +8551,7 @@ roadmap:
   updated: 2026-11-05T12:00:00Z
   spec: null
   acceptance_criteria:
-  - pmat comply github judges R1-R4 and R6 per repo or per PR and exits 1 on a violation or an unmeasured read; pmat work add refuses R1 cap, R5 duplicate and R3 homeless tickets; FALSIFY-GHC-001..005 are lib tests
+  - pmat comply github judges R1-R4, R4d (draft TTL 72 h), R6 and R6b (finished epic) per repo or per PR and exits 1 on a violation or an unmeasured read; pmat work add refuses R1 cap and R3 homeless tickets and warns (advisory, exit 0) on an R5 title match; FALSIFY-GHC-001..007 are lib tests
   phases: []
   subtasks: []
   estimated_effort: null

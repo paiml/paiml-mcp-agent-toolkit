@@ -97,6 +97,24 @@ fn reads_every_page_and_keeps_graphql_totalcount() {
 }
 
 #[test]
+fn reads_the_closed_sub_issue_count_and_keeps_an_absent_one_absent() {
+    let node = |n: u64, summary: Value| {
+        json!({"number":n,"title":"e","milestone":null,"parent":null,
+               "subIssues":{"totalCount":3},"subIssuesSummary":summary,
+               "labels":{"nodes":[]}})
+    };
+    let page = Ok(json!({"data":{"repository":{"issues":{
+        "totalCount":2,"pageInfo":{"hasNextPage":false,"endCursor":null},
+        "nodes":[node(1, json!({"completed":3})), node(2, Value::Null)]}}}}));
+    let g = Fake::new(vec![rate(4000), page, prs_page(json!([]))]);
+    let s = fetch_snapshot(&g, "paiml/x", now()).expect("fixture");
+    assert_eq!(s.open_issues[0].sub_issues_closed, Some(3));
+    // an absent count stays None (R6b then reports not_measured); it is never read as 0 or as "all closed"
+    assert_eq!(s.open_issues[1].sub_issues_closed, None);
+    assert!(g.seen.borrow()[1].0.contains("subIssuesSummary"));
+}
+
+#[test]
 fn a_low_budget_refuses_before_any_read() {
     let g = Fake::new(vec![rate(MIN_POINTS - 1)]);
     let err = fetch_snapshot(&g, "paiml/x", now()).unwrap_err();
@@ -226,12 +244,16 @@ fn a_missing_has_next_page_is_not_measured_like_a_missing_cursor() {
     assert!(fetch_snapshot(&g, "paiml/x", now()).is_err());
 }
 
-fn filing_under(epic: u64, title: &str, replies: Vec<Result<Value, String>>) -> anyhow::Result<()> {
+fn filing_under(
+    epic: u64,
+    title: &str,
+    replies: Vec<Result<Value, String>>,
+) -> anyhow::Result<Option<String>> {
     let g = Fake::new(replies);
     guard_filing(&g, "paiml/x", &Policy::default(), title, 50, epic)
 }
 
-fn filing(title: &str, replies: Vec<Result<Value, String>>) -> anyhow::Result<()> {
+fn filing(title: &str, replies: Vec<Result<Value, String>>) -> anyhow::Result<Option<String>> {
     filing_under(1, title, replies) // #1 is open in `issues_page` fixtures
 }
 
@@ -266,7 +288,7 @@ fn filing_guard_r3_admits_a_missing_epic_when_the_ticket_has_a_milestone() {
 }
 
 #[test]
-fn filing_guard_refuses_a_fitting_title_admits_a_distinct_one_and_fails_closed() {
+fn filing_guard_warns_on_a_fitting_title_admits_a_distinct_one_and_fails_closed() {
     let open = || {
         vec![
             rate(4000),
@@ -274,10 +296,16 @@ fn filing_guard_refuses_a_fitting_title_admits_a_distinct_one_and_fails_closed()
             prs_page(json!([])),
         ]
     };
-    // issues_page titles are "t1", "t2": a title of exactly "t2" fits #2
-    let err = filing("t2", open()).unwrap_err();
-    assert!(format!("{err:#}").contains("R5"), "{err:#}");
-    filing("wholly different work item", open()).expect("fixture");
+    // issues_page titles are "t1", "t2": a title of exactly "t2" fits #2. OUT-281: R5 is
+    // advisory in v1 — the filing is admitted and the note names the existing ticket.
+    let note = filing("t2", open())
+        .expect("a title match must not refuse")
+        .expect("a title match must carry an advisory");
+    assert!(note.contains("R5") && note.contains("#2"), "{note}");
+    assert_eq!(
+        filing("wholly different work item", open()).expect("fixture"),
+        None
+    );
     let err = filing("anything", vec![rate(4000), Err("HTTP 502".into())]).unwrap_err();
     assert!(
         format!("{err:#}").contains("nothing was linked or written"),

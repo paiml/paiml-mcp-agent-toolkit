@@ -21,7 +21,7 @@ const RATE_QUERY: &str = "query { rateLimit { remaining resetAt } }";
 const ISSUES_QUERY: &str = "query($owner:String!,$name:String!,$after:String){\
 repository(owner:$owner,name:$name){issues(states:OPEN,first:100,after:$after){\
 totalCount pageInfo{hasNextPage endCursor} \
-nodes{number title milestone{title} parent{number} subIssues{totalCount} \
+nodes{number title milestone{title} parent{number} subIssues{totalCount} subIssuesSummary{completed} \
 labels(first:20){nodes{name}}}}}}";
 
 const PRS_QUERY: &str = "query($owner:String!,$name:String!,$after:String){\
@@ -241,6 +241,7 @@ pub fn parse_issue(node: &Value) -> Result<IssueRec> {
         sub_issues: node["subIssues"]["totalCount"].as_u64().with_context(|| {
             format!("issue #{number}: no subIssues.totalCount in the reply; not measured")
         })?,
+        sub_issues_closed: node["subIssuesSummary"]["completed"].as_u64(),
     })
 }
 
@@ -283,7 +284,7 @@ pub fn guard_filing(
     title: &str,
     child: u64,
     epic: u64,
-) -> Result<()> {
+) -> Result<Option<String>> {
     let snap = fetch_snapshot(g, repo, Utc::now())
         .with_context(|| format!("refused: could not read {repo}'s open tickets (GHC-001 R1/R5) — nothing was linked or written"))?;
     // R3: the epic the ticket will be linked under must exist and be open, otherwise the

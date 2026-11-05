@@ -12,6 +12,11 @@
 //! | R4   | a non-draft PR older than `pr_max_age_hours` (4) with no PASS          | reconciler                   |
 //! | R5   | `work add` while an open ticket already fits, or the repo is at the R1 cap | `work add`               |
 //! | R6   | a PR body with no `Closes|Fixes|Resolves owner/repo#N` / `Part of owner/repo#N` | PR check            |
+//! | R4d  | a DRAFT PR older than `draft_ttl_hours` (72) — OUT-281, reported apart from R4 | reconciler          |
+//! | R6b  | an open epic whose sub-issues are all closed — OUT-281                 | reconciler                   |
+//!
+//! R5 is advisory in v1 (OUT-281): a title match warns and names the existing ticket but
+//! does not refuse; blocking needs body similarity (v2).
 //!
 //! Policy lives in `.pmat/github-comply.toml` (defaults below, per-repo
 //! overrides under `[repo."owner/name"]`). An unknown key is an error: a typo
@@ -37,14 +42,27 @@ pub enum Rule {
     R4,
     R5,
     R6,
+    /// R4 for drafts: a draft open longer than `draft_ttl_hours` (72). Reported apart from R4.
+    R4d,
+    /// R6b: an open epic all of whose sub-issues are closed.
+    R6b,
 }
 
 impl Rule {
     /// The rules `pmat comply github` judges from a repository snapshot. R5 is
     /// a creation-time rule (`pmat work add`) and has no repository verdict.
-    pub const SNAPSHOT: [Rule; 5] = [Rule::R1, Rule::R2, Rule::R3, Rule::R4, Rule::R6];
-    /// The reconciler's set (per repo): R1, R2, R4.
-    pub const RECONCILER: [Rule; 3] = [Rule::R1, Rule::R2, Rule::R4];
+    pub const SNAPSHOT: [Rule; 7] = [
+        Rule::R1,
+        Rule::R2,
+        Rule::R3,
+        Rule::R4,
+        Rule::R4d,
+        Rule::R6,
+        Rule::R6b,
+    ];
+    /// The reconciler's set (per repo): R1, R2, R4, plus the two repo-level checks
+    /// OUT-281 added, the draft TTL (R4d) and the finished-epic check (R6b).
+    pub const RECONCILER: [Rule; 5] = [Rule::R1, Rule::R2, Rule::R4, Rule::R4d, Rule::R6b];
 
     pub fn id(self) -> &'static str {
         match self {
@@ -54,6 +72,8 @@ impl Rule {
             Rule::R4 => "R4",
             Rule::R5 => "R5",
             Rule::R6 => "R6",
+            Rule::R4d => "R4d",
+            Rule::R6b => "R6b",
         }
     }
 
@@ -63,7 +83,7 @@ impl Rule {
             .copied()
             .find(|r| r.id().eq_ignore_ascii_case(s.trim()))
             .with_context(|| {
-                format!("unknown rule `{s}` — `pmat comply github` judges R1, R2, R3, R4, R6 (R5 is `pmat work add`)")
+                format!("unknown rule `{s}` — `pmat comply github` judges R1, R2, R3, R4, R4d, R6, R6b (R5 is `pmat work add`)")
             })
     }
 }
@@ -82,6 +102,8 @@ pub struct Policy {
     pub pr_exempt: Vec<String>,
     /// R4 max age, hours, of a non-draft PR without a PASS.
     pub pr_max_age_hours: i64,
+    /// R4d: max age, hours, of a DRAFT PR (OUT-281: 72 h TTL).
+    pub draft_ttl_hours: i64,
     /// R5: Jaccard similarity of title tokens at or above which an open ticket "fits".
     pub fit_similarity: f64,
 }
@@ -94,6 +116,7 @@ impl Default for Policy {
             max_open_prs: 4,
             pr_exempt: vec!["train/*".into(), "fix-set/expedite".into()],
             pr_max_age_hours: 4,
+            draft_ttl_hours: 72,
             fit_similarity: 0.6,
         }
     }
@@ -108,6 +131,7 @@ struct PolicyTable {
     max_open_prs: Option<usize>,
     pr_exempt: Option<Vec<String>>,
     pr_max_age_hours: Option<i64>,
+    draft_ttl_hours: Option<i64>,
     fit_similarity: Option<f64>,
 }
 
@@ -161,6 +185,9 @@ impl Policy {
         if let Some(v) = t.pr_max_age_hours {
             self.pr_max_age_hours = v;
         }
+        if let Some(v) = t.draft_ttl_hours {
+            self.draft_ttl_hours = v;
+        }
         if let Some(v) = t.fit_similarity {
             self.fit_similarity = v;
         }
@@ -169,6 +196,9 @@ impl Policy {
     fn validate(&self) -> Result<()> {
         if self.pr_max_age_hours < 0 {
             bail!("pr_max_age_hours must not be negative");
+        }
+        if self.draft_ttl_hours < 0 {
+            bail!("draft_ttl_hours must not be negative");
         }
         if !(0.0..=1.0).contains(&self.fit_similarity) {
             bail!("fit_similarity must be within 0.0..=1.0");
@@ -205,6 +235,10 @@ pub struct IssueRec {
     /// How many sub-issues this issue has (an epic has at least one).
     #[serde(default)]
     pub sub_issues: u64,
+    /// How many of those sub-issues are closed. `None` = the read did not say (R6b is then
+    /// not measured, never a pass).
+    #[serde(default)]
+    pub sub_issues_closed: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

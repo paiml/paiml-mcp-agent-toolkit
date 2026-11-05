@@ -3,7 +3,7 @@
 use crate::services::github_comply::{self as ghc, source as ghc_source};
 
 /// Which rules a `comply github` invocation runs: `--pr` is the PR check, `--rules`
-/// names rules, and with neither it is the reconciler set (R1, R2, R4).
+/// names rules, and with neither it is the reconciler set (R1, R2, R4, R4d, R6b).
 fn github_rules(pr: Option<u64>, rules: &[String]) -> Result<Vec<ghc::Rule>> {
     if pr.is_some() {
         return Ok(vec![ghc::Rule::R3, ghc::Rule::R6]);

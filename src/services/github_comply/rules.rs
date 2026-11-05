@@ -88,6 +88,12 @@ pub fn evaluate(snap: &RepoSnapshot, policy: &Policy, rules: &[Rule]) -> Report 
             Rule::R4 => check_r4(snap, policy),
             Rule::R5 => vec![], // creation-time only: see `guard_new_ticket`
             Rule::R6 => snap.open_prs.iter().filter_map(check_r6_pr).collect(),
+            Rule::R4d => check_r4d(snap, policy),
+            Rule::R6b => {
+                let (found, unmeasured) = check_r6b(snap);
+                report.not_measured.extend(unmeasured);
+                found
+            }
         };
         report.violations.extend(found);
     }
@@ -210,6 +216,50 @@ fn check_r4(snap: &RepoSnapshot, policy: &Policy) -> Vec<Violation> {
             )
         })
         .collect()
+}
+
+/// R4d (OUT-281): a draft is not exempt from age — it expires after `draft_ttl_hours`
+/// whatever its checks say. Reported as its own rule, apart from R4.
+fn check_r4d(snap: &RepoSnapshot, policy: &Policy) -> Vec<Violation> {
+    let limit = Duration::hours(policy.draft_ttl_hours);
+    snap.open_prs
+        .iter()
+        .filter(|p| p.is_draft && snap.taken_at - p.created_at > limit)
+        .map(|p| {
+            let hours = (snap.taken_at - p.created_at).num_hours();
+            violation(
+                Rule::R4d,
+                Some(p.number),
+                format!("draft open {hours} h (TTL {} h)", policy.draft_ttl_hours),
+            )
+        })
+        .collect()
+}
+
+/// R6b (OUT-281): an open issue with sub-issues, all of them closed, is a finished epic
+/// left open. The second value is what could not be judged: a parent whose closed count
+/// the read did not give is never a pass.
+fn check_r6b(snap: &RepoSnapshot) -> (Vec<Violation>, Vec<String>) {
+    let mut found = Vec::new();
+    let mut unmeasured = Vec::new();
+    for i in snap.open_issues.iter().filter(|i| i.sub_issues > 0) {
+        match i.sub_issues_closed {
+            Some(closed) if closed >= i.sub_issues => found.push(violation(
+                Rule::R6b,
+                Some(i.number),
+                format!(
+                    "open epic \"{}\" has all {} sub-issues closed — close it or add work",
+                    i.title, i.sub_issues
+                ),
+            )),
+            Some(_) => {}
+            None => unmeasured.push(format!(
+                "R6b: #{} has {} sub-issues but the read gave no closed count",
+                i.number, i.sub_issues
+            )),
+        }
+    }
+    (found, unmeasured)
 }
 
 fn check_r6_pr(pr: &PrRec) -> Option<Violation> {
@@ -374,7 +424,7 @@ pub fn guard_new_ticket(
     title: &str,
     child: Option<u64>,
     epic: Option<u64>,
-) -> Result<()> {
+) -> Result<Option<String>> {
     let child_listed = child.is_some_and(|c| snap.open_issues.iter().any(|i| i.number == c));
     let others = snap
         .open_issue_total
@@ -388,15 +438,6 @@ pub fn guard_new_ticket(
             policy.target_open_issues
         );
     }
-    if let Some((fit, score)) =
-        find_fitting_issue(title, &snap.open_issues, child, policy.fit_similarity)
-    {
-        bail!(
-            "refused (R5): open ticket #{} \"{}\" already fits this title (similarity {score:.2}) — extend it instead of filing a new one",
-            fit.number,
-            fit.title
-        );
-    }
     let has_home = epic.is_some()
         || snap
             .open_issues
@@ -405,5 +446,20 @@ pub fn guard_new_ticket(
     if !has_home {
         bail!("refused (R3): the ticket has no milestone and no open epic to be a sub-issue of");
     }
-    Ok(())
+    Ok(r5_advisory(policy, snap, title, child))
+}
+
+/// R5 in v1 (OUT-281): a title match is advisory — name the existing ticket, do not refuse.
+/// Blocking needs body similarity (v2).
+fn r5_advisory(
+    policy: &Policy,
+    snap: &RepoSnapshot,
+    title: &str,
+    child: Option<u64>,
+) -> Option<String> {
+    let (fit, score) = find_fitting_issue(title, &snap.open_issues, child, policy.fit_similarity)?;
+    Some(format!(
+        "warning (R5, advisory): open ticket #{} \"{}\" looks like this title (similarity {score:.2}) — consider extending it; filing anyway",
+        fit.number, fit.title
+    ))
 }

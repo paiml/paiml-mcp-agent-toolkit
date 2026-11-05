@@ -10,8 +10,16 @@
 //! - FALSIFY-GHC-003  R3 + R6 — a ticket with neither milestone nor epic, and a PR body with no
 //!   `owner/repo#N` reference, are each caught; the linked forms pass.
 //! - FALSIFY-GHC-004  R4 — a non-draft PR older than 4 h without a PASS violates; PASS, young, draft do not.
-//! - FALSIFY-GHC-005  R5 — `work add` refuses a title an open ticket fits and a repo at the R1 cap,
-//!   and admits a distinct title under the cap; the ticket never matches itself.
+//! - FALSIFY-GHC-005  R5 — `work add` WARNS (advisory, OUT-281) naming the open ticket a title fits and
+//!   still admits it; it refuses a repo at the R1 cap; a distinct title carries no note; the ticket
+//!   never matches itself.
+//!
+//! OUT-281 additions (ids beyond the spec's 001..005):
+//!
+//! - FALSIFY-GHC-006  R6b — an open epic whose sub-issues are all closed violates; one with an open
+//!   child, with no children, or with an unreported count (not_measured) does not.
+//! - FALSIFY-GHC-007  R4d — a draft PR older than 72 h violates (reported as R4d, apart from R4);
+//!   72 h exactly, younger drafts and non-draft PRs do not.
 //!
 //! Each `falsify_ghc_00N_*` test is the planted-violation arm; `*_control` is the arm that must pass.
 
@@ -32,6 +40,7 @@ fn issue(n: u64, title: &str) -> IssueRec {
         parent: None,
         labels: vec![],
         sub_issues: 0,
+        sub_issues_closed: None,
     }
 }
 
@@ -412,6 +421,106 @@ fn r4_age_is_measured_from_the_snapshot_not_the_wall_clock() {
     assert_eq!(rules(&run(&snap(vec![], vec![p]), &[Rule::R4])), [Rule::R4]);
 }
 
+// ---- FALSIFY-GHC-007: R4d (draft TTL) ------------------------------------
+
+fn draft(n: u64, age_h: i64, age_min: i64) -> PrRec {
+    PrRec {
+        is_draft: true,
+        created_at: t0() - Duration::hours(age_h) - Duration::minutes(age_min),
+        ..pr(n, 0, CheckState::None)
+    }
+}
+
+#[test]
+fn falsify_ghc_007_draft_older_than_72h_violates_r4d_and_not_r4() {
+    let s = snap(vec![], vec![draft(1, 72, 1)]);
+    let r = run(&s, &[Rule::R4d]);
+    assert_eq!(rules(&r), [Rule::R4d]);
+    assert_eq!(r.violations[0].subject, Some(1));
+    // reported separately: the non-draft rule stays silent about a draft
+    assert!(run(&s, &[Rule::R4]).ok());
+    // the TTL is about age, not checks: a draft with a PASS still expires
+    let mut passing = draft(2, 100, 0);
+    passing.checks = CheckState::Pass;
+    assert_eq!(
+        rules(&run(&snap(vec![], vec![passing]), &[Rule::R4d])),
+        [Rule::R4d]
+    );
+}
+
+#[test]
+fn falsify_ghc_007_control_young_exact_and_non_draft_do_not_violate_r4d() {
+    let old_non_draft = pr(3, 200, CheckState::Pending);
+    let s = snap(vec![], vec![draft(1, 72, 0), draft(2, 1, 0), old_non_draft]);
+    assert!(run(&s, &[Rule::R4d]).ok(), "exactly 72 h is not OVER 72 h");
+}
+
+#[test]
+fn r4d_ttl_is_policy() {
+    let p = Policy::from_toml("[defaults]\ndraft_ttl_hours = 10\n", "paiml/x").expect("fixture");
+    let s = snap(vec![], vec![draft(1, 11, 0)]);
+    assert_eq!(rules(&evaluate(&s, &p, &[Rule::R4d])), [Rule::R4d]);
+    assert!(Policy::from_toml("[defaults]\ndraft_ttl_hours = -1\n", "a/b").is_err());
+    assert_eq!(Policy::default().draft_ttl_hours, 72);
+}
+
+// ---- FALSIFY-GHC-006: R6b (finished epic) --------------------------------
+
+fn epic(n: u64, total: u64, closed: Option<u64>) -> IssueRec {
+    IssueRec {
+        labels: vec!["epic".into()],
+        sub_issues: total,
+        sub_issues_closed: closed,
+        ..issue(n, &format!("epic {n}"))
+    }
+}
+
+#[test]
+fn falsify_ghc_006_open_epic_with_all_children_closed_violates_r6b() {
+    let r = run(&snap(vec![epic(9, 3, Some(3))], vec![]), &[Rule::R6b]);
+    assert_eq!(rules(&r), [Rule::R6b]);
+    assert_eq!(r.violations[0].subject, Some(9));
+    assert!(r.violations[0].message.contains("3"), "{:?}", r.violations);
+    assert!(r.not_measured.is_empty());
+}
+
+#[test]
+fn falsify_ghc_006_control_an_open_child_or_no_children_does_not_violate() {
+    let s = snap(
+        vec![epic(1, 3, Some(2)), epic(2, 0, Some(0)), epic(3, 0, None)],
+        vec![],
+    );
+    let r = run(&s, &[Rule::R6b]);
+    assert!(r.ok(), "{:?} {:?}", r.violations, r.not_measured);
+}
+
+#[test]
+fn r6b_a_missing_closed_count_is_not_measured_never_a_pass_or_a_violation() {
+    let r = run(&snap(vec![epic(9, 3, None)], vec![]), &[Rule::R6b]);
+    assert!(r.violations.is_empty());
+    assert_eq!(r.not_measured.len(), 1, "{:?}", r.not_measured);
+    assert!(r.not_measured[0].contains("#9"), "{:?}", r.not_measured);
+    assert!(!r.ok());
+}
+
+#[test]
+fn r6b_judges_any_issue_with_children_not_only_the_epic_label() {
+    // an issue that HAS sub-issues is a parent whatever it is labelled
+    let mut parent = epic(9, 2, Some(2));
+    parent.labels.clear();
+    assert_eq!(
+        rules(&run(&snap(vec![parent], vec![]), &[Rule::R6b])),
+        [Rule::R6b]
+    );
+}
+
+#[test]
+fn r6b_and_r4d_run_in_the_reconciler_and_parse() {
+    assert!(Rule::RECONCILER.contains(&Rule::R6b) && Rule::RECONCILER.contains(&Rule::R4d));
+    assert_eq!(Rule::parse("r6b").expect("fixture"), Rule::R6b);
+    assert_eq!(Rule::parse("R4D").expect("fixture"), Rule::R4d);
+}
+
 // ---- FALSIFY-GHC-005: R5 ------------------------------------------------
 
 fn open_tickets() -> Vec<IssueRec> {
@@ -422,18 +531,47 @@ fn open_tickets() -> Vec<IssueRec> {
 }
 
 #[test]
-fn falsify_ghc_005_work_add_refuses_a_title_an_open_ticket_fits() {
+fn falsify_ghc_005_work_add_warns_naming_the_ticket_a_title_fits_and_does_not_refuse() {
+    // OUT-281: R5 title similarity is ADVISORY in v1 — Ok (exit 0) with a note naming #2.
     let s = snap(open_tickets(), vec![]);
-    let err = guard_new_ticket(
+    let note = guard_new_ticket(
         &Policy::default(),
         &s,
         "Add pmat comply github command",
         Some(50),
         Some(3),
     )
+    .expect("a title match must not refuse")
+    .expect("a title match must carry an advisory");
+    assert!(
+        note.contains("R5") && note.contains("#2") && note.contains("advisory"),
+        "{note}"
+    );
+}
+
+#[test]
+fn r5_advisory_does_not_mask_the_blocking_rules() {
+    // a title match AND the R1 cap: R1 still refuses. A title match AND no home: R3 still refuses.
+    let mut at_cap = n_issues(100);
+    at_cap[1] = issue(2, "Add pmat comply github command");
+    let err = guard_new_ticket(
+        &Policy::default(),
+        &snap(at_cap, vec![]),
+        "Add pmat comply github command",
+        Some(500),
+        Some(3),
+    )
     .unwrap_err();
-    let msg = format!("{err:#}");
-    assert!(msg.contains("R5") && msg.contains("#2"), "{msg}");
+    assert!(format!("{err:#}").contains("R1"), "{err:#}");
+    let err = guard_new_ticket(
+        &Policy::default(),
+        &snap(open_tickets(), vec![]),
+        "Add pmat comply github command",
+        Some(50),
+        None,
+    )
+    .unwrap_err();
+    assert!(format!("{err:#}").contains("R3"), "{err:#}");
 }
 
 #[test]
@@ -454,7 +592,7 @@ fn falsify_ghc_005_work_add_refuses_at_the_r1_cap() {
 #[test]
 fn falsify_ghc_005_control_a_distinct_title_under_the_cap_is_admitted() {
     let s = snap(open_tickets(), vec![]);
-    guard_new_ticket(
+    let note = guard_new_ticket(
         &Policy::default(),
         &s,
         "Rework the roadmap fragment merger",
@@ -462,13 +600,14 @@ fn falsify_ghc_005_control_a_distinct_title_under_the_cap_is_admitted() {
         Some(3),
     )
     .expect("fixture");
+    assert_eq!(note, None, "a distinct title carries no advisory");
 }
 
 #[test]
 fn r5_a_ticket_never_matches_itself() {
     // --github-issue 2 is the issue being filed: it is already open and has this very title.
     let s = snap(open_tickets(), vec![]);
-    guard_new_ticket(
+    let note = guard_new_ticket(
         &Policy::default(),
         &s,
         "Add pmat comply github command",
@@ -476,6 +615,7 @@ fn r5_a_ticket_never_matches_itself() {
         Some(3),
     )
     .expect("fixture");
+    assert_eq!(note, None, "no advisory naming itself");
 }
 
 #[test]
