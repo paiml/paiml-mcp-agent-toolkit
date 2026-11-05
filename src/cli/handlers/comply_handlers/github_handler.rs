@@ -77,6 +77,23 @@ pub(crate) fn handle_github(
     Ok(())
 }
 
+/// `pmat comply github`: the rules report, or with `--backfill` the backfill table.
+pub(crate) fn handle_github_command(
+    path: &Path,
+    repo: Option<&str>,
+    pr: Option<u64>,
+    rules: &[String],
+    format: crate::cli::commands::GithubComplyFormat,
+    snapshot: Option<&Path>,
+    backfill: bool,
+) -> Result<()> {
+    if backfill {
+        handle_github_backfill(path, repo, format)
+    } else {
+        handle_github(path, repo, pr, rules, format, snapshot)
+    }
+}
+
 /// `pmat comply github --backfill`: read open issues and merged PRs over GraphQL and
 /// print the DONE / PARTIAL / WRONG-LINK table. Classifies only; writes nothing.
 pub(crate) fn handle_github_backfill(

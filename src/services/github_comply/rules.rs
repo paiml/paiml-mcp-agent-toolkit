@@ -84,11 +84,7 @@ pub fn evaluate(snap: &RepoSnapshot, policy: &Policy, rules: &[Rule]) -> Report 
         let found = match rule {
             Rule::R1 => check_r1(snap, policy),
             Rule::R2 => check_r2(snap, policy),
-            Rule::R3 => snap
-                .open_issues
-                .iter()
-                .filter_map(|i| check_r3_issue(i, snap))
-                .collect(),
+            Rule::R3 => check_r3(snap),
             Rule::R4 => check_r4(snap, policy),
             Rule::R5 => vec![], // creation-time only: see `guard_new_ticket`
             Rule::R6 => snap.open_prs.iter().filter_map(check_r6_pr).collect(),
@@ -173,6 +169,13 @@ fn is_epic(issue: &IssueRec, snap: &RepoSnapshot) -> bool {
             .open_issues
             .iter()
             .any(|i| i.parent == Some(issue.number))
+}
+
+fn check_r3(snap: &RepoSnapshot) -> Vec<Violation> {
+    snap.open_issues
+        .iter()
+        .filter_map(|i| check_r3_issue(i, snap))
+        .collect()
 }
 
 fn check_r3_issue(issue: &IssueRec, snap: &RepoSnapshot) -> Option<Violation> {
