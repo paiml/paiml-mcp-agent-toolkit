@@ -358,6 +358,12 @@ impl CommandDispatcher {
             SpecCommands::Review { record, path } => {
                 spec_handlers::handle_spec_review(&record, &path).await
             }
+            SpecCommands::QuorumStatus {
+                sha,
+                dir,
+                repo,
+                post,
+            } => spec_handlers::handle_quorum_status(&sha, &dir, repo.as_deref(), post),
         }
     }
 
