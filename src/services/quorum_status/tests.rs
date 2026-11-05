@@ -99,16 +99,17 @@ fn gh_args_post_to_the_statuses_endpoint_with_context_quorum() {
 }
 
 #[test]
-fn load_dir_reads_only_this_shas_json_files() {
+fn load_dir_reads_only_this_shas_json_files() -> std::io::Result<()> {
     let d = std::env::temp_dir().join(format!("qs-{}", std::process::id()));
-    std::fs::create_dir_all(&d).unwrap();
+    std::fs::create_dir_all(&d)?;
     for (n, b) in three_pass() {
-        std::fs::write(d.join(n), b).unwrap();
+        std::fs::write(d.join(n), b)?;
     }
-    std::fs::write(d.join(format!("{SHA}.d.txt")), "PASS").unwrap();
-    std::fs::write(d.join("other.a.json"), "{}").unwrap();
-    let got = load_dir(&d, SHA).unwrap();
+    std::fs::write(d.join(format!("{SHA}.d.txt")), "PASS")?;
+    std::fs::write(d.join("other.a.json"), "{}")?;
+    let got = load_dir(&d, SHA)?;
     assert_eq!(got.len(), 4); // 3 json + the .txt is handed to judge, which refuses it
     assert!(judge(SHA, &got).description.contains("3/3"));
-    std::fs::remove_dir_all(&d).unwrap();
+    std::fs::remove_dir_all(&d)?;
+    Ok(())
 }

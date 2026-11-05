@@ -39,14 +39,18 @@ mod quorum_status_handler_tests {
     use super::*;
 
     #[test]
-    fn empty_dir_is_not_met_and_post_needs_repo() {
+    fn empty_dir_is_not_met_and_post_needs_repo() -> anyhow::Result<()> {
         let d = std::env::temp_dir().join(format!("qsh-{}", std::process::id()));
-        std::fs::create_dir_all(&d).unwrap();
+        std::fs::create_dir_all(&d)?;
         let sha = "0123456789abcdef0123456789abcdef01234567";
         assert!(handle_quorum_status(sha, &d, None, false).is_err());
-        let e = handle_quorum_status(sha, &d, None, true).unwrap_err();
-        assert!(e.to_string().contains("--repo"));
-        std::fs::remove_dir_all(&d).unwrap();
+        let msg = match handle_quorum_status(sha, &d, None, true) {
+            Err(e) => e.to_string(),
+            Ok(()) => String::new(),
+        };
+        assert!(msg.contains("--repo"));
+        std::fs::remove_dir_all(&d)?;
+        Ok(())
     }
 
     #[test]
