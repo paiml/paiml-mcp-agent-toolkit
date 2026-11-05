@@ -37,6 +37,16 @@ cat > "$T/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 D=$(dirname "$(dirname "$0")")/gh
 printf '%s\n' "$*" >> "$D/calls.log"
+# GHC-001 (OUT-204): `work add` also reads the repo's open issues over GraphQL (R1/R3/R5)
+[ "$1 $2" = "repo view" ] && { echo fx/fx; exit 0; }
+if [ "$1 $2" = "api graphql" ]; then
+  case "$*" in
+    *"issues(states"*) echo '{"data":{"repository":{"issues":{"totalCount":0,"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}' ;;
+    *"pullRequests("*) echo '{"data":{"repository":{"pullRequests":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}' ;;
+    *) echo '{"data":{"rateLimit":{"remaining":5000,"resetAt":"2030-01-01T00:00:00Z"}}}' ;;
+  esac
+  exit 0
+fi
 [ "$1" = api ] || exit 1; shift
 post=0; paginate=0; path=""; field=""
 while [ $# -gt 0 ]; do case "$1" in

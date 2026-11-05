@@ -252,8 +252,13 @@ pub struct Report {
 }
 
 mod rules;
+pub mod source;
 pub use rules::*;
 
 #[cfg(test)]
 #[path = "github_comply_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "github_comply_source_tests.rs"]
+mod source_tests;

@@ -455,6 +455,50 @@ pub enum ComplyCommands {
         #[arg(long = "save-baseline")]
         save_baseline: bool,
     },
+
+    /// Judge a GitHub repository against the GHC-001 rules (R1-R6)
+    ///
+    /// Reads open issues and PRs through GraphQL and exits 1 on any violation
+    /// (or on anything it could not measure). Without `--pr` it runs the
+    /// reconciler set R1, R2, R4; with `--pr N` it runs the PR check, R3 on the
+    /// tickets PR N references and R6 on its body. `--rules` picks rules
+    /// explicitly. Policy: `.pmat/github-comply.toml`.
+    Github {
+        /// Repository as owner/name (default: the checkout's own, via `gh repo view`)
+        #[arg(long, value_name = "OWNER/NAME")]
+        repo: Option<String>,
+
+        /// Run the PR check (R3, R6) for this pull request number
+        #[arg(long, value_name = "N", conflicts_with = "rules")]
+        pr: Option<u64>,
+
+        /// Run only these rules, e.g. `R1,R3` (R1 R2 R3 R4 R6). Default: R1,R2,R4
+        #[arg(long, value_name = "RULES", value_delimiter = ',')]
+        rules: Vec<String>,
+
+        /// Project path holding `.pmat/github-comply.toml`
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: GithubComplyFormat,
+
+        /// Judge this snapshot file instead of the live API (controls and offline
+        /// runs only: a file is not evidence for the repository)
+        #[arg(long, value_name = "FILE")]
+        snapshot: Option<PathBuf>,
+    },
+}
+
+/// GHC-001 output formats: text and JSON only, so `--format markdown` is an
+/// error rather than text under another name.
+#[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq)]
+pub enum GithubComplyFormat {
+    /// Human-readable report
+    Text,
+    /// The Report as JSON
+    Json,
 }
 
 /// Comply output formats
