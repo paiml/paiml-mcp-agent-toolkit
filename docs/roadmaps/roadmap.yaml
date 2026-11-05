@@ -8541,7 +8541,7 @@ roadmap:
   notes: null
   epic: 1457
 - id: PMAT-3151
-  github_issue: null
+  github_issue: 1616
   item_type: task
   title: 'FLOW-010 F2+F4 gate merge_group + nightly cargo-deny'
   status: planned
