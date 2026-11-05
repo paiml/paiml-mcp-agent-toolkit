@@ -81,23 +81,39 @@ fn violation(rule: Rule, subject: Option<u64>, message: String) -> Violation {
 pub fn evaluate(snap: &RepoSnapshot, policy: &Policy, rules: &[Rule]) -> Report {
     let mut report = new_report(snap, rules);
     for rule in report.rules_run.clone() {
-        let found = match rule {
-            Rule::R1 => check_r1(snap, policy),
-            Rule::R2 => check_r2(snap, policy),
-            Rule::R3 => check_r3(snap),
-            Rule::R4 => check_r4(snap, policy),
-            Rule::R5 => vec![], // creation-time only: see `guard_new_ticket`
-            Rule::R6 => snap.open_prs.iter().filter_map(check_r6_pr).collect(),
-            Rule::R4d => check_r4d(snap, policy),
-            Rule::R6b => {
-                let (found, unmeasured) = check_r6b(snap);
-                report.not_measured.extend(unmeasured);
-                found
-            }
-        };
+        let mut unmeasured = Vec::new();
+        let found = check_limits(rule, snap, policy)
+            .unwrap_or_else(|| check_content(rule, snap, &mut unmeasured));
         report.violations.extend(found);
+        report.not_measured.extend(unmeasured);
     }
     report
+}
+
+/// The count and age rules (R1, R2, R4, R4d); `None` for any other rule.
+fn check_limits(rule: Rule, snap: &RepoSnapshot, policy: &Policy) -> Option<Vec<Violation>> {
+    Some(match rule {
+        Rule::R1 => check_r1(snap, policy),
+        Rule::R2 => check_r2(snap, policy),
+        Rule::R4 => check_r4(snap, policy),
+        Rule::R4d => check_r4d(snap, policy),
+        _ => return None,
+    })
+}
+
+/// The rules that read what tickets and PRs say (R3, R6, R6b). R5 is creation-time
+/// only (see `guard_new_ticket`) and has no repository verdict.
+fn check_content(rule: Rule, snap: &RepoSnapshot, unmeasured: &mut Vec<String>) -> Vec<Violation> {
+    match rule {
+        Rule::R3 => check_r3(snap),
+        Rule::R6 => snap.open_prs.iter().filter_map(check_r6_pr).collect(),
+        Rule::R6b => {
+            let (found, missing) = check_r6b(snap);
+            unmeasured.extend(missing);
+            found
+        }
+        _ => vec![],
+    }
 }
 
 fn check_r1(snap: &RepoSnapshot, policy: &Policy) -> Vec<Violation> {

@@ -64,17 +64,11 @@ impl Rule {
     /// OUT-281 added, the draft TTL (R4d) and the finished-epic check (R6b).
     pub const RECONCILER: [Rule; 5] = [Rule::R1, Rule::R2, Rule::R4, Rule::R4d, Rule::R6b];
 
+    /// The id of each variant, in declaration order (`self as usize` indexes this).
+    const IDS: [&'static str; 8] = ["R1", "R2", "R3", "R4", "R5", "R6", "R4d", "R6b"];
+
     pub fn id(self) -> &'static str {
-        match self {
-            Rule::R1 => "R1",
-            Rule::R2 => "R2",
-            Rule::R3 => "R3",
-            Rule::R4 => "R4",
-            Rule::R5 => "R5",
-            Rule::R6 => "R6",
-            Rule::R4d => "R4d",
-            Rule::R6b => "R6b",
-        }
+        Rule::IDS[self as usize]
     }
 
     pub fn parse(s: &str) -> Result<Rule> {

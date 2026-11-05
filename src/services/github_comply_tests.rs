@@ -675,6 +675,34 @@ fn report_round_trips_through_json() {
 }
 
 #[test]
+fn every_rule_id_is_its_variant_name_and_snapshot_rules_round_trip() {
+    let all = [
+        Rule::R1,
+        Rule::R2,
+        Rule::R3,
+        Rule::R4,
+        Rule::R5,
+        Rule::R6,
+        Rule::R4d,
+        Rule::R6b,
+    ];
+    for r in all {
+        assert_eq!(
+            r.id(),
+            format!("{r:?}"),
+            "id table out of step with the enum"
+        );
+        assert_eq!(
+            serde_json::to_string(&r).expect("fixture"),
+            format!("\"{}\"", r.id())
+        );
+    }
+    for r in Rule::SNAPSHOT {
+        assert_eq!(Rule::parse(r.id()).expect("fixture"), r);
+    }
+}
+
+#[test]
 fn rule_parse_accepts_the_snapshot_rules_only() {
     assert_eq!(Rule::parse("r3").expect("fixture"), Rule::R3);
     assert!(Rule::parse("R5").is_err());
