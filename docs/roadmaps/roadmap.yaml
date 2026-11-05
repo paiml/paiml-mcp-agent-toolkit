@@ -8540,3 +8540,21 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: PMAT-3151
+  github_issue: null
+  item_type: task
+  title: 'FLOW-010 F2+F4 gate merge_group + nightly cargo-deny'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-05T12:00:00Z
+  updated: 2026-11-05T12:00:00Z
+  spec: null
+  acceptance_criteria:
+  - the gate workflow runs on merge_group checks_requested and a nightly cargo-deny job runs on a schedule (FLOW-010 F2 + F4, tracked in paiml/infra epic 2318)
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
