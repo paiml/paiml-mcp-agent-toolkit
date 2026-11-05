@@ -7,5 +7,5 @@ concurrency: { group: 'cargo-deny-daily-${{ github.ref }}', cancel-in-progress: 
 permissions: { contents: read }
 jobs:
   advisories:
-    uses: paiml/infra/.github/workflows/cargo-deny-daily.yml@main
+    uses: paiml/infra/.github/workflows/cargo-deny-daily.yml@47c76b857de07c7b9755cebc8bcbe2b25467a496
     with: { runs-on: '["self-hosted","clean-room"]', manifest-paths: 'Cargo.toml' }
