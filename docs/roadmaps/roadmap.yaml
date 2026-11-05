@@ -8540,3 +8540,22 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: PMAT-1611
+  github_issue: 1611
+  item_type: task
+  title: 'OUT-324: pre-push runs cargo deny check advisories on Cargo.lock/deny.toml change + receipt-root schema check'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-05T15:00:00Z
+  updated: 2026-11-05T15:00:00Z
+  spec: null
+  acceptance_criteria:
+  - the pmat pre-push hook runs cargo deny check advisories whenever Cargo.lock or deny.toml changes in the pushed range and refuses the push on a failed or unmeasurable run; a planted duplicate or unknown advisory refuses, a push touching neither file does not run deny; the quorum-root receipt schema check (refuse any file not named <sha>.<seat>.json) lives outside this repo and is out of scope here
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1604
