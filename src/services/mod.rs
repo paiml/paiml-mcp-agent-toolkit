@@ -61,6 +61,7 @@ pub mod contract_index; // R-9: O(1) contract binding lookup from binding-index.
 pub mod dap; // Sprint 71: Debug Adapter Protocol server (optional - 13 transitive deps)
 pub mod detection; // Toyota Way: Unified detection framework (consolidates detection services)
 pub mod facades;
+pub mod github_comply; // GHC-001: `pmat comply github` rules R1-R6 and the work add guards
 pub mod language_analyzer;
 pub mod language_registry;
 pub mod languages;
