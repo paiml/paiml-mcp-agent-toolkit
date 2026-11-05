@@ -203,6 +203,18 @@ fn snapshot_file_round_trip_and_errors() {
 }
 
 #[test]
+fn a_missing_sub_issue_count_is_an_error_not_a_silent_zero() {
+    let node = json!({"number":4,"title":"t","milestone":null,"parent":null,
+                      "labels":{"nodes":[]}});
+    let page = Ok(json!({"data":{"repository":{"issues":{
+        "totalCount":1,"pageInfo":{"hasNextPage":false,"endCursor":null},
+        "nodes":[node]}}}}));
+    let g = Fake::new(vec![rate(4000), page]);
+    let err = fetch_snapshot(&g, "paiml/x", now()).unwrap_err();
+    assert!(format!("{err:#}").contains("subIssues"), "{err:#}");
+}
+
+#[test]
 fn a_missing_has_next_page_is_not_measured_like_a_missing_cursor() {
     let no_flag = Ok(json!({"data":{"repository":{"issues":{
         "totalCount":1,"pageInfo":{"endCursor":null},"nodes":[]}}}}));

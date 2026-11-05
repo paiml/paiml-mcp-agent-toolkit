@@ -231,13 +231,16 @@ fn label_names(node: &Value) -> Vec<String> {
 }
 
 pub fn parse_issue(node: &Value) -> Result<IssueRec> {
+    let number = node["number"].as_u64().context("issue has no number")?;
     Ok(IssueRec {
-        number: node["number"].as_u64().context("issue has no number")?,
+        number,
         title: node["title"].as_str().unwrap_or_default().to_string(),
         milestone: node["milestone"]["title"].as_str().map(str::to_string),
         parent: node["parent"]["number"].as_u64(),
         labels: label_names(node),
-        sub_issues: node["subIssues"]["totalCount"].as_u64().unwrap_or(0),
+        sub_issues: node["subIssues"]["totalCount"].as_u64().with_context(|| {
+            format!("issue #{number}: no subIssues.totalCount in the reply; not measured")
+        })?,
     })
 }
 

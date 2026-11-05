@@ -255,6 +255,44 @@ fn r3_exempts_epics_by_label_by_sub_issue_count_and_by_having_an_open_child() {
 }
 
 #[test]
+fn pr_check_reads_a_bare_hash_reference_as_this_repo_for_r3() {
+    // the ONLY reference is `Closes #7` (no owner/repo): R3 must still judge #7
+    let mut p = pr(5, 1, CheckState::Pass);
+    p.body = "Closes #7".into();
+    let r = evaluate_pr(
+        &snap(vec![orphan(7)], vec![p.clone()]),
+        &Policy::default(),
+        5,
+    );
+    assert!(
+        r.violations
+            .iter()
+            .any(|v| v.rule == Rule::R3 && v.subject == Some(7)),
+        "{:?}",
+        r.violations
+    );
+    // control: the same bare reference to a ticket with a milestone is not an R3 violation
+    let r = evaluate_pr(
+        &snap(vec![issue(7, "has milestone")], vec![p.clone()]),
+        &Policy::default(),
+        5,
+    );
+    assert!(
+        r.violations.iter().all(|v| v.rule != Rule::R3),
+        "{:?}",
+        r.violations
+    );
+    // `Part of #7` reads the same way, and `#77` is not `#7`
+    p.body = "Part of #77".into();
+    let r = evaluate_pr(&snap(vec![orphan(7)], vec![p]), &Policy::default(), 5);
+    assert!(
+        r.violations.iter().all(|v| v.rule != Rule::R3),
+        "{:?}",
+        r.violations
+    );
+}
+
+#[test]
 fn pr_check_is_not_red_on_a_part_of_reference_to_an_epic() {
     let mut p = pr(5, 1, CheckState::Pass);
     p.body = "Part of paiml/x#1604".into();

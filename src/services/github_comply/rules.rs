@@ -263,15 +263,39 @@ pub fn evaluate_pr(snap: &RepoSnapshot, _policy: &Policy, pr: u64) -> Report {
     // R3 judges only the open issues of this repository. A reference into another
     // repository, or to an issue that is not open (closed), is nothing to judge: R6
     // accepts any `owner/repo#N`, and a failed read never gets here (it is an error).
-    for (repo, n) in issue_references(&p.body) {
-        if !repo.eq_ignore_ascii_case(&snap.repo) {
-            continue;
-        }
+    for n in local_issue_references(&p.body, &snap.repo) {
         if let Some(issue) = snap.open_issues.iter().find(|i| i.number == n) {
             report.violations.extend(check_r3_issue(issue, snap));
         }
     }
     report
+}
+
+/// Like [`ISSUE_REF`] but the repository is optional: a bare `Closes #N` is a reference
+/// into the repository the PR is in, as on GitHub. (R6 still requires the full form.)
+static LOCAL_REF: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?i)(?:^|[^A-Za-z0-9_])(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|part\s+of):?\s+([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#([0-9]+)",
+    )
+    .expect("LOCAL_REF is a valid regex")
+});
+
+/// The issue numbers in `body` that name `repo`, written `owner/repo#N` or bare `#N`.
+pub fn local_issue_references(body: &str, repo: &str) -> Vec<u64> {
+    let mut seen = Vec::new();
+    for c in LOCAL_REF.captures_iter(body) {
+        if c.get(1)
+            .is_some_and(|r| !r.as_str().eq_ignore_ascii_case(repo))
+        {
+            continue;
+        }
+        if let Ok(n) = c[2].parse::<u64>() {
+            if !seen.contains(&n) {
+                seen.push(n);
+            }
+        }
+    }
+    seen
 }
 
 const STOPWORDS: [&str; 14] = [
