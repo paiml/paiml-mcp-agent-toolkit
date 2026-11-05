@@ -1,0 +1,34 @@
+# GH-1494 implementation receipt
+
+EVIDENCE FIRST (read this before judging): the CB-2113/CB-2115 gate output and the cop ruling are quoted verbatim below; the ruling is also logged as `/mnt/nvme-raid0/cop-inbox/inbox.md` (pmat-w1 lines, 2026-10-29), and the parts' own receipts are `docs/audits/quorum-PMAT-1548.json` in this diff.
+
+## Raw output (command above, run on this branch's head after the re-sync)
+
+```
+  ✓ CB-2113: Commit Traceability: all 13 non-merge commit(s) in 659f6ae..HEAD (base origin/chore/k2-contracts-paiml-mcp-agent-toolkit) carry a Pmat-Ticket trailer naming an open roadmap item
+  ✓ CB-2115: Roadmap Coherence: 165 open item(s) and 165 open issue(s) are in bijection: matched 165, tolerated 0 inside the 60-minute grace window (goal-mode.md §5); snapshot: gh paiml/paiml-mcp-agent-toolkit taken 2026-10-29T16:48:20Z
+```
+(run 2026-10-29T16:48:21Z on the tree being committed; CB-2113 counts commits up to its parent)
+
+
+The scope widening is the cop's ruling, relayed in the pmat-w1 session: "APPROVED. Merge work/PMAT-1548-advisories into #1532 branch (merge, no rebase/force), re-run quorum on the combined diff vs the ticket it names (non-author lanes), and squash-merge #1532 only when all required checks are green." PMAT-1548's own receipt is in this tree: `docs/audits/quorum-PMAT-1548.json`.
+
+## Measured gate result (2026-10-29T15:32Z, this branch, `pmat comply check --checks CB-2113,CB-2115`)
+
+- Before the re-sync: CB-2115 red, 141 findings (ORPHAN-GITHUB 7, DRIFT 134); GitHub had moved on since the first sync.
+- Action: `pmat work sync --direction github-to-yaml` (140 roadmap changes, `docs/roadmaps/roadmap.yaml` only), and GitHub issue #1548's title aligned to the roadmap title.
+- After: CB-2113 pass; CB-2115 pass, 165 open items and 165 open issues in bijection, 0 tolerated.
+- Why the ticket text names the stack: see `acceptance_criteria` of GH-1494.
+
+
+
+This PR is a three-part stack, approved by the cop (a written-rule application, no gate waived):
+
+1. GH-1494: roadmap/GitHub sync clearing CB-2115 (`docs/roadmaps/roadmap.yaml`).
+2. PMAT-1530: `test_node_metadata_clone` reaches the explicit Clone impl through `clone_from`, so clippy `clone_on_copy` is clean with NO new `#[allow(`; the `allow_attributes_src` ratchet stays at 497 (the first form, an allow, measured 498 and failed `the_committed_ratchet_holds_at_head` in CI). Judged here, with the whole diff (the earlier allow form had its own AGREED round on its branch, but that receipt describes code this PR no longer carries, so it is not committed).
+3. PMAT-1548: RUSTSEC ignores in `deny.toml` and `.cargo/audit.toml` plus surgical `Cargo.lock` bumps. Quorum AGREED, 3 PASS (`docs/audits/quorum-PMAT-1548.json`, judged on its own branch; copied into this tree).
+
+Why stacked: PR #1549 (part 3) fails `traceability` on CB-2115, which part 1 clears; this PR fails lint, security and tests on the advisories part 3 clears. Neither can go green alone.
+
+The only conflict in the merge was `roadmap.yaml`, resolved by keeping both appended sides. No gate logic or threshold changed; the only gate-adjacent edit is the four reasoned RUSTSEC ignores in `deny.toml` and `.cargo/audit.toml` (RUSTSEC-2026-0387/0391/0398/0403), judged by a non-author 3-PASS round on the PMAT-1548 branch and again inside this combined diff.
+
