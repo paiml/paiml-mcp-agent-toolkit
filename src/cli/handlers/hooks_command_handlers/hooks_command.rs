@@ -490,6 +490,11 @@ if [ ! -f Cargo.toml ]; then
     exit 0
 fi
 
+# git feeds one "<local ref> <local sha> <remote ref> <remote sha>" line per ref on stdin.
+PUSH_INPUT=$(cat)
+
+__PMAT_DENY_GATE__
+
 echo "🔍 PMAT Pre-Push Quality Gate"
 echo "=============================="
 
@@ -502,6 +507,12 @@ if cargo fmt --all -- --check > /dev/null 2>&1; then
 else
     echo "❌"
     echo "   Run: cargo fmt --all"
+    FAILED=1
+fi
+
+# 2. Supply chain (OUT-324): a push that changes Cargo.lock or deny.toml must still pass
+# `cargo deny check advisories`; a failed or unmeasurable run refuses the push.
+if ! pmat_deny_gate "$PUSH_INPUT"; then
     FAILED=1
 fi
 
@@ -519,7 +530,11 @@ fi
 
 echo ""
 echo "✅ Pre-push gate passed"
-"#;
+"#
+        .replace(
+            crate::quality::pre_push_deny_gate::PRE_PUSH_DENY_GATE_PLACEHOLDER,
+            crate::quality::pre_push_deny_gate::PRE_PUSH_DENY_GATE,
+        );
 
         fs::write(&hook_path, hook_content)?;
 
@@ -653,6 +668,26 @@ mod uninstall_tests {
         assert!(
             hooks_dir.join("pre-push").exists(),
             "a pre-push hook PMAT did not write must survive uninstall"
+        );
+    }
+}
+
+#[cfg(test)]
+mod deny_gate_tests {
+    //! OUT-324: the pre-push hook `pmat hooks install` writes runs `cargo deny check
+    //! advisories` when Cargo.lock or deny.toml changes, and a failed or unmeasurable
+    //! run refuses the push.
+    use super::HooksCommand;
+
+    #[test]
+    fn hooks_install_pre_push_hook_honours_the_deny_contract() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let hooks_dir = dir.path().join("hooks");
+        std::fs::create_dir_all(&hooks_dir).expect("create hooks dir");
+        let cmd = HooksCommand::new(hooks_dir.clone(), dir.path().join("pmat.toml"));
+        cmd.install_pre_push_hook().expect("install pre-push");
+        crate::quality::pre_push_deny_gate::harness::assert_deny_gate_contract(
+            &hooks_dir.join("pre-push"),
         );
     }
 }

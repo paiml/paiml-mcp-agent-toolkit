@@ -164,6 +164,11 @@ if [ ! -f Cargo.toml ]; then
     exit 0
 fi
 
+# git feeds one "<local ref> <local sha> <remote ref> <remote sha>" line per ref on stdin.
+PUSH_INPUT=$(cat)
+
+__PMAT_DENY_GATE__
+
 echo "🔍 PMAT Pre-Push Quality Gate"
 echo "=============================="
 
@@ -176,6 +181,12 @@ if cargo fmt --all -- --check > /dev/null 2>&1; then
 else
     echo "❌"
     echo "   Run: cargo fmt --all"
+    FAILED=1
+fi
+
+# 2. Supply chain (OUT-324): a push that changes Cargo.lock or deny.toml must still pass
+# `cargo deny check advisories`; a failed or unmeasurable run refuses the push.
+if ! pmat_deny_gate "$PUSH_INPUT"; then
     FAILED=1
 fi
 
@@ -193,7 +204,11 @@ fi
 
 echo ""
 echo "✅ Pre-push gate passed"
-"#;
+"#
+        .replace(
+            crate::quality::pre_push_deny_gate::PRE_PUSH_DENY_GATE_PLACEHOLDER,
+            crate::quality::pre_push_deny_gate::PRE_PUSH_DENY_GATE,
+        );
 
         let mut file = fs::File::create(&hook_path)?;
         file.write_all(hook_content.as_bytes())?;
