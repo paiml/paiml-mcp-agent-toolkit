@@ -84,6 +84,32 @@ fn duplicate_models_count_once() {
 }
 
 #[test]
+fn a_deduplicated_receipt_is_named_in_the_description() {
+    let mut r = three_pass();
+    r[2] = (name("c"), body("c", "PASS", "qwen").replace("m-c", "m-a"));
+    let p = judge(SHA, &r);
+    assert_eq!(p.state, "failure");
+    assert!(
+        p.description.contains("deduped: c/m-a"),
+        "{}",
+        p.description
+    );
+}
+
+#[test]
+fn a_duplicate_seat_id_is_rejected_not_counted() {
+    let mut r = three_pass();
+    r.push((
+        name("a"),
+        body("a", "PASS", "mistral").replace("m-a", "m-z"),
+    ));
+    let p = judge(SHA, &r);
+    assert_eq!(p.state, "success"); // the original three still stand
+    assert!(p.description.contains("1 not counted"), "{}", p.description);
+    assert!(p.description.contains("dup seat a"), "{}", p.description);
+}
+
+#[test]
 fn a_malformed_sha_is_a_failure_not_a_panic() {
     assert_eq!(judge("nope", &three_pass()).state, "failure");
 }

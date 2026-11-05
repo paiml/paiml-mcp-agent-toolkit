@@ -82,23 +82,36 @@ pub fn judge(sha: &str, receipts: &[(String, String)]) -> StatusPayload {
     if !is_sha(sha) {
         return mk(false, "quorum: not a 40-hex commit sha".into());
     }
-    let (mut models, mut fails, mut rejected) = (BTreeSet::new(), 0usize, 0usize);
+    let (mut models, mut seats) = (BTreeSet::new(), BTreeSet::new());
+    let (mut fails, mut rejected) = (0usize, 0usize);
+    // Never drop silently: every receipt that does not add a seat is named.
+    let (mut deduped, mut dup_seats): (Vec<String>, Vec<String>) = (vec![], vec![]);
     for (file, text) in receipts {
-        match parse(sha, file, text) {
-            Err(_) => rejected += 1,
-            Ok(r) if r.verdict == "FAIL" => fails += 1,
-            Ok(r) if r.family == r.author_family => rejected += 1,
-            Ok(r) => {
-                models.insert(r.model);
-            }
+        let Ok(r) = parse(sha, file, text) else {
+            rejected += 1;
+            continue;
+        };
+        if !seats.insert(r.seat.clone()) {
+            rejected += 1;
+            dup_seats.push(format!("dup seat {}", r.seat));
+        } else if r.verdict == "FAIL" {
+            fails += 1;
+        } else if r.family == r.author_family {
+            rejected += 1;
+        } else if !models.insert(r.model.clone()) {
+            deduped.push(format!("{}/{}", r.seat, r.model));
         }
     }
     let n = models.len();
     let ok = n >= MIN_SEATS && fails == 0;
-    mk(
-        ok,
-        format!("quorum {n}/{MIN_SEATS} seats PASS, {fails} FAIL, {rejected} not counted"),
-    )
+    let mut d = format!("quorum {n}/{MIN_SEATS} PASS, {fails} FAIL, {rejected} not counted");
+    for x in dup_seats {
+        d.push_str(&format!("; {x}"));
+    }
+    if !deduped.is_empty() {
+        d.push_str(&format!("; deduped: {}", deduped.join(",")));
+    }
+    mk(ok, d)
 }
 
 /// Every `<sha>.*` file in `dir`, as `(name, text)`; non-`.json` ones are
