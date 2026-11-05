@@ -55,6 +55,7 @@ async fn generate_enhanced_ast_context(
     match format {
         ContextFormat::Json => generate_json_context(toolchain, project_path, context),
         ContextFormat::Sarif => generate_sarif_stub(toolchain, project_path),
+        // #1474: llm-optimized is an explicit alias of markdown (see `ContextFormat`).
         ContextFormat::Markdown | ContextFormat::LlmOptimized => {
             generate_markdown_context(toolchain, project_path, context)
         }
