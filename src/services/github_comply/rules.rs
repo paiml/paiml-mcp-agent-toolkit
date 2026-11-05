@@ -84,7 +84,11 @@ pub fn evaluate(snap: &RepoSnapshot, policy: &Policy, rules: &[Rule]) -> Report 
         let found = match rule {
             Rule::R1 => check_r1(snap, policy),
             Rule::R2 => check_r2(snap, policy),
-            Rule::R3 => snap.open_issues.iter().filter_map(check_r3_issue).collect(),
+            Rule::R3 => snap
+                .open_issues
+                .iter()
+                .filter_map(|i| check_r3_issue(i, snap))
+                .collect(),
             Rule::R4 => check_r4(snap, policy),
             Rule::R5 => vec![], // creation-time only: see `guard_new_ticket`
             Rule::R6 => snap.open_prs.iter().filter_map(check_r6_pr).collect(),
@@ -160,8 +164,19 @@ fn check_r2(snap: &RepoSnapshot, policy: &Policy) -> Vec<Violation> {
     )]
 }
 
-fn check_r3_issue(issue: &IssueRec) -> Option<Violation> {
-    if issue.milestone.is_some() || issue.parent.is_some() {
+/// An epic is exempt from R3: it is labelled `epic`, has sub-issues, or is the parent of
+/// another open issue in the snapshot.
+fn is_epic(issue: &IssueRec, snap: &RepoSnapshot) -> bool {
+    issue.labels.iter().any(|l| l.eq_ignore_ascii_case("epic"))
+        || issue.sub_issues > 0
+        || snap
+            .open_issues
+            .iter()
+            .any(|i| i.parent == Some(issue.number))
+}
+
+fn check_r3_issue(issue: &IssueRec, snap: &RepoSnapshot) -> Option<Violation> {
+    if issue.milestone.is_some() || issue.parent.is_some() || is_epic(issue, snap) {
         return None;
     }
     Some(violation(
@@ -242,17 +257,15 @@ pub fn evaluate_pr(snap: &RepoSnapshot, _policy: &Policy, pr: u64) -> Report {
         return report;
     };
     report.violations.extend(check_r6_pr(p));
+    // R3 judges only the open issues of this repository. A reference into another
+    // repository, or to an issue that is not open (closed), is nothing to judge: R6
+    // accepts any `owner/repo#N`, and a failed read never gets here (it is an error).
     for (repo, n) in issue_references(&p.body) {
         if !repo.eq_ignore_ascii_case(&snap.repo) {
-            report
-                .not_measured
-                .push(format!("R3: {repo}#{n} is in another repository"));
-        } else if let Some(issue) = snap.open_issues.iter().find(|i| i.number == n) {
-            report.violations.extend(check_r3_issue(issue));
-        } else {
-            report
-                .not_measured
-                .push(format!("R3: {repo}#{n} is not an open issue"));
+            continue;
+        }
+        if let Some(issue) = snap.open_issues.iter().find(|i| i.number == n) {
+            report.violations.extend(check_r3_issue(issue, snap));
         }
     }
     report
@@ -278,9 +291,32 @@ fn jaccard(a: &BTreeSet<String>, b: &BTreeSet<String>) -> f64 {
     a.intersection(b).count() as f64 / a.union(b).count() as f64
 }
 
-/// Do the two titles share at least one non-stopword token?
+/// Words that carry no information about WHICH work a title is: conventional-commit
+/// types and the repo's own vocabulary. Two titles overlapping only on these say nothing.
+const TITLE_NOISE: [&str; 21] = [
+    "fix", "fixes", "feat", "test", "tests", "ci", "chore", "docs", "doc", "refactor", "perf",
+    "build", "style", "revert", "pmat", "comply", "github", "ghc", "pr", "issue", "ticket",
+];
+
+static CONVENTIONAL_PREFIX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^\s*[A-Za-z]+(?:\([^)]*\))?!?:\s*").expect("CONVENTIONAL_PREFIX is a valid regex")
+});
+
+/// Title tokens after dropping a `type(scope)!:` prefix and [`TITLE_NOISE`].
+fn content_tokens(title: &str) -> BTreeSet<String> {
+    let body = CONVENTIONAL_PREFIX.replace(title, "");
+    tokens(&body)
+        .into_iter()
+        .filter(|t| !TITLE_NOISE.contains(&t.as_str()))
+        .collect()
+}
+
+/// Heuristic for the backfill: do the two titles share at least one content word, once
+/// the conventional-commit prefix (`fix(scope):`) and the repo's own vocabulary
+/// ([`TITLE_NOISE`]) are ignored? It cannot prove a link is right, only that it is not
+/// obviously unrelated.
 pub fn titles_share_a_word(a: &str, b: &str) -> bool {
-    jaccard(&tokens(a), &tokens(b)) > 0.0
+    !content_tokens(a).is_disjoint(&content_tokens(b))
 }
 
 /// R5: the open ticket in `issues` that `title` duplicates, if any: the best title
@@ -340,7 +376,7 @@ pub fn guard_new_ticket(
             .iter()
             .any(|i| Some(i.number) == child && (i.milestone.is_some() || i.parent.is_some()));
     if !has_home {
-        bail!("refused (R3): the ticket has no milestone and no epic to be a sub-issue of");
+        bail!("refused (R3): the ticket has no milestone and no open epic to be a sub-issue of");
     }
     Ok(())
 }

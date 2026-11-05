@@ -21,7 +21,8 @@ const RATE_QUERY: &str = "query { rateLimit { remaining resetAt } }";
 const ISSUES_QUERY: &str = "query($owner:String!,$name:String!,$after:String){\
 repository(owner:$owner,name:$name){issues(states:OPEN,first:100,after:$after){\
 totalCount pageInfo{hasNextPage endCursor} \
-nodes{number title milestone{title} parent{number} labels(first:20){nodes{name}}}}}}";
+nodes{number title milestone{title} parent{number} subIssues{totalCount} \
+labels(first:20){nodes{name}}}}}}";
 
 const PRS_QUERY: &str = "query($owner:String!,$name:String!,$after:String){\
 repository(owner:$owner,name:$name){pullRequests(states:OPEN,first:100,after:$after){\
@@ -31,7 +32,8 @@ commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}}";
 
 const MERGED_QUERY: &str = "query($owner:String!,$name:String!,$after:String){\
 repository(owner:$owner,name:$name){pullRequests(states:MERGED,first:100,after:$after){\
-pageInfo{hasNextPage endCursor} nodes{number title body}}}}";
+pageInfo{hasNextPage endCursor} \
+nodes{number title body closingIssuesReferences(first:20){nodes{number repository{nameWithOwner}}}}}}}";
 
 /// One GraphQL round trip, so tests can stand in for GitHub.
 pub trait Graphql {
@@ -161,10 +163,25 @@ pub fn fetch_merged_prs(g: &dyn Graphql, repo: &str) -> Result<Vec<super::backfi
     let mut out = Vec::new();
     for page in pages(g, MERGED_QUERY, owner, name, "pullRequests")? {
         for node in nodes(&page)? {
+            let number = node["number"].as_u64().context("merged PR has no number")?;
+            let refs = node["closingIssuesReferences"]["nodes"]
+                .as_array()
+                .with_context(|| format!("merged PR #{number}: no closingIssuesReferences"))?;
+            let mut closes = Vec::new();
+            for r in refs {
+                let n = r["number"]
+                    .as_u64()
+                    .context("closing reference has no number")?;
+                let repo = r["repository"]["nameWithOwner"]
+                    .as_str()
+                    .context("closing reference has no repository")?;
+                closes.push((repo.to_string(), n));
+            }
             out.push(super::backfill::MergedPr {
-                number: node["number"].as_u64().context("merged PR has no number")?,
+                number,
                 title: node["title"].as_str().unwrap_or_default().to_string(),
                 body: node["body"].as_str().unwrap_or_default().to_string(),
+                closes,
             });
         }
     }
@@ -189,7 +206,9 @@ fn pages(g: &dyn Graphql, query: &str, owner: &str, name: &str, field: &str) -> 
         if conn.is_null() {
             bail!("{owner}/{name}: no `{field}` in the reply (repository not readable?)");
         }
-        let more = conn["pageInfo"]["hasNextPage"].as_bool().unwrap_or(false);
+        let more = conn["pageInfo"]["hasNextPage"].as_bool().with_context(|| {
+            format!("{owner}/{name}: `{field}` reply has no pageInfo.hasNextPage; not measured")
+        })?;
         let cursor = conn["pageInfo"]["endCursor"].as_str().map(str::to_string);
         out.push(conn);
         if !more {
@@ -218,6 +237,7 @@ pub fn parse_issue(node: &Value) -> Result<IssueRec> {
         milestone: node["milestone"]["title"].as_str().map(str::to_string),
         parent: node["parent"]["number"].as_u64(),
         labels: label_names(node),
+        sub_issues: node["subIssues"]["totalCount"].as_u64().unwrap_or(0),
     })
 }
 
@@ -263,5 +283,14 @@ pub fn guard_filing(
 ) -> Result<()> {
     let snap = fetch_snapshot(g, repo, Utc::now())
         .with_context(|| format!("refused: could not read {repo}'s open tickets (GHC-001 R1/R5) — nothing was linked or written"))?;
-    super::guard_new_ticket(policy, &snap, title, Some(child), Some(epic))
+    // R3: the epic the ticket will be linked under must exist and be open, otherwise the
+    // link is no home. (Otherwise the ticket itself must already carry a milestone.)
+    let epic_is_open = snap.open_issues.iter().any(|i| i.number == epic);
+    super::guard_new_ticket(
+        policy,
+        &snap,
+        title,
+        Some(child),
+        epic_is_open.then_some(epic),
+    )
 }

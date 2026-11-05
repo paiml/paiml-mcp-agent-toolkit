@@ -202,6 +202,9 @@ pub struct IssueRec {
     pub parent: Option<u64>,
     #[serde(default)]
     pub labels: Vec<String>,
+    /// How many sub-issues this issue has (an epic has at least one).
+    #[serde(default)]
+    pub sub_issues: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

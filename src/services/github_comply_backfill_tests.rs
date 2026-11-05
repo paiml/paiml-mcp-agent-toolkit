@@ -15,6 +15,7 @@ fn issue(n: u64, title: &str) -> IssueRec {
         milestone: None,
         parent: None,
         labels: vec![],
+        sub_issues: 0,
     }
 }
 
@@ -23,6 +24,7 @@ fn merged(n: u64, title: &str, body: &str) -> MergedPr {
         number: n,
         title: title.into(),
         body: body.into(),
+        closes: vec![],
     }
 }
 
@@ -108,13 +110,74 @@ fn issues_without_a_merged_reference_get_no_row() {
 }
 
 #[test]
-fn a_reference_into_another_repo_or_a_bare_number_is_not_a_link() {
+fn a_reference_into_another_repo_is_not_a_link() {
     let s = snap(vec![issue(7, "Add the comply github command")]);
-    let m = [
-        merged(70, "feat: comply github command", "Closes paiml/other#7"),
-        merged(71, "feat: comply github command", "Closes #7"),
-    ];
+    let m = [merged(
+        70,
+        "feat: comply github command",
+        "Closes paiml/other#7",
+    )];
     assert!(backfill(&s, &m).rows.is_empty());
+}
+
+#[test]
+fn a_bare_hash_number_is_a_same_repo_reference() {
+    let s = snap(vec![issue(7, "Add the comply github command")]);
+    for body in ["Closes #7", "fixes: #7", "Resolved #7"] {
+        let m = [merged(70, "feat: comply github command", body)];
+        assert_eq!(
+            verdict_of(&backfill(&s, &m), 7),
+            Some(Verdict::Done),
+            "{body}"
+        );
+    }
+    let m = [merged(70, "feat: comply github command", "Part of #7")];
+    assert_eq!(verdict_of(&backfill(&s, &m), 7), Some(Verdict::Partial));
+    // an issue number glued to a word is not a reference
+    let m = [merged(
+        70,
+        "feat: comply github command",
+        "Closes #77, see #7",
+    )];
+    assert!(backfill(&s, &m).rows.is_empty());
+}
+
+#[test]
+fn githubs_closing_references_count_even_when_the_body_has_no_keyword() {
+    let s = snap(vec![issue(7, "Add the comply github command")]);
+    let mut p = merged(70, "feat: comply github command", "no keyword here");
+    p.closes = vec![("paiml/x".into(), 7), ("paiml/other".into(), 8)];
+    let r = backfill(&s, &[p]);
+    assert_eq!(verdict_of(&r, 7), Some(Verdict::Done));
+    // a closing reference into another repo's #7 must not link this repo's #7
+    let mut q = merged(71, "feat: comply github command", "");
+    q.closes = vec![("paiml/other".into(), 7)];
+    assert!(backfill(&s, &[q]).rows.is_empty());
+}
+
+#[test]
+fn conventional_prefixes_and_repo_noise_words_do_not_make_a_done() {
+    let s = snap(vec![issue(7, "Add the comply github command")]);
+    // shares only "comply" / "github" / "pmat" and the type prefix with the issue title
+    for title in [
+        "fix(comply): pmat comply github tidy",
+        "test(github): pmat github docs",
+        "chore: refactor ci for pmat",
+    ] {
+        let m = [merged(70, title, "Closes paiml/x#7")];
+        assert_eq!(
+            verdict_of(&backfill(&s, &m), 7),
+            Some(Verdict::WrongLink),
+            "{title}"
+        );
+    }
+    // a real content word still counts
+    let m = [merged(
+        70,
+        "fix(comply): command parsing",
+        "Closes paiml/x#7",
+    )];
+    assert_eq!(verdict_of(&backfill(&s, &m), 7), Some(Verdict::Done));
 }
 
 #[test]
@@ -188,18 +251,31 @@ fn merged_prs_are_read_by_query_only_after_the_budget_check_and_paginated() {
         rate(4300),
         merged_page(
             Some("c1"),
-            json!([{"number":1,"title":"a","body":"Closes o/r#9"}]),
+            json!([{"number":1,"title":"a","body":"Closes o/r#9",
+                    "closingIssuesReferences":{"nodes":[
+                        {"number":9,"repository":{"nameWithOwner":"o/r"}},
+                        {"number":4,"repository":{"nameWithOwner":"o/other"}}]}}]),
         ),
-        merged_page(None, json!([{"number":2,"title":"b","body":null}])),
+        merged_page(
+            None,
+            json!([{"number":2,"title":"b","body":null,
+                    "closingIssuesReferences":{"nodes":[]}}]),
+        ),
     ]);
     let got = fetch_merged_prs(&g, "o/r").expect("fixture");
     assert_eq!(got.len(), 2);
     assert_eq!(got[0].body, "Closes o/r#9");
+    assert_eq!(
+        got[0].closes,
+        [("o/r".to_string(), 9), ("o/other".to_string(), 4)]
+    );
     assert_eq!(got[1].body, "");
+    assert!(got[1].closes.is_empty());
     let seen = g.seen.borrow();
     assert_eq!(seen.len(), 3);
     assert!(seen[0].contains("rateLimit"));
     assert!(seen[1].contains("states:MERGED"), "{}", seen[1]);
+    assert!(seen[1].contains("closingIssuesReferences"), "{}", seen[1]);
     assert!(seen.iter().all(|q| q.trim_start().starts_with("query")));
 }
 
@@ -208,6 +284,15 @@ fn a_low_budget_refuses_before_any_merged_pr_read() {
     let g = fake(vec![rate(10)]);
     assert!(fetch_merged_prs(&g, "o/r").is_err());
     assert_eq!(g.seen.borrow().len(), 1);
+}
+
+#[test]
+fn a_pr_without_closing_references_in_the_reply_is_an_error_not_an_empty_list() {
+    let g = fake(vec![
+        rate(4300),
+        merged_page(None, json!([{"number":1,"title":"a","body":""}])),
+    ]);
+    assert!(fetch_merged_prs(&g, "o/r").is_err());
 }
 
 #[test]

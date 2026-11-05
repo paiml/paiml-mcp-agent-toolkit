@@ -31,6 +31,7 @@ fn issue(n: u64, title: &str) -> IssueRec {
         milestone: Some("0.71".into()),
         parent: None,
         labels: vec![],
+        sub_issues: 0,
     }
 }
 
@@ -237,6 +238,33 @@ fn falsify_ghc_003_control_milestone_or_epic_parent_passes_r3() {
 }
 
 #[test]
+fn r3_exempts_epics_by_label_by_sub_issue_count_and_by_having_an_open_child() {
+    let mut labelled = orphan(1);
+    labelled.labels = vec!["Epic".into()];
+    let mut counted = orphan(2);
+    counted.sub_issues = 3;
+    let parent_of_open_child = orphan(3);
+    let mut child = orphan(4);
+    child.parent = Some(3);
+    let s = snap(vec![labelled, counted, parent_of_open_child, child], vec![]);
+    let r = run(&s, &[Rule::R3]);
+    assert!(r.ok(), "{:?}", r.violations);
+    // control: an issue that is none of those is still a violation
+    let s = snap(vec![orphan(1), orphan(2)], vec![]);
+    assert_eq!(run(&s, &[Rule::R3]).violations.len(), 2);
+}
+
+#[test]
+fn pr_check_is_not_red_on_a_part_of_reference_to_an_epic() {
+    let mut p = pr(5, 1, CheckState::Pass);
+    p.body = "Part of paiml/x#1604".into();
+    let mut epic = orphan(1604);
+    epic.sub_issues = 2;
+    let r = evaluate_pr(&snap(vec![epic], vec![p]), &Policy::default(), 5);
+    assert!(r.ok(), "{:?} {:?}", r.violations, r.not_measured);
+}
+
+#[test]
 fn falsify_ghc_003_pr_body_without_an_owner_repo_reference_violates_r6() {
     for body in [
         "",
@@ -292,12 +320,19 @@ fn pr_check_judges_r6_on_the_body_and_r3_on_the_referenced_ticket() {
 }
 
 #[test]
-fn pr_check_marks_a_foreign_or_unreadable_reference_not_measured() {
+fn pr_check_does_not_go_red_on_a_foreign_or_closed_issue_reference() {
+    // R6 accepts any owner/repo#N, and the read itself succeeded (a failed read is an
+    // error before this point), so a reference into another repo or to an issue that is
+    // not open (closed) is nothing to judge, not a permanent NOT MEASURED.
     let mut p = pr(5, 1, CheckState::Pass);
     p.body = "Closes other/repo#7 and Part of paiml/x#99".into();
     let r = evaluate_pr(&snap(vec![], vec![p]), &Policy::default(), 5);
     assert!(r.violations.is_empty());
-    assert_eq!(r.not_measured.len(), 2, "{:?}", r.not_measured);
+    assert!(r.not_measured.is_empty(), "{:?}", r.not_measured);
+    assert!(r.ok());
+    // control: a PR that is not among the open PRs is genuinely not measured
+    let r = evaluate_pr(&snap(vec![], vec![]), &Policy::default(), 5);
+    assert_eq!(r.not_measured.len(), 1);
     assert!(!r.ok(), "an unmeasured rule must not read as a pass");
 }
 

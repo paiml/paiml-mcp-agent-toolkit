@@ -53,6 +53,7 @@ fn issues_page(total: u64, next: Option<&str>, numbers: &[u64]) -> Result<Value,
         .iter()
         .map(|n| {
             json!({"number":n,"title":format!("t{n}"),"milestone":null,"parent":{"number":1},
+                   "subIssues":{"totalCount": if *n == 1 { 2 } else { 0 }},
                    "labels":{"nodes":[{"name":"epic"}]}})
         })
         .collect();
@@ -82,6 +83,9 @@ fn reads_every_page_and_keeps_graphql_totalcount() {
         [1, 2, 3]
     );
     assert_eq!(s.open_issues[0].parent, Some(1));
+    assert_eq!(s.open_issues[0].sub_issues, 2);
+    assert_eq!(s.open_issues[1].sub_issues, 0);
+    assert!(g.seen.borrow()[1].0.contains("subIssues"));
     assert_eq!(s.open_issues[0].milestone, None);
     let seen = g.seen.borrow();
     // the second issues page carries the cursor, the first does not
@@ -198,9 +202,55 @@ fn snapshot_file_round_trip_and_errors() {
     assert!(load_snapshot_file(&path).is_err());
 }
 
-fn filing(title: &str, replies: Vec<Result<Value, String>>) -> anyhow::Result<()> {
+#[test]
+fn a_missing_has_next_page_is_not_measured_like_a_missing_cursor() {
+    let no_flag = Ok(json!({"data":{"repository":{"issues":{
+        "totalCount":1,"pageInfo":{"endCursor":null},"nodes":[]}}}}));
+    let g = Fake::new(vec![rate(4000), no_flag]);
+    let err = fetch_snapshot(&g, "paiml/x", now()).unwrap_err();
+    assert!(format!("{err:#}").contains("hasNextPage"), "{err:#}");
+    let no_page_info = Ok(json!({"data":{"repository":{"pullRequests":{"nodes":[]}}}}));
+    let g = Fake::new(vec![rate(4000), issues_page(0, None, &[]), no_page_info]);
+    assert!(fetch_snapshot(&g, "paiml/x", now()).is_err());
+}
+
+fn filing_under(epic: u64, title: &str, replies: Vec<Result<Value, String>>) -> anyhow::Result<()> {
     let g = Fake::new(replies);
-    guard_filing(&g, "paiml/x", &Policy::default(), title, 50, 3)
+    guard_filing(&g, "paiml/x", &Policy::default(), title, 50, epic)
+}
+
+fn filing(title: &str, replies: Vec<Result<Value, String>>) -> anyhow::Result<()> {
+    filing_under(1, title, replies) // #1 is open in `issues_page` fixtures
+}
+
+#[test]
+fn filing_guard_r3_needs_the_epic_to_exist_and_be_open() {
+    let open = || {
+        vec![
+            rate(4000),
+            issues_page(2, None, &[1, 2]),
+            prs_page(json!([])),
+        ]
+    };
+    // the epic the ticket would be linked under is not among the open issues
+    let err = filing_under(999, "wholly different work item", open()).unwrap_err();
+    assert!(format!("{err:#}").contains("R3"), "{err:#}");
+    // control: the same filing under an open epic passes
+    filing_under(2, "wholly different work item", open()).expect("fixture");
+}
+
+#[test]
+fn filing_guard_r3_admits_a_missing_epic_when_the_ticket_has_a_milestone() {
+    let with_milestone = Ok(json!({"data":{"repository":{"issues":{
+        "totalCount":1,"pageInfo":{"hasNextPage":false,"endCursor":null},
+        "nodes":[{"number":50,"title":"mine","milestone":{"title":"0.71"},"parent":null,
+                  "subIssues":{"totalCount":0},"labels":{"nodes":[]}}]}}}}));
+    filing_under(
+        999,
+        "wholly different work item",
+        vec![rate(4000), with_milestone, prs_page(json!([]))],
+    )
+    .expect("fixture");
 }
 
 #[test]

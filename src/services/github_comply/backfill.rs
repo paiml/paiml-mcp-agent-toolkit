@@ -9,6 +9,10 @@
 //!   issue's title, so the keyword probably points at the wrong number.
 //! * PARTIAL: the only merged references are `Part of owner/repo#N`.
 //!
+//! The title test is a heuristic: a conventional-commit prefix (`fix(scope):`) and the
+//! repo's own vocabulary (`pmat`, `comply`, `github`, ...) are ignored, so two titles must
+//! share a real content word. It can say "not obviously unrelated", never "correct".
+//!
 //! Precedence when an issue has several PRs: DONE, then WRONG-LINK, then PARTIAL.
 
 use super::{IssueRec, RepoSnapshot};
@@ -22,6 +26,9 @@ pub struct MergedPr {
     pub number: u64,
     pub title: String,
     pub body: String,
+    /// GitHub's own `closingIssuesReferences`: `(owner/repo, N)` of every issue this PR closes.
+    #[serde(default)]
+    pub closes: Vec<(String, u64)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,24 +86,36 @@ impl BackfillReport {
     }
 }
 
-/// `(keyword, owner/repo, N)`; the keyword decides closing versus "Part of".
+/// `(keyword, optional owner/repo, N)`; the keyword decides closing versus "Part of".
+/// A bare `#N` (no `owner/repo`) is a same-repo reference, as it is on GitHub.
 static KEYED_REF: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"(?i)(?:^|[^A-Za-z0-9_])(close[sd]?|fix(?:e[sd])?|resolve[sd]?|part\s+of):?\s+([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)#([0-9]+)",
+        r"(?i)(?:^|[^A-Za-z0-9_])(close[sd]?|fix(?:e[sd])?|resolve[sd]?|part\s+of):?\s+([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#([0-9]+)",
     )
     .expect("KEYED_REF is a valid regex")
 });
 
-/// `(closing?, issue)` for every reference in `body` into `repo`.
-fn refs_into(body: &str, repo: &str) -> Vec<(bool, u64)> {
-    KEYED_REF
-        .captures_iter(body)
-        .filter(|c| c[2].eq_ignore_ascii_case(repo))
+/// `(closing?, issue)` for every reference in the PR into `repo`: keyword references in
+/// the body (a bare `#N` counts as `repo`), plus GitHub's own `closingIssuesReferences`.
+fn refs_into(pr: &MergedPr, repo: &str) -> Vec<(bool, u64)> {
+    let mut refs: Vec<(bool, u64)> = KEYED_REF
+        .captures_iter(&pr.body)
+        .filter(|c| {
+            c.get(2)
+                .is_none_or(|r| r.as_str().eq_ignore_ascii_case(repo))
+        })
         .filter_map(|c| {
             let n = c[3].parse::<u64>().ok()?;
             Some((!c[1].to_lowercase().starts_with("part"), n))
         })
-        .collect()
+        .collect();
+    refs.extend(
+        pr.closes
+            .iter()
+            .filter(|(r, _)| r.eq_ignore_ascii_case(repo))
+            .map(|(_, n)| (true, *n)),
+    );
+    refs
 }
 
 fn classify(issue: &IssueRec, hits: &[(&MergedPr, bool)]) -> Verdict {
@@ -117,7 +136,7 @@ fn classify(issue: &IssueRec, hits: &[(&MergedPr, bool)]) -> Verdict {
 pub fn backfill(snap: &RepoSnapshot, merged: &[MergedPr]) -> BackfillReport {
     let refs: Vec<(&MergedPr, Vec<(bool, u64)>)> = merged
         .iter()
-        .map(|p| (p, refs_into(&p.body, &snap.repo)))
+        .map(|p| (p, refs_into(p, &snap.repo)))
         .collect();
     let mut rows = Vec::new();
     for issue in &snap.open_issues {

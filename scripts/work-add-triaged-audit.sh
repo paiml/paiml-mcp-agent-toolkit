@@ -41,7 +41,7 @@ printf '%s\n' "$*" >> "$D/calls.log"
 [ "$1 $2" = "repo view" ] && { echo fx/fx; exit 0; }
 if [ "$1 $2" = "api graphql" ]; then
   case "$*" in
-    *"issues(states"*) echo '{"data":{"repository":{"issues":{"totalCount":0,"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}' ;;
+    *"issues(states"*) echo '{"data":{"repository":{"issues":{"totalCount":1,"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[{"number":10,"title":"zzz container","milestone":null,"parent":null,"subIssues":{"totalCount":1},"labels":{"nodes":[{"name":"epic"}]}}]}}}}' ;;
     *"pullRequests("*) echo '{"data":{"repository":{"pullRequests":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}' ;;
     *) echo '{"data":{"rateLimit":{"remaining":5000,"resetAt":"2030-01-01T00:00:00Z"}}}' ;;
   esac
