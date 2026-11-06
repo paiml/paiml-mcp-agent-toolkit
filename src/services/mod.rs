@@ -78,6 +78,7 @@ pub mod service_communication;
 pub mod service_composition;
 pub mod service_lifecycle;
 pub mod service_registry;
+pub mod sign; // PMAT-1529: FLOW-011 T1 signer (receipts/sign.json)
 
 pub mod accurate_complexity_analyzer;
 #[cfg(feature = "analytics-simd")]

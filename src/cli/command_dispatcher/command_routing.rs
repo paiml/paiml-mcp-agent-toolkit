@@ -66,6 +66,7 @@ impl CommandDispatcher {
             Commands::Agy(cmd) => {
                 handlers::handle_agy_command(&cmd, std::path::Path::new("")).await
             }
+            Commands::Sign(args) => handlers::handle_sign_command(&args),
             Commands::Init {
                 target,
                 path,
