@@ -128,6 +128,30 @@ pub enum SpecCommands {
         #[arg(short = 'p', long = "path", default_value = ".")]
         path: PathBuf,
     },
+
+    /// Reduce quorum receipts to a `quorum` commit status (FLOW-010 F3)
+    ///
+    /// Reads `<sha>.<seat>.json` receipts from --dir (never writes them), judges
+    /// them against the closed `quorum-receipt/v1` schema and prints the status
+    /// payload. Posting happens only with --post --repo; the App credential is the
+    /// caller's. A .txt verdict or any non-schema file is never counted.
+    QuorumStatus {
+        /// Commit sha the receipts judge (40 lowercase hex)
+        #[arg(long = "sha")]
+        sha: String,
+
+        /// Directory holding the receipt files
+        #[arg(long = "dir", value_name = "DIR")]
+        dir: PathBuf,
+
+        /// `owner/name`, required with --post
+        #[arg(long = "repo")]
+        repo: Option<String>,
+
+        /// Post the status through `gh api` (default: print only)
+        #[arg(long = "post", requires = "repo")]
+        post: bool,
+    },
 }
 
 /// Direction for spec-roadmap sync

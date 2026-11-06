@@ -8540,3 +8540,24 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: PMAT-1614
+  github_issue: 1614
+  item_type: task
+  title: quorum receipts become a quorum commit status (FLOW-010 F3), receipt files are audit copies
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-05T00:00:00Z
+  updated: 2026-11-05T00:00:00Z
+  spec: null
+  acceptance_criteria:
+  - pmat spec quorum-status judges <sha>.<seat>.json receipts against the closed quorum-receipt/v1 schema and prints the quorum commit-status payload; --post --repo posts it through gh api repos/<repo>/statuses/<sha>
+  - a .txt verdict or any non-schema file cannot satisfy the rule (unit tests in src/services/quorum_status/tests.rs)
+  - receipt files are read, never written; the App credential, the ruleset change and the paiml-implement and arbiter parts are follow-ups outside this repo
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1604
