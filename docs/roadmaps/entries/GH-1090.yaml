@@ -1,0 +1,17 @@
+- id: GH-1090
+  github_issue: 1090
+  item_type: task
+  title: '[EPIC] PMAT Deep MCP Capability Improvements & Defect Hardening'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

@@ -1,0 +1,19 @@
+- id: PMAT-699
+  github_issue: 1141
+  item_type: task
+  title: '[train/DC] dead surface deletion (#1141, #1144, #1135, #1140, #1134, #1145): remove src/protocol and src/state (zero inbound edges), the simulated refactor.* MCP engine and the two dead MCP tool inventories; fix vacuous-tests --help figures, pmat init next-command, MCP_VERSION == negotiated version; SemVer: pub mod removal permitted at minor because crates.io reverse deps = 0'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:31Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1141, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
+  release: 3.44.0

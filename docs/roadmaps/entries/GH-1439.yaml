@@ -1,0 +1,17 @@
+- id: GH-1439
+  github_issue: 1439
+  item_type: task
+  title: Adopt dogfood-receipt-v1 for pmat releases (ARB-SELF-001 ASL-05)
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

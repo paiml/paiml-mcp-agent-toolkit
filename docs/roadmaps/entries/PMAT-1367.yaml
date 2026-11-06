@@ -1,0 +1,18 @@
+- id: PMAT-1367
+  github_issue: 1367
+  item_type: task
+  title: 'pmat comply check grades a stale index: after editing a file, CB-200 reported the OLD function (B-, cx 19) on a tree that no longer contained it'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:33Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1367. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog
