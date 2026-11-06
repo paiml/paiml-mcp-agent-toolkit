@@ -1,0 +1,21 @@
+- id: PMAT-1336
+  github_issue: 1336
+  item_type: task
+  title: 'lifecycle: a ticket cannot complete itself, and no other ticket''s criteria cover doing it for them (kind:lifecycle)'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-12T05:21:15Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - every roadmap item whose issue is closed is terminal and every non-terminal item's issue is open — pmat work sync --check-only reports a bijection with zero findings against live GitHub
+  - the branch touches only docs/roadmaps/roadmap.yaml and docs/audits; any source change means it is not a lifecycle PR
+  - each completion names in the commit message the merge commit that landed the ticket, so the claim is checkable rather than asserted
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:lifecycle
+  notes: 'CB-2113 requires every commit to name a NON-TERMINAL item, so a commit marking PMAT-X completed while naming PMAT-X fails it: a ticket cannot complete itself. The completion must ride in another PR — but a quorum judges a diff against the criteria of the ticket that PR names, and complete the previous ticket is in no ticket''s criteria, so it is flagged out-of-scope every time however well justified. Measured three times in one session: PR 1330 three FAIL, 1334 one FAIL, 1335 three FAIL, each naming the same cross-ticket status change. Not doing it is worse: GitHub closes the issue on merge and the item goes ORPHAN-ROADMAP under CB-2115, reddening master with no commit to blame. The repository already solved the identical problem for triage by giving it its own ticket (PMAT-1332); this is that, for lifecycle.'
+  release: backlog

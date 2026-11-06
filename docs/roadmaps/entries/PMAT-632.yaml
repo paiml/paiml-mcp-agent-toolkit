@@ -1,0 +1,18 @@
+- id: PMAT-632
+  github_issue: 1264
+  item_type: task
+  title: 'paiml-implement discover.sh: gate_cmd fell back to ''cargo test --workspace'' on pmat although ''make gate-artifact'' and the CLAUDE.md-mandated ''pmat verify'' exist'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:16:48Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  notes: null
+  release: backlog

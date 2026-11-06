@@ -1,0 +1,17 @@
+- id: GH-1031
+  github_issue: 1031
+  item_type: task
+  title: Complete AGY (Antigravity 2.0) Support & Comply Integration
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog
