@@ -1,0 +1,17 @@
+- id: GH-1119
+  github_issue: 1119
+  item_type: task
+  title: Four independent McpRequest / McpResponse definitions
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

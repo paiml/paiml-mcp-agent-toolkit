@@ -1,0 +1,21 @@
+- id: PMAT-1300
+  github_issue: 1300
+  item_type: task
+  title: 'goal-mode step 7 flip: CB-2111 joins the traceability job''s direct step once every active spec''s review is recorded with pmat spec review --record (after PMAT-729 decides which specs stay active)'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T02:59:56Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - every active spec under docs/specifications has a review recorded with pmat spec review --record (a quorum's or a human's; it is JSON, goal-mode.md §6.3), or PMAT-729 has marked it historical or superseded; pmat comply check --checks CB-2111 exits 0 on master
+  - the traceability job's direct step names CB-2111, the line the comment beside the withheld CB-2110 step in .github/workflows/ci.yml gives, and the ledger lists CB-2111 ENFORCED
+  - scripts/spec-review-control.sh arm 20 (this tree, every active spec NO-REVIEW) is retired or re-measured in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Filed by PMAT-1299 inside its PR, so the item reaches master with the issue (CB-2115 is live). goal-mode.md §11 step 7, the direct step withheld under doctrine 6: at filing none of the 44 active specs has a review. Depends on PMAT-729.'
+  release: backlog

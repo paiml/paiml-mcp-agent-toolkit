@@ -1,0 +1,18 @@
+- id: MACS-018
+  github_issue: 1258
+  item_type: task
+  title: MACS-018 Cross-System Provenance Unification (AGY + Fable)
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-07-04T08:20:00Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - Extend AgentProvenance (MACS-001) to support GoogleAntiGravity variants with Subagent Task IDs and Conversation IDs. Add a parser that extracts Anti-Gravity transcript bounds to inject into FalsificationReceipts.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

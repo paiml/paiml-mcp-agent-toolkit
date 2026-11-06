@@ -1,0 +1,17 @@
+- id: MACS-007
+  github_issue: 1255
+  item_type: task
+  title: 'MACS-007 remainder: pmat work status must still render chain-of-thought steps after the v2 schema (spec invariant cot::status_renders_v2) — the v2 schema, parser and migration shipped in #613'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-07-02T12:00:00Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: docs/specifications/components/modern-agentic-coding-support.md
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: 'Partly shipped in PR #613 (squash d629a105f): ChainOfThoughtStep v2 in src/models/work_cot.rs with v2_roundtrip_prop, legacy_prose_migrates_annotated_l0 and discharge_ref_parses_cot_equation_efact, all passing on master 3893ca5f2. Not shipped: the block''s invariant — no test named cot::status_renders_v2 or equivalent exists, and handle_work_status renders no chain-of-thought step. Re-planned by PMAT-721 with github_issue null so pmat work sync --direction yaml-to-github mints its own issue; #612 is closed and was the umbrella for all thirteen (docs/audits/triage-PMAT-721-ledger.json).'
+  release: backlog
