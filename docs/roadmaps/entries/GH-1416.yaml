@@ -1,0 +1,17 @@
+- id: GH-1416
+  github_issue: 1416
+  item_type: task
+  title: pmat work add inserts the new row INSIDE a preceding row's multi-line quoted scalar — valid YAML, one row fewer than the text says
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

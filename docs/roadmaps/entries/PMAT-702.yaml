@@ -1,0 +1,19 @@
+- id: PMAT-702
+  github_issue: 1281
+  item_type: task
+  title: '[train/PK] crate package at 99.6% of crates.io''s 10 MB ceiling after PMAT-695 (9,956,257 B; 43,743 B headroom): carve the package before any packaged addition — measure cargo package --list per-file sizes, exclude non-build inputs (large fixtures, docs already excluded?), consider shipping only the gz assets the server reads; an oversized upload returns a bare 503, not a size error'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T10:29:03Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+  release: backlog

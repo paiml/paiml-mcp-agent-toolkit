@@ -1,0 +1,17 @@
+- id: GH-1492
+  github_issue: 1492
+  item_type: task
+  title: migrate YAML to a maintained crate (serde-saphyr candidate) to drop the RUSTSEC-2024-0449 ignore
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-10-16T14:35:36.019828266+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

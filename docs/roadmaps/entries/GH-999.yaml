@@ -1,0 +1,17 @@
+- id: GH-999
+  github_issue: 999
+  item_type: task
+  title: 'Agent integration: pmat ↔ Claude Code ultracode ↔ Google Antigravity (EV-0..EV-6)'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

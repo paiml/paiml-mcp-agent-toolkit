@@ -1,0 +1,18 @@
+- id: PMAT-1369
+  github_issue: 1369
+  item_type: task
+  title: pv validate prints "0 errors" for a contract with 0 of 19 obligations bound — a verdict must state its denominator
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-15T16:00:34Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1369. Row added on PMAT-1359 (unblock master) because CB-2115 is a bijection over OPEN issues: this issue was opened after the PR''s previous round and had no row on any branch bound for master.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: 'Upstream in paiml/aprender, where pv lives: aprender#3397 (a pv validate verdict must state N obligations, K evaluated, F failed and exit non-zero on K = 0), aprender#3398 (pv proof-status must count an ignored, empty or never-executed test as zero), aprender#3399 (pin the pv unlock serde_yaml::Value round-trip with a test). Cross-referenced on PMAT-900001.'
+  release: backlog

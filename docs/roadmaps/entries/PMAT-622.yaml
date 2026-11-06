@@ -1,0 +1,22 @@
+- id: PMAT-622
+  github_issue: 1262
+  item_type: task
+  title: 'Spec 29: Falsification Unification — ProvableContract variant + unified roster + CB-1620..1629'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-04-17T15:43:51Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - Implements docs/specifications/components/pmat-work-falsification-unification.md. Adds FalsificationMethod::ProvableContract variant, unified pmat work falsify runner consuming YAML tests.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - falsification-unification
+  - provable-contracts
+  - component-29
+  notes: null
+  release: backlog
