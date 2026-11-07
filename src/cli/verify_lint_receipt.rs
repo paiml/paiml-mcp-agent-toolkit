@@ -66,8 +66,9 @@ use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
-/// Where the receipt lives. `.pmat/` is gitignored (`.gitignore:268`), so a
-/// receipt can never be committed, shared, or inherited from another machine.
+/// Where the receipt lives. In this repo `.pmat/` is gitignored (`.gitignore:268`),
+/// but other repos (e.g. paiml/infra) may git-TRACK the file, so `revoke` checks
+/// tracking before deleting.
 const RECEIPT_RELPATH: &str = ".pmat/clippy-receipt";
 
 /// Hidden files that change clippy's verdict and might still be missed by the
@@ -235,8 +236,28 @@ pub fn record(project: &Path, fingerprint: &str) -> Result<()> {
 /// Drop any receipt. Called when clippy comes back red, so a tree that was
 /// green, went red, and came back to a previously-green state cannot be waved
 /// through by a stale key.
+///
+/// A receipt that git TRACKS is left untouched: deleting it would create a
+/// spurious diff in the repo. If git is unavailable or errors, the old
+/// behaviour (delete) applies.
 pub fn revoke(project: &Path) {
+    if is_git_tracked(project) {
+        return;
+    }
     let _ = std::fs::remove_file(receipt_path(project));
+}
+
+/// True only when `git ls-files --error-unmatch` succeeds for the receipt.
+fn is_git_tracked(project: &Path) -> bool {
+    std::process::Command::new("git")
+        .arg("-C")
+        .arg(project)
+        .args(["ls-files", "--error-unmatch", "--", RECEIPT_RELPATH])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -444,5 +465,39 @@ mod tests {
             ignore_rules.lines().any(|l| l.trim() == "**/.pmat/"),
             ".pmat/ must stay gitignored or receipts become shareable artifacts"
         );
+    }
+
+    fn git(dir: &Path, args: &[&str]) {
+        let st = std::process::Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(["-c", "user.email=t@t", "-c", "user.name=t"])
+            .args(args)
+            .status()
+            .expect("git");
+        assert!(st.success(), "git {args:?} failed");
+    }
+
+    /// A red verify must not delete a receipt that git tracks: the deletion
+    /// shows up as a spurious diff in repos that commit `.pmat/clippy-receipt`.
+    #[test]
+    fn revoke_keeps_a_git_tracked_receipt() {
+        let dir = scratch();
+        record(dir.path(), "abc").expect("record");
+        git(dir.path(), &["init", "-q"]);
+        git(dir.path(), &["add", "-f", RECEIPT_RELPATH]);
+        git(dir.path(), &["commit", "-q", "-m", "x"]);
+        revoke(dir.path());
+        assert!(receipt_path(dir.path()).exists(), "tracked receipt deleted");
+    }
+
+    /// An untracked receipt (even inside a git repo) is still removed.
+    #[test]
+    fn revoke_removes_an_untracked_receipt() {
+        let dir = scratch();
+        git(dir.path(), &["init", "-q"]);
+        record(dir.path(), "abc").expect("record");
+        revoke(dir.path());
+        assert!(!receipt_path(dir.path()).exists());
     }
 }
