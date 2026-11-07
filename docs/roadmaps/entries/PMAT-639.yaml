@@ -1,0 +1,18 @@
+- id: PMAT-639
+  github_issue: 1268
+  item_type: task
+  title: 'TDG dead_code component is hardcoded 0.0 while carrying weight 0.20 (CB-128 ''6th dimension''): every TDG grade includes a 20% term that was never measured — integrate CargoDeadCodeAnalyzer or mark the component not-measured and stop weighting it (found by CRUX-01''s strict SATD stage, tdg_calculator_core.rs:110)'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T17:49:52Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  notes: null
+  release: backlog

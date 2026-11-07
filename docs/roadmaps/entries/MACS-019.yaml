@@ -1,0 +1,18 @@
+- id: MACS-019
+  github_issue: 1259
+  item_type: task
+  title: MACS-019 Hybrid Orchestration Bridge (Ultracode + AGY)
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-07-04T08:20:00Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - Define an orchestration adapter pmat work delegate --agy which translates PMAT contract requirements into Anti-Gravity define_subagent/invoke_subagent tool sequences, allowing AGY agents to deterministically resolve PMAT-verified work.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog
