@@ -1,0 +1,21 @@
+- id: PMAT-1317
+  github_issue: 1317
+  item_type: task
+  title: 'Coverage to 95%: measured 85.25%, the floor is armed at 80 and ratchets from CI''s own number'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T09:55:00Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: docs/specifications/goal-mode.md
+  acceptance_criteria:
+  - .pmat/coverage-baseline.txt exists, carries a number a CI run measured rather than one a laptop measured, and the coverage job fails when coverage drops below it — proven by a deliberate drop and not by reading the condition
+  - line coverage reaches 95 percent, with the baseline raised in steps and never lowered
+  - no step in the climb lowers the baseline or disables the gate in order to land a change
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Operator instruction 2026-09-11: coverage always at 95%. Measured on this tree with cargo llvm-cov nextest --lib: 85.25% of lines (297,741 lines, 43,919 uncovered), 85.56% of regions, in 469s against the ~29 minutes ci/coverage spends. 95% is 29,032 lines away, so a gate set there today is red on arrival for every PR and goal-mode.md §5.4 forbids that. PMAT-1313 armed coverage_min at 80, which turns the Enforce coverage floor step on for the first time — it had been skipped on every run. Use pmat query --coverage-gaps --rank-by impact for the climb.'
+  release: backlog

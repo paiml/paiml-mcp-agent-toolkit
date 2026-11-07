@@ -1,0 +1,20 @@
+- id: PMAT-684
+  github_issue: 1277
+  item_type: task
+  title: '3.40.0: revive the three closed 3.38-era PRs on post-3.39.0 master — #1177 (AD-05 quality-gate file-size/churn/lint, PMAT-657), #1184 (PMAT-666 hooks split), #1180 (PMAT-661 work link + CB-1340)'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - 'All three were 40 commits behind master at 3.38.0 with conflicts in docs/roadmaps/roadmap.yaml (RS root cause) and the ledgers; #1177 and #1184 red on ci / test at their heads, #1180 conflicts in ticket_crud.rs with PMAT-673. Closed with five-whys lines in their bodies; the branches remain. Revive each on the new master, one PR per ticket.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - deferred:3.41.0
+  notes: null
+  release: backlog

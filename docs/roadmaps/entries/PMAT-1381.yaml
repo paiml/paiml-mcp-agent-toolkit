@@ -1,0 +1,18 @@
+- id: PMAT-1381
+  github_issue: 1381
+  item_type: task
+  title: 'pmat work complete: ticket-scoped completion checks — repo-wide falsifications report, don''t block'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-16T14:42:59Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - 'See paiml/paiml-mcp-agent-toolkit#1381. Row added on PMAT-1366 because CB-2115 is a bijection over OPEN issues: #1381 was opened after master''s last roadmap change and had no row on any branch bound for master, so pmat comply check --checks CB-2115 failed this PR''s traceability job with ORPHAN-GITHUB #1381.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog
