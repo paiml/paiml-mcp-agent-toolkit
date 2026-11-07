@@ -10,6 +10,7 @@ pub mod gate_runner;
 pub mod gates; // TICKET-PMAT-5020: Quality gate executor
 pub mod git_hooks;
 pub mod ladder_evidence; // MACS F2 (Component 32): evidence-computed ladder level
+pub(crate) mod pre_push_deny_gate; // OUT-324: pre-push cargo-deny advisories gate
 pub mod satd;
 pub mod satd_item;
 

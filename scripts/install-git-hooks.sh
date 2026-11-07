@@ -316,6 +316,83 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# git feeds one "<local ref> <local sha> <remote ref> <remote sha>" line per ref on stdin.
+PUSH_INPUT=$(cat)
+
+# >>> pmat-deny-gate (OUT-324) >>>
+# Run `cargo deny check advisories` when a pushed range changes Cargo.lock or deny.toml.
+# stdin of a pre-push hook: "<local ref> <local sha> <remote ref> <remote sha>" per ref;
+# the caller reads it once (PUSH_INPUT=$(cat)) and passes it as $1. Returns 1 to refuse.
+pmat_deny_gate() {
+    local input="$1" need=0 added="" lref lsha rref rsha base changed ids
+    local empty_tree="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+    while read -r lref lsha rref rsha; do
+        [ -n "${lsha:-}" ] || continue
+        case "$lsha" in *[!0]*) ;; *) continue ;; esac # deleting a ref pushes no files
+        base=""
+        case "${rsha:-0}" in *[!0]*) base="$rsha" ;; esac
+        if [ -z "$base" ] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            # New branch (or a remote object we lack): everything no remote ref has.
+            base=$(git rev-list "$lsha" --not --remotes 2>/dev/null | tail -n 1) || base=""
+            if [ -z "$base" ]; then
+                continue
+            fi
+            base=$(git rev-parse --verify -q "${base}^" 2>/dev/null) || base="$empty_tree"
+        fi
+        if ! changed=$(git diff --name-only "$base" "$lsha" -- ':(glob)**/Cargo.lock' ':(glob)**/deny.toml' 2>/dev/null); then
+            need=1 # cannot tell what changed: measure rather than guess
+            continue
+        fi
+        if [ -n "$changed" ]; then
+            need=1
+            ids=$(git diff -U0 "$base" "$lsha" -- ':(glob)**/deny.toml' 2>/dev/null | grep -E '^\+' | grep -oE 'RUSTSEC-[0-9]+-[0-9]+|GHSA-[0-9a-z-]+' | sort -u | tr '\n' ' ' || true)
+            added="$added $ids"
+        fi
+    done <<< "$input"
+    [ "$need" = 1 ] || return 0
+
+    echo -n "  cargo deny advisories (Cargo.lock/deny.toml changed)... "
+    if ! cargo deny --version > /dev/null 2>&1; then
+        echo "❌"
+        echo "   REFUSED: cargo-deny is not installed, so the advisories check cannot be measured."
+        echo "   Install: cargo install cargo-deny --locked"
+        return 1
+    fi
+    local out rc=0 id
+    # shellcheck disable=SC2086
+    out=$(cargo deny --format json check ${PMAT_DENY_FLAGS:-} advisories 2>&1) || rc=$?
+    if [ "$rc" -ne 0 ]; then
+        echo "❌"
+        echo "   REFUSED: cargo deny check advisories failed (exit $rc). Last diagnostics:"
+        printf '%s\n' "$out" | grep -E '"severity":"(error|warning)"|"message"' | tail -n 8 | cut -c1-300 | sed 's/^/     /' || true
+        echo "   Reproduce: cargo deny check advisories"
+        return 1
+    fi
+    if printf '%s\n' "$out" | grep -q 'duplicate items detected'; then
+        echo "❌"
+        echo "   REFUSED: cargo deny reports duplicate items in deny.toml (a repeated ignore entry)."
+        return 1
+    fi
+    for id in $added; do
+        if printf '%s\n' "$out" | grep 'advisory-not-detected' | grep -q "\"$id\""; then
+            echo "❌"
+            echo "   REFUSED: deny.toml ignores $id, which no advisory/crate in the graph matches (unknown advisory)."
+            return 1
+        fi
+    done
+    echo "✅"
+    return 0
+}
+# <<< pmat-deny-gate (OUT-324) <<<
+
+# OUT-324: supply chain first. The pmat-book checks below exit 0 early when the book is
+# absent, and that must never skip the advisories check.
+echo -e "${CYAN}🔒 Supply chain (cargo deny advisories)...${NC}"
+if ! pmat_deny_gate "$PUSH_INPUT"; then
+    echo -e "${RED}${BOLD}❌ PUSH BLOCKED: cargo deny check advisories${NC}"
+    exit 1
+fi
+
 BOOK_DIR="${PMAT_BOOK_DIR:-$HOME/src/pmat-book}"
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
