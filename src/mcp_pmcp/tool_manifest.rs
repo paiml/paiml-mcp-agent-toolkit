@@ -273,6 +273,36 @@ pub fn canonical_tool_names() -> Vec<String> {
 mod tests {
     use super::*;
 
+    /// #1230: the file's own prose said "19 tools" while `LIVE_MCP_TOOLS`
+    /// held 20. A count written into a doc comment is a fourth inventory, so
+    /// no `//` line above this module may state one that is not derived.
+    #[test]
+    fn prose_states_no_literal_tool_count() {
+        let src = include_str!("tool_manifest.rs");
+        let end = src.find("mod tests {").expect("tests module present");
+        let re = regex::Regex::new(r"\b\d+ (of \d+ )?(live )?tools?\b").expect("valid regex");
+        let hits: Vec<String> = src[..end]
+            .lines()
+            .enumerate()
+            .filter(|(_, l)| l.trim_start().starts_with("//") && re.is_match(l))
+            .map(|(i, l)| format!("line {}: {}", i + 1, l.trim()))
+            .collect();
+        assert!(
+            hits.is_empty(),
+            "doc comments state a literal tool count (use LIVE_MCP_TOOLS.len()):\n{}",
+            hits.join("\n")
+        );
+    }
+
+    #[test]
+    fn the_prose_guard_catches_a_planted_count() {
+        let re = regex::Regex::new(r"\b\d+ (of \d+ )?(live )?tools?\b").expect("valid regex");
+        assert!(re.is_match("/// The 19 tools registered by run()"));
+        assert!(re.is_match("/// 15 of 19 tools were advertised"));
+        assert!(re.is_match("/// The 19 live tools' `metadata()`"));
+        assert!(!re.is_match("/// The live tools registered by run()"));
+    }
+
     #[test]
     fn manifest_matches_server() {
         // Drift guard: LIVE_MCP_TOOLS must equal the server's actual

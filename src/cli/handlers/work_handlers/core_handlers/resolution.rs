@@ -309,3 +309,58 @@ mod resolution_pure_tests {
         print_blocked_result(&r, &unoverrideable, "PMAT-300");
     }
 }
+
+#[cfg(test)]
+mod resolve_yaml_ticket_tests {
+    //! PMAT-1472 / #1472: starting a ticket that is already InProgress must be
+    //! idempotent, and a truly terminal ticket must be refused with an
+    //! accurate message.
+    use super::*;
+    use tempfile::TempDir;
+
+    fn service_with(status: &str) -> (TempDir, RoadmapService) {
+        let dir = TempDir::new().expect("tempdir");
+        let path = dir.path().join("roadmap.yaml");
+        std::fs::write(
+            &path,
+            format!(
+                "roadmap_version: '1.0'\nroadmap:\n- id: T-1\n  github_issue: null\n  item_type: task\n  title: t\n  status: {status}\n"
+            ),
+        )
+        .expect("write roadmap");
+        let svc = RoadmapService::new(&path);
+        (dir, svc)
+    }
+
+    #[tokio::test]
+    async fn start_on_in_progress_ticket_is_idempotent() {
+        let (_d, svc) = service_with("inprogress");
+        let roadmap = svc.load().expect("load");
+        let item = resolve_yaml_ticket(&svc, "T-1", &roadmap, false)
+            .await
+            .expect("restarting an InProgress ticket must succeed");
+        assert_eq!(item.status, ItemStatus::InProgress);
+    }
+
+    #[tokio::test]
+    async fn start_on_completed_ticket_is_refused_with_accurate_message() {
+        let (_d, svc) = service_with("completed");
+        let roadmap = svc.load().expect("load");
+        let err = resolve_yaml_ticket(&svc, "T-1", &roadmap, false)
+            .await
+            .expect_err("completed is terminal");
+        let msg = err.to_string();
+        assert!(msg.contains("Completed"), "{msg}");
+        assert!(msg.contains("terminal"), "{msg}");
+    }
+
+    #[tokio::test]
+    async fn start_on_planned_ticket_moves_to_in_progress() {
+        let (_d, svc) = service_with("planned");
+        let roadmap = svc.load().expect("load");
+        let item = resolve_yaml_ticket(&svc, "T-1", &roadmap, false)
+            .await
+            .expect("planned starts");
+        assert_eq!(item.status, ItemStatus::InProgress);
+    }
+}
