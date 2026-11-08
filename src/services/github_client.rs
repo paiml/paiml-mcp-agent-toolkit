@@ -26,6 +26,22 @@ pub struct GitHubClient {
     repo_name: String,
 }
 
+/// Split an `"owner/name"` spec, refusing anything that is not exactly that (#1233).
+///
+/// `split('/')` alone accepted `"owner/"` and `"/repo"` (two parts, one empty)
+/// and whitespace-padded input, deferring the failure to a confusing GitHub 404.
+fn parse_repo_spec(repo: &str) -> Result<(String, String)> {
+    let parts: Vec<&str> = repo.split('/').collect();
+    let ok = parts.len() == 2
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && !p.chars().any(char::is_whitespace));
+    if !ok {
+        anyhow::bail!("Invalid repo format: '{}'. Expected 'owner/name'", repo);
+    }
+    Ok((parts[0].to_string(), parts[1].to_string()))
+}
+
 impl GitHubClient {
     /// Create a new GitHub client from repo string (e.g., "paiml/pmat")
     ///
@@ -41,10 +57,7 @@ impl GitHubClient {
     /// - Failed to initialize octocrab client
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(repo: &str) -> Result<Self> {
-        let parts: Vec<&str> = repo.split('/').collect();
-        if parts.len() != 2 {
-            anyhow::bail!("Invalid repo format: '{}'. Expected 'owner/name'", repo);
-        }
+        let (owner, name) = parse_repo_spec(repo)?;
 
         let token = env::var("GITHUB_TOKEN").context(
             "GITHUB_TOKEN environment variable not set. Please set it to use GitHub API.",
@@ -57,8 +70,8 @@ impl GitHubClient {
 
         Ok(Self {
             octocrab,
-            repo_owner: parts[0].to_string(),
-            repo_name: parts[1].to_string(),
+            repo_owner: owner,
+            repo_name: name,
         })
     }
 
@@ -71,10 +84,7 @@ impl GitHubClient {
     /// * `repo` - Repository in "owner/name" format
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_unauthenticated(repo: &str) -> Result<Self> {
-        let parts: Vec<&str> = repo.split('/').collect();
-        if parts.len() != 2 {
-            anyhow::bail!("Invalid repo format: '{}'. Expected 'owner/name'", repo);
-        }
+        let (owner, name) = parse_repo_spec(repo)?;
 
         let octocrab = Octocrab::builder()
             .build()
@@ -82,8 +92,8 @@ impl GitHubClient {
 
         Ok(Self {
             octocrab,
-            repo_owner: parts[0].to_string(),
-            repo_name: parts[1].to_string(),
+            repo_owner: owner,
+            repo_name: name,
         })
     }
 
@@ -291,42 +301,36 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_repo_format_trailing_slash() {
-        // "owner/" splits into ["owner", ""] — two parts, so it PASSES the
-        // format check and then fails (or not) on GITHUB_TOKEN.
-        //
-        // This used to read `if result.is_ok() { ...assert... }`, which asserted
-        // nothing whenever GITHUB_TOKEN was unset — i.e. on every CI machine and
-        // most laptops. The subject here is the FORMAT rule, not the token, so
-        // assert on the format outcome directly and unconditionally.
-        match GitHubClient::new("owner/") {
-            Ok(client) => {
-                assert_eq!(client.repo_owner, "owner");
-                assert_eq!(client.repo_name, "");
-            }
-            Err(e) => assert!(
-                !e.to_string().contains("Invalid repo format"),
-                "an empty name is two parts and must pass the format check; \
-                 the only acceptable failure here is the token: {e}"
-            ),
+    fn parse_repo_spec_rejects_empty_halves_whitespace_and_urls() {
+        for bad in [
+            "owner/",
+            "/repo",
+            "/",
+            " owner/repo",
+            "owner/repo ",
+            "own er/repo",
+            "owner/re po",
+            "https://github.com/owner/repo",
+            "a/b/c",
+        ] {
+            let e = parse_repo_spec(bad).unwrap_err().to_string();
+            assert!(e.contains("Invalid repo format"), "{bad:?} -> {e}");
         }
     }
 
     #[test]
-    fn test_invalid_repo_format_leading_slash() {
-        // "/repo" splits into ["", "repo"] — also two parts, so it too passes
-        // the format check. Same reasoning as above: assert unconditionally.
-        match GitHubClient::new("/repo") {
-            Ok(client) => {
-                assert_eq!(client.repo_owner, "");
-                assert_eq!(client.repo_name, "repo");
-            }
-            Err(e) => assert!(
-                !e.to_string().contains("Invalid repo format"),
-                "an empty owner is two parts and must pass the format check; \
-                 the only acceptable failure here is the token: {e}"
-            ),
-        }
+    fn parse_repo_spec_accepts_owner_slash_name() {
+        let (o, n) = parse_repo_spec("paiml/paiml-mcp-agent-toolkit").unwrap();
+        assert_eq!(
+            (o.as_str(), n.as_str()),
+            ("paiml", "paiml-mcp-agent-toolkit")
+        );
+    }
+
+    #[tokio::test]
+    async fn unauthenticated_client_rejects_trailing_slash_spec() {
+        let e = GitHubClient::new_unauthenticated("owner/").err().unwrap();
+        assert!(e.to_string().contains("Invalid repo format"));
     }
 
     #[tokio::test]
