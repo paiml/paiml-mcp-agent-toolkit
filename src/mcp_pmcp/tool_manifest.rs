@@ -273,6 +273,30 @@ pub fn canonical_tool_names() -> Vec<String> {
 mod tests {
     use super::*;
 
+    /// #1234: `DiscoveryService` was re-exported publicly and called from no
+    /// request handler. `tools/list` serves the whole catalog; the spec'd way to
+    /// shrink it is cursor pagination, not a bespoke fuzzy matcher. The module
+    /// must not return without a call site inside a handler.
+    #[test]
+    fn mcp_pmcp_carries_no_unwired_discovery_service() {
+        let module = include_str!("mod.rs");
+        let server = include_str!("simple_unified_server.rs");
+        assert!(
+            !module.contains("pub mod discovery;") && !module.contains("DiscoveryService"),
+            "mcp_pmcp/mod.rs exports DiscoveryService (#1234)"
+        );
+        assert!(
+            !server.contains("DiscoveryService"),
+            "if DiscoveryService is wired into a handler, drop this guard with the wiring"
+        );
+        assert!(
+            !std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("src/mcp_pmcp/discovery.rs")
+                .exists(),
+            "src/mcp_pmcp/discovery.rs is back with no handler calling it (#1234)"
+        );
+    }
+
     #[test]
     fn manifest_matches_server() {
         // Drift guard: LIVE_MCP_TOOLS must equal the server's actual
