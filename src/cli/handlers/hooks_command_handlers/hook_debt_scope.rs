@@ -419,7 +419,11 @@ fn merge_aware_verdict(
         DebtVerdict::Refused(merge_growths) => {
             let both: Vec<DebtGrowth> = head_growths
                 .iter()
-                .filter(|g| merge_growths.contains(g))
+                .filter(|g| {
+                    merge_growths
+                        .iter()
+                        .any(|m| m.function == g.function && m.metric == g.metric)
+                })
                 .cloned()
                 .collect();
             if both.is_empty() {
