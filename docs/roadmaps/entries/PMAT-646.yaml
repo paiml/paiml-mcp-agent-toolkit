@@ -1,0 +1,19 @@
+- id: PMAT-646
+  github_issue: 1269
+  item_type: task
+  title: 'CI: pull_request synchronize/ready_for_review events on PR #1164 created no workflow runs (3 events, 07:41–07:51Z); workflow_dispatch on the same head did'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T07:59:51Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Observed during PMAT-642. Pushes ce2178577 and a80527dcb and the ready-for-review event produced zero runs (actions/runs?head_sha= → 0; check-suites empty) while #1155''s push at 07:37Z produced runs. githubstatus: Actions/Webhooks/PRs operational. Workaround used: gh workflow run for ci.yml, feature-matrix.yml, docsrs.yml, quality-gate.yml on the branch. Also: master has had no push-triggered runs since 2026-08-21 (auto-merge pushes?) — separate observation. Root cause not established.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  notes: null
+  release: backlog

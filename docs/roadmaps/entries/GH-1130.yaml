@@ -1,0 +1,17 @@
+- id: GH-1130
+  github_issue: 1130
+  item_type: task
+  title: 'Verify #1035 Cluster 2''s three never-independently-checked comply-ladder rows (whisper.apr CB-1206, infra CB-1308, rmedia CB-1210 vs CB-1339)'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

@@ -1,0 +1,17 @@
+- id: GH-1433
+  github_issue: 1433
+  item_type: task
+  title: 'master CI red on traceability/gate: CB-2115 reports 17 roadmap↔GitHub orphans (ORPHAN-ROADMAP 3, ORPHAN-GITHUB 14)'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.43.0
