@@ -67,6 +67,11 @@ pub(super) async fn resolve_yaml_ticket(
 
     if let Some(existing) = service.find_item(id)? {
         println!("   {}", c::pass("Found existing ticket"));
+        // #1472: starting a ticket that is already InProgress is idempotent
+        // (re-activates it); it is not a terminal state.
+        if existing.status == ItemStatus::InProgress {
+            return Ok(existing);
+        }
         // DBC §work_lifecycle: Validate state transition before starting
         if !existing.status.can_transition_to(ItemStatus::InProgress) {
             anyhow::bail!(
@@ -361,6 +366,34 @@ mod resolve_yaml_ticket_tests {
         let item = resolve_yaml_ticket(&svc, "T-1", &roadmap, false)
             .await
             .expect("planned starts");
+        assert_eq!(item.status, ItemStatus::InProgress);
+    }
+}
+
+#[cfg(test)]
+mod tests_1472 {
+    use super::*;
+    use tempfile::TempDir;
+
+    const ROADMAP: &str = "roadmap_version: '1.0'\ngithub_enabled: false\nroadmap:\n";
+
+    fn svc(status: &str) -> (TempDir, RoadmapService) {
+        let dir = TempDir::new().expect("tempdir");
+        let p = dir.path().join("roadmap.yaml");
+        let row = format!(
+            "- id: PMAT-1\n  title: t\n  status: {status}\n  priority: medium\n  created: '2026-01-01T00:00:00Z'\n  updated: '2026-01-01T00:00:00Z'\n"
+        );
+        std::fs::write(&p, format!("{ROADMAP}{row}")).expect("write");
+        (dir, RoadmapService::new(&p))
+    }
+
+    #[tokio::test]
+    async fn start_on_inprogress_ticket_is_idempotent() {
+        let (_d, s) = svc("inprogress");
+        let r = crate::models::roadmap::Roadmap::default();
+        let item = resolve_yaml_ticket(&s, "PMAT-1", &r, false)
+            .await
+            .expect("restart of an InProgress ticket must succeed");
         assert_eq!(item.status, ItemStatus::InProgress);
     }
 }

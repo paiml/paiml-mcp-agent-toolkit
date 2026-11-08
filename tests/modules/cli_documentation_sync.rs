@@ -489,3 +489,26 @@ fn test_documentation_examples_are_valid() {
         drifted.join("\n")
     );
 }
+
+/// The reference must name the binary users actually type (#1229).
+///
+/// `rust-docs/cli-reference.md` documented `paiml-mcp-agent-toolkit` — the crate's
+/// old name — as the command for its whole 34 KB, and no other guard noticed
+/// because they grade subcommands, not the word in front of them.
+#[test]
+fn cli_reference_names_the_real_binary_not_the_retired_one() {
+    let Some(doc) = cli_reference() else { return };
+    let stale: Vec<String> = doc
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| l.contains("paiml-mcp-agent-toolkit"))
+        .map(|(i, l)| format!("  line {}: {}", i + 1, l.trim()))
+        .collect();
+    assert!(
+        stale.is_empty(),
+        "{} line(s) of rust-docs/cli-reference.md name the retired binary \
+         `paiml-mcp-agent-toolkit`; the command is `pmat`:\n{}",
+        stale.len(),
+        stale.join("\n")
+    );
+}
