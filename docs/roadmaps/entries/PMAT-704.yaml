@@ -1,0 +1,19 @@
+- id: PMAT-704
+  github_issue: 1282
+  item_type: task
+  title: 'quality proxy sibling: auto_clippy_fix_core.rs:22 (the auto_clippy_fix MCP tool) spawns cargo clippy with tokio::process::Command and inherits the parent env — no instrumentation scrub, no deadline, no process group, no address-space cap; route it through the quality proxy''s child_command (PMAT-694) so no spawn can miss the caps'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T11:49:41Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+  release: backlog

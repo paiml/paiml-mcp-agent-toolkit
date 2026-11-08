@@ -1,0 +1,18 @@
+- id: PMAT-1343
+  github_issue: 1343
+  item_type: task
+  title: VariantCoverage false-positives on payload-carrying enum variants constructed inside an array literal — blocks work complete on covered code
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-14T09:15:49Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Row added by PMAT-1350 to clear CB-2115, not because that branch does this work. #1343 was filed 2026-09-12 with no roadmap row, so master itself fails  with ORPHAN-GITHUB #1343 — an inherited red the next PR to touch this repo was always going to have to pick up. The issue is untouched and unassigned.'
+  release: backlog

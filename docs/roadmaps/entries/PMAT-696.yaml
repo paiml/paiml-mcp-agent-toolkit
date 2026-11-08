@@ -1,0 +1,19 @@
+- id: PMAT-696
+  github_issue: 1128
+  item_type: task
+  title: '[train/GT] gate-metadata truth (#1128, #1132, honest half of #1074): delete the orphan Dependabot advisory gate and the stale quality-gate.yml lines; required-status-checks.txt generated from live protection (make required-checks-sync) with an offline check in ci/gate that every listed check is a declared job; cargo deny wrapper prints scope: rustsec-only, never ok'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:28Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1128, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
+  release: backlog

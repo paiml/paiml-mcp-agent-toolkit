@@ -1,0 +1,19 @@
+- id: PMAT-698
+  github_issue: 1137
+  item_type: task
+  title: '[train/CT] config truth (#1137, #1138): config --show prints the resolved config every reader consumes; restore the .pmat-gates.toml section the default reader needs and make its guard test assert presence'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:30Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1137, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
+  release: backlog
