@@ -184,8 +184,8 @@ pub async fn handle_generate_report(
     markdown: bool,
     csv: bool,
     include_visualizations: bool,
-    _include_executive_summary: bool,
-    _include_recommendations: bool,
+    include_executive_summary: bool,
+    include_recommendations: bool,
     _analyses: Vec<AnalysisType>,
     _confidence_threshold: u8,
     output: Option<PathBuf>,
@@ -201,6 +201,7 @@ pub async fn handle_generate_report(
 
     let actual_format = determine_output_format(output_format, text, markdown, csv);
     reject_unimplemented_visualizations(include_visualizations)?;
+    reject_unimplemented_report_flags(include_executive_summary, include_recommendations)?;
     log_report_generation_start(&project_path, &actual_format);
 
     let service = DefectReportService::new();
@@ -280,6 +281,29 @@ fn reject_unimplemented_visualizations(include_visualizations: bool) -> Result<(
             "--include-visualizations is not implemented for `pmat report`: it changed \
              nothing in json, csv, markdown or text, and the formats that could embed \
              charts (html, pdf, dashboard) are not implemented either. Re-run without it."
+        );
+    }
+    Ok(())
+}
+
+/// Refuse `--include-executive-summary` and `--include-recommendations`
+/// (#1473): both were dropped, so output was identical with or without them.
+/// Same rule as `--include-visualizations`: a declared option must do what it
+/// says or be refused.
+fn reject_unimplemented_report_flags(
+    include_executive_summary: bool,
+    include_recommendations: bool,
+) -> Result<()> {
+    if include_executive_summary {
+        anyhow::bail!(
+            "--include-executive-summary is not implemented for `pmat report`: it changed \
+             nothing (the executive summary is always present). Re-run without it."
+        );
+    }
+    if include_recommendations {
+        anyhow::bail!(
+            "--include-recommendations is not implemented for `pmat report`: it changed \
+             nothing (no recommendations section exists). Re-run without it."
         );
     }
     Ok(())
@@ -568,11 +592,17 @@ mod tests {
 
         let es = reject_unimplemented_report_flags(true, false)
             .expect_err("--include-executive-summary changes nothing and must be refused");
-        assert!(es.to_string().contains("--include-executive-summary"), "{es}");
+        assert!(
+            es.to_string().contains("--include-executive-summary"),
+            "{es}"
+        );
 
         let rec = reject_unimplemented_report_flags(false, true)
             .expect_err("--include-recommendations changes nothing and must be refused");
-        assert!(rec.to_string().contains("--include-recommendations"), "{rec}");
+        assert!(
+            rec.to_string().contains("--include-recommendations"),
+            "{rec}"
+        );
     }
 
     /// End-to-end on the handler: the flag must never reach a successful run.
