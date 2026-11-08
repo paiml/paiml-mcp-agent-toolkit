@@ -1,0 +1,19 @@
+- id: PMAT-701
+  github_issue: 1280
+  item_type: task
+  title: '[train/IP] infra pin bump 3.39.0 -> 3.40.0 in machines/{lambda-labs,intel,mini,gx10}/forjar.yaml (paiml/infra); forjar apply -f machines/$(hostname)/forjar.yaml on this host only; pmat --version == 3.40.0'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:33Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+  release: backlog

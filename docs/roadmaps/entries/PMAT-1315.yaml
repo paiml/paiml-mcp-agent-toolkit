@@ -1,0 +1,22 @@
+- id: PMAT-1315
+  github_issue: 1315
+  item_type: bug
+  title: 'Upstream paiml/.github: skip_coverage is documented, parses, and cannot be used — the gate refuses the job it skips'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T09:55:00Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - 'NEXTEST_TEST_THREADS is raised from 4, or made a caller input: the container is given --cpus 8 and cargo test defaults to 8, so capping nextest at 4 makes it slower than the runner it replaces — measured on paiml/paiml-mcp-agent-toolkit#1316, 9,047 of 21,536 tests after 11 minutes'
+  - a caller passing skip_coverage true gets a green ci/gate with the coverage job skipped, and the gate log names it as deliberately skipped
+  - a coverage job skipped or cancelled for any other reason still fails the gate
+  - the second case is proven by a workflow-level test rather than by reading the condition
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: sovereign-ci.yml documents skip_coverage as Skip coverage job; the coverage job is if not inputs.skip_coverage and the gate then refuses it because skipped counts as not-passed. The allowlist is correct — it was written after ci/security was cancelled on paiml/ruchy#197 and the gate passed 21 open advisories — but it makes the input unusable by any caller. ci/coverage costs ~29 minutes on every pmat PR and its only enforcement step is skipped there, so it is now the wall-clock floor of the PR lane after PMAT-1313.
+  release: backlog

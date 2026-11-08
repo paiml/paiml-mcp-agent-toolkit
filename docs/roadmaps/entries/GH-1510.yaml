@@ -1,0 +1,17 @@
+- id: GH-1510
+  github_issue: 1510
+  item_type: task
+  title: 'python-ban: rewrite .github/workflows/feature-matrix.yml in bash'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-10-24T16:31:29.561530032+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

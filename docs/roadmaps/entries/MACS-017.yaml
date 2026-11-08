@@ -1,0 +1,18 @@
+- id: MACS-017
+  github_issue: 1257
+  item_type: task
+  title: MACS-017 Anti-Gravity Customizations Translator
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-07-04T08:19:46Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - A new pmat agy sync command that transpiles or maps PMAT's strict skill requirements and contracts into Google Anti-Gravity's AGENTS.md rules and skills.json formats.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog
