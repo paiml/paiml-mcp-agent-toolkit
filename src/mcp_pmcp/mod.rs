@@ -104,7 +104,6 @@ pub mod context_handlers;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dead_code_payload_contract_tests; // analyze_dead_code payload-key contract
-pub mod discovery;
 pub mod handlers;
 pub mod http_server;
 pub mod pdmt_handler;
@@ -161,8 +160,6 @@ pub async fn run_stdio_server() -> anyhow::Result<()> {
 
 // Keep PmcpServer for backward compatibility (will be removed)
 pub use server::PmcpServer;
-// Export the discovery service for MCP optimization
-pub use discovery::{Context, DiscoveryMetrics, DiscoveryService, ToolInfo};
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
