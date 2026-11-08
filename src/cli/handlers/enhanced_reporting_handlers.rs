@@ -560,6 +560,21 @@ mod tests {
         );
     }
 
+    /// #1473: `--include-executive-summary` and `--include-recommendations`
+    /// were dropped like `--include-visualizations` was; same rule applies.
+    #[test]
+    fn test_summary_and_recommendation_flags_are_rejected_not_silently_ignored() {
+        assert!(reject_unimplemented_report_flags(false, false).is_ok());
+
+        let es = reject_unimplemented_report_flags(true, false)
+            .expect_err("--include-executive-summary changes nothing and must be refused");
+        assert!(es.to_string().contains("--include-executive-summary"), "{es}");
+
+        let rec = reject_unimplemented_report_flags(false, true)
+            .expect_err("--include-recommendations changes nothing and must be refused");
+        assert!(rec.to_string().contains("--include-recommendations"), "{rec}");
+    }
+
     /// End-to-end on the handler: the flag must never reach a successful run.
     #[tokio::test]
     async fn test_generate_report_refuses_the_visualizations_flag() {
