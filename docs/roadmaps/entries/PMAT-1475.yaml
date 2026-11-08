@@ -1,0 +1,18 @@
+- id: PMAT-1475
+  github_issue: 1475
+  item_type: task
+  title: 'diff-scoped complexity: merge commit judged against every parent'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-08T18:20:27Z
+  updated: 2026-11-08T18:20:27Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
