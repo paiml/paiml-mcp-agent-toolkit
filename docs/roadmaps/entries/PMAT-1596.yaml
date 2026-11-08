@@ -1,0 +1,19 @@
+- id: PMAT-1596
+  github_issue: 1596
+  item_type: task
+  title: 'master red: cargo deny RUSTSEC-2026-0433 pulldown-cmark 0.13.5 (pmat score job, C61 ANDON)'
+  status: in_progress
+  priority: critical
+  assigned_to: null
+  created: 2026-11-03T18:40:00Z
+  updated: 2026-11-03T18:40:00Z
+  spec: null
+  acceptance_criteria:
+  - cargo deny check advisories is ok on the fixed Cargo.lock and the pmat score job is green on master
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457

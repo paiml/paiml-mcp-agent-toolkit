@@ -1,0 +1,21 @@
+- id: PMAT-1308
+  github_issue: 1308
+  item_type: task
+  title: 'CB-2113 needs both legs: the PR''s own commits against a non-terminal item of the open milestone, and master against existence (goal-mode.md §7, decision D2/D3)'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - on a pull request CB-2113 judges the commits the PR adds and each names a non-terminal item; the item's release is compared with the open milestone and a LATER release is REPORTED, not failed, until the one-open-milestone scheme of goal-mode.md §11.2 P1 exists; on a push to master it judges the merge's own commits
+  - scripts/traceability-control.sh carries an arm for each leg, including a ticket of a later release being REPORTED and not failed on a PR, and an arm proving the report becomes a refusal once the milestone scheme is configured
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'goal-mode.md §7 states both legs. D2 was decided A by quorum 4 of 4 seats (2026-09-11) and D3 was decided C, 4 of 4: the release leg warns first and only fails once P1''s milestone scheme exists. The code judges merge-base..HEAD and reports not_applicable on master. Artifact docs/audits/quorum-PMAT-1307.json.'
+  release: backlog

@@ -1,0 +1,17 @@
+- id: GH-1420
+  github_issue: 1420
+  item_type: task
+  title: pmat verify's SATD stage honours no exclude (.pmatignore, [quality-gates] exclude, exclude_paths — 8 variants measured), so a deliberate RED fixture reds verify on a clean tree
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

@@ -1,0 +1,16 @@
+- id: GH-1614
+  github_issue: 1614
+  item_type: task
+  title: 'FLOW-010 F3: receipts -> ''quorum'' commit status via paiml-fleet App, required by ruleset (files = audit copies)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-06T18:24:09.028675347+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
