@@ -385,7 +385,50 @@ pub fn staged_verdict(
     // code never measured.
     let diff = git_read(repo_root, &["diff", "--cached", "-U0", "--", &spec])?
         .ok_or_else(|| anyhow!("`git diff --cached -U0 -- {spec}` failed in {repo_root:?}"))?;
-    diff_scoped_verdict(old_source.as_deref(), &new_source, &diff, thresholds)
+    let verdict = diff_scoped_verdict(old_source.as_deref(), &new_source, &diff, thresholds)?;
+    merge_aware_verdict(repo_root, &spec, &new_source, verdict, thresholds)
+}
+
+/// #1475: during a merge, "old" is every parent, not only HEAD. A function
+/// that arrives unchanged from `MERGE_HEAD` was not authored by this commit,
+/// so a refusal against HEAD stands only for growths MERGE_HEAD's counterpart
+/// refuses too (conflict-resolution edits are still judged).
+fn merge_aware_verdict(
+    repo_root: &Path,
+    spec: &str,
+    new_source: &str,
+    head_verdict: DebtVerdict,
+    thresholds: DebtThresholds,
+) -> Result<DebtVerdict> {
+    let DebtVerdict::Refused(head_growths) = &head_verdict else {
+        return Ok(head_verdict);
+    };
+    if git_read(repo_root, &["rev-parse", "-q", "--verify", "MERGE_HEAD"])?.is_none() {
+        return Ok(head_verdict);
+    }
+    let merge_old = git_read(repo_root, &["show", &format!("MERGE_HEAD:{spec}")])?;
+    let merge_diff = git_read(
+        repo_root,
+        &["diff", "--cached", "-U0", "MERGE_HEAD", "--", spec],
+    )?
+    .ok_or_else(|| {
+        anyhow!("`git diff --cached -U0 MERGE_HEAD -- {spec}` failed in {repo_root:?}")
+    })?;
+    match diff_scoped_verdict(merge_old.as_deref(), new_source, &merge_diff, thresholds)? {
+        DebtVerdict::Allowed => Ok(DebtVerdict::Allowed),
+        DebtVerdict::Refused(merge_growths) => {
+            let both: Vec<DebtGrowth> = head_growths
+                .iter()
+                .filter(|g| merge_growths.contains(g))
+                .cloned()
+                .collect();
+            if both.is_empty() {
+                Ok(DebtVerdict::Allowed)
+            } else {
+                Ok(DebtVerdict::Refused(both))
+            }
+        }
+    }
 }
 
 /// The HEAD-side path of `spec` in `git diff --cached -M --name-status -z`
