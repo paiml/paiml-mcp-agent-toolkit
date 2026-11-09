@@ -298,7 +298,7 @@ pub(super) async fn run_quality_check(project_path: &PathBuf, skip_quality: bool
                 println!("✅ All quality gates passed");
                 println!();
             } else {
-                anyhow::bail!("Quality gates failed. Fix issues or use --skip-quality to bypass.");
+                anyhow::bail!("Quality gates failed or were not measured (a gate that times out is not measured; raise the per-gate budget with PMAT_QUALITY_GATE_TIMEOUT_SECS=<secs>, default 120). Fix issues or use --skip-quality to bypass.");
             }
         }
         Err(e) => {

@@ -8,6 +8,81 @@
 use crate::cli::colors as c;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+/// Default per-gate budget in seconds (#1267).
+const DEFAULT_GATE_TIMEOUT_SECS: u64 = 120;
+/// Env var overriding the per-gate budget.
+const GATE_TIMEOUT_ENV: &str = "PMAT_QUALITY_GATE_TIMEOUT_SECS";
+
+/// Per-gate timeout: `PMAT_QUALITY_GATE_TIMEOUT_SECS` if a positive integer, else 120 s.
+fn gate_timeout() -> std::time::Duration {
+    let secs = std::env::var(GATE_TIMEOUT_ENV)
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .filter(|s| *s > 0)
+        .unwrap_or(DEFAULT_GATE_TIMEOUT_SECS);
+    std::time::Duration::from_secs(secs)
+}
+
+/// Result of a bounded child run.
+#[derive(Debug)]
+enum TimedRun {
+    Finished(std::process::ExitStatus),
+    TimedOut,
+}
+
+/// Spawn `cmd`, poll `try_wait`, and on expiry kill (whole process group on
+/// unix) and reap the child. Stdio is inherited.
+fn run_with_timeout(
+    cmd: &mut std::process::Command,
+    budget: std::time::Duration,
+) -> std::io::Result<TimedRun> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
+    let mut child = cmd.spawn()?;
+    let start = std::time::Instant::now();
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(TimedRun::Finished(status));
+        }
+        if start.elapsed() >= budget {
+            #[cfg(unix)]
+            // SAFETY: killpg on the child's own process group id.
+            unsafe {
+                libc::killpg(child.id() as libc::pid_t, libc::SIGKILL);
+            }
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(TimedRun::TimedOut);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+
+/// Run a gate command under the budget. `Ok(Some(status))` when measured,
+/// `Ok(None)` when it timed out (gate NOT MEASURED; message printed).
+fn run_gate_command(
+    gate: &str,
+    cmd: &mut std::process::Command,
+) -> std::io::Result<Option<std::process::ExitStatus>> {
+    let budget = gate_timeout();
+    match run_with_timeout(cmd, budget)? {
+        TimedRun::Finished(status) => Ok(Some(status)),
+        TimedRun::TimedOut => {
+            println!(
+                "      {}",
+                c::fail(&format!(
+                    "{gate}: NOT MEASURED - timed out after {}s (override with {GATE_TIMEOUT_ENV}=<secs>)",
+                    budget.as_secs()
+                ))
+            );
+            Ok(None)
+        }
+    }
+}
+
 use std::path::PathBuf;
 
 /// Run git-aware tests for changed modules.
@@ -39,14 +114,19 @@ fn run_changed_module_tests(project_path: &PathBuf) -> Result<bool> {
     let test_cmd = crate::services::git_test_filter::build_test_command(&modules)
         .unwrap_or_else(|| vec!["test".into(), "--lib".into(), "--quiet".into()]);
 
-    let status = Command::new("cargo")
-        .args(&test_cmd)
-        .arg("--quiet")
-        .current_dir(project_path)
-        .status()
-        .context("Failed to run cargo test")?;
+    let outcome = run_gate_command(
+        "tests",
+        Command::new("cargo")
+            .args(&test_cmd)
+            .arg("--quiet")
+            .current_dir(project_path),
+    )
+    .context("Failed to run cargo test")?;
 
-    if status.success() {
+    if outcome.is_none() {
+        return Ok(false);
+    }
+    if outcome.is_some_and(|s| s.success()) {
         println!("      {}", c::pass("Tests passed"));
         Ok(true)
     } else {
@@ -71,13 +151,17 @@ fn run_rust_project_checks(project_path: &PathBuf) -> Result<bool> {
     let examples_dir = project_path.join("examples");
     if examples_dir.exists() && examples_dir.is_dir() {
         println!("      {}", c::dim("Checking examples..."));
-        let status = Command::new("cargo")
-            .args(["test", "--examples", "--no-run"])
-            .current_dir(project_path)
-            .status()
-            .context("Failed to run cargo test --examples")?;
+        let outcome = run_gate_command(
+            "examples",
+            Command::new("cargo")
+                .args(["test", "--examples", "--no-run"])
+                .current_dir(project_path),
+        )
+        .context("Failed to run cargo test --examples")?;
 
-        if status.success() {
+        if outcome.is_none() {
+            passed = false;
+        } else if outcome.is_some_and(|s| s.success()) {
             println!("      {}", c::pass("Examples compile"));
         } else {
             println!("      {}", c::fail("Examples failed to compile"));
@@ -131,7 +215,8 @@ fn run_golden_trace_validation(project_path: &PathBuf) -> Result<bool> {
     }
 
     println!("   {}", c::dim("Golden traces detected..."));
-    match Command::new("renacer")
+    let mut renacer = Command::new("renacer");
+    renacer
         .args([
             "validate",
             "--baseline",
@@ -141,18 +226,18 @@ fn run_golden_trace_validation(project_path: &PathBuf) -> Result<bool> {
             "./target/release/pmat",
             "--help",
         ])
-        .current_dir(project_path)
-        .status()
-    {
-        Ok(status) if status.success() => {
+        .current_dir(project_path);
+    match run_gate_command("golden traces", &mut renacer) {
+        Ok(None) => Ok(false),
+        Ok(Some(status)) if status.success() => {
             println!("      {}", c::pass("Golden traces match"));
             Ok(true)
         }
-        Ok(status) if status.code() == Some(2) => {
+        Ok(Some(status)) if status.code() == Some(2) => {
             println!("      {}", c::skip("No golden baseline yet"));
             Ok(true)
         }
-        Ok(_) => {
+        Ok(Some(_)) => {
             println!("      {}", c::fail("Golden traces diverged"));
             Ok(false)
         }
@@ -171,13 +256,18 @@ fn run_clippy_check(project_path: &PathBuf) -> Result<bool> {
     use std::process::Command;
 
     println!("   {}", c::dim("Running clippy..."));
-    let status = Command::new("cargo")
-        .args(["clippy", "--lib", "--quiet", "--", "-D", "warnings"])
-        .current_dir(project_path)
-        .status()
-        .context("Failed to run cargo clippy")?;
+    let outcome = run_gate_command(
+        "clippy",
+        Command::new("cargo")
+            .args(["clippy", "--lib", "--quiet", "--", "-D", "warnings"])
+            .current_dir(project_path),
+    )
+    .context("Failed to run cargo clippy")?;
 
-    if status.success() {
+    if outcome.is_none() {
+        return Ok(false);
+    }
+    if outcome.is_some_and(|s| s.success()) {
         println!("      {}", c::pass("No clippy warnings"));
         Ok(true)
     } else {
@@ -558,6 +648,52 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // #1267: per-gate timeout helper.
+    #[cfg(unix)]
+    #[test]
+    fn run_with_timeout_kills_and_reaps_slow_child() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let pidfile = dir.path().join("pid");
+        let script = format!("echo $$ > {}; exec sleep 5", pidfile.display());
+        let mut cmd = std::process::Command::new("sh");
+        cmd.args(["-c", &script]);
+        let t0 = std::time::Instant::now();
+        let r = run_with_timeout(&mut cmd, std::time::Duration::from_secs(1)).expect("spawn");
+        assert!(matches!(r, TimedRun::TimedOut), "got {r:?}");
+        assert!(t0.elapsed() < std::time::Duration::from_secs(3));
+        let pid: i32 = std::fs::read_to_string(&pidfile)
+            .expect("pidfile")
+            .trim()
+            .parse()
+            .expect("pid");
+        // SAFETY: signal 0 only probes existence.
+        let alive = unsafe { libc::kill(pid, 0) } == 0;
+        assert!(!alive, "child {pid} still exists after timeout");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_with_timeout_lets_fast_command_succeed() {
+        let mut ok = std::process::Command::new("true");
+        match run_with_timeout(&mut ok, std::time::Duration::from_secs(10)).expect("spawn") {
+            TimedRun::Finished(s) => assert!(s.success()),
+            TimedRun::TimedOut => panic!("fast command timed out"),
+        }
+        let mut bad = std::process::Command::new("false");
+        match run_with_timeout(&mut bad, std::time::Duration::from_secs(10)).expect("spawn") {
+            TimedRun::Finished(s) => assert!(!s.success()),
+            TimedRun::TimedOut => panic!("fast command timed out"),
+        }
+    }
+
+    #[test]
+    fn gate_timeout_defaults_to_120s() {
+        // Parse logic only; env is process-global so avoid mutating it here.
+        if std::env::var(GATE_TIMEOUT_ENV).is_err() {
+            assert_eq!(gate_timeout(), std::time::Duration::from_secs(120));
+        }
+    }
 
     fn trend(values: &[f64]) -> (tempfile::TempDir, std::path::PathBuf) {
         let dir = tempfile::tempdir().expect("tempdir");
