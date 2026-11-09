@@ -406,23 +406,18 @@ fn handle_cleanup(storage: &TieredStore, max_age: u64) -> Result<()> {
 }
 
 /// Handle migrate command
+///
+/// Migration is not implemented: nothing here writes to the store, and no later start reads a
+/// saved configuration. Report that with a non-zero exit instead of printing a configuration
+/// dump that looks like a pending migration (#1485).
 fn handle_migrate(backend: &str, path: Option<&PathBuf>) -> Result<()> {
     let backend_type = parse_backend_type(backend)?;
     let (warm_config, cold_config) = create_migration_configs(backend_type, path);
 
-    println!(
-        "{}",
-        c::dim(&format!(
-            "Migrating storage to {} backend...",
-            c::label(backend)
-        ))
-    );
-    println!("{}", c::warn("Migration requires restart to take effect"));
-    println!("{}", c::subheader("New configuration:"));
-    println!("  {} {warm_config:?}", c::label("Warm storage:"));
-    println!("  {} {cold_config:?}", c::label("Cold storage:"));
-
-    Ok(())
+    anyhow::bail!(
+        "storage migrate is not implemented: no data was moved and no configuration was saved \
+         (requested warm {warm_config:?}, cold {cold_config:?})"
+    )
 }
 
 /// Parse backend type from string
@@ -572,6 +567,21 @@ mod tests {
     #[test]
     fn test_parse_backend_type_empty_errors() {
         assert!(parse_backend_type("").is_err());
+    }
+
+    // ── handle_migrate (#1485): never reports success for a migration it did not perform ──
+
+    #[test]
+    fn test_handle_migrate_fails_loudly_and_says_nothing_was_moved() {
+        let err = handle_migrate("libsql", None).expect_err("migrate must not report success");
+        let msg = err.to_string();
+        assert!(msg.contains("not implemented"), "{msg}");
+        assert!(msg.contains("no data was moved"), "{msg}");
+    }
+
+    #[test]
+    fn test_handle_migrate_still_rejects_unknown_backend() {
+        assert!(handle_migrate("nope", None).is_err());
     }
 
     // ── create_migration_configs ────────────────────────────────────────────
