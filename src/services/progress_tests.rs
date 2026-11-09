@@ -221,4 +221,37 @@ mod progress_quiet_chatter_tests {
             );
         }
     }
+
+    // #1236: the bar used to swallow every update. A visible bar now writes a
+    // throttled line; a hidden one never does.
+    #[test]
+    fn progress_line_renders_message_and_counts() {
+        let pb = SimpleProgressBar::new(10);
+        pb.set_message("Scanning");
+        pb.set_position(3);
+        assert_eq!(pb.progress_line(), "Scanning 3/10");
+        let spinner = SimpleProgressBar::new_spinner();
+        spinner.inc(4);
+        assert_eq!(spinner.progress_line(), "4");
+    }
+
+    #[test]
+    fn due_line_waits_one_interval_then_throttles() {
+        let pb = SimpleProgressBar::new(10);
+        pb.set_message("Scanning");
+        let t0 = *pb.last_emit.lock().unwrap();
+        let s = std::time::Duration::from_secs;
+        assert_eq!(pb.due_line(t0 + s(1)), None, "short runs stay silent");
+        assert_eq!(pb.due_line(t0 + s(3)).as_deref(), Some("Scanning 0/10"));
+        assert_eq!(pb.due_line(t0 + s(4)), None, "throttled after a write");
+        assert!(pb.due_line(t0 + s(6)).is_some(), "next interval writes again");
+    }
+
+    #[test]
+    fn hidden_bar_never_has_a_due_line() {
+        let pb = SimpleProgressBar::hidden();
+        pb.set_message("Scanning");
+        let t0 = *pb.last_emit.lock().unwrap();
+        assert_eq!(pb.due_line(t0 + std::time::Duration::from_secs(60)), None);
+    }
 }

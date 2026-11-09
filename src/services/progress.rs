@@ -24,6 +24,9 @@ pub struct SimpleProgressBar {
     position: Arc<AtomicU64>,
     length: Arc<AtomicU64>,
     hidden: bool,
+    /// When the bar last wrote a line (initially: when it was created), so the
+    /// first line appears only after one interval and short runs stay silent.
+    last_emit: Arc<Mutex<std::time::Instant>>,
 }
 
 /// No-op progress style that mimics indicatif::ProgressStyle API
