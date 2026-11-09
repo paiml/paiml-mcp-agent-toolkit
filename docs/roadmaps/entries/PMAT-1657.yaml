@@ -1,0 +1,19 @@
+- id: PMAT-1657
+  github_issue: 1657
+  item_type: task
+  title: 'chore(roadmap): close stale rows PMAT-1475/1634/1638 so CB-2115 is green on master'
+  status: inprogress
+  priority: critical
+  assigned_to: fleet-sup
+  created: 2026-11-09T16:33:05Z
+  updated: 2026-11-09T16:33:05Z
+  spec: null
+  acceptance_criteria:
+  - CB-2115 green on this PR
+  - CB-2113 green on this PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:triage
+  notes: null
