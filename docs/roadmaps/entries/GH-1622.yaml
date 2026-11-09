@@ -6,7 +6,7 @@
   priority: medium
   assigned_to: null
   created: 2026-11-09T08:40:58.197676792+00:00
-  updated: 2026-11-09T08:40:58.197676792+00:00
+  updated: 2026-11-09T12:55:08.075066360+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -14,3 +14,4 @@
   estimated_effort: null
   labels: []
   notes: null
+  release: 3.44.0
