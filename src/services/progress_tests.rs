@@ -206,6 +206,7 @@ mod tests {
 #[cfg(test)]
 mod progress_quiet_chatter_tests {
     use crate::cli::handlers::bottleneck_handler::quiet_chatter_tests::unguarded_stderr_lines;
+    use crate::services::progress::SimpleProgressBar;
 
     #[test]
     fn progress_emitters_obey_quiet() {
