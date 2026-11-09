@@ -16,6 +16,12 @@ fn get_security_patterns() -> Vec<(&'static str, &'static str)> {
             r#"(?i)secret\s*=\s*["'][^"']+["']"#,
             "Hardcoded secret detected",
         ),
+        (
+            // AWS access-key id: the literal `AKIA` + exactly 16 upper-case
+            // alphanumerics, bounded so `"AKIA"` and 20-char identifiers pass.
+            r#"\bAKIA[0-9A-Z]{16}\b"#,
+            "Hardcoded AWS access key detected",
+        ),
     ]
 }
 
@@ -276,11 +282,37 @@ mod security_duplicates_tests {
     #[test]
     fn test_get_security_patterns_contains_password_api_key_secret() {
         let patterns = get_security_patterns();
-        assert_eq!(patterns.len(), 3);
+        assert_eq!(patterns.len(), 4);
         let messages: Vec<&str> = patterns.iter().map(|(_, m)| *m).collect();
         assert!(messages.iter().any(|m| m.contains("password")));
         assert!(messages.iter().any(|m| m.contains("API key")));
         assert!(messages.iter().any(|m| m.contains("secret")));
+    }
+
+    #[tokio::test]
+    async fn aws_access_key_literal_is_detected_and_lookalikes_are_not() {
+        let dir = tempfile::tempdir().unwrap();
+        let leak = dir.path().join("leak.rs");
+        std::fs::write(
+            &leak,
+            "pub fn go() {\n    let key = \"AKIAIOSFODNN7EXAMPLE\";\n    let benign = \"AKIA\";\n    let also_benign = \"NOT_A_KEY_JUST_TWENTY_CHARS\";\n}\n",
+        )
+        .unwrap();
+        let mut v = Vec::new();
+        check_file_security(&leak, &get_security_patterns(), &mut v)
+            .await
+            .unwrap();
+        let lines: Vec<_> = v.iter().map(|x| x.line).collect();
+        assert_eq!(lines, vec![Some(2)], "only the real key shape fires: {v:?}");
+        assert_eq!(v[0].message, "Hardcoded AWS access key detected");
+
+        let clean = dir.path().join("clean.rs");
+        std::fs::write(&clean, "pub fn ok() {}\n").unwrap();
+        let mut none = Vec::new();
+        check_file_security(&clean, &get_security_patterns(), &mut none)
+            .await
+            .unwrap();
+        assert!(none.is_empty());
     }
 
     #[test]
