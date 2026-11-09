@@ -342,9 +342,9 @@ pub fn evaluate_pr(snap: &RepoSnapshot, _policy: &Policy, pr: u64) -> Report {
     }
     for (repo, n) in issue_references(&p.body) {
         if !repo.eq_ignore_ascii_case(&snap.repo) {
-            report
-                .not_measured
-                .push(format!("R3: {repo}#{n} is in another repository; not judged"));
+            report.not_measured.push(format!(
+                "R3: {repo}#{n} is in another repository; not judged"
+            ));
         }
     }
     report

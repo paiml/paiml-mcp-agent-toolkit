@@ -719,10 +719,7 @@ fn snapshot_json_round_trips() {
 #[test]
 fn pr_check_does_not_pass_a_reference_r3_could_not_judge() {
     // #1633: cross-repo and unknown references land in not_measured, never COMPLIANT
-    for body in [
-        "Part of paiml/other-repo#5",
-        "Part of paiml/x#99999",
-    ] {
+    for body in ["Part of paiml/other-repo#5", "Part of paiml/x#99999"] {
         let mut p = pr(5, 1, CheckState::Pass);
         p.body = body.into();
         let s = snap(vec![], vec![p]);
