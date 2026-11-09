@@ -1154,7 +1154,10 @@ fn classify_contract(top_keys: &[String], content: &str) -> ContractClass {
     }
 
     // Contracts WITHOUT equations: — classify by structure
-    if has_schema_registry || has_registry_flag {
+    // #1306: `pmat comply refresh-bindings` marks its generated work contracts
+    // `surface: work-contract` (reference documents, not kernels); they are classified.
+    let is_work_contract = content.lines().any(|l| l.trim() == "surface: work-contract");
+    if has_schema_registry || has_registry_flag || is_work_contract {
         return ContractClass::SchemaRegistry;
     }
     if has_invariants {
@@ -1449,6 +1452,13 @@ mod contract_surface_tests {
     #[test]
     fn test_classify_schema_registry() {
         let content = "metadata:\n  version: 1.0\n  registry: true\narchitecture_map:\n  llama: llama";
+        let keys = extract_top_level_keys(content);
+        assert!(matches!(classify_contract(&keys, content), ContractClass::SchemaRegistry));
+    }
+
+    #[test]
+    fn test_classify_generated_work_contract_is_classified() {
+        let content = "# Auto-generated from .pmat-work/GH-134/contract.json\nname: \"GH-134\"\nsurface: work-contract\nverification_summary:\n  target_level: L1";
         let keys = extract_top_level_keys(content);
         assert!(matches!(classify_contract(&keys, content), ContractClass::SchemaRegistry));
     }
