@@ -1,0 +1,17 @@
+- id: GH-1418
+  github_issue: 1418
+  item_type: task
+  title: pmat hooks install (3.41.1) still guards docs/execution/roadmap.md, a path pmat work no longer writes — the roadmap check always takes its skip branch
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

@@ -1,0 +1,20 @@
+- id: PMAT-677
+  github_issue: 1273
+  item_type: task
+  title: 'dogfood skill identity: rename to .claude/skills/pmat-dogfood with explicit name: pmat-dogfood so a user-scope dogfood skill cannot shadow it'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-06T07:56:01Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - '.claude/skills/dogfood/SKILL.md has no name: field; on a host with ~/.claude/skills/dogfood/ (this workstation has one) the user-scope skill wins and the repo skill never loads (aprender #2332 precedent). Fleet standard: dir .claude/skills/pmat-dogfood/, frontmatter name: pmat-dogfood, read-only, deterministic receipt, ≤3 read-only subagents, orchestrator sole receipt writer, Agent descriptions prefixed <ticket>/ph<i>; make dogfood-install symlink target updated. Falsifier: a make-level check asserting ^name: pmat-dogfood$ in the frontmatter; deleting the line → RED.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+  release: backlog

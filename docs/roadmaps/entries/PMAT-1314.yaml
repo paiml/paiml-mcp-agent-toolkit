@@ -1,0 +1,21 @@
+- id: PMAT-1314
+  github_issue: 1314
+  item_type: bug
+  title: Two eof_drain tests pass under cargo test and hang forever under nextest — an order dependency, not a runner bug
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T09:55:00Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - the root cause is named — what the test depends on that another test supplies — rather than worked around with a longer timeout
+  - both tests pass under cargo nextest run --lib in isolation
+  - the default-filter in .config/nextest.toml is removed in the same PR and pr-lane-control.sh arm 3 is updated or retired with it
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Measured 300s with no progress under nextest while the other two tests in the same module pass in milliseconds under both runners. Both use a scripted in-memory transport, so nothing about them should need a shared process. Excluded from the PR lane by PMAT-1313 and still run on every push to master.
+  release: backlog

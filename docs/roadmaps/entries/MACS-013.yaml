@@ -1,0 +1,17 @@
+- id: MACS-013
+  github_issue: 1256
+  item_type: task
+  title: 'MACS-013 remainder: CB-1655 warns instead of failing on a stale ROADMAP.yaml and its stale arm is untested (spec test comply::cb1655_red_when_ledger_newer_than_artifact); decide whether the rendered ROADMAP.yaml survives now that docs/roadmaps/roadmap.yaml is the live roadmap — pmat roadmap sync shipped in #613'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-07-02T12:00:00Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: docs/specifications/components/modern-agentic-coding-support.md
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: 'Partly shipped in PR #613 (squash d629a105f): pmat roadmap sync (src/roadmap/sync.rs) with render_byte_stable_two_runs, hash_covers_sources_not_wallclock, gh_snapshot_pinned and stale_when_ledger_newer_than_artifact passing on master 3893ca5f2, and CB-1655 in check_macs_artifacts.rs. Not shipped: the block says CB-1655 is red when the ledger is newer than ROADMAP.yaml; the check returns Warn (Severity::Warning) for that case and no test covers the arm. Found while triaging: ROADMAP.yaml was last rendered 2026-07-05 and still lists the four duplicate MACS rows PMAT-721 cancelled, and src/roadmap/sync.rs:6 calls docs/roadmaps/roadmap.yaml HISTORICAL while goal-mode.md made it the roadmap pmat work sync and CB-2115 judge — two roadmaps answering one question (goal-mode.md doctrine 5). Re-planned by PMAT-721 with github_issue null so pmat work sync --direction yaml-to-github mints its own issue; #612 is closed and was the umbrella for all thirteen (docs/audits/triage-PMAT-721-ledger.json).'
+  release: backlog

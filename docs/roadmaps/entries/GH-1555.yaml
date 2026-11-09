@@ -1,0 +1,17 @@
+- id: GH-1555
+  github_issue: 1555
+  item_type: task
+  title: 'land the #1435/#1436 content: provability sampled readdir order, tdg check-regression flagged rescored files (carried from #1517)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-10-29T18:59:57.306429628+00:00
+  updated: 2026-11-09T12:55:08.075066360+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

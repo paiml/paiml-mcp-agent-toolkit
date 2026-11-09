@@ -1,0 +1,16 @@
+- id: GH-1546
+  github_issue: 1546
+  item_type: task
+  title: Conflicting quality thresholds in `pmat.toml`, `.pmat-metrics.toml`, `pmat-quality.toml` and the TDG defaults are never reconciled
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

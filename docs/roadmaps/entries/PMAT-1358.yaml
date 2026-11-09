@@ -1,0 +1,19 @@
+- id: PMAT-1358
+  github_issue: 1358
+  item_type: task
+  title: 'release.yml has not completed since v3.39.0: cpu-gates is timeout-killed at 30 min and reads as ''cancelled'', so no prerelease and no binaries for 3 releases'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-14T18:03:41Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Every release run since v3.39.0 is cancelled at gate / cpu-gates step 9 after ~30m39s — a timeout-minutes:30 kill, which reads as cancelled rather than failed. prerelease needs [create-release, gate, verify], so no prerelease event fires and binary-release.yml attaches no binaries. Measured on run 34860654284. Fixed upstream in paiml/.github#72: the job budget goes to 90 from a measurement (26.4 min of gates on an idle box) and the clean-room step gets 75, below the job''s, so a timeout FAILS the step by name instead of vanishing as cancelled.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: 3.43.0
