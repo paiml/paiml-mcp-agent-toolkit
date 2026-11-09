@@ -372,3 +372,29 @@ fn without_a_roadmap_the_hook_keeps_the_ticket_pattern_and_cb2113_skips() {
         "strict still refuses a message that names no ticket"
     );
 }
+
+/// #1595: the pre-commit complexity block refuses only under `[hooks] strict`.
+/// Complexity is not auto-fixable, so the non-strict path must fall through
+/// with a warning instead of the old unconditional `exit 1`.
+#[test]
+fn the_pre_commit_complexity_block_refuses_only_under_strict() {
+    let cmd = HooksCommand::new(
+        std::path::PathBuf::from("/tmp"),
+        std::path::PathBuf::from("/tmp"),
+    );
+    let hook = cmd.generate_quality_checks();
+    assert!(
+        hook.contains("Complexity exceeds the limits and [hooks] strict is on"),
+        "strict must refuse with a named reason"
+    );
+    assert!(
+        hook.contains("Complexity exceeds the limits: warning only"),
+        "non-strict must warn and continue"
+    );
+    let refuse = hook.find("[hooks] strict is on: commit refused").unwrap();
+    let guard = hook[..refuse].rfind("PMAT_HOOKS_STRICT:-0").unwrap();
+    assert!(
+        refuse - guard < 200,
+        "the exit must sit behind the strict guard"
+    );
+}

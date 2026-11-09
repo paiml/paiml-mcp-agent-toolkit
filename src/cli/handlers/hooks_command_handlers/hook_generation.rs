@@ -394,7 +394,13 @@ if [ -n "$STAGED_SRC" ]; then
         echo "  Each line above is <function> (<file>:<line>) - <metric> <measured> > <limit>."
         echo "  Limits are PER FUNCTION: Cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY, Cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY."
         echo "  A file's aggregate in 'Top Files by Complexity' is NOT what this gate tests."
-        exit 1
+        # #1595 (C4/C52-3): complexity is not auto-fixable, so a local hook
+        # may only refuse under [hooks] strict; CI enforces it at the gate.
+        if [ "${PMAT_HOOKS_STRICT:-0}" = "1" ]; then
+            echo "  Complexity exceeds the limits and [hooks] strict is on: commit refused."
+            exit 1
+        fi
+        echo "  Complexity exceeds the limits: warning only (set [hooks] strict = true to refuse)."
     fi
 else
     echo "  Complexity check... ⏭️  (no source files staged)"
