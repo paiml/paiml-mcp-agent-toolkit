@@ -398,3 +398,42 @@ fn the_pre_commit_complexity_block_refuses_only_under_strict() {
         "the exit must sit behind the strict guard"
     );
 }
+
+/// #1594: a ticket that exists only as a staged `docs/roadmaps/entries/`
+/// fragment is in the roadmap; the commit-msg hook must accept it, and must
+/// still refuse an id that is neither in the roadmap nor in a fragment.
+#[test]
+fn a_fragment_only_ticket_is_accepted_and_an_unknown_one_still_refused() {
+    let tmp = strict_repo();
+    let d = tmp.path();
+    std::fs::create_dir_all(d.join("docs/roadmaps/entries")).expect("mkdir");
+    std::fs::write(
+        d.join("docs/roadmaps/roadmap.yaml"),
+        "roadmap:\n- id: OLD-1\n  status: open\n",
+    )
+    .expect("roadmap");
+    assert!(git(d, &["add", "."]).status.success());
+    assert!(
+        git(d, &["commit", "-q", "-m", "roadmap\n\nPmat-Ticket: OLD-1"])
+            .status
+            .success()
+    );
+    std::fs::write(
+        d.join("docs/roadmaps/entries/NEW-1.yaml"),
+        "- id: NEW-1\n  status: open\n",
+    )
+    .expect("fragment");
+    assert!(git(d, &["add", "."]).status.success());
+    let ok = git(d, &["commit", "-q", "-m", "frag\n\nPmat-Ticket: NEW-1"]);
+    assert!(
+        ok.status.success(),
+        "a fragment-only ticket must be accepted: {}",
+        String::from_utf8_lossy(&ok.stderr)
+    );
+    std::fs::write(d.join("README.md"), "one\nthree\n").expect("write");
+    let bad = git(d, &["commit", "-qam", "x\n\nPmat-Ticket: NOPE-9"]);
+    assert!(
+        !bad.status.success(),
+        "an id in neither roadmap nor fragment must be refused"
+    );
+}

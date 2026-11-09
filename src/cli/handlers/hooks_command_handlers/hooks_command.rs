@@ -592,6 +592,16 @@ while IFS= read -r id; do
         f && line ~ /^- id: / { exit }
         f && line ~ /^status:/ { sub(/^status:[ \t]*/, "", line); print line; exit }')
     if [ -z "$status" ]; then
+        # #1594: a ticket that exists only as a staged docs/roadmaps/entries/
+        # fragment is in the roadmap too (the aggregate reads the fragments).
+        frag=$(git show ":docs/roadmaps/entries/$id.yaml" 2>/dev/null)
+        if [ -n "$frag" ]; then
+            status=$(printf '%s\n' "$frag" | awk '
+                { line = $0; sub(/^[ \t]+/, "", line) }
+                line ~ /^status:/ { sub(/^status:[ \t]*/, "", line); print line; exit }')
+        fi
+    fi
+    if [ -z "$status" ]; then
         refuse "Pmat-Ticket $id is not in $ROADMAP — CB-2113 refuses this commit in CI." \
             "name an item the roadmap has (pmat work add files one)"
     fi
