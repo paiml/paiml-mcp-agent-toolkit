@@ -332,6 +332,19 @@ pub fn evaluate_pr(snap: &RepoSnapshot, _policy: &Policy, pr: u64) -> Report {
     for n in local_issue_references(&p.body, &snap.repo) {
         if let Some(issue) = snap.open_issues.iter().find(|i| i.number == n) {
             report.violations.extend(check_r3_issue(issue, snap));
+        } else {
+            // #1633: a reference R3 could not judge is not a pass.
+            report.not_measured.push(format!(
+                "R3: {}#{n} is not an open issue of this repository; not judged",
+                snap.repo
+            ));
+        }
+    }
+    for (repo, n) in issue_references(&p.body) {
+        if !repo.eq_ignore_ascii_case(&snap.repo) {
+            report
+                .not_measured
+                .push(format!("R3: {repo}#{n} is in another repository; not judged"));
         }
     }
     report

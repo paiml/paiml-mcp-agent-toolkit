@@ -367,16 +367,15 @@ fn pr_check_judges_r6_on_the_body_and_r3_on_the_referenced_ticket() {
 }
 
 #[test]
-fn pr_check_does_not_go_red_on_a_foreign_or_closed_issue_reference() {
-    // R6 accepts any owner/repo#N, and the read itself succeeded (a failed read is an
-    // error before this point), so a reference into another repo or to an issue that is
-    // not open (closed) is nothing to judge, not a permanent NOT MEASURED.
+fn pr_check_names_a_foreign_or_closed_issue_reference_as_not_measured() {
+    // #1633 review: R6 accepts any owner/repo#N, but R3 cannot judge a reference into
+    // another repo or to an issue that is not open; that is NOT MEASURED, never a pass.
     let mut p = pr(5, 1, CheckState::Pass);
     p.body = "Closes other/repo#7 and Part of paiml/x#99".into();
     let r = evaluate_pr(&snap(vec![], vec![p]), &Policy::default(), 5);
     assert!(r.violations.is_empty());
-    assert!(r.not_measured.is_empty(), "{:?}", r.not_measured);
-    assert!(r.ok());
+    assert_eq!(r.not_measured.len(), 2, "{:?}", r.not_measured);
+    assert!(!r.ok());
     // control: a PR that is not among the open PRs is genuinely not measured
     let r = evaluate_pr(&snap(vec![], vec![]), &Policy::default(), 5);
     assert_eq!(r.not_measured.len(), 1);
@@ -715,4 +714,20 @@ fn snapshot_json_round_trips() {
     let back: RepoSnapshot =
         serde_json::from_str(&serde_json::to_string(&s).expect("fixture")).expect("fixture");
     assert_eq!(back, s);
+}
+
+#[test]
+fn pr_check_does_not_pass_a_reference_r3_could_not_judge() {
+    // #1633: cross-repo and unknown references land in not_measured, never COMPLIANT
+    for body in [
+        "Part of paiml/other-repo#5",
+        "Part of paiml/x#99999",
+    ] {
+        let mut p = pr(5, 1, CheckState::Pass);
+        p.body = body.into();
+        let s = snap(vec![], vec![p]);
+        let r = evaluate_pr(&s, &Policy::default(), 5);
+        assert!(!r.ok(), "{body}: {:?}", r.not_measured);
+        assert!(!r.not_measured.is_empty(), "{body}");
+    }
 }
