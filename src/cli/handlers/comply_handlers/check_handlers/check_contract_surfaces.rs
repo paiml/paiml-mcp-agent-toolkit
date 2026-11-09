@@ -1141,6 +1141,11 @@ fn classify_contract(top_keys: &[String], content: &str) -> ContractClass {
     let has_registry_flag = content
         .lines()
         .any(|l| l.trim() == "registry: true");
+    // `pmat comply refresh-bindings` writes contracts/work/<ID>.yaml with a column-0
+    // `surface: work-contract`: reference documents, not kernel contracts (#1306).
+    let is_work_contract = content
+        .lines()
+        .any(|l| l.trim_end() == "surface: work-contract");
 
     // Contracts WITH equations: — classify by enforcement style
     if has_equations {
@@ -1154,7 +1159,7 @@ fn classify_contract(top_keys: &[String], content: &str) -> ContractClass {
     }
 
     // Contracts WITHOUT equations: — classify by structure
-    if has_schema_registry || has_registry_flag {
+    if has_schema_registry || has_registry_flag || is_work_contract {
         return ContractClass::SchemaRegistry;
     }
     if has_invariants {
@@ -1465,6 +1470,30 @@ mod contract_surface_tests {
         let content = "metadata:\n  version: 1.0\nweight_roles:\n  attn_norm:\n    description: Pre-attention norm";
         let keys = extract_top_level_keys(content);
         assert!(matches!(classify_contract(&keys, content), ContractClass::SchemaRegistry));
+    }
+
+    #[test]
+    fn test_classify_generated_work_contract_is_not_unknown() {
+        // Shape written by `pmat comply refresh-bindings` (#1306): classified, not a leak.
+        let content = "metadata:\n  kind: schema\nsurface: work-contract\nwork_id: PMAT-1\n";
+        let keys = extract_top_level_keys(content);
+        assert!(matches!(classify_contract(&keys, content), ContractClass::SchemaRegistry));
+    }
+
+    #[test]
+    fn test_classify_work_contract_marker_must_be_column_zero_and_exact() {
+        // Falsifiers: an indented marker, a lookalike value, and no marker stay Unknown.
+        for content in [
+            "metadata:\n  surface: work-contract\nwork_id: X\n",
+            "surface: work-contracts\nwork_id: X\n",
+            "work_id: X\n",
+        ] {
+            let keys = extract_top_level_keys(content);
+            assert!(
+                matches!(classify_contract(&keys, content), ContractClass::Unknown),
+                "must stay Unknown: {content:?}"
+            );
+        }
     }
 
     #[test]
