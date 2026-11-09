@@ -1145,4 +1145,37 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(before, after, "verify must not mutate receipts");
     }
+
+    /// MACS-006 / #1254: a completed ticket's receipt records both the level
+    /// the contract claimed and the level the evidence achieved, seals them
+    /// into the content hash, and keeps them across a persist round-trip.
+    #[test]
+    fn receipt_records_both_levels() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp.path());
+        let bare = FalsificationReceipt::from_report(
+            &make_report(true),
+            "sha".to_string(),
+            "MACS-006".to_string(),
+            FalsificationTrigger::WorkComplete,
+            None,
+            None,
+        );
+        assert_eq!(bare.claimed_level, None);
+        assert_eq!(bare.achieved_level, None);
+
+        let receipt = bare
+            .clone()
+            .with_ladder("L4".to_string(), "L2".to_string());
+        assert_eq!(receipt.claimed_level.as_deref(), Some("L4"));
+        assert_eq!(receipt.achieved_level.as_deref(), Some("L2"));
+        assert_ne!(receipt.content_hash, bare.content_hash, "levels must be sealed");
+        assert!(receipt.verify_integrity());
+
+        let path = ledger.persist_receipt(&receipt).unwrap();
+        let json: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        assert_eq!(json["claimed_level"], "L4");
+        assert_eq!(json["achieved_level"], "L2");
+    }
 }
