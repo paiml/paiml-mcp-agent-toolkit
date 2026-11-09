@@ -1,0 +1,16 @@
+- id: GH-1554
+  github_issue: 1554
+  item_type: task
+  title: 'master red: CB-2115 ORPHAN-ROADMAP GH-1494 (roadmap still open after #1494 closed)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-10-29T18:30:36.389023829+00:00
+  updated: 2026-11-09T07:05:40.541987414+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

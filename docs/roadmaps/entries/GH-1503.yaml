@@ -1,0 +1,17 @@
+- id: GH-1503
+  github_issue: 1503
+  item_type: task
+  title: 'FLOW-009 RC-2: add .flow009/batcher.pub (batcher public key)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-10-24T16:31:29.561530032+00:00
+  updated: 2026-11-09T07:05:40.541987414+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

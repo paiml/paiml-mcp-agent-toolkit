@@ -1,0 +1,17 @@
+- id: GH-1633
+  github_issue: 1633
+  item_type: task
+  title: 'TPK-001: pmat comply github R5 (PR packs >=2 tickets of one master) + R6 (ticket→master→epic); pmat work add refuses an orphan ticket'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T07:05:40.541987414+00:00
+  updated: 2026-11-09T07:05:40.541987414+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0
