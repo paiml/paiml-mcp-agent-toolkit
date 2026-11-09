@@ -1,7 +1,7 @@
 - id: PMAT-1634
   github_issue: 1634
   item_type: task
-  title: reconcile roadmap with GitHub (CB-2115)
+  title: 'master CB-2115 red: roadmap not in bijection with GitHub (9 closed rows, 5 untracked issues) fails traceability on every PR'
   status: planned
   priority: high
   assigned_to: null
