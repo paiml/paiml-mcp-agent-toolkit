@@ -1,0 +1,19 @@
+- id: PMAT-694
+  github_issue: 1202
+  item_type: task
+  title: '[train/CF] ci/coverage flake root cause (#1202, absorbs #1127): quality_proxy tests compile the host workspace with a nested cargo clippy under llvm-cov (>600 s); move them to a <=50-line fixture crate under tests/fixtures/quality_proxy with its own CARGO_TARGET_DIR, env -u LLVM_PROFILE_FILE/CARGO_LLVM_COV/RUSTFLAGS, a deadline, a process group and prlimit --as in one spawn fn'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:25Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1202, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
+  release: 3.43.0

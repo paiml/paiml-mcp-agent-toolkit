@@ -1,0 +1,16 @@
+- id: GH-1591
+  github_issue: 1591
+  item_type: task
+  title: 'FLOW-012 P1: active ticket derived from branch work/PMAT-NNNN'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-04T13:21:46.460114588+00:00
+  updated: 2026-11-04T13:21:46.460114588+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

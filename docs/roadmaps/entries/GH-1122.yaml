@@ -1,0 +1,17 @@
+- id: GH-1122
+  github_issue: 1122
+  item_type: task
+  title: Docker artifacts publish paiml/pmat:2.10.0 from a 3.35.0 crate; docs pin 2.12.0
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

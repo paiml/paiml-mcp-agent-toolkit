@@ -1,0 +1,17 @@
+- id: GH-1423
+  github_issue: 1423
+  item_type: task
+  title: pmat work complete should judge complexity and file size on the ticket's DIFF, not the whole repo
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog
