@@ -2,7 +2,7 @@
   github_issue: 1486
   item_type: task
   title: '`sprint85_entropy_reduction_test.rs` checks its own private helper copies instead of the refactored Sprint 85 production code, so a regression there goes unnoticed by the suite'
-  status: cancelled
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00

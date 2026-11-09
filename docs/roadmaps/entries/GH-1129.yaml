@@ -2,7 +2,7 @@
   github_issue: 1129
   item_type: task
   title: 'quality-gate --checks security: scope is now disclosed, breadth is not — an AWS-key-shaped literal is not detected'
-  status: cancelled
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
@@ -14,4 +14,4 @@
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.44.0

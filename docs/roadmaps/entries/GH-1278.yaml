@@ -1,0 +1,17 @@
+- id: GH-1278
+  github_issue: 1278
+  item_type: task
+  title: 'flag-efficacy sweep: show-metrics and comply report baselines are intermittently nondeterministic — skipped whole as [nondeterministic baseline] in the 3.39.0 sweep and in PMAT-688 sweep 3, but checked flag-by-flag in PMAT-688 sweep 2 (show-metrics --failures-only Effective there); by hand two consecutive show-metrics runs on the dumped corpus are byte-identical. Find what changes between the harness''s two baseline runs (a concurrent writer to .pmat-metrics/trends, or PageRank hotness) and pin it, so the two commands'' 21 flags are measured every sweep'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

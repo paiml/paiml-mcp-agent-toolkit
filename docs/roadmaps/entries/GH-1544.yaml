@@ -2,7 +2,7 @@
   github_issue: 1544
   item_type: task
   title: 'docs: land PVB-PMAT-001 v1.0 (pmat consumes the bridge) spec'
-  status: cancelled
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-10-29T15:30:59.778230555+00:00
