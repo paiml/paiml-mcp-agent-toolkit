@@ -1,0 +1,57 @@
+# AD-01 release-check, moved OUT of quality-gate.yml (PMAT-ANDON-1117Z order 1).
+#
+# A version bump merged to master is not a release: the bump (#1619, 3.43.0) must
+# not turn master red until someone cuts the release, and publishing is a
+# clean-room-gated act (release.yml, on a v* tag). So this runs ONLY on the daily
+# schedule and by hand, and files/refreshes one issue when the declared version is
+# not tagged + released + on crates.io. A tag without a release is caught where it
+# happens: release.yml fires on the tag and goes red at its gate/verify jobs.
+# Never a pull_request or push trigger -- tests/modules/release_check_placement.rs.
+name: Release check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  # AD-01 (docs/specifications/agentic-delivery-pmat.md section 3.5 / 9.1): the
+  # version Cargo.toml declares must be tagged, released on GitHub and on
+  # crates.io. pmat 3.35.0's release PR merged on 2026-09-02 and none of the
+  # three happened; every gate was green because none asked. This job runs on
+  # the daily schedule or by hand — never on a push or pull request,
+  # and it is NOT a required PR check: a PR is not a release, and a merge must
+  # not be blocked by the registry's availability. GitHub-hosted runner on
+  # purpose, so it is not starved with the self-hosted fleet.
+  release-check:
+    name: release-check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: The declared version is tagged, released and published
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          bash scripts/release-check.sh 2>&1 | tee release-check.out
+      - name: Open or refresh the issue
+        if: failure() && steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          title="release-check: $v is declared in Cargo.toml but not fully released"
+          body="$(printf 'AD-01 (docs/specifications/agentic-delivery-pmat.md section 3.5).\n\n```\n%s\n```\n\nRun: %s/%s/actions/runs/%s' "$(cat release-check.out)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
+          n=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi

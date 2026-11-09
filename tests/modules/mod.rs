@@ -167,6 +167,7 @@ mod red_team_integration_tests;
 mod red_team_repository_context_tests;
 #[cfg(feature = "cli-integration")]
 mod refactor_auto_property_integration;
+mod release_check_placement;
 mod replay_engine_tests;
 mod replay_integration_tests;
 #[cfg(feature = "cli-integration")]
