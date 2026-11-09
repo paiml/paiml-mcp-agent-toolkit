@@ -1596,9 +1596,9 @@ dependencies = [
 
 [[package]]
 name = "crc32fast"
-version = "1.5.3"
+version = "1.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ba106e844045ddc02c20768ac4b0b7cb45f2cc2ecbd833ac9f5dacb183c2055"
+checksum = "5f97d3416d5337d15c4b0d78c8c91df922ca143f57ec20e2d1c188333047ef04"
 dependencies = [
  "cfg-if",
 ]
@@ -2659,9 +2659,9 @@ checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 
 [[package]]
 name = "globset"
-version = "0.4.20"
+version = "0.4.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07c34a9410465b45bd9787443bc7370f37735bad04b0f0cd57ff1a3186c98988"
+checksum = "f98b0d85522dc0a824cfebbc9594ff4a9b289c568bea0370319dfbdf20ccdd2d"
 dependencies = [
  "aho-corasick",
  "bstr",
@@ -3277,9 +3277,9 @@ checksum = "cd62e6b5e86ea8eeeb8db1de02880a6abc01a397b2ebb64b5d74ac255318f5cb"
 
 [[package]]
 name = "ignore"
-version = "0.4.33"
+version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00b69833ed729dc5aa7d19541d96d6cf8e9137194207a04916d658e43168402f"
+checksum = "484be5657551d7868d67587df967fb4fcbe9d266a761cc855aaa148fda0b3cc7"
 dependencies = [
  "crossbeam-deque",
  "globset",
@@ -4515,9 +4515,9 @@ dependencies = [
 
 [[package]]
 name = "octocrab"
-version = "0.54.5"
+version = "0.54.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1316aeebcf5959e7442809c5446d97df5b37d87742c9e363b3e9920e0b3fb994"
+checksum = "319b72643e8fa16dc3278f66439534513b2b65d47ec9cf2b26e7316c0c8ef24a"
 dependencies = [
  "arc-swap",
  "base64 0.22.1",
