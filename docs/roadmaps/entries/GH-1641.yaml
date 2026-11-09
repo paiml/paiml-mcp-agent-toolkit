@@ -1,0 +1,17 @@
+- id: GH-1641
+  github_issue: 1641
+  item_type: task
+  title: 'TRAIN A (3.44.0): comply and goal-mode gates (CB-1655, CB-2111, fork-PR, macros)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

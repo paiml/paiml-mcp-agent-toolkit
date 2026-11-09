@@ -433,6 +433,64 @@ mod staged_repo {
         );
     }
 
+    /// #1475: a merge commit must not be charged for a function that arrives
+    /// unchanged from MERGE_HEAD. `main` gains `src/extra.rs` (debted code);
+    /// `feature` merges it with `--no-commit`, so the staged blob equals
+    /// MERGE_HEAD's and has no HEAD counterpart.
+    fn merge_in_extra(extra: &str) -> tempfile::TempDir {
+        let repo = repo_with_committed_debt();
+        let p = repo.path();
+        git(p, &["checkout", "-q", "-b", "feature"]);
+        git(p, &["checkout", "-q", "main"]);
+        std::fs::write(p.join("src/extra.rs"), extra).expect("write");
+        git(p, &["add", "src/extra.rs"]);
+        git(p, &["commit", "-q", "-m", "debt lands on main"]);
+        git(p, &["checkout", "-q", "feature"]);
+        std::fs::write(p.join("src/other.rs"), "pub fn other() {}\n").expect("write");
+        git(p, &["add", "src/other.rs"]);
+        git(p, &["commit", "-q", "-m", "feature work"]);
+        git(p, &["merge", "-q", "--no-ff", "--no-commit", "main"]);
+        repo
+    }
+
+    #[test]
+    fn staged_verdict_allows_a_function_that_arrives_unchanged_from_merge_head() {
+        let repo = merge_in_extra(HEAD_VERSION);
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/extra.rs"), LIMITS).expect("verdict");
+        assert!(
+            verdict.is_allowed(),
+            "the merge did not author this code, got {:?}",
+            verdict.rendered()
+        );
+    }
+
+    #[test]
+    fn staged_verdict_still_refuses_a_function_edited_during_the_merge() {
+        let repo = merge_in_extra(HEAD_VERSION);
+        // Conflict-resolution edit: grow `debted` beyond what MERGE_HEAD has.
+        let grown = HEAD_VERSION.replace("    n\n}", "    if x > 6 { n += 1; }\n    n\n}");
+        std::fs::write(repo.path().join("src/extra.rs"), grown).expect("write");
+        git(repo.path(), &["add", "src/extra.rs"]);
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/extra.rs"), LIMITS).expect("verdict");
+        assert!(
+            !verdict.is_allowed(),
+            "a function the merge changed is still judged"
+        );
+    }
+
+    #[test]
+    fn staged_verdict_refuses_the_same_new_file_outside_a_merge() {
+        // Control: with no MERGE_HEAD the identical file is genuinely new.
+        let repo = repo_with_committed_debt();
+        std::fs::write(repo.path().join("src/extra.rs"), HEAD_VERSION).expect("write");
+        git(repo.path(), &["add", "src/extra.rs"]);
+        let verdict =
+            staged_verdict(repo.path(), Path::new("src/extra.rs"), LIMITS).expect("verdict");
+        assert!(!verdict.is_allowed());
+    }
+
     /// Growth inside a touched function is refused, and the offender line names
     /// the function and both numbers.
     #[test]

@@ -1,0 +1,17 @@
+- id: GH-1649
+  github_issue: 1649
+  item_type: task
+  title: 'TRAIN G (3.44.0): dead code, untestable tests and doc drift (unreachable code, zero-assert tests, dead config, unwired services)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

@@ -1,0 +1,17 @@
+- id: GH-1303
+  github_issue: 1303
+  item_type: task
+  title: 'goal-mode.md carries its own review artifact (goal-mode.md §13 item 6): a five-role agy review of the spec, recorded with pmat spec review --record; the first of PMAT-1300''s 44'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

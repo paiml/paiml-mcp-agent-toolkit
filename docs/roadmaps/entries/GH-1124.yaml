@@ -1,0 +1,17 @@
+- id: GH-1124
+  github_issue: 1124
+  item_type: task
+  title: '[train/HN] honest not-measured (#1124, #1162, #1131): one typed Measured(x) | NotMeasured{reason} at the model layer rendered verbatim; gates_run complexity = not_measured for bash/C/TS; tdg check-regression delta 0 on an unedited file; quality-gate emits exactly one files_examined'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0
