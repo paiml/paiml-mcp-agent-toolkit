@@ -1,0 +1,17 @@
+- id: GH-1255
+  github_issue: 1255
+  item_type: task
+  title: 'MACS-007 remainder: pmat work status must still render chain-of-thought steps after the v2 schema (spec invariant cot::status_renders_v2) — the v2 schema, parser and migration shipped in #613'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

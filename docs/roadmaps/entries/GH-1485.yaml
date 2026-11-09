@@ -2,7 +2,7 @@
   github_issue: 1485
   item_type: task
   title: '`pmat tdg storage migrate` only prints the prospective configuration and exits with success, moving no data'
-  status: cancelled
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00

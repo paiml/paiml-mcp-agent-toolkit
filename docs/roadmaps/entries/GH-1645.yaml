@@ -1,0 +1,17 @@
+- id: GH-1645
+  github_issue: 1645
+  item_type: task
+  title: 'TRAIN D (3.44.0): master-red gates and GHC-001 flow (cargo deny, roadmap bijection, FLOW-010 receipts)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

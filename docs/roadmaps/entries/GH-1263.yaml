@@ -1,0 +1,17 @@
+- id: GH-1263
+  github_issue: 1263
+  item_type: task
+  title: 'Spec 30: Work Compile-Time Codegen — #[pmat_work_contract] proc macro + CB-1630..1639'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0
