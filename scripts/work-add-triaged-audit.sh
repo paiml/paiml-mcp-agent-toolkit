@@ -41,7 +41,8 @@ printf '%s\n' "$*" >> "$D/calls.log"
 [ "$1 $2" = "repo view" ] && { echo fx/fx; exit 0; }
 if [ "$1 $2" = "api graphql" ]; then
   case "$*" in
-    *"issues(states"*) echo '{"data":{"repository":{"issues":{"totalCount":1,"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[{"number":10,"title":"zzz container","milestone":null,"parent":null,"subIssues":{"totalCount":1},"labels":{"nodes":[{"name":"epic"}]}}]}}}}' ;;
+    *"issues(states"*) TOT=$(cat "$D/total" 2>/dev/null || echo 1)
+      printf '%s\n' "{\"data\":{\"repository\":{\"issues\":{\"totalCount\":$TOT,\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":null},\"nodes\":[{\"number\":10,\"title\":\"zzz container\",\"milestone\":null,\"parent\":null,\"subIssues\":{\"totalCount\":1},\"labels\":{\"nodes\":[{\"name\":\"epic\"}]}},{\"number\":30,\"title\":\"widget parser rewrite\",\"milestone\":{\"number\":1},\"parent\":null,\"subIssues\":{\"totalCount\":0},\"labels\":{\"nodes\":[]}}]}}}}" ;;
     *"pullRequests("*) echo '{"data":{"repository":{"pullRequests":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}' ;;
     *) echo '{"data":{"rateLimit":{"remaining":5000,"resetAt":"2030-01-01T00:00:00Z"}}}' ;;
   esac
@@ -126,6 +127,15 @@ arm "12 fragment mode: PMAT-024.yaml carries epic: 10, priority: low, kind:code;
 p0=$(posts); add "t13" --github-issue 20 -p P1 --kind code --epic 10; rc=$?
 [ "$rc" != 0 ] && grep -qF "already exists" "$T/out" && [ "$(posts)" = "$p0" ]
 arm "13 control: an existing ticket is refused before GitHub is written (exit $rc)" $?
+
+# 14 (GHC-001 R1): at the open-issue cap the add is refused, the roadmap is byte-identical, nothing is linked.
+echo 100 > "$T/gh/total"
+refused "14 R1: a repo at the open-issue cap refuses the add" "refused (R1)" "t14" --github-issue 20 -p P1 --kind code --epic 10
+# 15 (GHC-001 R5): a title that matches an open ticket is advisory only: exit 0 and the warning on stderr.
+echo 1 > "$T/gh/total"
+add "widget parser rewrite" --github-issue 21 -p P1 --kind code --epic 10; rc=$?
+[ "$rc" = 0 ] && grep -qF "warning (R5, advisory)" "$T/out"
+arm "15 R5: a matching title warns on stderr and still files (exit $rc)" $?
 
 [ "$red" = 0 ] && echo "work-add-triaged-audit: all arms green" || echo "work-add-triaged-audit: RED"
 exit "$red"
