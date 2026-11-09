@@ -31,7 +31,7 @@ issue() { printf '{"id":%s,"number":%s,"state":"%s","labels":[%s]}\n' "$2" "$1" 
 issue 10 9010 open '{"name":"epic"}'          # the epic
 issue 11 9011 closed '{"name":"epic"}'        # a closed epic
 issue 12 9012 open '{"name":"kind:code"}'     # an open issue that is not an epic
-for n in 20 21 22 23 24 25; do issue "$n" "90$n" open ''; done
+for n in 20 21 22 23 24 25 26 27; do issue "$n" "90$n" open ''; done
 echo 21 > "$T/gh/subs/10"                     # #21 is already under #10
 cat > "$T/bin/gh" <<'STUB'
 #!/usr/bin/env bash
@@ -130,10 +130,10 @@ arm "13 control: an existing ticket is refused before GitHub is written (exit $r
 
 # 14 (GHC-001 R1): at the open-issue cap the add is refused, the roadmap is byte-identical, nothing is linked.
 echo 100 > "$T/gh/total"
-refused "14 R1: a repo at the open-issue cap refuses the add" "refused (R1)" "t14" --github-issue 20 -p P1 --kind code --epic 10
+refused "14 R1: a repo at the open-issue cap refuses the add" "refused (R1)" "t14" --github-issue 26 -p P1 --kind code --epic 10
 # 15 (GHC-001 R5): a title that matches an open ticket is advisory only: exit 0 and the warning on stderr.
 echo 1 > "$T/gh/total"
-add "widget parser rewrite" --github-issue 21 -p P1 --kind code --epic 10; rc=$?
+add "widget parser rewrite" --github-issue 27 -p P1 --kind code --epic 10; rc=$?
 [ "$rc" = 0 ] && grep -qF "warning (R5, advisory)" "$T/out"
 arm "15 R5: a matching title warns on stderr and still files (exit $rc)" $?
 
