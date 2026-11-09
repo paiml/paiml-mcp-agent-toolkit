@@ -1,0 +1,328 @@
+//! GHC-001: the GraphQL reader, against a fake GitHub that records every query.
+
+use super::source::*;
+use super::*;
+use chrono::TimeZone;
+use serde_json::{json, Value};
+use std::cell::RefCell;
+
+type Seen = (String, Vec<(String, String)>);
+
+struct Fake {
+    replies: RefCell<Vec<Result<Value, String>>>,
+    seen: RefCell<Vec<Seen>>,
+}
+
+impl Fake {
+    fn new(replies: Vec<Result<Value, String>>) -> Self {
+        Fake {
+            replies: RefCell::new(replies.into_iter().rev().collect()),
+            seen: RefCell::new(vec![]),
+        }
+    }
+}
+
+impl Graphql for Fake {
+    fn query(&self, query: &str, vars: &[(&str, &str)]) -> anyhow::Result<Value> {
+        self.seen.borrow_mut().push((
+            query.to_string(),
+            vars.iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        ));
+        self.replies
+            .borrow_mut()
+            .pop()
+            .expect("the reader made a query the test did not expect")
+            .map_err(|e| anyhow::anyhow!(e))
+    }
+}
+
+fn now() -> DateTime<Utc> {
+    Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0)
+        .single()
+        .expect("fixture")
+}
+
+fn rate(remaining: u64) -> Result<Value, String> {
+    Ok(json!({"data":{"rateLimit":{"remaining":remaining,"resetAt":"2026-11-05T13:00:00Z"}}}))
+}
+
+fn issues_page(total: u64, next: Option<&str>, numbers: &[u64]) -> Result<Value, String> {
+    let nodes: Vec<Value> = numbers
+        .iter()
+        .map(|n| {
+            json!({"number":n,"title":format!("t{n}"),"milestone":null,"parent":{"number":1},
+                   "subIssues":{"totalCount": if *n == 1 { 2 } else { 0 }},
+                   "labels":{"nodes":[{"name":"epic"}]}})
+        })
+        .collect();
+    Ok(json!({"data":{"repository":{"issues":{
+        "totalCount":total,
+        "pageInfo":{"hasNextPage":next.is_some(),"endCursor":next},
+        "nodes":nodes}}}}))
+}
+
+fn prs_page(nodes: Value) -> Result<Value, String> {
+    Ok(json!({"data":{"repository":{"pullRequests":{
+        "pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":nodes}}}}))
+}
+
+#[test]
+fn reads_every_page_and_keeps_graphql_totalcount() {
+    let g = Fake::new(vec![
+        rate(4000),
+        issues_page(3, Some("C1"), &[1, 2]),
+        issues_page(3, None, &[3]),
+        prs_page(json!([])),
+    ]);
+    let s = fetch_snapshot(&g, "paiml/x", now()).expect("fixture");
+    assert_eq!(s.open_issue_total, 3);
+    assert_eq!(
+        s.open_issues.iter().map(|i| i.number).collect::<Vec<_>>(),
+        [1, 2, 3]
+    );
+    assert_eq!(s.open_issues[0].parent, Some(1));
+    assert_eq!(s.open_issues[0].sub_issues, 2);
+    assert_eq!(s.open_issues[1].sub_issues, 0);
+    assert!(g.seen.borrow()[1].0.contains("subIssues"));
+    assert_eq!(s.open_issues[0].milestone, None);
+    let seen = g.seen.borrow();
+    // the second issues page carries the cursor, the first does not
+    assert!(!seen[1].1.iter().any(|(k, _)| k == "after"));
+    assert!(seen[2].1.contains(&("after".to_string(), "C1".to_string())));
+    assert!(seen
+        .iter()
+        .all(|(q, _)| q.trim_start().starts_with("query")));
+}
+
+#[test]
+fn reads_the_closed_sub_issue_count_and_keeps_an_absent_one_absent() {
+    let node = |n: u64, summary: Value| {
+        json!({"number":n,"title":"e","milestone":null,"parent":null,
+               "subIssues":{"totalCount":3},"subIssuesSummary":summary,
+               "labels":{"nodes":[]}})
+    };
+    let page = Ok(json!({"data":{"repository":{"issues":{
+        "totalCount":2,"pageInfo":{"hasNextPage":false,"endCursor":null},
+        "nodes":[node(1, json!({"completed":3})), node(2, Value::Null)]}}}}));
+    let g = Fake::new(vec![rate(4000), page, prs_page(json!([]))]);
+    let s = fetch_snapshot(&g, "paiml/x", now()).expect("fixture");
+    assert_eq!(s.open_issues[0].sub_issues_closed, Some(3));
+    // an absent count stays None (R6b then reports not_measured); it is never read as 0 or as "all closed"
+    assert_eq!(s.open_issues[1].sub_issues_closed, None);
+    assert!(g.seen.borrow()[1].0.contains("subIssuesSummary"));
+}
+
+#[test]
+fn a_low_budget_refuses_before_any_read() {
+    let g = Fake::new(vec![rate(MIN_POINTS - 1)]);
+    let err = fetch_snapshot(&g, "paiml/x", now()).unwrap_err();
+    assert!(format!("{err:#}").contains("budget"), "{err:#}");
+    assert_eq!(
+        g.seen.borrow().len(),
+        1,
+        "only the rate-limit query may run"
+    );
+}
+
+#[test]
+fn an_unreadable_budget_is_not_measured_not_ok() {
+    let g = Fake::new(vec![Ok(json!({"data":{}}))]);
+    assert!(fetch_snapshot(&g, "paiml/x", now()).is_err());
+}
+
+#[test]
+fn a_failed_read_is_an_error_never_an_empty_snapshot() {
+    let g = Fake::new(vec![rate(4000), Err("HTTP 502".into())]);
+    let err = fetch_snapshot(&g, "paiml/x", now()).unwrap_err();
+    assert!(format!("{err:#}").contains("502"));
+    let g = Fake::new(vec![rate(4000), Ok(json!({"data":{"repository":null}}))]);
+    assert!(fetch_snapshot(&g, "paiml/x", now()).is_err());
+}
+
+#[test]
+fn a_bad_repo_name_is_refused_before_any_query() {
+    for bad in ["x", "a/b/c", "/b", "a/"] {
+        let g = Fake::new(vec![]);
+        assert!(fetch_snapshot(&g, bad, now()).is_err(), "{bad}");
+        assert!(g.seen.borrow().is_empty());
+    }
+}
+
+#[test]
+fn runaway_pagination_stops_at_the_page_cap() {
+    let mut replies = vec![rate(4000)];
+    for _ in 0..MAX_PAGES {
+        replies.push(issues_page(9999, Some("C"), &[1]));
+    }
+    let g = Fake::new(replies);
+    let err = fetch_snapshot(&g, "paiml/x", now()).unwrap_err();
+    assert!(format!("{err:#}").contains("not measured"), "{err:#}");
+}
+
+#[test]
+fn prs_carry_draft_age_branch_labels_body_and_the_rollup() {
+    let node = |n: u64, rollup: Value| {
+        json!({"number":n,"title":"p","isDraft":n==2,"createdAt":"2026-11-05T08:00:00Z",
+               "headRefName":"train/1","body":"Part of a/b#1",
+               "labels":{"nodes":[{"name":"x"}]},
+               "commits":{"nodes":[{"commit":{"statusCheckRollup":rollup}}]}})
+    };
+    let g = Fake::new(vec![
+        rate(4000),
+        issues_page(0, None, &[]),
+        prs_page(json!([
+            node(1, json!({"state":"SUCCESS"})),
+            node(2, json!({"state":"PENDING"})),
+            node(3, json!({"state":"FAILURE"})),
+            node(4, Value::Null),
+        ])),
+    ]);
+    let s = fetch_snapshot(&g, "paiml/x", now()).expect("fixture");
+    let checks: Vec<CheckState> = s.open_prs.iter().map(|p| p.checks).collect();
+    assert_eq!(
+        checks,
+        [
+            CheckState::Pass,
+            CheckState::Pending,
+            CheckState::Fail,
+            CheckState::None
+        ]
+    );
+    assert!(s.open_prs[1].is_draft && !s.open_prs[0].is_draft);
+    assert_eq!(s.open_prs[0].head_ref, "train/1");
+    assert_eq!(s.open_prs[0].labels, ["x"]);
+    assert_eq!(s.open_prs[0].created_at, now() - chrono::Duration::hours(4));
+}
+
+#[test]
+fn only_queries_reach_github() {
+    let err = GhGraphql.query("mutation { addComment }", &[]).unwrap_err();
+    assert!(format!("{err:#}").contains("queries only"));
+}
+
+#[test]
+fn snapshot_file_round_trip_and_errors() {
+    let dir = tempfile::tempdir().expect("fixture");
+    let path = dir.path().join("s.json");
+    let s = RepoSnapshot {
+        repo: "a/b".into(),
+        taken_at: now(),
+        open_issue_total: 0,
+        open_issues: vec![],
+        open_prs: vec![],
+    };
+    std::fs::write(&path, serde_json::to_string(&s).expect("fixture")).expect("fixture");
+    assert_eq!(load_snapshot_file(&path).expect("fixture"), s);
+    assert!(load_snapshot_file(&dir.path().join("missing.json")).is_err());
+    std::fs::write(&path, "{").expect("fixture");
+    assert!(load_snapshot_file(&path).is_err());
+}
+
+#[test]
+fn a_missing_sub_issue_count_is_an_error_not_a_silent_zero() {
+    let node = json!({"number":4,"title":"t","milestone":null,"parent":null,
+                      "labels":{"nodes":[]}});
+    let page = Ok(json!({"data":{"repository":{"issues":{
+        "totalCount":1,"pageInfo":{"hasNextPage":false,"endCursor":null},
+        "nodes":[node]}}}}));
+    let g = Fake::new(vec![rate(4000), page]);
+    let err = fetch_snapshot(&g, "paiml/x", now()).unwrap_err();
+    assert!(format!("{err:#}").contains("subIssues"), "{err:#}");
+}
+
+#[test]
+fn a_missing_has_next_page_is_not_measured_like_a_missing_cursor() {
+    let no_flag = Ok(json!({"data":{"repository":{"issues":{
+        "totalCount":1,"pageInfo":{"endCursor":null},"nodes":[]}}}}));
+    let g = Fake::new(vec![rate(4000), no_flag]);
+    let err = fetch_snapshot(&g, "paiml/x", now()).unwrap_err();
+    assert!(format!("{err:#}").contains("hasNextPage"), "{err:#}");
+    let no_page_info = Ok(json!({"data":{"repository":{"pullRequests":{"nodes":[]}}}}));
+    let g = Fake::new(vec![rate(4000), issues_page(0, None, &[]), no_page_info]);
+    assert!(fetch_snapshot(&g, "paiml/x", now()).is_err());
+}
+
+fn filing_under(
+    epic: u64,
+    title: &str,
+    replies: Vec<Result<Value, String>>,
+) -> anyhow::Result<Option<String>> {
+    let g = Fake::new(replies);
+    guard_filing(&g, "paiml/x", &Policy::default(), title, 50, epic)
+}
+
+fn filing(title: &str, replies: Vec<Result<Value, String>>) -> anyhow::Result<Option<String>> {
+    filing_under(1, title, replies) // #1 is open in `issues_page` fixtures
+}
+
+#[test]
+fn filing_guard_r3_needs_the_epic_to_exist_and_be_open() {
+    let open = || {
+        vec![
+            rate(4000),
+            issues_page(2, None, &[1, 2]),
+            prs_page(json!([])),
+        ]
+    };
+    // the epic the ticket would be linked under is not among the open issues
+    let err = filing_under(999, "wholly different work item", open()).unwrap_err();
+    assert!(format!("{err:#}").contains("R3"), "{err:#}");
+    // control: the same filing under an open epic passes
+    filing_under(2, "wholly different work item", open()).expect("fixture");
+}
+
+#[test]
+fn filing_guard_r3_admits_a_missing_epic_when_the_ticket_has_a_milestone() {
+    let with_milestone = Ok(json!({"data":{"repository":{"issues":{
+        "totalCount":1,"pageInfo":{"hasNextPage":false,"endCursor":null},
+        "nodes":[{"number":50,"title":"mine","milestone":{"title":"0.71"},"parent":null,
+                  "subIssues":{"totalCount":0},"labels":{"nodes":[]}}]}}}}));
+    filing_under(
+        999,
+        "wholly different work item",
+        vec![rate(4000), with_milestone, prs_page(json!([]))],
+    )
+    .expect("fixture");
+}
+
+#[test]
+fn filing_guard_warns_on_a_fitting_title_admits_a_distinct_one_and_fails_closed() {
+    let open = || {
+        vec![
+            rate(4000),
+            issues_page(2, None, &[1, 2]),
+            prs_page(json!([])),
+        ]
+    };
+    // issues_page titles are "t1", "t2": a title of exactly "t2" fits #2. OUT-281: R5 is
+    // advisory in v1 — the filing is admitted and the note names the existing ticket.
+    let note = filing("t2", open())
+        .expect("a title match must not refuse")
+        .expect("a title match must carry an advisory");
+    assert!(note.contains("R5") && note.contains("#2"), "{note}");
+    assert_eq!(
+        filing("wholly different work item", open()).expect("fixture"),
+        None
+    );
+    let err = filing("anything", vec![rate(4000), Err("HTTP 502".into())]).unwrap_err();
+    assert!(
+        format!("{err:#}").contains("nothing was linked or written"),
+        "{err:#}"
+    );
+}
+
+#[test]
+fn filing_guard_refuses_at_the_cap_with_the_graphql_total() {
+    let err = filing(
+        "wholly different work item",
+        vec![
+            rate(4000),
+            issues_page(100, None, &[1]),
+            prs_page(json!([])),
+        ],
+    )
+    .unwrap_err();
+    assert!(format!("{err:#}").contains("R1"), "{err:#}");
+}
