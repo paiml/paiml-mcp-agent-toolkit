@@ -1,0 +1,17 @@
+- id: GH-1256
+  github_issue: 1256
+  item_type: task
+  title: 'MACS-013 remainder: CB-1655 warns instead of failing on a stale ROADMAP.yaml and its stale arm is untested (spec test comply::cb1655_red_when_ledger_newer_than_artifact); decide whether the rendered ROADMAP.yaml survives now that docs/roadmaps/roadmap.yaml is the live roadmap — pmat roadmap sync shipped in #613'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

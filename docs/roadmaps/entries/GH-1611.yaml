@@ -1,0 +1,17 @@
+- id: GH-1611
+  github_issue: 1611
+  item_type: task
+  title: 'OUT-324: pre-push runs cargo deny advisories on Cargo.lock/deny.toml change + receipt-root schema check'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-06T18:24:09.028675347+00:00
+  updated: 2026-11-09T12:55:08.075066360+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

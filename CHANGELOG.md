@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.43.0] - 2026-11-06
+
+### Added
+
+- **`pmat tdg check-regression` reports files rescored by a newer rule in a separate
+  `rescored` bucket (GH-1555, #1558).** A file whose bytes are unchanged but whose score
+  moved because the scoring rules changed (#1162) used to land in `regressed`, failing
+  commits that never touched it. The gate and the MCP tool now report those files as
+  `rescored` and do not count them as a regression.
+
+### Changed
+
+- **`pmat context --format llm-optimized` is documented as an explicit alias of markdown
+  (#1474, #1581).**
+
+### Fixed
+
+- **`pmat hooks install` works in a linked git worktree (PMAT-709, #1285, #1569, #1571).**
+  It now asks git for the hooks directory instead of assuming `.git/hooks`.
+
+### Security
+
+- **pulldown-cmark 0.13.5 -> 0.13.6 for RUSTSEC-2026-0433 (#1597).** Lockfile-only; this
+  unbreaks the `cargo deny` step of `pmat score`.
+- **rustls 0.23.45 -> 0.23.46 for RUSTSEC-2026-0346..0349, and quinn-proto 0.11.15 ->
+  0.11.18 for RUSTSEC-2026-0338..0342 (#1490, #1491).**
+
+### Dependencies
+
+- Tokio-ecosystem group bump: tokio 1.54.1, hyper 1.12.0, hyper-util 0.1.21, tokio-test
+  0.4.6, tokio-util 0.7.20 (GH-1457, #1552).
+- Patch updates carried from dependabot #1550 (GH-1562, #1563).
+- The stale RUSTSEC-2023-0071 and RUSTSEC-2026-0387 ignores are removed from `deny.toml`
+  (PMAT-1564, #1565).
+
+CI, test-stability and roadmap-lifecycle PRs #1532 #1553 #1568 #1575 #1577 #1620 carry no
+user-visible change.
+
 ## [3.42.0] - 2026-09-28
 
 ### Added

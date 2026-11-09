@@ -1,0 +1,23 @@
+- id: PMAT-1309
+  github_issue: 1309
+  item_type: task
+  title: 'CB-2115: the grace window must cover the ORPHAN and MISSING legs, and the rule comes off the master push (goal-mode.md §3.3 and §5.2, decisions D10 and P4)'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T06:16:11Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria:
+  - 'the staleness grace window covers the ORPHAN and MISSING legs as well as a field disagreement: an issue opened less than staleness_grace_minutes ago is not_measured rather than a finding, and so is an item added without its issue'
+  - CB-2115 no longer runs on a push to master; it runs on pull requests, and on a schedule whose finding OPENS A TICKET instead of failing the build
+  - the window stays at now - max(item.updated, issue.updated_at); no first-seen state file is added, and a control arm proves a timestamp bump restarts it, which is the accepted cost recorded in goal-mode.md §5.2
+  - scripts/roadmap-coherence-control.sh carries an arm for a freshly opened orphan issue inside the window, one for the same issue past it, and one proving the master-push path is gone
+  - goal-mode.md §8's limit entry for this gap is removed in the same PR
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'CB-2115 is ENFORCED and this is the live hole that reddened master 5af9a0f0d at 06:08Z on 2026-09-11: five issues opened by hand, no roadmap item, no commit to blame. The quorum REFUSED the first-seen state file this ticket was originally filed for (D5 decided B, 4 of 5 seats: a gate whose verdict depends on a state file cannot be judged from a clean clone). What it decided instead is D10 (5 of 5, the only unanimous answer) and P4 (3 of 4). Artifact docs/audits/quorum-PMAT-1307.json.'
+  release: backlog

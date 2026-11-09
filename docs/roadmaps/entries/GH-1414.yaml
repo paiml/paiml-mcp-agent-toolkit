@@ -1,0 +1,17 @@
+- id: GH-1414
+  github_issue: 1414
+  item_type: task
+  title: 'pmat work add --github-issue does not populate spec: or acceptance_criteria: from the spec row, and drops the issue''s priority'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

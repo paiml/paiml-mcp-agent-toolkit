@@ -1,0 +1,17 @@
+- id: GH-1310
+  github_issue: 1310
+  item_type: task
+  title: A fork PR that edits docs/roadmaps/roadmap.yaml or docs/specifications/ must fail closed, not pass as not_applicable (goal-mode.md §3.3, decision D7)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

@@ -1,0 +1,19 @@
+- id: PMAT-692
+  github_issue: 1279
+  item_type: task
+  title: 'deps: flate2 1.1.10 moves to miniz_oxide 0.9 and adds zlib-rs 0.6.7 while another dependency still resolves miniz_oxide 0.8.9 — dependabot #1210 (closed) would land a duplicate crate version and a new transitive crate; deny.toml multiple-versions = warn so CI cannot refuse it. Either pin flate2''s backend (default-features = false + rust_backend) or make multiple-versions = deny with an allowlist, then re-take the pmcp 2.19.3 / lru 0.18.4 / toml 1.1.5 bumps'
+  status: cancelled
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T07:23:43Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: null
+  release: backlog

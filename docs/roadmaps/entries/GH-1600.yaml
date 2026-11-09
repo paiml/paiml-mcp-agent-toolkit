@@ -1,0 +1,17 @@
+- id: GH-1600
+  github_issue: 1600
+  item_type: task
+  title: 'KZ-001 a: comply check requires a pinned rust-toolchain.toml'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-04T15:21:21.223960207+00:00
+  updated: 2026-11-09T12:55:08.075066360+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

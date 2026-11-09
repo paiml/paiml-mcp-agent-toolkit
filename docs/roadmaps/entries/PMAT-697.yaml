@@ -1,0 +1,19 @@
+- id: PMAT-697
+  github_issue: 1124
+  item_type: task
+  title: '[train/HN] honest not-measured (#1124, #1162, #1131): one typed Measured(x) | NotMeasured{reason} at the model layer rendered verbatim; gates_run complexity = not_measured for bash/C/TS; tdg check-regression delta 0 on an unedited file; quality-gate emits exactly one files_examined'
+  status: cancelled
+  priority: high
+  assigned_to: null
+  created: 2026-09-07T07:56:29Z
+  updated: 2026-11-06T18:24:09.028675347+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deferred:3.41.0
+  - kind:code
+  notes: 'PMAT-1253 (goal-mode §5.1): paired with #1124, the issue this item''s title names first (docs/audits/triage-PMAT-1253-ledger.json).'
+  release: backlog

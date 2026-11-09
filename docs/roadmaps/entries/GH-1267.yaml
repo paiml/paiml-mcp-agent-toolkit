@@ -1,0 +1,17 @@
+- id: GH-1267
+  github_issue: 1267
+  item_type: task
+  title: pmat work complete runs quality gates that hang past 2 min on this repo and the only documented bypass is --skip-quality; a ticket whose PR merged green cannot be closed without a skip — separate the state transition from the gate, or bound the gate
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

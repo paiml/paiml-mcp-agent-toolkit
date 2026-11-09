@@ -7680,23 +7680,6 @@ roadmap:
   labels: []
   notes: null
   release: 3.44.0
-- id: GH-1475
-  github_issue: 1475
-  item_type: task
-  title: diff-scoped complexity refuses a merge commit for functions that arrive unchanged from MERGE_HEAD (compares against HEAD only)
-  status: planned
-  priority: medium
-  assigned_to: null
-  created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-24T16:31:29.561530032+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-  release: 3.44.0
 - id: GH-1476
   github_issue: 1476
   item_type: task
