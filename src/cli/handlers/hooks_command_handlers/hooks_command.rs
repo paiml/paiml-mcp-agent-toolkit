@@ -473,7 +473,7 @@ impl HooksCommand {
         Ok(false)
     }
 
-    fn install_pre_push_hook(&self) -> Result<()> {
+    pub(crate) fn install_pre_push_hook(&self) -> Result<()> {
         let hook_path = self.hooks_dir.join("pre-push");
 
         let hook_content = r#"#!/usr/bin/env bash
@@ -509,6 +509,22 @@ fi
 # it is content-addressed and costs ~0.3s on an already-proven tree. Every commit
 # being pushed has therefore already been linted with `ci / lint`'s exact flags.
 # Build and test still belong to CI, so `git push` stays O(1).
+
+# 2. Advisories (#1611, OUT-324): only when this push changes Cargo.lock or
+# deny.toml, so an ordinary push stays O(1) and a dependency change cannot
+# reach CI with a known advisory.
+PUSH_BASE=$(git merge-base HEAD '@{u}' 2>/dev/null || git merge-base HEAD origin/HEAD 2>/dev/null || true)
+if [ -n "$PUSH_BASE" ] && git diff --name-only "$PUSH_BASE" HEAD | grep -qE '^(Cargo\.lock|deny\.toml)$'; then
+    echo -n "  Advisories (Cargo.lock/deny.toml changed)... "
+    if cargo deny check advisories > /dev/null 2>&1; then
+        echo "✅"
+    else
+        echo "❌"
+        echo "   cargo deny check advisories failed (or cargo-deny is not installed)"
+        echo "   Run: cargo deny check advisories"
+        FAILED=1
+    fi
+fi
 
 if [ "$FAILED" -ne 0 ]; then
     echo ""

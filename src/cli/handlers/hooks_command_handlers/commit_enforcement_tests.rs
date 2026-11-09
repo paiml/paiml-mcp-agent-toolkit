@@ -437,3 +437,79 @@ fn a_fragment_only_ticket_is_accepted_and_an_unknown_one_still_refused() {
         "an id in neither roadmap nor fragment must be refused"
     );
 }
+
+/// #1611 (OUT-324): the pre-push hook runs `cargo deny check advisories` when
+/// the push changes Cargo.lock or deny.toml, and only then. A `cargo` shim
+/// that passes `fmt` and fails `deny` stands in for a planted advisory.
+#[test]
+fn pre_push_runs_cargo_deny_only_when_the_lock_or_deny_toml_changed() {
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let root = tmp.path();
+    let remote = root.join("remote.git");
+    let work = root.join("work");
+    assert!(
+        git(root, &["init", "-q", "--bare", remote.to_str().unwrap()])
+            .status
+            .success()
+    );
+    assert!(git(
+        root,
+        &[
+            "clone",
+            "-q",
+            remote.to_str().unwrap(),
+            work.to_str().unwrap()
+        ]
+    )
+    .status
+    .success());
+    let d = work.as_path();
+    assert!(git(d, &["config", "user.email", "t@t"]).status.success());
+    assert!(git(d, &["config", "user.name", "t"]).status.success());
+    std::fs::write(d.join("Cargo.toml"), "[package]\nname=\"x\"\n").expect("toml");
+    assert!(git(d, &["add", "."]).status.success());
+    assert!(git(d, &["commit", "-q", "-m", "init"]).status.success());
+    assert!(git(d, &["push", "-q", "-u", "origin", "HEAD"])
+        .status
+        .success());
+    let hooks = root.join("hooks");
+    std::fs::create_dir_all(&hooks).expect("hooks dir");
+    HooksCommand::new(hooks.clone(), d.join("pmat.toml"))
+        .install_pre_push_hook()
+        .expect("install pre-push");
+    let bin = root.join("bin");
+    std::fs::create_dir_all(&bin).expect("bin");
+    let shim = bin.join("cargo");
+    std::fs::write(&shim, "#!/bin/sh\n[ \"$1\" = deny ] && exit 1\nexit 0\n").expect("shim");
+    std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let run = |dir: &Path| {
+        Command::new(hooks.join("pre-push"))
+            .current_dir(dir)
+            .env("PATH", &path)
+            .output()
+            .expect("run pre-push")
+    };
+    std::fs::write(d.join("README.md"), "plain\n").expect("write");
+    assert!(git(d, &["add", "."]).status.success());
+    assert!(git(d, &["commit", "-q", "-m", "plain"]).status.success());
+    let plain = run(d);
+    assert!(
+        plain.status.success(),
+        "a push that touches neither file must not run deny"
+    );
+    std::fs::write(d.join("deny.toml"), "[advisories]\n").expect("deny.toml");
+    assert!(git(d, &["add", "."]).status.success());
+    assert!(git(d, &["commit", "-q", "-m", "deny"]).status.success());
+    let changed = run(d);
+    assert!(
+        !changed.status.success(),
+        "a deny.toml change with a failing advisory must refuse"
+    );
+    assert!(String::from_utf8_lossy(&changed.stdout).contains("Advisories"));
+}
