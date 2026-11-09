@@ -39,6 +39,7 @@ ignore = [
     # Reviewed 2026-07-02 (MACS-000 bootstrap, #612) — all transitive via the
     # aprender 0.50 sovereign stack; fixes require upstream aprender releases.
     { id = "RUSTSEC-2026-0173", reason = "proc-macro-error2: unmaintained, transitive via validator_derive→validator→apr-cli; no safe upgrade available" },
+    # WAIVER 2026-11-09, EXPIRES 2026-11-11 (48 h, Noah ruling): tied to paiml/aprender#6827 (aprender-rag off rusqlite 0.32). Remove the next line when it lands or on expiry.
     { id = "RUSTSEC-2026-0459", reason = "libsqlite3-sys 0.30.1 bundled SQLite WAL page-size read (CVE-2026-119375): pinned by rusqlite 0.32 via aprender-rag; fix needs libsqlite3-sys >=0.39 (rusqlite 0.40 needs MSRV 1.95, breaks cargo install). Exposure: only a database + -wal written by an untrusted party; pmat opens only its own .pmat/ caches. Revisit when aprender-rag moves." },
     # Reviewed 2026-08-19 — surfaced by turning `all-features` on above; all
     # three were always in the shipped `--features full` graph, and none was
