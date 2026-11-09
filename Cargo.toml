@@ -94,7 +94,7 @@ aprender = { version = "0.64", default-features = false }  # Aprender monorepo: 
 # removed its `thrift` dependency — which is the only route thrift 0.17.0
 # (GHSA-2f9f-gq7v-9h6m) had into this tree.
 aprender-compute = { version = "0.64", optional = true }
-aprender-db = { version = "0.64", optional = true, default-features = false }
+aprender-db = { version = "0.72", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
