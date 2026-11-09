@@ -1,0 +1,17 @@
+- id: GH-1317
+  github_issue: 1317
+  item_type: task
+  title: 'Coverage to 95%: measured 85.25%, the floor is armed at 80 and ratchets from CI''s own number'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T12:40:20.197348363+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

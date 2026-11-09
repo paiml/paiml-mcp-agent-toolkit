@@ -2,7 +2,7 @@
   github_issue: 1524
   item_type: task
   title: 'FV P0-2 CI: Kani lanes (PR changed-harness, nightly all) and unmute provable-ladder'
-  status: cancelled
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
@@ -14,4 +14,4 @@
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.44.0
