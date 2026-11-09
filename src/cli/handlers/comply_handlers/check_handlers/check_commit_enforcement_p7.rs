@@ -110,110 +110,112 @@ pub(crate) fn check_contract_query_readiness(project_path: &Path) -> ComplianceC
 /// Spec: Phase 8 leak class L-6 (Parser/Domain Bugs)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_codegen_compiles(project_path: &Path) -> ComplianceCheck {
-    // Check for generated contract code
-    let generated_paths = [
+    let has_generated = [
         project_path.join("src/contracts"),
         project_path.join("src/generated_contracts.rs"),
-    ];
-
-    let mut has_generated = false;
-    for path in &generated_paths {
-        if path.exists() {
-            has_generated = true;
-            break;
-        }
-    }
+    ]
+    .iter()
+    .any(|p| p.exists());
 
     if !has_generated {
         // No generated contract code — try pv codegen --check if pv is available
-        let pv_check = std::process::Command::new("pv")
-            .args(["codegen", "--check"])
-            .current_dir(project_path)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::piped())
-            .output();
-
-        return match pv_check {
-            Ok(output) if output.status.success() => ComplianceCheck {
-                name: "CB-1342: Codegen Compiles".into(),
-                status: CheckStatus::Pass,
-                message: "pv codegen --check passed".into(),
-                severity: Severity::Info,
-            },
-            Ok(output) => {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                // If pv doesn't support the flag, skip rather than warn
-                if stderr.contains("unexpected argument") || stderr.contains("unrecognized") {
-                    ComplianceCheck {
-                        name: "CB-1342: Codegen Compiles".into(),
-                        status: CheckStatus::Skip,
-                        message: "pv codegen --check not supported (upgrade pv)".into(),
-                        severity: Severity::Info,
-                    }
-                } else {
-                    let msg = stderr.lines().next().unwrap_or("codegen check failed");
-                    ComplianceCheck {
-                        name: "CB-1342: Codegen Compiles".into(),
-                        status: CheckStatus::Warn,
-                        message: format!("pv codegen --check: {}", msg),
-                        severity: Severity::Warning,
-                    }
-                }
-            }
-            Err(_) => ComplianceCheck {
-                name: "CB-1342: Codegen Compiles".into(),
-                status: CheckStatus::Skip,
-                message: "No generated contracts and pv CLI not available".into(),
-                severity: Severity::Info,
-            },
-        };
+        return codegen_pv_check(project_path);
     }
 
     // Has generated code — check for obvious syntax issues
-    let mut issues: Vec<String> = Vec::new();
-    let contracts_dir = project_path.join("src/contracts");
-    if contracts_dir.exists() {
-        if let Ok(entries) = fs::read_dir(&contracts_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().is_none_or(|e| e != "rs") {
-                    continue;
-                }
-                if let Ok(content) = fs::read_to_string(&path) {
-                    // Check for unbalanced braces (common codegen bug)
-                    let opens = content.chars().filter(|c| *c == '{').count();
-                    let closes = content.chars().filter(|c| *c == '}').count();
-                    if opens != closes {
-                        let name = path.file_name().map(|f| f.to_string_lossy().to_string())
-                            .unwrap_or_default();
-                        issues.push(format!("{}: unbalanced braces ({} open, {} close)", name, opens, closes));
-                    }
-                    // Check for common codegen placeholders
-                    if content.contains("TODO_PARAM") || content.contains("PLACEHOLDER") {
-                        let name = path.file_name().map(|f| f.to_string_lossy().to_string())
-                            .unwrap_or_default();
-                        issues.push(format!("{}: contains codegen placeholders", name));
-                    }
-                }
-            }
-        }
-    }
-
+    let issues = codegen_syntax_issues(&project_path.join("src/contracts"));
     if issues.is_empty() {
-        ComplianceCheck {
-            name: "CB-1342: Codegen Compiles".into(),
-            status: CheckStatus::Pass,
-            message: "Generated contract code passes syntax checks".into(),
-            severity: Severity::Info,
-        }
+        codegen_check(
+            CheckStatus::Pass,
+            "Generated contract code passes syntax checks".into(),
+            Severity::Info,
+        )
     } else {
-        ComplianceCheck {
-            name: "CB-1342: Codegen Compiles".into(),
-            status: CheckStatus::Warn,
-            message: format!("{} issue(s): {}", issues.len(), issues.join("; ")),
-            severity: Severity::Warning,
-        }
+        codegen_check(
+            CheckStatus::Warn,
+            format!("{} issue(s): {}", issues.len(), issues.join("; ")),
+            Severity::Warning,
+        )
     }
+}
+
+/// Build a CB-1342 result.
+fn codegen_check(status: CheckStatus, message: String, severity: Severity) -> ComplianceCheck {
+    ComplianceCheck {
+        name: "CB-1342: Codegen Compiles".into(),
+        status,
+        message,
+        severity,
+    }
+}
+
+/// CB-1342 when no generated code exists: defer to `pv codegen --check`.
+fn codegen_pv_check(project_path: &Path) -> ComplianceCheck {
+    let pv_check = std::process::Command::new("pv")
+        .args(["codegen", "--check"])
+        .current_dir(project_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .output();
+
+    match pv_check {
+        Ok(output) if output.status.success() => {
+            codegen_check(CheckStatus::Pass, "pv codegen --check passed".into(), Severity::Info)
+        }
+        Ok(output) => codegen_pv_failure(&String::from_utf8_lossy(&output.stderr)),
+        Err(_) => codegen_check(
+            CheckStatus::Skip,
+            "No generated contracts and pv CLI not available".into(),
+            Severity::Info,
+        ),
+    }
+}
+
+/// Map a failed `pv codegen --check` stderr to a result.
+fn codegen_pv_failure(stderr: &str) -> ComplianceCheck {
+    // If pv doesn't support the flag, skip rather than warn
+    if stderr.contains("unexpected argument") || stderr.contains("unrecognized") {
+        return codegen_check(
+            CheckStatus::Skip,
+            "pv codegen --check not supported (upgrade pv)".into(),
+            Severity::Info,
+        );
+    }
+    let msg = stderr.lines().next().unwrap_or("codegen check failed");
+    codegen_check(CheckStatus::Warn, format!("pv codegen --check: {}", msg), Severity::Warning)
+}
+
+/// Syntax problems in one generated file: unbalanced braces, leftover placeholders.
+fn codegen_file_issues(name: &str, content: &str) -> Vec<String> {
+    let mut issues = Vec::new();
+    let opens = content.chars().filter(|c| *c == '{').count();
+    let closes = content.chars().filter(|c| *c == '}').count();
+    if opens != closes {
+        issues.push(format!("{}: unbalanced braces ({} open, {} close)", name, opens, closes));
+    }
+    if content.contains("TODO_PARAM") || content.contains("PLACEHOLDER") {
+        issues.push(format!("{}: contains codegen placeholders", name));
+    }
+    issues
+}
+
+/// Scan `src/contracts/*.rs` for obvious codegen defects.
+fn codegen_syntax_issues(contracts_dir: &Path) -> Vec<String> {
+    let Ok(entries) = fs::read_dir(contracts_dir) else {
+        return Vec::new();
+    };
+    let mut issues = Vec::new();
+    for path in entries.flatten().map(|e| e.path()) {
+        if path.extension().is_none_or(|e| e != "rs") {
+            continue;
+        }
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let name = path.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+        issues.extend(codegen_file_issues(&name, &content));
+    }
+    issues
 }
 
 /// Generate `.pmat/binding-index.json` from contracts/ and binding.yaml.
@@ -291,10 +293,7 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
     crate::status_println!("   {} O(1) cache file(s) generated", cache_count);
 
     // 5. Generate contracts/work/<ID>.yaml from .pmat-work/ (R-4)
-    let yaml_count = generate_work_contract_yamls(project_path)?;
-    if yaml_count > 0 {
-        crate::status_println!("   {} contracts/work/*.yaml file(s) generated", yaml_count);
-    }
+    refresh_work_contracts(project_path)?;
 
     crate::status_println!("   CB-1350 differential obligations now enabled");
 
@@ -381,25 +380,35 @@ fn refresh_apply_binding_line(
         || trimmed.starts_with("- module_path:")
         || trimmed.starts_with("- contract:");
     if is_entry_start {
-        // Flush the previous entry at each entry boundary.
-        if let (Some(file), Some(name)) = (current_file.take(), current_name.take()) {
-            out.push((file, name));
-        }
-        // `- name:` / `- module_path:` carry the name; `- contract:` does not.
-        if !trimmed.starts_with("- contract:") {
-            if let Some(v) = refresh_yaml_value(trimmed) {
-                *current_name = Some(v);
-            }
-        }
+        refresh_start_entry(trimmed, current_name, current_file, out);
     } else if trimmed.starts_with("function:") && current_name.is_none() {
         // `function:` is the binding name for the pv binding format.
-        if let Some(v) = refresh_yaml_value(trimmed) {
-            *current_name = Some(v);
-        }
+        refresh_set_from_line(trimmed, current_name);
     } else if trimmed.starts_with("source_file:") || trimmed.starts_with("file:") {
-        if let Some(v) = refresh_yaml_value(trimmed) {
-            *current_file = Some(v);
-        }
+        refresh_set_from_line(trimmed, current_file);
+    }
+}
+
+/// Store the `key: value` value of `trimmed` into `slot` when it parses.
+fn refresh_set_from_line(trimmed: &str, slot: &mut Option<String>) {
+    if let Some(v) = refresh_yaml_value(trimmed) {
+        *slot = Some(v);
+    }
+}
+
+/// Entry boundary: flush the previous `(file, name)` pair, then take the name.
+/// `- name:` / `- module_path:` carry the name; `- contract:` does not.
+fn refresh_start_entry(
+    trimmed: &str,
+    current_name: &mut Option<String>,
+    current_file: &mut Option<String>,
+    out: &mut Vec<(String, String)>,
+) {
+    if let (Some(file), Some(name)) = (current_file.take(), current_name.take()) {
+        out.push((file, name));
+    }
+    if !trimmed.starts_with("- contract:") {
+        refresh_set_from_line(trimmed, current_name);
     }
 }
 
@@ -550,3 +559,5 @@ fn refresh_write_verification_levels(project_path: &Path, pmat_dir: &Path) -> an
     )?;
     Ok(true)
 }
+
+include!("work_contract_report.rs");
