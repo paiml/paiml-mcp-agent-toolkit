@@ -16,7 +16,7 @@ mod utilities;
 pub use publish::{
     detect_cb500_publish_hygiene, detect_cb503_clippy_config, detect_cb504_deny_config,
     detect_cb505_workspace_lint_hygiene, detect_cb509_feature_gate_coverage,
-    detect_cb529_pmat_tracked_in_git,
+    detect_cb529_pmat_tracked_in_git, detect_cb535_toolchain_pinned,
 };
 
 // Type safety and value correctness (CB-501, CB-502, CB-506, CB-508, CB-515, CB-516)

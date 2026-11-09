@@ -272,3 +272,116 @@ fn contains_pmat_segment(path: &str) -> bool {
     // Nested (e.g., crates/foo/.pmat/context.db)
     path.contains("/.pmat/")
 }
+
+/// Is `channel` an exact toolchain (`1.93.0`, `nightly-2026-01-01`) and not a
+/// floating one (`stable`, `beta`, `nightly`)?
+fn is_exact_channel(channel: &str) -> bool {
+    let c = channel.trim();
+    if matches!(c, "stable" | "beta" | "nightly" | "") {
+        return false;
+    }
+    c.chars().next().is_some_and(|ch| ch.is_ascii_digit())
+        || c.starts_with("nightly-")
+        || c.starts_with("beta-")
+        || c.starts_with("stable-")
+}
+
+/// CB-535: Pinned toolchain (KZ-001 a, #1600) - a Rust repo must carry a
+/// `rust-toolchain.toml` whose `channel` is exact. An unpinned `stable` turns
+/// main red with no code change.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub fn detect_cb535_toolchain_pinned(project_path: &Path) -> Vec<CbPatternViolation> {
+    if !project_path.join("Cargo.toml").exists() {
+        return Vec::new();
+    }
+    let violation = |description: &str| {
+        vec![CbPatternViolation {
+            pattern_id: "CB-535".to_string(),
+            file: "rust-toolchain.toml".to_string(),
+            line: 0,
+            description: description.to_string(),
+            severity: Severity::Warning,
+        }]
+    };
+    let content = match fs::read_to_string(project_path.join("rust-toolchain.toml")) {
+        Ok(c) => c,
+        Err(_) => {
+            return violation(
+                "No rust-toolchain.toml - an unpinned stable toolchain turns main red with no code change. \
+                 Fix: add rust-toolchain.toml with channel = \"<exact version>\"",
+            )
+        }
+    };
+    let channel = content.lines().find_map(|l| {
+        let l = l.trim();
+        let rest = l.strip_prefix("channel")?.trim_start().strip_prefix('=')?;
+        Some(
+            rest.trim()
+                .trim_matches(|c| c == '"' || c == '\'')
+                .to_string(),
+        )
+    });
+    match channel {
+        Some(c) if is_exact_channel(&c) => Vec::new(),
+        Some(c) => violation(&format!(
+            "rust-toolchain.toml channel = \"{c}\" floats - pin an exact version such as 1.93.0"
+        )),
+        None => {
+            violation("rust-toolchain.toml has no channel - pin an exact version such as 1.93.0")
+        }
+    }
+}
+
+#[cfg(test)]
+mod cb535_tests {
+    use super::detect_cb535_toolchain_pinned;
+
+    fn project(toolchain: Option<&str>) -> tempfile::TempDir {
+        let d = tempfile::tempdir().expect("tempdir");
+        std::fs::write(d.path().join("Cargo.toml"), "[package]\nname=\"x\"\n").expect("toml");
+        if let Some(t) = toolchain {
+            std::fs::write(d.path().join("rust-toolchain.toml"), t).expect("tc");
+        }
+        d
+    }
+
+    #[test]
+    fn a_missing_toolchain_file_is_flagged() {
+        let v = detect_cb535_toolchain_pinned(project(None).path());
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].pattern_id, "CB-535");
+    }
+
+    #[test]
+    fn a_floating_channel_is_flagged() {
+        for ch in ["stable", "beta", "nightly"] {
+            let t = format!("[toolchain]\nchannel = \"{ch}\"\n");
+            assert_eq!(
+                detect_cb535_toolchain_pinned(project(Some(&t)).path()).len(),
+                1,
+                "{ch} floats"
+            );
+        }
+    }
+
+    #[test]
+    fn an_exact_channel_passes() {
+        for ch in ["1.93.0", "nightly-2026-01-01"] {
+            let t = format!("[toolchain]\nchannel = \"{ch}\"\n");
+            assert!(detect_cb535_toolchain_pinned(project(Some(&t)).path()).is_empty());
+        }
+    }
+
+    #[test]
+    fn a_file_without_a_channel_is_flagged() {
+        let v =
+            detect_cb535_toolchain_pinned(project(Some("[toolchain]\ncomponents = []\n")).path());
+        assert_eq!(v.len(), 1);
+    }
+
+    #[test]
+    fn a_non_rust_project_is_not_judged() {
+        let d = tempfile::tempdir().expect("tempdir");
+        assert!(detect_cb535_toolchain_pinned(d.path()).is_empty());
+    }
+}

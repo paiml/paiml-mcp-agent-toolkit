@@ -431,6 +431,10 @@ pub(crate) fn check_rust_best_practices_with_config(
             "CB-530",
             comply_cb_detect::detect_cb530_log_without_clamp(project_path),
         ),
+        (
+            "CB-535",
+            comply_cb_detect::detect_cb535_toolchain_pinned(project_path),
+        ),
     ];
     aggregate_violations(
         "CB-500: Rust Best Practices (CB-500 to CB-530)",
