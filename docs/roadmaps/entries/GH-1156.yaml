@@ -1,0 +1,17 @@
+- id: GH-1156
+  github_issue: 1156
+  item_type: task
+  title: '[train/HB] hermetic build.rs (#1156): vendor gridjs/mermaid/d3 under assets/vendor with a committed SHA256SUMS; build.rs reads and verifies, no network, no rerun-if-changed on gitignored paths; clean-room gate step runs with --network none'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T08:40:58.197676792+00:00
+  updated: 2026-11-09T08:40:58.197676792+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog
