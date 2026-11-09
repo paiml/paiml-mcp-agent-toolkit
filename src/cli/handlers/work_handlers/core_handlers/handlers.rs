@@ -748,10 +748,30 @@ pub async fn handle_work_status(
     active: bool,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let id = match id {
+        Some(explicit) => Some(explicit),
+        None => {
+            let derived = active_ticket_from_branch(&project_path);
+            if let Some(ticket) = &derived {
+                println!(
+                    "{} Active ticket (from branch): {}",
+                    c::subheader("🎯"),
+                    c::path(ticket)
+                );
+                println!();
+            }
+            derived
+        }
+    };
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
 
-    let roadmap = service.load()?;
+    let roadmap = match service.load() {
+        Ok(r) => r,
+        // The branch names the ticket; no roadmap file is needed to report it.
+        Err(_) if id.is_some() && !roadmap_path.exists() => return Ok(()),
+        Err(e) => return Err(e),
+    };
 
     if let Some(item_id) = id {
         // Show specific item
@@ -1389,5 +1409,58 @@ mod ledger_verify_tests {
         assert!(result.is_err(), "0 receipts must not verify clean");
         let msg = result.unwrap_err().to_string();
         assert!(msg.contains("no receipts"), "got: {msg}");
+    }
+}
+
+/// Derive the active ticket from the current git branch `work/<ID>` (e.g. `work/PMAT-123`).
+pub(crate) fn active_ticket_from_branch(project_path: &std::path::Path) -> Option<String> {
+    let out = std::process::Command::new("git")
+        .args(["symbolic-ref", "--short", "HEAD"])
+        .current_dir(project_path)
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    parse_work_branch(String::from_utf8_lossy(&out.stdout).trim())
+}
+
+fn parse_work_branch(branch: &str) -> Option<String> {
+    let id = branch.strip_prefix("work/")?;
+    if id.is_empty() || id.contains('/') {
+        None
+    } else {
+        Some(id.to_string())
+    }
+}
+
+#[cfg(test)]
+mod branch_ticket_tests {
+    use super::*;
+
+    #[test]
+    fn work_branch_yields_ticket() {
+        assert_eq!(parse_work_branch("work/PMAT-123"), Some("PMAT-123".into()));
+        assert_eq!(parse_work_branch("main"), None);
+        assert_eq!(parse_work_branch("work/"), None);
+        assert_eq!(parse_work_branch("work/a/b"), None);
+    }
+
+    #[test]
+    fn fresh_repo_on_work_branch_reports_ticket() {
+        let dir = tempfile::tempdir().unwrap();
+        let run = |args: &[&str]| {
+            std::process::Command::new("git")
+                .args(args)
+                .current_dir(dir.path())
+                .output()
+                .unwrap()
+        };
+        run(&["init", "-q"]);
+        run(&["checkout", "-q", "-b", "work/PMAT-123"]);
+        assert_eq!(
+            active_ticket_from_branch(dir.path()),
+            Some("PMAT-123".to_string())
+        );
     }
 }
