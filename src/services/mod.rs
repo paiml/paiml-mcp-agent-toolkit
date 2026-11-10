@@ -62,6 +62,7 @@ pub mod dap; // Sprint 71: Debug Adapter Protocol server (optional - 13 transiti
 pub mod detection; // Toyota Way: Unified detection framework (consolidates detection services)
 pub mod facades;
 pub mod github_comply; // GHC-001: `pmat comply github` rules R1-R6 and the work add guards
+pub mod gate_smells; // GH-1673: gate-smell detectors GS-03/04/05/12/14
 pub mod language_analyzer;
 pub mod language_registry;
 pub mod languages;

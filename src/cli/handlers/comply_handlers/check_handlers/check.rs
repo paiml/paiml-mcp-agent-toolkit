@@ -582,6 +582,12 @@ const GROUP_IDS_EVIDENCE: &[RuleDecl] = &[
 ];
 const GROUP_IDS_GATE_EFFECT: &[RuleDecl] = &[("cb-2100", "Comply Gate Effect")];
 const GROUP_IDS_RATCHET: &[RuleDecl] = &[("cb-2102", "Ratchet Baselines")];
+const GROUP_IDS_GATE_SMELLS: &[RuleDecl] = &[
+    ("GS-01", "Network Fetch In PR Gate"),
+    ("GS-02", "Floating Version"),
+    ("GS-07", "No Timeout Or Supersede"),
+    ("GS-13", "Hosted Runner In Sovereign Repo"),
+];
 const GROUP_IDS_COHERENCE: &[RuleDecl] = &[("cb-2101", "Threshold Coherence")];
 const GROUP_IDS_TRACEABILITY: &[RuleDecl] = &[("cb-2113", "Commit Traceability")];
 const GROUP_IDS_ROADMAP_COHERENCE: &[RuleDecl] = &[("cb-2115", "Roadmap Coherence")];
@@ -591,7 +597,7 @@ const GROUP_IDS_TICKET_RELEASE: &[RuleDecl] = &[
 ];
 const GROUP_IDS_SPEC_EPICS: &[RuleDecl] = &[("cb-2110", "Spec Epics")];
 const GROUP_IDS_SPEC_REVIEWS: &[RuleDecl] = &[("cb-2111", "Spec Reviews")];
-// 174 distinct ids across 21 groups; declared in more than one group: none
+// 178 distinct ids across 22 groups; declared in more than one group: none
 
 /// A named compliance-check group, the rule ids it can emit, and the thunk that
 /// produces its checks. The ids are known before the group runs (PMAT-1296), so
@@ -752,6 +758,11 @@ fn compliance_check_groups<'a>(
             "ratchet",
             GROUP_IDS_RATCHET,
             Box::new(move || build_ratchet_checks(project_path, comply_config)),
+        ),
+        (
+            "gate-smells",
+            GROUP_IDS_GATE_SMELLS,
+            Box::new(move || build_gate_smells_checks(project_path, comply_config)),
         ),
         (
             "coherence",
@@ -1943,6 +1954,8 @@ include!("check_gate_effect.rs");
 include!("check_builders_gate_effect.rs");
 include!("check_metrics_ratchet.rs");
 include!("check_builders_ratchet.rs");
+include!("check_gate_smells.rs");
+include!("check_builders_gate_smells.rs");
 include!("check_threshold_coherence.rs");
 include!("check_builders_coherence.rs");
 include!("check_traceability.rs");
@@ -1961,6 +1974,7 @@ include!("check_handlers_tests_inline.rs");
 include!("check_pv_enforcement_helpers_tests.rs");
 include!("check_pv_lint_verdict_tests.rs");
 include!("check_armed_gates_tests.rs");
+include!("check_gate_smells_tests.rs");
 
 include!("check_path_guard_tests.rs");
 include!("check_empty_project_guard_tests.rs");

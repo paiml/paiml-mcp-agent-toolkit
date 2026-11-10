@@ -8523,6 +8523,24 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
+- id: GH-1673
+  github_issue: 1673
+  item_type: task
+  title: 'pmat comply detects gate smells (GS-01..14) and resource smells (RS-01..08)'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-11-10T13:45:00Z
+  updated: 2026-11-10T16:55:00Z
+  spec: null
+  acceptance_criteria:
+  - GS-01, GS-02, GS-07 and GS-13 are static, warn-level workflow scans, each with a smelly and a clean fixture
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
 - id: PMAT-1605
   github_issue: 1605
   item_type: task
