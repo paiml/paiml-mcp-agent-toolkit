@@ -17,9 +17,12 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-/// No-op progress bar that mimics indicatif::ProgressBar API
-/// Used as a zero-dependency replacement for indicatif
+/// Zero-dependency progress bar with the indicatif::ProgressBar API.
+/// `set_message` / `tick` / `inc` emit a throttled one-line stderr update
+/// (`\r`-rewritten); nothing is written unless stderr is a TTY, and `hidden`
+/// bars and `--quiet` stay silent (#1236).
 pub struct SimpleProgressBar {
+    last_emit: Arc<Mutex<Option<std::time::Instant>>>,
     message: Arc<Mutex<String>>,
     position: Arc<AtomicU64>,
     length: Arc<AtomicU64>,
