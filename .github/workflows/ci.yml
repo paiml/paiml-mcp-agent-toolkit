@@ -279,14 +279,27 @@ jobs:
       - name: the closed loop holds (CB-2113, offline: git and the roadmap file)
         run: ./target/debug/pmat comply check --checks CB-2113
       # CB-2115 judges LIVE repo-wide GitHub state, not this PR's diff, so one closed issue
-      # anywhere reddened every PR (5 times in 24 h). On a pull request it no longer runs;
-      # on push it still gates master, and roadmap-orphan-sweep.yml runs it on a schedule.
-      - name: the roadmap and GitHub agree (CB-2115, push only)
-        if: github.event_name == 'push'
+      # anywhere reddened every PR (5 times in 24 h). It stays on the merge path for the
+      # changes it is about: on a pull request or merge group it runs when the diff touches
+      # docs/roadmaps/roadmap.yaml; on push it always gates master; roadmap-orphan-sweep.yml
+      # runs it hourly and opens one ticket on red.
+      - name: does this change touch the roadmap (CB-2115 scope)
+        id: roadmap_scope
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then echo "touched=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          base="${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
+          if [ -z "$base" ]; then echo "touched=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if git diff --name-only "$base"...HEAD | grep -qx 'docs/roadmaps/roadmap.yaml'; then
+            echo "touched=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "touched=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: the roadmap and GitHub agree (CB-2115, push or roadmap-touching change)
+        if: steps.roadmap_scope.outputs.touched == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./target/debug/pmat comply check --checks CB-2115
-      # CB-2115 joined this step on PMAT-723, in the order goal-mode.md §5.4 sets: the
+      # History: CB-2115 joined this step on PMAT-723, in the order goal-mode.md §5.4 sets: the
       # sync reported (PMAT-720), the thirteen items naming #612 were resolved under
       # their own ticket (PMAT-721), the orphans were triaged and fixed by the sync's
       # own fixers (PMAT-1253), and `pmat work sync --check-only` measured 0 findings on

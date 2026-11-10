@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  issues: read
+  issues: write
 jobs:
   cb-2115:
     runs-on: ubuntu-24.04
@@ -20,4 +20,19 @@ jobs:
       - name: CB-2115 on master
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./target/debug/pmat comply check --checks CB-2115
+        id: check
+        continue-on-error: true
+        run: ./target/debug/pmat comply check --checks CB-2115 2>&1 | tee /tmp/cb2115.out; exit "${PIPESTATUS[0]}"
+      # LAB rule: a red opens or updates ONE ticket, then stays silent.
+      - name: open or update the one ticket on red
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="CB-2115: roadmap and GitHub disagree (nightly sweep)"
+          body="$(printf 'The hourly sweep found an orphan.\n\n```\n%s\n```\n\nRun: %s/%s/actions/runs/%s' "$(tail -n 40 /tmp/cb2115.out)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
+          n="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body" --label lab-sweep; fi
+      - name: the sweep stays red when CB-2115 is red
+        if: steps.check.outcome == 'failure'
+        run: exit 1

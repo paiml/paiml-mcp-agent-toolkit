@@ -91,6 +91,7 @@ step    | gate | spec-epic-control | .github/workflows/ci.yml#traceability#contr
 step    | gate | spec-review-control | .github/workflows/ci.yml#traceability#control — an active spec with no current review must be refused (CB-2111, exit 1) | - | -
 step    | gate | pr-lane-control | .github/workflows/ci.yml#traceability#PR lane control | - | -
 step    | gate | tests-dont-write-self-test | .github/workflows/ci.yml#traceability#the tree-cleanliness checker can still detect a write | - | -
+# CI runs CB-2115 on push and on any change touching docs/roadmaps/roadmap.yaml; this local gate always runs it (a superset).
 # CB-2115 reads open GitHub issues. It was CI-only on "credential: the workflow's GH_TOKEN" until traceability went
 # red on PR #1368 (an issue opened with no roadmap row) while `make gate` read green; any clone that can push has a
 # gh token, and the check takes ~7s. No token is a FAIL here, never a skip: an unread GitHub is not an agreeing one.
