@@ -1,0 +1,16 @@
+- id: GH-1318
+  item_type: task
+  title: 'train #1651 alias: the work for PMAT-1318 (queued-predecessor cancel); no github_issue so it does not collide'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-11-10T07:30:00Z
+  updated: 2026-11-10T07:30:00Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

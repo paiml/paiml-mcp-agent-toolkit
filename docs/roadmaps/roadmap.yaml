@@ -6105,11 +6105,11 @@ roadmap:
   github_issue: 1293
   item_type: task
   title: 'pmat tdg scores over an incomplete set: 159 files walked, not measured — and the tool will not name them'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T19:40:22.098038771+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-10T12:00:00Z
   spec: null
   acceptance_criteria: []
   phases: []
