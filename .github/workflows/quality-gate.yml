@@ -309,7 +309,10 @@ jobs:
   # purpose, so it is not starved with the self-hosted fleet.
   release-check:
     name: release-check
-    if: github.event_name != 'pull_request'
+    # PMAT-ANDON-1117Z: LAB, not GATE. Never on push or pull_request: a version bump
+    # on master must not need its release to exist. Daily cron + manual dispatch only;
+    # a red opens one issue (no-roadmap) and blocks nothing.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -336,4 +339,4 @@ jobs:
           title="release-check: $v is declared in Cargo.toml but not fully released"
           body="$(printf 'AD-01 (docs/specifications/agentic-delivery-pmat.md section 3.5).\n\n```\n%s\n```\n\nRun: %s/%s/actions/runs/%s' "$(cat release-check.out)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
           n=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
-          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --label no-roadmap --title "$title" --body "$body"; fi

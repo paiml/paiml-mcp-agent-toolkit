@@ -1,0 +1,17 @@
+- id: GH-1292
+  github_issue: 1292
+  item_type: task
+  title: 'pmat work add re-serialises all of docs/roadmaps/roadmap.yaml (2,531 unrelated lines for one 17-line entry) — a serialization point, #2630 class'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T19:40:22.098038771+00:00
+  updated: 2026-11-09T19:57:49.376208248+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: backlog

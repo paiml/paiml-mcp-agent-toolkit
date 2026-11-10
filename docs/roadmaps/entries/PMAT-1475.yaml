@@ -3,11 +3,11 @@
   item_type: task
   title: 'diff-scoped complexity refuses a merge commit for functions that arrive unchanged from MERGE_HEAD (compares against HEAD only)'
   release: 3.44.0
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-08T18:20:27Z
-  updated: 2026-11-08T18:20:27Z
+  updated: 2026-11-09T14:47:19Z
   spec: null
   acceptance_criteria: []
   phases: []
