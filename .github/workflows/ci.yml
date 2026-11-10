@@ -18,6 +18,7 @@ jobs:
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0 # main
     with:
       repo: ${{ github.event.repository.name }}
+      heavy_on: train
       # PMAT-1313 — nextest is OFF here, and the measurement that turned it off is
       # the point of this comment. Do not re-enable it without re-reading this.
       #
