@@ -119,7 +119,7 @@ exclude = [
 # behaviour-preserving extractions and 0 fell below it, and CB-200 itself,
 # built from the branch, measured 1680. The `tdg-ratchet` job in ci.yml now
 # re-measures this on every pull request.
-baseline = 1680
+baseline = 1677
 
 [entropy]
 # Entropy analysis configuration (#227)
