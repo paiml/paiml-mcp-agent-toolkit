@@ -1,16 +1,18 @@
 - id: GH-1673
   github_issue: 1673
   item_type: task
-  title: 'P0: pmat comply detects gate smells (GS-01..14) and resource smells (RS-01..08)'
-  status: planned
+  title: pmat comply detects gate smells (GS-01..14) and resource smells (RS-01..08)
+  status: inprogress
   priority: high
   assigned_to: null
-  created: 2026-11-10T14:55:21.000000000+00:00
-  updated: 2026-11-10T14:57:41.000000000+00:00
+  created: 2026-11-10T13:45:00Z
+  updated: 2026-11-10T16:55:00Z
   spec: null
-  acceptance_criteria: []
+  acceptance_criteria:
+  - GS-01, GS-02, GS-07 and GS-13 are static, warn-level workflow scans, each with a smelly and a clean fixture
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - kind:code
   notes: null
