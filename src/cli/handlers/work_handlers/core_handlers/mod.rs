@@ -10,6 +10,7 @@ mod contract;
 pub mod github;
 mod handlers;
 mod helpers;
+pub(crate) mod pr_cap;
 mod resolution;
 mod sync;
 mod types;
