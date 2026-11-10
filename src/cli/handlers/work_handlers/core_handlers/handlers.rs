@@ -756,9 +756,8 @@ pub async fn handle_work_status(
     // FLOW-012 P1 (#1591): the branch is the ticket. With no id and no --active, a branch
     // named work/<ID> names the item whose status is shown, with no declaration file.
     let id = match id {
-        None if !active => {
-            ticket_from_branch(&project_path).filter(|b| roadmap.find_item(b).is_some())
-        }
+        None if !active => ticket_from_branch(&project_path)
+            .filter(|b| roadmap.roadmap.iter().any(|i| i.id.eq_ignore_ascii_case(b))),
         other => other,
     };
 
