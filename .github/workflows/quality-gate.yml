@@ -18,8 +18,8 @@ on:
     - cron: "17 6 * * *"
 
 concurrency:
-  group: quality-gate-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   RUST_MIN_STACK: "8388608"

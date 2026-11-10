@@ -64,6 +64,9 @@ mod quality_gate_parse_guard_tests;
 #[cfg(test)]
 #[path = "quality_gate_exit_status_guard_tests.rs"]
 mod quality_gate_exit_status_guard_tests;
+#[cfg(test)]
+#[path = "workflow_concurrency_guard_tests.rs"]
+mod workflow_concurrency_guard_tests;
 
 // `--color never` reaching the printers that interpolate raw ANSI constants.
 #[cfg(test)]
