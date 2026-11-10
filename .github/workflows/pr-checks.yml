@@ -2,7 +2,12 @@ name: PR Checks
 
 on:
   pull_request:
-    types: [opened, edited, synchronize]
+    types: [opened, edited, synchronize, ready_for_review]
+
+# infra#3828: a new push or edit cancels this PR's superseded run.
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 # infra#3828: a new push or edit cancels this PR's superseded run.
 concurrency:
@@ -13,6 +18,7 @@ jobs:
   # PMAT-900001: the same lint ci.yml's required traceability job runs, re-run when the
   # title or body is edited (ci.yml does not trigger on `edited`).
   pr-body-closing-keywords:
+    if: ${{ github.event.pull_request.draft != true }}
     name: PR body closes only what its Closes lines name
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -31,6 +37,7 @@ jobs:
         run: bash scripts/pr-body-closing-lint.sh --self-test && bash scripts/pr-body-closing-lint.sh --pr "$PR_NUMBER"
 
   pr-title:
+    if: ${{ github.event.pull_request.draft != true }}
     name: PR Title Check
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -70,6 +77,7 @@ jobs:
             starts with a letter (or a ticket number like #12) and does not end with a period.
 
   pr-size:
+    if: ${{ github.event.pull_request.draft != true }}
     name: PR Size Check
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -135,6 +143,7 @@ jobs:
             }
 
   conflicts-check:
+    if: ${{ github.event.pull_request.draft != true }}
     name: Merge Conflicts Check
     runs-on: ubuntu-22.04
     timeout-minutes: 15

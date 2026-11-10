@@ -5,6 +5,8 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+    # infra#3828 RS-09: a draft starts nothing; marking it ready starts the run.
+    types: [opened, synchronize, reopened, ready_for_review]
   # PMAT-719 (goal-mode.md §7.1): a gate that is not evaluated on the merge
   # queue is a gate the queue bypasses. No queue is known to be enabled; the
   # trigger costs nothing and closes the hole before anyone opens it.
@@ -16,8 +18,15 @@ concurrency:
   # merge_group and train/* or batch/* heads are never cancelled: a cancelled master run is a
   # master with no verdict.
   cancel-in-progress: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'train/') && !startsWith(github.head_ref, 'batch/') }}
+# infra#3828 RS-06: no debug info and no incremental state in CI builds.
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+
 jobs:
   ci:
+    if: ${{ github.event.pull_request.draft != true }}
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0 # main
     with:
       repo: ${{ github.event.repository.name }}
@@ -98,7 +107,7 @@ jobs:
     runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 15
     needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability, tdg-ratchet]
-    if: always()
+    if: ${{ always() && github.event.pull_request.draft != true }}
     steps:
       - name: Check required jobs
         env:
@@ -143,6 +152,7 @@ jobs:
   # used to run `cargo build --bin pmat` each; they now download this binary.
   # A failed build fails all three (a skipped job is not accepted by `gate`).
   build-pmat:
+    if: ${{ github.event.pull_request.draft != true }}
     name: build pmat (once per push)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -160,6 +170,7 @@ jobs:
           retention-days: 1
 
   roadmap-validate:
+    if: ${{ github.event.pull_request.draft != true }}
     name: roadmap validates
     needs: build-pmat
     runs-on: ubuntu-24.04
@@ -206,6 +217,7 @@ jobs:
   # planted, including a real pmat run over one definition planted below grade A,
   # and must be reached before the verdict on this tree is believed.
   tdg-ratchet:
+    if: ${{ github.event.pull_request.draft != true }}
     name: CB-200 ratchet measured
     needs: build-pmat
     runs-on: ubuntu-24.04
@@ -244,6 +256,7 @@ jobs:
   # its GREEN on this tree is believed. `fetch-depth: 0` + `fetch-tags` because
   # the rule reads `merge-base` against the base branch and the latest `v*` tag.
   traceability:
+    if: ${{ github.event.pull_request.draft != true }}
     name: traceability
     needs: build-pmat
     runs-on: ubuntu-24.04
@@ -416,6 +429,7 @@ jobs:
   # In `gate`'s `needs`, so the verdict reaches the required `ci / gate`
   # context. A check that reports and cannot block is not a check.
   reusable-pin-drift:
+    if: ${{ github.event.pull_request.draft != true }}
     name: reusable workflow pins agree
     runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 5
@@ -479,7 +493,7 @@ jobs:
   windows-check:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
