@@ -1,0 +1,12 @@
+name: mutants-nightly
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch: {}   # manual run
+jobs:
+  mutants:
+    runs-on: [self-hosted, tier2]
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: nice -n 15 cargo mutants -j 1
