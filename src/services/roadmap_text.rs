@@ -768,3 +768,23 @@ pub fn titles_changed(base: &str, head: &str) -> Vec<TitleChange> {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod hash_title_roundtrip_tests {
+    use super::*;
+
+    /// paiml-mcp-agent-toolkit#1700: a title containing ` #N` must survive a render/parse round trip.
+    #[test]
+    fn render_item_block_quotes_hash_title() {
+        let title = "PR Title Check must accept type train and a #N subject";
+        let item = RoadmapItem::from_github_issue(1685, title.to_string());
+        let block = render_item_block(&item, 0);
+        let back: Vec<RoadmapItem> = serde_yaml_ng::from_str(&block).expect("parses");
+        assert_eq!(back[0].title, title, "block was:\n{block}");
+        assert_eq!(
+            titles_by_id(&block).values().next().map(String::as_str),
+            Some(title),
+            "block was:\n{block}"
+        );
+    }
+}

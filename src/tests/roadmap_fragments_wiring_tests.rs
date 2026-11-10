@@ -711,3 +711,32 @@ fn roadmap_fragments_an_id_spent_by_a_fragment_on_another_ref_is_spent() {
         .expect("mint");
     assert_eq!(minted, "PMAT-051", "PMAT-050 is spent on `other`");
 }
+
+// paiml-mcp-agent-toolkit#1700: a title with ` #N` must survive save -> load in both layouts.
+#[test]
+fn roadmap_save_keeps_a_hash_title_whole_in_both_layouts() {
+    let title = "PR Title Check must accept type train and a #N subject";
+    for opted_in in [false, true] {
+        let (_dir, path) = fixture(opted_in);
+        let svc = RoadmapService::new(&path);
+        let id = svc
+            .add_item_with_next_id(|id| {
+                let mut item = an_item(id);
+                item.title = title.to_string();
+                item
+            })
+            .expect("add");
+        let mut rm = svc.load().expect("load");
+        let item = rm.roadmap.iter_mut().find(|i| i.id == id).expect("row");
+        assert_eq!(item.title, title, "opted_in={opted_in}: lost on add");
+        item.title = format!("{title}!");
+        svc.save(&rm).expect("save");
+        let back = svc.load().expect("reload");
+        let got = &back.roadmap.iter().find(|i| i.id == id).expect("row").title;
+        assert_eq!(
+            got,
+            &format!("{title}!"),
+            "opted_in={opted_in}: lost on save"
+        );
+    }
+}
