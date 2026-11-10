@@ -207,6 +207,41 @@ fn should_skip_asset(
     !has_file_changed(source_path, hash_path)
 }
 
+/// Verify every file listed in a `sha256sum`-format manifest against `dir`.
+///
+/// `Err` names each file that is missing or whose digest differs; an empty
+/// manifest is an error because it would certify nothing. Under
+/// `--no-default-features` there is no `sha2`, so verification is skipped.
+#[cfg(feature = "standard-deps")]
+fn verify_vendor_sums(dir: &std::path::Path, sums: &str) -> Result<(), String> {
+    let mut bad = Vec::new();
+    let mut seen = 0usize;
+    for line in sums.lines().filter(|l| !l.trim().is_empty()) {
+        let Some((want, name)) = line.split_once("  ") else {
+            return Err(format!("malformed SHA256SUMS line: {line:?}"));
+        };
+        seen += 1;
+        match calculate_file_hash(&dir.join(name.trim())) {
+            Some(got) if got == want.trim() => {}
+            Some(_) => bad.push(format!("{name}: digest mismatch")),
+            None => bad.push(format!("{name}: missing or unreadable")),
+        }
+    }
+    if seen == 0 {
+        return Err("SHA256SUMS lists no files".to_string());
+    }
+    if bad.is_empty() {
+        Ok(())
+    } else {
+        Err(bad.join("; "))
+    }
+}
+
+#[cfg(not(feature = "standard-deps"))]
+fn verify_vendor_sums(_dir: &std::path::Path, _sums: &str) -> Result<(), String> {
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     //! #976. These run in the *library* test target (`cargo test --lib`); the
@@ -544,5 +579,80 @@ mod tests {
             !build_rs.contains("rerun-if-changed=.git/"),
             "a literal `.git/…` watch is missing in every worktree checkout"
         );
+    }
+
+    // ---- hermetic vendor assets (#1156) ----------------------------------
+
+    #[cfg(feature = "standard-deps")]
+    fn sums_for(dir: &std::path::Path, names: &[&str]) -> String {
+        names
+            .iter()
+            .map(|n| {
+                format!(
+                    "{}  {n}\n",
+                    calculate_file_hash(&dir.join(n)).expect("hash")
+                )
+            })
+            .collect()
+    }
+
+    #[cfg(feature = "standard-deps")]
+    #[test]
+    fn vendor_sums_accept_matching_files_and_name_the_tampered_one() {
+        let dir = tmpdir();
+        std::fs::write(dir.join("a.js"), b"alpha").unwrap();
+        std::fs::write(dir.join("b.js"), b"beta").unwrap();
+        let sums = sums_for(&dir, &["a.js", "b.js"]);
+        assert_eq!(verify_vendor_sums(&dir, &sums), Ok(()));
+        std::fs::write(dir.join("b.js"), b"beta!").unwrap();
+        let err = verify_vendor_sums(&dir, &sums).unwrap_err();
+        assert!(err.contains("b.js") && !err.contains("a.js"), "{err}");
+    }
+
+    #[cfg(feature = "standard-deps")]
+    #[test]
+    fn vendor_sums_refuse_a_missing_file_and_an_empty_manifest() {
+        let dir = tmpdir();
+        std::fs::write(dir.join("a.js"), b"alpha").unwrap();
+        let sums = sums_for(&dir, &["a.js"]);
+        std::fs::remove_file(dir.join("a.js")).unwrap();
+        let err = verify_vendor_sums(&dir, &sums).unwrap_err();
+        assert!(err.contains("a.js"), "{err}");
+        // An empty manifest certifies nothing; it must not read as success.
+        assert!(verify_vendor_sums(&dir, "").is_err());
+    }
+
+    /// The committed `assets/vendor/` must verify against its committed
+    /// `SHA256SUMS`, and the sums must cover every file `build.rs` consumes.
+    #[cfg(feature = "standard-deps")]
+    #[test]
+    fn the_committed_vendor_assets_match_the_committed_sums() {
+        let vendor = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/vendor");
+        let sums =
+            std::fs::read_to_string(vendor.join("SHA256SUMS")).expect("SHA256SUMS committed");
+        assert_eq!(verify_vendor_sums(&vendor, &sums), Ok(()));
+        for f in [
+            "gridjs.min.js",
+            "gridjs-mermaid.min.css",
+            "mermaid.min.js",
+            "d3.min.js",
+        ] {
+            assert!(
+                sums.lines().any(|l| l.ends_with(&format!("  {f}"))),
+                "{f} not covered"
+            );
+        }
+    }
+
+    /// `build.rs` must not reach the network or float on `@latest`.
+    #[test]
+    fn build_rs_is_hermetic() {
+        let build_rs = include_str!("build.rs");
+        for banned in ["unpkg.com", "@latest", "ureq::"] {
+            assert!(
+                !build_rs.contains(banned),
+                "build.rs still contains {banned:?}"
+            );
+        }
     }
 }

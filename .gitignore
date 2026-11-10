@@ -325,3 +325,13 @@ satd.json
 
 # quorum-review per-run lane scratch: one set per round, never a repository artifact
 docs/audits/quorum-*.json.lanes/
+
+# Hermetic vendored assets are committed (#1156); sidecars stay ignored.
+!assets/vendor/
+!assets/vendor/SHA256SUMS
+!assets/vendor/gridjs.min.js
+!assets/vendor/gridjs-mermaid.min.css
+!assets/vendor/mermaid.min.js
+!assets/vendor/d3.min.js
+assets/vendor/*.gz
+assets/vendor/*.hash

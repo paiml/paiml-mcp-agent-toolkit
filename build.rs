@@ -165,42 +165,37 @@ fn verify_dependency_versions() {
     }
 }
 
+/// The vendored files `build.rs` compresses and embeds. They are committed
+/// under `assets/vendor/` and pinned by `assets/vendor/SHA256SUMS`: no
+/// network, no floating version tag (#1156).
+const VENDOR_ASSETS: [&str; 4] = [
+    "gridjs.min.js",
+    "gridjs-mermaid.min.css",
+    "mermaid.min.js",
+    "d3.min.js",
+];
+
 fn download_and_compress_assets() {
-    setup_asset_directories();
-    let assets = get_asset_definitions();
-    process_assets(&assets);
+    let _ = fs::create_dir_all(Path::new("assets/demo"));
+    verify_vendor_assets();
+    process_assets(&VENDOR_ASSETS);
     set_asset_hash_env();
 }
 
-fn setup_asset_directories() {
+/// Fail the build when a vendored asset differs from its committed digest.
+fn verify_vendor_assets() {
     let vendor_dir = Path::new("assets/vendor");
-    let demo_dir = Path::new("assets/demo");
-    let _ = fs::create_dir_all(vendor_dir);
-    let _ = fs::create_dir_all(demo_dir);
+    let sums = fs::read_to_string(vendor_dir.join("SHA256SUMS"))
+        .expect("assets/vendor/SHA256SUMS must be committed");
+    if let Err(e) = verify_vendor_sums(vendor_dir, &sums) {
+        panic!("vendored assets do not match assets/vendor/SHA256SUMS: {e}");
+    }
 }
 
-const fn get_asset_definitions() -> [(&'static str, &'static str); 4] {
-    [
-        (
-            "https://unpkg.com/gridjs@6.0.6/dist/gridjs.umd.js",
-            "gridjs.min.js",
-        ),
-        (
-            "https://unpkg.com/gridjs@6.0.6/dist/theme/mermaid.min.css",
-            "gridjs-mermaid.min.css",
-        ),
-        (
-            "https://unpkg.com/mermaid@latest/dist/mermaid.min.js",
-            "mermaid.min.js",
-        ),
-        ("https://unpkg.com/d3@latest/dist/d3.min.js", "d3.min.js"),
-    ]
-}
-
-fn process_assets(assets: &[(&str, &str)]) {
+fn process_assets(assets: &[&str]) {
     let vendor_dir = Path::new("assets/vendor");
 
-    for (url, filename) in assets {
+    for filename in assets {
         let path = vendor_dir.join(filename);
         let gz_path = vendor_dir.join(format!("{filename}.gz"));
         let hash_path = vendor_dir.join(format!("{filename}.hash"));
@@ -210,51 +205,8 @@ fn process_assets(assets: &[(&str, &str)]) {
             continue;
         }
 
-        ensure_asset_downloaded(&path, &gz_path, url, filename);
         compress_asset(&path, &gz_path, &hash_path, filename);
     }
-}
-
-fn ensure_asset_downloaded(path: &Path, gz_path: &Path, url: &str, filename: &str) {
-    if !path.exists() {
-        // Check if we're in a docs.rs build environment
-        if env::var("DOCS_RS").is_ok() {
-            println!("cargo:warning=Skipping asset download in docs.rs environment: {filename}");
-            // Create a placeholder file for docs.rs builds
-            let _ = fs::write(path, b"/* Asset skipped in docs.rs build */");
-            // Also create an empty gzipped placeholder to satisfy include_bytes!
-            let _ = fs::write(gz_path, b"");
-        } else {
-            download_asset(url, path, filename);
-        }
-    }
-}
-
-fn download_asset(url: &str, path: &Path, filename: &str) {
-    println!("cargo:warning=Downloading {filename} from {url}");
-
-    match ureq::get(url).call() {
-        Ok(mut response) => match response.body_mut().read_to_vec() {
-            Ok(content) => {
-                if let Err(e) = fs::write(path, &content) {
-                    println!("cargo:warning=Failed to write {filename}: {e}");
-                }
-            }
-            Err(e) => {
-                println!("cargo:warning=Failed to read {filename}: {e}");
-                let _ = fs::write(path, b"/* Asset download failed during build */");
-            }
-        },
-        Err(e) => {
-            handle_download_failure(&e, path, filename);
-        }
-    }
-}
-
-fn handle_download_failure(e: &ureq::Error, path: &Path, filename: &str) {
-    println!("cargo:warning=Failed to download {filename}: {e}. Using placeholder.");
-    // Create a placeholder file
-    let _ = fs::write(path, b"/* Asset download failed during build */");
 }
 
 fn set_asset_hash_env() {
