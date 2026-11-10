@@ -394,7 +394,13 @@ if [ -n "$STAGED_SRC" ]; then
         echo "  Each line above is <function> (<file>:<line>) - <metric> <measured> > <limit>."
         echo "  Limits are PER FUNCTION: Cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY, Cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY."
         echo "  A file's aggregate in 'Top Files by Complexity' is NOT what this gate tests."
-        exit 1
+        # PMAT-1595: complexity is not auto-fixable, so a local hook only WARNS; CI keeps
+        # enforcing it at the gate. [hooks] strict (PMAT_HOOKS_STRICT=1) makes it a refusal.
+        if [ "${PMAT_HOOKS_STRICT:-0}" = "1" ]; then
+            echo "  [hooks] strict is on: commit refused."
+            exit 1
+        fi
+        echo "  (warning only: CI enforces complexity at the gate)"
     fi
 else
     echo "  Complexity check... ⏭️  (no source files staged)"
@@ -428,10 +434,10 @@ fi
 # 4. Documentation synchronization (only if docs structure exists)
 if [ -d "docs/execution" ] || [ -f "CHANGELOG.md" ]; then
     echo -n "  Documentation check... "
-    if [ -f "docs/execution/roadmap.md" ] && [ -f "CHANGELOG.md" ]; then
+    if { [ -f "docs/roadmaps/roadmap.yaml" ] || [ -f "docs/execution/roadmap.md" ]; } && [ -f "CHANGELOG.md" ]; then
         echo "✅"
     else
-        echo "⚠️  (docs/execution/roadmap.md or CHANGELOG.md missing)"
+        echo "⚠️  (docs/roadmaps/roadmap.yaml, docs/execution/roadmap.md or CHANGELOG.md missing)"
     fi
 fi
 
