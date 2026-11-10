@@ -70,6 +70,57 @@ mod tests {
     }
 
     #[test]
+    fn receipt_records_both_levels() {
+        // MACS-006 (#1254): a completed ticket's receipt carries claimed_level and achieved_level,
+        // and the sealed content hash covers them.
+        let report = make_report(true);
+        let plain = FalsificationReceipt::from_report(
+            &report,
+            "abc123".to_string(),
+            "PMAT-100".to_string(),
+            FalsificationTrigger::WorkComplete,
+            None,
+            None,
+        );
+        assert_eq!(plain.claimed_level, None);
+        assert_eq!(plain.achieved_level, None);
+
+        let leveled = plain
+            .clone()
+            .with_ladder("L4".to_string(), "L2".to_string());
+        assert_eq!(leveled.claimed_level.as_deref(), Some("L4"));
+        assert_eq!(leveled.achieved_level.as_deref(), Some("L2"));
+        assert!(
+            leveled.verify_integrity(),
+            "with_ladder must re-seal the hash"
+        );
+        assert_ne!(
+            leveled.content_hash, plain.content_hash,
+            "the levels are covered by the hash"
+        );
+
+        // Both levels survive a JSON round trip and the receipt still verifies.
+        let json = serde_json::to_string(&leveled).expect("serialize");
+        let back: FalsificationReceipt = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.claimed_level.as_deref(), Some("L4"));
+        assert_eq!(back.achieved_level.as_deref(), Some("L2"));
+        assert!(back.verify_integrity());
+
+        // Falsifier: editing either level after sealing is detected.
+        let mut forged = leveled.clone();
+        forged.achieved_level = Some("L4".to_string());
+        assert!(
+            !forged.verify_integrity(),
+            "a forged achieved_level must fail"
+        );
+        let mut forged = leveled;
+        forged.claimed_level = Some("L1".to_string());
+        assert!(
+            !forged.verify_integrity(),
+            "a forged claimed_level must fail"
+        );
+    }
+    #[test]
     fn receipt_from_report_with_failures() {
         let report = make_report(false);
         let receipt = FalsificationReceipt::from_report(
