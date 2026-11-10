@@ -139,8 +139,11 @@ jobs:
   # old code), and first proves the validator can fail: a fixture with a
   # duplicated id must exit 1, or the gate is measuring nothing. Exit codes are
   # documented in `pmat work validate --help`: 0 valid, 1 invalid or unreadable.
-  roadmap-validate:
-    name: roadmap validates
+  # infra#3828 build audit: pmat is compiled ONCE per push. The three jobs below
+  # used to run `cargo build --bin pmat` each; they now download this binary.
+  # A failed build fails all three (a skipped job is not accepted by `gate`).
+  build-pmat:
+    name: build pmat (once per push)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -149,6 +152,26 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: build pmat from this tree
         run: cargo build --bin pmat --locked
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pmat-bin
+          path: target/debug/pmat
+          if-no-files-found: error
+          retention-days: 1
+
+  roadmap-validate:
+    name: roadmap validates
+    needs: build-pmat
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: fetch the pmat built once for this push (build-pmat)
+        uses: actions/download-artifact@v4
+        with:
+          name: pmat-bin
+          path: target/debug
+      - run: chmod +x target/debug/pmat
       - name: control — a duplicated id must be refused (exit 1)
         shell: bash
         run: |
@@ -184,14 +207,17 @@ jobs:
   # and must be reached before the verdict on this tree is believed.
   tdg-ratchet:
     name: CB-200 ratchet measured
+    needs: build-pmat
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.98.1
-      - uses: Swatinem/rust-cache@v2
-      - name: build pmat from this tree
-        run: cargo build --bin pmat --locked
+      - name: fetch the pmat built once for this push (build-pmat)
+        uses: actions/download-artifact@v4
+        with:
+          name: pmat-bin
+          path: target/debug
+      - run: chmod +x target/debug/pmat
       - name: control — every CB-200 verdict is reachable, and a planted below-A definition is refused
         run: bash scripts/cb200-ratchet-gate.sh ./target/debug/pmat --control
       - name: CB-200 is measured and equals the recorded baseline
@@ -219,6 +245,7 @@ jobs:
   # the rule reads `merge-base` against the base branch and the latest `v*` tag.
   traceability:
     name: traceability
+    needs: build-pmat
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -228,8 +255,12 @@ jobs:
           fetch-tags: true
       - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
-      - name: build pmat from this tree
-        run: cargo build --bin pmat --locked
+      - name: fetch the pmat built once for this push (build-pmat)
+        uses: actions/download-artifact@v4
+        with:
+          name: pmat-bin
+          path: target/debug
+      - run: chmod +x target/debug/pmat
       - name: control — a commit with no Pmat-Ticket trailer must be refused (exit 1)
         run: bash scripts/traceability-control.sh ./target/debug/pmat
       - name: control — an open item naming a closed issue must be refused (CB-2115, exit 1)
