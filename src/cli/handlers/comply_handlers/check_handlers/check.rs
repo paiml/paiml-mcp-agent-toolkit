@@ -585,13 +585,15 @@ const GROUP_IDS_RATCHET: &[RuleDecl] = &[("cb-2102", "Ratchet Baselines")];
 const GROUP_IDS_COHERENCE: &[RuleDecl] = &[("cb-2101", "Threshold Coherence")];
 const GROUP_IDS_TRACEABILITY: &[RuleDecl] = &[("cb-2113", "Commit Traceability")];
 const GROUP_IDS_ROADMAP_COHERENCE: &[RuleDecl] = &[("cb-2115", "Roadmap Coherence")];
+const GROUP_IDS_RUNNER_API_SMELLS: &[RuleDecl] =
+    &[("rs-13", "RS-13"), ("rs-14", "RS-14"), ("rs-15", "RS-15")];
 const GROUP_IDS_TICKET_RELEASE: &[RuleDecl] = &[
     ("cb-2112", "Ticket Linkage"),
     ("cb-2114", "Release Binding"),
 ];
 const GROUP_IDS_SPEC_EPICS: &[RuleDecl] = &[("cb-2110", "Spec Epics")];
 const GROUP_IDS_SPEC_REVIEWS: &[RuleDecl] = &[("cb-2111", "Spec Reviews")];
-// 174 distinct ids across 21 groups; declared in more than one group: none
+// 177 distinct ids across 22 groups; declared in more than one group: none
 
 /// A named compliance-check group, the rule ids it can emit, and the thunk that
 /// produces its checks. The ids are known before the group runs (PMAT-1296), so
@@ -773,6 +775,11 @@ fn compliance_check_groups<'a>(
                     overrides.github_snapshot.as_deref(),
                 )
             }),
+        ),
+        (
+            "runner-api-smells",
+            GROUP_IDS_RUNNER_API_SMELLS,
+            Box::new(move || build_runner_api_smells_live(project_path, comply_config)),
         ),
         (
             "ticket-release",
@@ -1950,6 +1957,7 @@ include!("check_builders_traceability.rs");
 include!("check_roadmap_inputs.rs");
 include!("check_roadmap_coherence.rs");
 include!("check_builders_roadmap_coherence.rs");
+include!("check_builders_runner_api_smells.rs");
 include!("check_ticket_linkage.rs");
 include!("check_release_binding.rs");
 include!("check_builders_ticket_release.rs");
@@ -1967,6 +1975,7 @@ include!("check_empty_project_guard_tests.rs");
 include!("check_readonly_and_exemption_tests.rs");
 include!("check_traceability_tests.rs");
 include!("check_roadmap_coherence_tests.rs");
+include!("check_runner_api_smells_tests.rs");
 include!("check_ticket_release_tests.rs");
 include!("check_spec_inputs.rs");
 include!("check_spec_epics.rs");

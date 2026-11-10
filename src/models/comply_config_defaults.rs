@@ -385,6 +385,18 @@ fn default_checks() -> HashMap<String, CheckConfig> {
             options: HashMap::new(),
         },
     );
+    // RS-13..RS-15 (pmat#1673): API-measured runner smells. Opt-in: they read the GitHub Actions API, so a default `pmat comply check` stays offline.
+    for id in ["rs-13", "rs-14", "rs-15"] {
+        checks.insert(
+            id.to_string(),
+            CheckConfig {
+                enabled: false,
+                severity: CheckSeverity::Error,
+                threshold: None,
+                options: HashMap::new(),
+            },
+        );
+    }
     // ONT-001 R-21 (c), #1422: arming only ratchets up.
     checks.insert(
         "cb-2118".to_string(),
