@@ -1,12 +1,12 @@
 - id: GH-1673
   github_issue: 1673
   item_type: task
-  title: 'pmat comply detects gate smells (GS-01..14) and resource smells (RS-01..08)'
+  title: 'P0: pmat comply detects gate smells (GS-01..14) and resource smells (RS-01..08)'
   status: planned
   priority: high
   assigned_to: null
   created: 2026-11-10T14:55:21.000000000+00:00
-  updated: 2026-11-10T14:55:21.000000000+00:00
+  updated: 2026-11-10T14:57:41.000000000+00:00
   spec: null
   acceptance_criteria: []
   phases: []
