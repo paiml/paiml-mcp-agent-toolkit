@@ -1,0 +1,26 @@
+# #1318: ci.yml's `cancel-in-progress: true` does not cancel a predecessor that is
+# still `queued`; the new CI run then sits `pending` with 0 jobs behind it. A job
+# inside ci.yml cannot fix that (the run holds no jobs while it waits on its
+# concurrency group), so this is a separate workflow with no concurrency group.
+# Housekeeping, not a check: not in any `needs`, nothing requires it.
+name: cancel-queued-predecessors
+on:
+  pull_request:
+    branches: [main, master]
+permissions:
+  actions: write
+  contents: read
+jobs:
+  cancel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Force-cancel queued CI runs for older pushes to this PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/cancel-queued-predecessors.sh \
+            "${{ github.repository }}" ci.yml \
+            "${{ github.event.pull_request.head.ref }}" \
+            "${{ github.event.pull_request.head.sha }}"
