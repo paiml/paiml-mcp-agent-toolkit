@@ -76,6 +76,21 @@ fn gs_kv(line: &str) -> Option<(&str, &str)> {
     Some((k.trim(), v.trim()))
 }
 
+/// The key of a top-level `key: ...` line.
+fn gs_top_key(line: &str) -> Option<&str> {
+    let (k, _) = line.trim_start().split_once(':')?;
+    Some(gs_unquote(k))
+}
+
+/// The text of a trigger-block line that can name an event: the inline value of the
+/// top-level `on:` line, or the whole line below it.
+fn gs_trigger_text(line: &str) -> &str {
+    match line.split_once(':') {
+        Some((_, v)) if gs_indent(line) == 0 => v,
+        _ => line,
+    }
+}
+
 /// `pull_request` or `pull_request_target` as a whole word of a trigger line.
 fn gs_names_pull_request(text: &str) -> bool {
     text.split(|c: char| !(c.is_alphanumeric() || c == '_'))
@@ -123,27 +138,12 @@ impl GsWorkflow {
     /// Does the workflow run on `pull_request`? Only the trigger block counts.
     fn is_pr_workflow(&self) -> bool {
         let mut in_on = false;
-        for (_, l) in &self.lines {
+        self.lines.iter().any(|(_, l)| {
             if gs_indent(l) == 0 {
-                let t = l.trim_start();
-                let key = t
-                    .split(':')
-                    .next()
-                    .unwrap_or("")
-                    .trim_matches(|c| c == '"' || c == '\'');
-                in_on = matches!(key, "on" | "true") && t.contains(':');
+                in_on = gs_top_key(l).is_some_and(|k| matches!(k, "on" | "true"));
             }
-            if in_on
-                && gs_names_pull_request(
-                    l.split_once(':')
-                        .filter(|_| gs_indent(l) == 0)
-                        .map_or(l.as_str(), |(_, v)| v),
-                )
-            {
-                return true;
-            }
-        }
-        false
+            in_on && gs_names_pull_request(gs_trigger_text(l))
+        })
     }
 
     fn jobs(&self) -> Vec<GsJob<'_>> {
