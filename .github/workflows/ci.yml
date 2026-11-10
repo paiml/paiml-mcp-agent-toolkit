@@ -276,10 +276,16 @@ jobs:
       - name: the test suite does not write to the repository (pre-release lane)
         if: github.event_name == 'push'
         run: bash scripts/tests-dont-write-control.sh
-      - name: the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)
+      - name: the closed loop holds (CB-2113, offline: git and the roadmap file)
+        run: ./target/debug/pmat comply check --checks CB-2113
+      # CB-2115 judges LIVE repo-wide GitHub state, not this PR's diff, so one closed issue
+      # anywhere reddened every PR (5 times in 24 h). On a pull request it no longer runs;
+      # on push it still gates master, and roadmap-orphan-sweep.yml runs it on a schedule.
+      - name: the roadmap and GitHub agree (CB-2115, push only)
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./target/debug/pmat comply check --checks CB-2113,CB-2115
+        run: ./target/debug/pmat comply check --checks CB-2115
       # CB-2115 joined this step on PMAT-723, in the order goal-mode.md §5.4 sets: the
       # sync reported (PMAT-720), the thirteen items naming #612 were resolved under
       # their own ticket (PMAT-721), the orphans were triaged and fixed by the sync's
