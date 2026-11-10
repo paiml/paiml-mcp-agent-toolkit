@@ -2,7 +2,7 @@
   github_issue: 1520
   item_type: task
   title: 'pmat: refuse review seats without a passing gate on the exact head and mutation receipts for changed checks'
-  status: cancelled
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
@@ -14,4 +14,4 @@
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.44.0

@@ -1,0 +1,21 @@
+- id: PMAT-1331
+  github_issue: 1331
+  item_type: bug
+  title: handle_quality_gate calls process::exit(1), which silently kills the test binary — 32 handler files do it
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-09-11T18:40:00Z
+  updated: 2026-11-09T08:40:58.197676792+00:00
+  spec: null
+  acceptance_criteria:
+  - handle_quality_gate returns an error instead of calling process::exit, and main maps it to the same exit code — proven by a CLI test asserting the process exit status is unchanged
+  - 'test_quality_gate_complexity_check runs without #[ignore] and asserts the error instead of dying on it'
+  - a count of the remaining process::exit call sites under src/cli/handlers is recorded so the next PR can lower it
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: 'Found un-quarantining the dispatcher tests (PMAT-1321): the test reaches the real process::exit(1) and every test after it simply never runs, with no failure reported. A handler that exits is untestable by construction, takes its caller with it, and skips every Drop, flush and ledger write between it and main. PMAT-1321 marks the test #[ignore] pointing here — a disclosed limit with an owner, not a fix.'
+  release: backlog

@@ -1,0 +1,19 @@
+- id: PMAT-709
+  github_issue: 1285
+  item_type: task
+  title: 'pmat hooks install fails in a linked git worktree: joins .git/hooks while .git is a file (os error 20); resolve via git rev-parse --git-path hooks'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-09-07T21:35:13Z
+  updated: 2026-11-09T08:40:58.197676792+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Found 2026-09-07 by two BSE-12 workers in .claude/worktrees/bse-12: pmat hooks install --strict --force exits 1 ''Not a directory (os error 20)''. Every paiml-implement worker runs in a linked worktree. Fix: resolve the hooks dir with git rev-parse --git-path hooks (honours core.hooksPath and worktrees) instead of joining .git/hooks.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: backlog

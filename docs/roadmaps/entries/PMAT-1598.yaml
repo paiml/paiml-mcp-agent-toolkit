@@ -6,7 +6,7 @@
   priority: high
   assigned_to: null
   created: 2026-11-04T07:00:00Z
-  updated: 2026-11-04T07:00:00Z
+  updated: 2026-11-09T12:55:08.075066360+00:00
   spec: null
   acceptance_criteria:
   - docs/roadmaps/entries/ exists in the tree (.gitkeep) so the fragment layout is opt-in ready; roadmap.yaml stays tracked
@@ -17,3 +17,4 @@
   labels:
   - kind:code
   notes: null
+  release: 3.44.0

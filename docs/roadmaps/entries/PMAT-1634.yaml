@@ -1,0 +1,19 @@
+- id: PMAT-1634
+  github_issue: 1634
+  item_type: task
+  title: 'master CB-2115 red: roadmap not in bijection with GitHub (9 closed rows, 5 untracked issues) fails traceability on every PR'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-11-09T08:41:35Z
+  updated: 2026-11-09T14:47:19Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:lifecycle
+  notes: null
+  release: 3.44.0
+  epic: 1457
