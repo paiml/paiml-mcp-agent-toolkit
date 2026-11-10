@@ -60,14 +60,14 @@ mod tests {
             .arg(dir)
             .args(args)
             .status()
-            .unwrap();
+            .expect("git runs");
         assert!(st.success(), "git {args:?}");
     }
 
     /// The ticket's falsifier: a fresh worktree on work/PMAT-123 with no setup.
     #[test]
     fn fresh_checkout_on_a_ticket_branch_reports_it_with_no_setup() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         git(dir.path(), &["init", "-q", "-b", "main"]);
         assert_eq!(active_ticket(dir.path()), None, "main is no ticket");
         git(dir.path(), &["checkout", "-q", "-b", "work/PMAT-123"]);
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn a_non_repo_dir_has_no_active_ticket() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
         assert_eq!(active_ticket(dir.path()), None);
     }
 }
