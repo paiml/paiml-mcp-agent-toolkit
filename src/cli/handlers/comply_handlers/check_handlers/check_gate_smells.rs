@@ -349,7 +349,7 @@ fn gs_verdict(id: &str, title: &str, hits: &[String]) -> ComplianceCheck {
     }
 }
 
-/// GS-01, GS-02, GS-07 and GS-13 for one repository, in id order.
+/// GS-01, GS-02, GS-07 and GS-13, then the wave-2 rules, for one repository, in id order.
 pub(crate) fn check_gate_smells(project_path: &Path) -> Vec<ComplianceCheck> {
     let Some(workflows) = gs_load_workflows(project_path) else {
         return [
@@ -359,18 +359,16 @@ pub(crate) fn check_gate_smells(project_path: &Path) -> Vec<ComplianceCheck> {
             ("GS-13", GS_13_TITLE),
         ]
         .iter()
-        .map(|(id, title)| ComplianceCheck {
-            name: format!("{id}: {title}"),
-            status: CheckStatus::Skip,
-            message: "decline: no .github/workflows/*.yml".into(),
-            severity: Severity::Info,
-        })
+        .chain(GS_WAVE2)
+        .map(|(id, title)| gs_wave2_skip(id, title, "decline: no .github/workflows/*.yml".into()))
         .collect();
     };
-    vec![
+    let mut checks = vec![
         gs_verdict("GS-01", GS_01_TITLE, &gs_scan_network_fetch(&workflows)),
         gs_verdict("GS-02", GS_02_TITLE, &gs_scan_floating(&workflows)),
         gs_verdict("GS-07", GS_07_TITLE, &gs_scan_timeout_supersede(&workflows)),
         gs_verdict("GS-13", GS_13_TITLE, &gs_scan_hosted_runner(&workflows)),
-    ]
+    ];
+    checks.extend(gs_wave2_checks(project_path));
+    checks
 }

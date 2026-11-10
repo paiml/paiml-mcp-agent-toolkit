@@ -292,10 +292,13 @@ jobs:
     }
 
     #[test]
-    fn group_skips_all_four_rules_when_there_are_no_workflows() {
+    fn group_skips_all_nine_rules_when_there_are_no_workflows() {
         let checks = check_gate_smells(repo_with(None).path());
         let ids: Vec<&str> = checks.iter().map(|c| check_id(&c.name)).collect();
-        assert_eq!(ids, ["GS-01", "GS-02", "GS-07", "GS-13"]);
+        assert_eq!(
+            ids,
+            ["GS-01", "GS-02", "GS-07", "GS-13", "GS-03", "GS-04", "GS-05", "GS-12", "GS-14"]
+        );
         assert!(
             checks.iter().all(|c| c.status == CheckStatus::Skip),
             "{checks:?}"
@@ -323,13 +326,16 @@ jobs:
       - run: curl https://example.com | sh
 ";
         let checks = check_gate_smells(repo_with(Some(smelly)).path());
-        assert_eq!(checks.len(), 4);
+        assert_eq!(checks.len(), 9);
+        for id in ["GS-01", "GS-02", "GS-07", "GS-13"] {
+            let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
+            assert_eq!(c.status, CheckStatus::Warn, "{id}: {c:?}");
+        }
         assert!(
-            checks.iter().all(|c| c.status == CheckStatus::Warn),
-            "{checks:?}"
-        );
-        assert!(
-            checks.iter().all(|c| c.severity == Severity::Warning),
+            checks
+                .iter()
+                .all(|c| c.status != CheckStatus::Fail
+                        && matches!(c.severity, Severity::Info | Severity::Warning)),
             "{checks:?}"
         );
     }
@@ -341,6 +347,46 @@ jobs:
             .filter(|(_, g, _)| *g == "gate-smells")
             .map(|(id, _, _)| id)
             .collect();
-        assert_eq!(ids, ["GS-01", "GS-02", "GS-07", "GS-13"]);
+        assert_eq!(
+            ids,
+            ["GS-01", "GS-02", "GS-07", "GS-13", "GS-03", "GS-04", "GS-05", "GS-12", "GS-14"]
+        );
+    }
+
+    const WAVE2_SMELLY: &str = "\
+on: pull_request
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: gh api repos/x/y/branches/main
+  rollup:
+    runs-on: [self-hosted, clean-room]
+    needs: [fetch]
+    steps:
+      - run: test \"${{ needs.fetch.result }}\" = success
+";
+
+    #[test]
+    fn wave2_rules_reach_the_group_and_warn_on_a_smelly_repo() {
+        let checks = check_gate_smells(repo_with(Some(WAVE2_SMELLY)).path());
+        let warned = |id: &str| {
+            checks
+                .iter()
+                .find(|c| check_id(&c.name) == id)
+                .is_some_and(|c| c.status == CheckStatus::Warn)
+        };
+        assert!(warned("GS-03"), "{checks:?}");
+        assert!(warned("GS-05"), "{checks:?}");
+    }
+
+    #[test]
+    fn wave2_rules_pass_a_clean_repo_and_never_fail() {
+        let checks = check_gate_smells(repo_with(Some(CLEAN)).path());
+        for id in ["GS-03", "GS-04", "GS-05", "GS-12", "GS-14"] {
+            let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
+            assert_ne!(c.status, CheckStatus::Fail, "{id}: {c:?}");
+        }
     }
 }
