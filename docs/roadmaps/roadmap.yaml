@@ -6449,7 +6449,7 @@ roadmap:
   - kind:code
   notes: 'Operator instruction 2026-09-11: coverage always at 95%. Measured on this tree with cargo llvm-cov nextest --lib: 85.25% of lines (297,741 lines, 43,919 uncovered), 85.56% of regions, in 469s against the ~29 minutes ci/coverage spends. 95% is 29,032 lines away, so a gate set there today is red on arrival for every PR and goal-mode.md §5.4 forbids that. PMAT-1313 armed coverage_min at 80, which turns the Enforce coverage floor step on for the first time — it had been skipped on every run. Use pmat query --coverage-gaps --rank-by impact for the climb.'
   release: backlog
-- id: PMAT-1318
+- id: GH-1318
   github_issue: 1318
   item_type: bug
   title: 'cancel-in-progress leaves a QUEUED predecessor alive, and the new run sits pending with 0 jobs behind it — measured 3 times in one hour on #1316'
