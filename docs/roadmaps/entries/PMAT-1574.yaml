@@ -1,0 +1,20 @@
+- id: PMAT-1574
+  github_issue: 1574
+  item_type: task
+  title: route the mutants job to X64 runners (infra#2672)
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-10-30T14:21:22Z
+  updated: 2026-11-09T19:57:49.376208248+00:00
+  spec: null
+  acceptance_criteria:
+  - ci.yml mutants job gets the mutants label so it runs only on the X64 runners that carry it
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: 3.44.0
+  epic: 1457

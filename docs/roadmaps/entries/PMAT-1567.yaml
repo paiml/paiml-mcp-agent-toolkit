@@ -1,0 +1,22 @@
+- id: PMAT-1567
+  github_issue: 1567
+  item_type: task
+  title: pmat work start/complete rewrite one roadmap row in place instead of re-serialising roadmap.yaml
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-10-30T01:05:53Z
+  updated: 2026-11-09T19:57:49.376208248+00:00
+  spec: null
+  acceptance_criteria:
+  - pmat work start and pmat work complete change one ticket's status by splicing only that row into docs/roadmaps/roadmap.yaml (RoadmapService::upsert_item_in_place); no other row is re-serialised or re-quoted
+  - unit tests in roadmap_service_in_place_tests.rs pin that a state change leaves every other row byte-identical
+  - pmat work add is out of scope (covered by GH-1292)
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  release: 3.44.0
+  epic: 1457

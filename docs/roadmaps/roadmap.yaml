@@ -6105,11 +6105,11 @@ roadmap:
   github_issue: 1293
   item_type: task
   title: 'pmat tdg scores over an incomplete set: 159 files walked, not measured — and the tool will not name them'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T19:40:22.098038771+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-10T09:30:00.000000000+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7667,23 +7667,6 @@ roadmap:
   github_issue: 1474
   item_type: task
   title: 'pmat context: --format llm-optimized prints the same bytes as --format markdown'
-  status: planned
-  priority: medium
-  assigned_to: null
-  created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-24T16:31:29.561530032+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-  release: 3.44.0
-- id: GH-1475
-  github_issue: 1475
-  item_type: task
-  title: diff-scoped complexity refuses a merge commit for functions that arrive unchanged from MERGE_HEAD (compares against HEAD only)
   status: planned
   priority: medium
   assigned_to: null

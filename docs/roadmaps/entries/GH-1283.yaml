@@ -1,0 +1,17 @@
+- id: GH-1283
+  github_issue: 1283
+  item_type: task
+  title: 'fleet unified-gate: the cpu-gates job cancels pmat''s clean room at 30 minutes (run 34150721411, killed mid GATE B1 at 18:43:26 after starting 18:13:13) while the same Mode A+B passes in ~35 min locally in the fleet''s own container — every pmat tag therefore fails ''gate / gate'' on a timeout, not on content. Raise timeout-minutes for the pmat repo case or split Mode A and Mode B into two jobs'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-09T19:57:49.376208248+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

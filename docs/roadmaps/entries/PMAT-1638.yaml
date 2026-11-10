@@ -1,0 +1,19 @@
+- id: PMAT-1638
+  github_issue: 1638
+  item_type: task
+  title: 'master red: cargo deny error[vulnerability] libsqlite3-sys (CVE-2026-119375) fails ''pmat score'' on every PR'
+  release: 3.44.0
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-11-09T11:13:10Z
+  updated: 2026-11-09T14:47:19Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457

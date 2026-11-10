@@ -1,0 +1,19 @@
+- id: PMAT-1475
+  github_issue: 1475
+  item_type: task
+  title: 'diff-scoped complexity refuses a merge commit for functions that arrive unchanged from MERGE_HEAD (compares against HEAD only)'
+  release: 3.44.0
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-11-08T18:20:27Z
+  updated: 2026-11-09T14:47:19Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457

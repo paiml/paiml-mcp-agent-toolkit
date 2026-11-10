@@ -2,7 +2,7 @@
   github_issue: 1414
   item_type: task
   title: 'pmat work add --github-issue does not populate spec: or acceptance_criteria: from the spec row, and drops the issue''s priority'
-  status: cancelled
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
@@ -14,4 +14,4 @@
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.44.0
