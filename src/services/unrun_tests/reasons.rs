@@ -70,10 +70,6 @@ pub const REASONS: &[(&str, &str)] = &[
          compile-checked only'. This ledger measures the delta: 231 tests.",
     ),
     (
-        "dap,tui",
-        "the DAP timeline terminal UI; both flags are compile-checked only.",
-    ),
-    (
         "deep-wasm,mcp-integration",
         "a COMBINATION no leg supplies: `full` reaches `deep-wasm` and the \
          `mcp-integration` leg reaches the other, and no invocation enables both.",

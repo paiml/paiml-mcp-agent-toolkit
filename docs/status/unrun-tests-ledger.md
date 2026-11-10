@@ -14,7 +14,7 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-24411 of 27538 lib tests are executed; 3127 are compiled by no leg.
+24414 of 27467 lib tests are executed; 3053 are compiled by no leg.
 
 ## `<unsatisfiable>` — 2098 test(s)
 
@@ -2891,85 +2891,6 @@ crate::services::dap::variable_inspector::tests::coverage_tests::test_variable_i
 crate::services::dap::variable_inspector::tests::coverage_tests::test_whitespace_only_source
 crate::services::dap::variable_inspector::tests::test_find_scope_basic
 crate::services::dap::variable_inspector::tests::test_inspector_creation
-
-## `dap,tui` — 74 test(s)
-
-the DAP timeline terminal UI; both flags are compile-checked only.
-
-crate::services::dap::timeline_tui::tests::test_event_loop_default
-crate::services::dap::timeline_tui::tests::test_event_loop_new
-crate::services::dap::timeline_tui::tests::test_event_loop_parse_event_key
-crate::services::dap::timeline_tui::tests::test_event_loop_parse_event_mouse_filtered
-crate::services::dap::timeline_tui::tests::test_event_loop_parse_event_resize
-crate::services::dap::timeline_tui::tests::test_event_loop_queue_event
-crate::services::dap::timeline_tui::tests::test_event_loop_queue_multiple_events
-crate::services::dap::timeline_tui::tests::test_event_loop_start_stop
-crate::services::dap::timeline_tui::tests::test_key_code_arrows
-crate::services::dap::timeline_tui::tests::test_key_code_char
-crate::services::dap::timeline_tui::tests::test_key_code_home_end
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_bind_key
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_custom_binding
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_default
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_default_bindings
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_generate_help_text
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_handle_event_key
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_handle_event_resize
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_handle_event_unbound_key
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_is_key_bound
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_list_bindings
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_new
-crate::services::dap::timeline_tui::tests::test_keyboard_handler_unbind_key
-crate::services::dap::timeline_tui::tests::test_playback_state_inequality
-crate::services::dap::timeline_tui::tests::test_playback_state_paused
-crate::services::dap::timeline_tui::tests::test_playback_state_playing
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_add_frame
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_default
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_format_frame_line
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_format_frame_with_marker
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_from_frames
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_get_frame
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_get_selected_frame
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_is_frame_selected
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_new
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_render_all_frames
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_select_next
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_select_next_at_end
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_select_previous
-crate::services::dap::timeline_tui::tests::test_stack_frame_navigator_select_previous_at_start
-crate::services::dap::timeline_tui::tests::test_terminal_event_key
-crate::services::dap::timeline_tui::tests::test_terminal_event_mouse
-crate::services::dap::timeline_tui::tests::test_terminal_event_resize
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_advance_frame_backward
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_advance_frame_clamp_start
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_advance_frame_forward
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_frame_info
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_jump_to_end
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_jump_to_start
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_keyboard_shortcuts
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_new
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_playback_controls_text
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_progress_percentage
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_progress_percentage_empty
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_set_current_frame
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_set_current_frame_bounds
-crate::services::dap::timeline_tui::tests::test_timeline_renderer_toggle_playback
-crate::services::dap::timeline_tui::tests::test_tui_action_description
-crate::services::dap::timeline_tui::tests::test_tui_action_equality
-crate::services::dap::timeline_tui::tests::test_variable_inspector_add_variable
-crate::services::dap::timeline_tui::tests::test_variable_inspector_default
-crate::services::dap::timeline_tui::tests::test_variable_inspector_format_line
-crate::services::dap::timeline_tui::tests::test_variable_inspector_from_variables
-crate::services::dap::timeline_tui::tests::test_variable_inspector_get_variable
-crate::services::dap::timeline_tui::tests::test_variable_inspector_get_variable_out_of_bounds
-crate::services::dap::timeline_tui::tests::test_variable_inspector_new
-crate::services::dap::timeline_tui::tests::test_variable_inspector_page_down
-crate::services::dap::timeline_tui::tests::test_variable_inspector_page_up
-crate::services::dap::timeline_tui::tests::test_variable_inspector_scroll_down
-crate::services::dap::timeline_tui::tests::test_variable_inspector_scroll_up
-crate::services::dap::timeline_tui::tests::test_variable_inspector_scroll_up_at_top
-crate::services::dap::timeline_tui::tests::test_variable_inspector_viewport_height
-crate::services::dap::timeline_tui::tests::test_variable_inspector_visible_lines
-crate::services::dap::timeline_tui::tests::test_variable_inspector_visible_range
 
 ## `deep-wasm,mcp-integration` — 3 test(s)
 
