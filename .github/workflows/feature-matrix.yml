@@ -39,6 +39,8 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+    # infra#3828 RS-09: a draft starts nothing; marking it ready starts the run.
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 concurrency:
@@ -50,6 +52,9 @@ env:
   # Every leg checks the same dependency graph, so the expensive part compiles
   # once per shard and each feature after that recompiles only the lib.
   CARGO_INCREMENTAL: 0
+  # infra#3828 RS-06: no debug info in CI builds (measured fleet-wide: 66G build tree vs 5.5G).
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
 
 jobs:
   # The user-facing bundles: what someone actually types after
@@ -57,7 +62,7 @@ jobs:
   bundles:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: bundle / ${{ matrix.feature }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -98,7 +103,7 @@ jobs:
   individual:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: individual / shard ${{ matrix.shard }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -175,7 +180,7 @@ jobs:
   all-targets:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: clippy --all-targets
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -215,7 +220,7 @@ jobs:
   feature-tests:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: run the tests / ${{ matrix.features }}
     runs-on: ubuntu-24.04
     # 90, not 60: `full` and `mcp-integration` each spend ~5 min in the test
@@ -344,7 +349,7 @@ jobs:
   orphan-ledger:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: no silent orphan features
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -497,7 +502,7 @@ jobs:
   package-size:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: package size
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -557,7 +562,7 @@ jobs:
   dependabot-alerts:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: dependabot alerts
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -659,7 +664,7 @@ jobs:
   binary-size:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: binary size band
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -705,7 +710,7 @@ jobs:
   unrun-tests:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: no test behind a feature nothing runs
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -750,7 +755,7 @@ jobs:
   reachability-ledger:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: every unreachable .rs file is ledgered, and the ledger is current
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -796,7 +801,7 @@ jobs:
   differential-corpus:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: falsification / differential-corpus
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -848,7 +853,7 @@ jobs:
   flag-efficacy:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: falsification / flag-efficacy
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -884,7 +889,7 @@ jobs:
   cli-doc-sync-falsifier:
     # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
     # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
-    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: falsification / cli-doc-sync
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -959,7 +964,7 @@ jobs:
     runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 15
     needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, dependabot-alerts, unrun-tests, reachability-ledger, differential-corpus, flag-efficacy, cli-doc-sync-falsifier]
-    if: always()
+    if: ${{ always() && github.event.pull_request.draft != true }}
     steps:
       - name: Require every leg
         env:
