@@ -1,0 +1,16 @@
+- id: GH-1685
+  github_issue: 1685
+  item_type: task
+  title: PR Title Check must accept type train and a #N subject
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-10T15:56:34.000000000+00:00
+  updated: 2026-11-10T15:56:34.000000000+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
