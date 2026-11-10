@@ -757,6 +757,15 @@ pub async fn handle_work_status(
 
     let roadmap = service.load()?;
 
+    // FLOW-012 P1 (#1591): the branch is the ticket. With no id and no --active, a branch
+    // named work/<ID> names the item whose status is shown, with no declaration file.
+    let id = match id {
+        None if !active => {
+            ticket_from_branch(&project_path).filter(|b| roadmap.find_item(b).is_some())
+        }
+        other => other,
+    };
+
     if let Some(item_id) = id {
         // Show specific item
         let item = roadmap
@@ -1401,5 +1410,61 @@ mod ledger_verify_tests {
         assert!(result.is_err(), "0 receipts must not verify clean");
         let msg = result.unwrap_err().to_string();
         assert!(msg.contains("no receipts"), "got: {msg}");
+    }
+}
+
+/// The ticket id a branch named `work/<ID>` declares (FLOW-012 P1, #1591).
+fn parse_work_branch(branch: &str) -> Option<String> {
+    let id = branch.trim().strip_prefix("work/")?;
+    (!id.is_empty() && !id.contains('/')).then(|| id.to_string())
+}
+
+/// The ticket the current branch of `project_path` names, if any.
+fn ticket_from_branch(project_path: &std::path::Path) -> Option<String> {
+    let out = std::process::Command::new("git")
+        .current_dir(project_path)
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| parse_work_branch(&String::from_utf8_lossy(&out.stdout)))
+        .flatten()
+}
+
+#[cfg(test)]
+mod branch_ticket_tests {
+    use super::*;
+
+    #[test]
+    fn work_branch_names_the_ticket() {
+        assert_eq!(
+            parse_work_branch("work/PMAT-123\n"),
+            Some("PMAT-123".into())
+        );
+        assert_eq!(parse_work_branch("main"), None);
+        assert_eq!(parse_work_branch("work/"), None);
+        assert_eq!(parse_work_branch("work/a/b"), None);
+    }
+
+    #[test]
+    fn a_fresh_worktree_on_a_work_branch_reports_its_ticket() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let d = tmp.path();
+        for args in [
+            vec!["init", "-q", "-b", "master"],
+            vec!["config", "user.email", "t@t"],
+            vec!["config", "user.name", "t"],
+            vec!["commit", "-q", "--allow-empty", "-m", "init"],
+            vec!["switch", "-q", "-c", "work/PMAT-123"],
+        ] {
+            assert!(std::process::Command::new("git")
+                .current_dir(d)
+                .args(&args)
+                .status()
+                .expect("git")
+                .success());
+        }
+        assert_eq!(ticket_from_branch(d), Some("PMAT-123".into()));
     }
 }

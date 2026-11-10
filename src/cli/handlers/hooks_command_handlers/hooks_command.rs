@@ -573,6 +573,20 @@ refuse() {
 tickets=$(git interpret-trailers --parse < "$MSG_FILE" 2>/dev/null | grep -iE '^Pmat-Ticket:' | sed 's/^[^:]*:[[:space:]]*//' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$')
 roadmap=$(git show ":$ROADMAP" 2>/dev/null)
 if [ -z "$roadmap" ] && [ -f "$ROADMAP" ]; then roadmap=$(cat "$ROADMAP"); fi
+# PMAT-1594: a ticket that exists only as a roadmap fragment (docs/roadmaps/entries/*.yaml)
+# is a roadmap row too. Read the INDEX copy of each, so a staged fragment counts.
+for frag in $(git ls-files -s -- docs/roadmaps/entries 2>/dev/null | awk '{print $4}' | grep -E '\.ya?ml$'); do
+    roadmap="$roadmap"$'\n'"$(git show ":$frag" 2>/dev/null)"
+done
+if [ -z "$(printf '%s' "$roadmap" | tr -d '[:space:]')" ]; then roadmap=""; fi
+if [ -z "$tickets" ] && [ -n "$roadmap" ]; then
+    # Exactly one newly staged fragment: it names the ticket this commit is for.
+    new_frags=$(git diff --cached --name-only --diff-filter=A -- docs/roadmaps/entries 2>/dev/null | grep -E '\.ya?ml$')
+    if [ -n "$new_frags" ] && [ "$(printf '%s\n' "$new_frags" | wc -l)" -eq 1 ]; then
+        frag_id=$(basename "$new_frags"); frag_id=${frag_id%.*}
+        if git interpret-trailers --in-place --trailer "Pmat-Ticket: $frag_id" "$MSG_FILE" 2>/dev/null; then tickets=$frag_id; fi
+    fi
+fi
 if [ -z "$roadmap" ]; then
     # No roadmap: CB-2113 does not judge here, and the pattern is this repository's convention.
     [ -n "$tickets" ] && exit 0
