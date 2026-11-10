@@ -1,0 +1,21 @@
+- id: PMAT-1326
+  github_issue: 1326
+  item_type: bug
+  title: 'paiml-implement release-lint: a cancelled roadmap entry is treated as open work and must name a release'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-09-11T17:30:00Z
+  updated: 2026-11-09T19:57:49.376208248+00:00
+  spec: null
+  acceptance_criteria:
+  - 'release-lint.sh R1 skips cancelled as well as completed, and its comment says so: every entry whose status is not completed or cancelled must name exactly one release'
+  - a self-test plants a cancelled entry with no release label and asserts R1 stays green, and plants a planned entry with no release label and asserts R1 goes red
+  - the three long-cancelled bashrs entries named in the issue no longer fail the lint
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: Filed by the operator 2026-09-11. The rule exists so open work names the release it ships in; cancelled work ships in no release, exactly like completed. R2 reinforces it — unscheduled is allowed only while blocked — so a cancelled entry cannot even use that escape. The only ways to satisfy the rule today are to label cancelled work with a release it will never ship in, or to leave the lint red. The rule lives in the paiml-implement skill scripts, not in this repository, so whoever takes it is editing the skill bundle.
+  release: backlog
