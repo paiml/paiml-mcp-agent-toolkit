@@ -19,7 +19,7 @@ on:
 
 concurrency:
   group: quality-gate-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'train/') && !startsWith(github.head_ref, 'batch/') }}
 
 env:
   RUST_MIN_STACK: "8388608"
@@ -27,6 +27,9 @@ env:
 
 jobs:
   score:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
     name: pmat score
     runs-on: ubuntu-24.04
     timeout-minutes: 30
