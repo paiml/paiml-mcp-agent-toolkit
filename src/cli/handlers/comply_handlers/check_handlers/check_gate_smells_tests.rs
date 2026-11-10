@@ -120,6 +120,37 @@ jobs:
         }
     }
 
+    #[test]
+    fn is_pr_workflow_reads_each_trigger_spelling() {
+        let pr = |on: &str| {
+            GsWorkflow::parse(
+                "w.yml",
+                &format!("{on}\njobs:\n  a:\n    steps:\n      - run: ls\n"),
+            )
+            .is_pr_workflow()
+        };
+        for yes in [
+            "on: pull_request",
+            "on: pull_request_target",
+            "on: [push, pull_request]",
+            "\"on\":\n  pull_request:",
+            "true:\n  pull_request:",
+            "on:\n  - pull_request",
+            "on:\n  push:\n  pull_request_target:\n    types: [opened]",
+        ] {
+            assert!(pr(yes), "{yes}");
+        }
+        for no in [
+            "on: push",
+            "on:\n  push:\n    branches: [pull_request-fix]\n    paths:\n      - docs/pull_request/**",
+            "on:\n  push:\n  # was pull_request\n  workflow_dispatch:",
+            "on: push # pull_request",
+            "name: pull_request\non: push",
+        ] {
+            assert!(!pr(no), "{no}");
+        }
+    }
+
     // ---- GS-02 -------------------------------------------------------------
 
     #[test]

@@ -82,13 +82,11 @@ fn gs_top_key(line: &str) -> Option<&str> {
     Some(gs_unquote(k))
 }
 
-/// The text of a trigger-block line that can name an event: the inline value of the
-/// top-level `on:` line, or the whole line below it.
-fn gs_trigger_text(line: &str) -> &str {
-    match line.split_once(':') {
-        Some((_, v)) if gs_indent(line) == 0 => v,
-        _ => line,
-    }
+/// The event named by a line directly under `on:` (`pull_request:` or `- pull_request`).
+fn gs_event_key(line: &str) -> &str {
+    let t = line.trim_start();
+    let t = t.strip_prefix("- ").unwrap_or(t);
+    gs_unquote(t.split(':').next().unwrap_or(""))
 }
 
 /// `pull_request` or `pull_request_target` as a whole word of a trigger line.
@@ -138,11 +136,15 @@ impl GsWorkflow {
     /// Does the workflow run on `pull_request`? Only the trigger block counts.
     fn is_pr_workflow(&self) -> bool {
         let mut in_on = false;
+        let mut event_indent = None;
         self.lines.iter().any(|(_, l)| {
             if gs_indent(l) == 0 {
                 in_on = gs_top_key(l).is_some_and(|k| matches!(k, "on" | "true"));
+                event_indent = None;
+                return in_on && gs_names_pull_request(l.split_once(':').map_or("", |(_, v)| v));
             }
-            in_on && gs_names_pull_request(gs_trigger_text(l))
+            let at = *event_indent.get_or_insert(gs_indent(l));
+            in_on && gs_indent(l) == at && gs_names_pull_request(gs_event_key(l))
         })
     }
 
