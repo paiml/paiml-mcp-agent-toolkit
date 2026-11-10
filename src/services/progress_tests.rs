@@ -4,6 +4,43 @@
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
+    // #1236: the bar must emit, throttled, only on a TTY, never when hidden/quiet.
+    #[test]
+    fn test_emit_writes_overwrite_line_on_tty() {
+        let pb = SimpleProgressBar::new(10);
+        pb.set_message("Analyzing");
+        pb.set_position(3);
+        let mut out = Vec::new();
+        assert!(pb.emit_to(&mut out, true, false, std::time::Instant::now()));
+        assert_eq!(String::from_utf8(out).unwrap(), "\r\x1b[2KAnalyzing [3/10]");
+    }
+
+    #[test]
+    fn test_emit_throttled_then_due_again() {
+        let pb = SimpleProgressBar::new_spinner();
+        pb.set_message("x");
+        let t0 = std::time::Instant::now();
+        let mut out = Vec::new();
+        assert!(pb.emit_to(&mut out, true, false, t0));
+        assert!(!pb.emit_to(&mut out, true, false, t0 + std::time::Duration::from_millis(10)));
+        assert!(pb.emit_to(&mut out, true, false, t0 + std::time::Duration::from_millis(300)));
+    }
+
+    #[test]
+    fn test_emit_silent_when_not_tty_quiet_hidden_or_empty() {
+        let now = std::time::Instant::now();
+        let mut out = Vec::new();
+        let pb = SimpleProgressBar::new_spinner();
+        pb.set_message("x");
+        assert!(!pb.emit_to(&mut out, false, false, now));
+        assert!(!pb.emit_to(&mut out, true, true, now));
+        let hidden = SimpleProgressBar::hidden();
+        hidden.set_message("x");
+        assert!(!hidden.emit_to(&mut out, true, false, now));
+        assert!(!SimpleProgressBar::new_spinner().emit_to(&mut out, true, false, now));
+        assert!(out.is_empty());
+    }
+
     use super::*;
 
     /// Test that progress tracker methods work
