@@ -2,11 +2,11 @@
   github_issue: 1594
   item_type: task
   title: 'commit-msg hook: staged roadmap fragments count as roadmap rows; auto-add Pmat-Ticket trailer (C50 fix 5)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-04T13:21:46.460114588+00:00
-  updated: 2026-11-09T12:55:08.075066360+00:00
+  updated: 2026-11-10T19:02:27.044310133+00:00
   spec: null
   acceptance_criteria: []
   phases: []
