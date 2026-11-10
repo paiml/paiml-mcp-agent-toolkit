@@ -110,7 +110,7 @@ impl Workflow {
         }
         let cond = job.node.get("if").and_then(Value::as_str).unwrap_or("");
         let confined = cond.contains("schedule") || cond.contains("workflow_dispatch");
-        !(confined && !cond.contains("pull_request"))
+        !confined || cond.contains("pull_request")
     }
 }
 
