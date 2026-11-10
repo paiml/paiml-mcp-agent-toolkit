@@ -749,6 +749,10 @@ pub async fn handle_work_status(
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
+    let branch_ticket = id
+        .is_none()
+        .then(|| super::branch_ticket::active_ticket(&project_path))
+        .flatten();
     let service = RoadmapService::new(&roadmap_path);
 
     let roadmap = service.load()?;
@@ -775,6 +779,14 @@ pub async fn handle_work_status(
         println!();
     } else {
         // Show all items
+        if let Some(t) = &branch_ticket {
+            println!(
+                "{} Active ticket (from branch): {}",
+                c::subheader("🎫"),
+                c::path(t)
+            );
+            println!();
+        }
         let items: Vec<_> = if active {
             roadmap
                 .roadmap
