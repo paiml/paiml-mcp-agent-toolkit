@@ -132,7 +132,7 @@ step    | provable ladder | pv-obligations | .github/workflows/quality-gate.yml#
 ci-only | provable ladder | comply-ladder | quality-gate.yml provable-ladder "Ladder gate — pmat comply" | not-gating: CI runs it with continue-on-error, so it gates nothing there either | -
 
 # ── not a required context, named so nobody assumes it ran
-ci-only | mutation-diff (not required) | mutation-diff | .github/workflows/mutation-diff.yml | not-required: runs nightly and on pull requests labelled `mutation` | -
+ci-only | mutation-diff (not required) | mutation-diff | .github/workflows/mutation-diff.yml | not-required: runs on the nightly schedule only | -
 
 # ── EXTENSION POINT ─────────────────────────────────────────────────────────────────────────
 # Sibling gates append their rows BELOW this marker, in their own pull requests:
