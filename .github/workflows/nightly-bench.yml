@@ -41,7 +41,7 @@ jobs:
   # and say why — two consumers of one workflow on two different revisions is
   # how the drift above went unnoticed for five months.
   bench:
-    uses: paiml/.github/.github/workflows/sovereign-ci.yml@main
+    uses: paiml/.github/.github/workflows/sovereign-ci.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0 # main
     with:
       repo: ${{ github.event.repository.name }}
       run_benchmarks: true
