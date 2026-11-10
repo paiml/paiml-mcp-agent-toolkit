@@ -2,7 +2,7 @@
 // PmatScorer - Category F: PMAT Compliance (5 points)
 //
 // Scores based on:
-// - F1: PMAT Configuration Present (2.5 points) - .pmat-gates.toml exists
+// - F1: PMAT Configuration Present (2.5 points) - .pmat-gates.toml (or pmat-quality.toml) exists
 // - F2: No PMAT Violations (2.5 points) - Quality gates pass
 
 use super::{Scorer, ScorerConfig};
@@ -14,6 +14,24 @@ use std::path::Path;
 /// Pmat scorer.
 pub struct PmatScorer;
 
+/// Config filenames recognised by the scorer, in precedence order (#1232).
+const CONFIG_FILENAMES: [&str; 2] = [".pmat-gates.toml", "pmat-quality.toml"];
+
+/// First existing config file; falls back to the primary name so "not found" messages stay stable.
+fn resolve_config_path(repo_path: &Path) -> std::path::PathBuf {
+    CONFIG_FILENAMES
+        .iter()
+        .map(|n| repo_path.join(n))
+        .find(|p| p.exists())
+        .unwrap_or_else(|| repo_path.join(CONFIG_FILENAMES[0]))
+}
+
+fn file_label(path: &Path) -> String {
+    path.file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
 impl PmatScorer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Create a new instance.
@@ -23,7 +41,7 @@ impl PmatScorer {
 
     /// Score PMAT configuration presence (F1: 2.5 points)
     async fn score_configuration(&self, repo_path: &Path) -> Result<SubcategoryScore> {
-        let pmat_gates_path = repo_path.join(".pmat-gates.toml");
+        let pmat_gates_path = resolve_config_path(repo_path);
 
         if !pmat_gates_path.exists() {
             return Ok(SubcategoryScore {
@@ -52,7 +70,7 @@ impl PmatScorer {
                 findings: vec![Finding {
                     severity: Severity::Error,
                     category: "PMAT".to_string(),
-                    message: ".pmat-gates.toml is empty".to_string(),
+                    message: format!("{} is empty", file_label(&pmat_gates_path)),
                     location: Some(pmat_gates_path.display().to_string()),
                     impact_points: -2.5,
                 }],
@@ -69,7 +87,7 @@ impl PmatScorer {
                 findings: vec![Finding {
                     severity: Severity::Success,
                     category: "PMAT".to_string(),
-                    message: ".pmat-gates.toml present and valid".to_string(),
+                    message: format!("{} present and valid", file_label(&pmat_gates_path)),
                     location: Some(pmat_gates_path.display().to_string()),
                     impact_points: 0.0,
                 }],
@@ -82,7 +100,7 @@ impl PmatScorer {
                 findings: vec![Finding {
                     severity: Severity::Error,
                     category: "PMAT".to_string(),
-                    message: format!(".pmat-gates.toml invalid TOML: {}", e),
+                    message: format!("{} invalid TOML: {}", file_label(&pmat_gates_path), e),
                     location: Some(pmat_gates_path.display().to_string()),
                     impact_points: -2.0,
                 }],
@@ -92,7 +110,7 @@ impl PmatScorer {
 
     /// Score PMAT violations (F2: 2.5 points)
     async fn score_violations(&self, repo_path: &Path) -> Result<SubcategoryScore> {
-        let pmat_gates_path = repo_path.join(".pmat-gates.toml");
+        let pmat_gates_path = resolve_config_path(repo_path);
 
         if !pmat_gates_path.exists() {
             // If no config, assume no violations (can't violate what doesn't exist)
@@ -161,7 +179,10 @@ impl PmatScorer {
                 findings.push(Finding {
                     severity: Severity::Warning,
                     category: "PMAT".to_string(),
-                    message: "No quality gates defined in .pmat-gates.toml".to_string(),
+                    message: format!(
+                        "No quality gates defined in {}",
+                        file_label(&pmat_gates_path)
+                    ),
                     location: Some(pmat_gates_path.display().to_string()),
                     impact_points: -1.0,
                 });
