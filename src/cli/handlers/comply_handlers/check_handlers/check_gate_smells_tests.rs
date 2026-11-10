@@ -84,8 +84,40 @@ jobs:
 
     #[test]
     fn gs01_a_fetch_in_the_trigger_block_is_not_a_job_step() {
-        let text = "on: pull_request\nenv:\n  X: curl \njobs:\n  a:\n    steps:\n      - run: ls\n";
+        let text = "on: pull_request\nenv:\n  X: curl https://x\njobs:\n  a:\n    steps:\n      - run: ls\n";
         assert!(gs_scan_network_fetch(&wf(text)).is_empty());
+    }
+
+    #[test]
+    fn gs07_a_step_list_item_at_job_indent_is_not_a_job_key() {
+        let text = "on: pull_request\nconcurrency:\n  cancel-in-progress: true\njobs:\n  a:\n    runs-on: self-hosted\n    steps:\n    - uses: actions/checkout@v4\n";
+        let hits = gs_scan_timeout_supersede(&wf(text));
+        assert!(
+            hits.iter()
+                .any(|h| h.contains("job a has no timeout-minutes")),
+            "{hits:?}"
+        );
+    }
+
+    #[test]
+    fn gs07_a_pull_request_word_outside_the_trigger_does_not_make_it_a_pr_workflow() {
+        let text = "on: push\nconcurrency:\n  group: pull_request-${{ github.ref }}\njobs:\n  a:\n    runs-on: self-hosted\n    steps:\n      - run: ls\n";
+        assert!(gs_scan_timeout_supersede(&wf(text)).is_empty());
+        let on_list = "on:\n  push:\n  pull_request:\njobs:\n  a:\n    steps:\n      - run: ls\n";
+        assert!(!gs_scan_timeout_supersede(&wf(on_list)).is_empty());
+    }
+
+    #[test]
+    fn gs07_a_quoted_false_does_not_cancel() {
+        for v in ["'false'", "\"false\"", "false"] {
+            let text = format!("on: pull_request\nconcurrency:\n  cancel-in-progress: {v}\njobs:\n  a:\n    timeout-minutes: 1\n    steps:\n      - run: ls\n");
+            let hits = gs_scan_timeout_supersede(&wf(&text));
+            assert!(
+                hits.iter()
+                    .any(|h| h.contains("no concurrency.cancel-in-progress")),
+                "{v}: {hits:?}"
+            );
+        }
     }
 
     // ---- GS-02 -------------------------------------------------------------

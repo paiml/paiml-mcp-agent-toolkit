@@ -76,6 +76,12 @@ fn gs_kv(line: &str) -> Option<(&str, &str)> {
     Some((k.trim(), v.trim()))
 }
 
+/// `pull_request` or `pull_request_target` as a whole word of a trigger line.
+fn gs_names_pull_request(text: &str) -> bool {
+    text.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .any(|w| w == "pull_request" || w == "pull_request_target")
+}
+
 fn gs_is_jobs_header(line: &str) -> bool {
     gs_indent(line) == 0 && line.trim_start().starts_with("jobs:")
 }
@@ -116,10 +122,28 @@ impl GsWorkflow {
 
     /// Does the workflow run on `pull_request`? Only the trigger block counts.
     fn is_pr_workflow(&self) -> bool {
-        self.lines
-            .iter()
-            .take_while(|(_, l)| !gs_is_jobs_header(l))
-            .any(|(_, l)| l.contains("pull_request"))
+        let mut in_on = false;
+        for (_, l) in &self.lines {
+            if gs_indent(l) == 0 {
+                let t = l.trim_start();
+                let key = t
+                    .split(':')
+                    .next()
+                    .unwrap_or("")
+                    .trim_matches(|c| c == '"' || c == '\'');
+                in_on = matches!(key, "on" | "true") && t.contains(':');
+            }
+            if in_on
+                && gs_names_pull_request(
+                    l.split_once(':')
+                        .filter(|_| gs_indent(l) == 0)
+                        .map_or(l.as_str(), |(_, v)| v),
+                )
+            {
+                return true;
+            }
+        }
+        false
     }
 
     fn jobs(&self) -> Vec<GsJob<'_>> {
@@ -163,6 +187,9 @@ impl<'a> GsJob<'a> {
     fn key(&self, key: &str) -> Option<(usize, &'a str)> {
         let at = self.body.first().map(|(_, l)| gs_indent(l))?;
         self.body.iter().find_map(|(n, l)| {
+            if l.trim_start().starts_with("- ") {
+                return None;
+            }
             let (k, v) = gs_kv(l)?;
             (gs_indent(l) == at && k == key).then_some((*n, v))
         })
@@ -276,7 +303,9 @@ fn gs_scan_timeout_supersede(workflows: &[GsWorkflow]) -> Vec<String> {
 
 fn gs_cancels_superseded(wf: &GsWorkflow) -> bool {
     wf.lines.iter().any(|(_, l)| {
-        gs_kv(l).is_some_and(|(k, v)| k == "cancel-in-progress" && !v.is_empty() && v != "false")
+        gs_kv(l).is_some_and(|(k, v)| {
+            k == "cancel-in-progress" && !gs_unquote(v).is_empty() && gs_unquote(v) != "false"
+        })
     })
 }
 
