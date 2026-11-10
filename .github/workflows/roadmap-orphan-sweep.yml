@@ -13,26 +13,43 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.98.1
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo build --bin pmat --locked
-      - name: CB-2115 on master
+      # LAB rule: red for 7 days and the sweep stops until its owner brings it back
+      # (close the ticket, or delete the label, to re-arm it).
+      - name: stop after 7 red days
+        id: arm
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          old="$(gh issue list --state open --label lab-sweep --json createdAt --jq '[.[]|select(.createdAt < (now-604800|todate))]|length')"
+          if [ "$old" != "0" ]; then echo "run=false" >> "$GITHUB_OUTPUT"; else echo "run=true" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.arm.outputs.run == 'true'
+        uses: actions/checkout@v7
+      - if: steps.arm.outputs.run == 'true'
+        uses: dtolnay/rust-toolchain@1.98.1
+      - if: steps.arm.outputs.run == 'true'
+        uses: Swatinem/rust-cache@v2
+      - if: steps.arm.outputs.run == 'true'
+        run: cargo build --bin pmat --locked
+      - name: CB-2115 on master
+        if: steps.arm.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         id: check
         continue-on-error: true
         run: ./target/debug/pmat comply check --checks CB-2115 2>&1 | tee /tmp/cb2115.out; exit "${PIPESTATUS[0]}"
-      # LAB rule: a red opens or updates ONE ticket, then stays silent.
-      - name: open or update the one ticket on red
+      # LAB rule: a red opens ONE ticket (never comments again), then stays silent.
+      - name: open the one ticket on red
         if: steps.check.outcome == 'failure'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          title="CB-2115: roadmap and GitHub disagree (nightly sweep)"
+          title="CB-2115: roadmap and GitHub disagree (hourly sweep)"
           body="$(printf 'The hourly sweep found an orphan.\n\n```\n%s\n```\n\nRun: %s/%s/actions/runs/%s' "$(tail -n 40 /tmp/cb2115.out)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
           n="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
-          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body" --label lab-sweep; fi
+          if [ -z "$n" ]; then gh issue create --title "$title" --body "$body" --label lab-sweep; fi  # open-only: an existing ticket is left silent
       - name: the sweep stays red when CB-2115 is red
         if: steps.check.outcome == 'failure'
         run: exit 1

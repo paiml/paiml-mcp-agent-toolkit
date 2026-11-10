@@ -276,7 +276,7 @@ jobs:
       - name: the test suite does not write to the repository (pre-release lane)
         if: github.event_name == 'push'
         run: bash scripts/tests-dont-write-control.sh
-      - name: the closed loop holds (CB-2113, offline: git and the roadmap file)
+      - name: "the closed loop holds (CB-2113, offline - git and the roadmap file)"
         run: ./target/debug/pmat comply check --checks CB-2113
       # CB-2115 judges LIVE repo-wide GitHub state, not this PR's diff, so one closed issue
       # anywhere reddened every PR (5 times in 24 h). It stays on the merge path for the
