@@ -313,7 +313,13 @@ jobs:
             echo "::error::${n} tests is not more than the ${default_tests} a default build already runs — the feature flag did not take effect, so this job is measuring nothing"
             exit 1
           fi
-          cargo test --lib --locked --features '${{ matrix.features }}'
+          # Two tests assert tree-wide state (the committed ratchet and the orphan
+          # ledger), not this feature's code. The default `ci / test` leg runs
+          # them; repeating them in every feature leg made all three legs fail
+          # together on one cause (GATE-AUDIT 10:40Z: 4 of 8 PR runs each).
+          cargo test --lib --locked --features '${{ matrix.features }}' -- \
+            --skip the_committed_ratchet_holds_at_head \
+            --skip the_committed_ledger_matches_the_tree
 
   # A feature reachable from neither `default` nor `full` is one no bundle job
   # ever tests. That set is derived here rather than hand-listed, because a
