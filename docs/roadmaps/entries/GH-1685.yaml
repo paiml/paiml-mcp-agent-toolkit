@@ -1,7 +1,7 @@
 - id: GH-1685
   github_issue: 1685
   item_type: task
-  title: PR Title Check must accept type train and a
+  title: "PR Title Check must accept type train and a #N subject"
   status: completed
   priority: high
   assigned_to: null
