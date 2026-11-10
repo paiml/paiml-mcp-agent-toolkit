@@ -143,7 +143,10 @@ impl GsWorkflow {
 /// Group the lines under a `jobs:` header into jobs: a line at the child indent
 /// ending in `:` opens one, deeper lines belong to the last opened, and the
 /// first line shallower than the child indent ends the block.
-fn gs_collect_jobs<'a>(lines: impl Iterator<Item = &'a (usize, String)>, child: usize) -> Vec<GsJob<'a>> {
+fn gs_collect_jobs<'a>(
+    lines: impl Iterator<Item = &'a (usize, String)>,
+    child: usize,
+) -> Vec<GsJob<'a>> {
     let mut jobs: Vec<GsJob<'a>> = vec![];
     for (n, l) in lines.take_while(|(_, l)| gs_indent(l) >= child) {
         let ind = gs_indent(l);
