@@ -1,0 +1,23 @@
+name: roadmap-orphan-sweep
+# CB-2115 (roadmap <-> GitHub bijection) reads live repo-wide state, so it is not a per-PR
+# check. It runs here on master; a red names the orphan so its owner flips the row.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: read
+jobs:
+  cb-2115:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --bin pmat --locked
+      - name: CB-2115 on master
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./target/debug/pmat comply check --checks CB-2115
