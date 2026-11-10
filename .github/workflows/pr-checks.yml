@@ -30,6 +30,14 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            scripts/pr-title-lint.sh
+            .github/workflows/pr-checks.yml
+          sparse-checkout-cone-mode: false
+      - name: the title rules accept train and reject a bogus type (GH-1685)
+        run: bash scripts/pr-title-lint.sh --self-test
       - name: Validate PR title
         uses: amannn/action-semantic-pull-request@v6
         env:
@@ -48,12 +56,13 @@ jobs:
             build
             revert
             deps
+            train
           requireScope: "false"
-          subjectPattern: ^[a-zA-Z].*[^.]$
+          subjectPattern: ^([a-zA-Z]|#[0-9]+ ).*[^.]$
           subjectPatternError: |
             The subject "{subject}" found in the pull request title "{title}"
             doesn't match the configured pattern. Please ensure that the subject
-            starts with a letter and doesn't end with a period.
+            starts with a letter (or a ticket number like #12) and does not end with a period.
 
   pr-size:
     name: PR Size Check

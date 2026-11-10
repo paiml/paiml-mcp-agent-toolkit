@@ -372,3 +372,98 @@ fn without_a_roadmap_the_hook_keeps_the_ticket_pattern_and_cb2113_skips() {
         "strict still refuses a message that names no ticket"
     );
 }
+
+/// PMAT-1594 (#1594): a ticket that exists only as a staged roadmap fragment is
+/// a roadmap row, and with exactly one new fragment staged the hook names the
+/// ticket itself.
+#[test]
+fn a_staged_roadmap_fragment_is_a_roadmap_row_and_supplies_the_trailer() {
+    let tmp = roadmap_repo(&[("PMAT-1", "planned")]);
+    let d = tmp.path();
+    std::fs::create_dir_all(d.join("docs/roadmaps/entries")).expect("mkdir entries");
+    std::fs::write(
+        d.join("docs/roadmaps/entries/PMAT-77.yaml"),
+        "- id: PMAT-77\n  status: planned\n  title: fragment only\n",
+    )
+    .expect("write fragment");
+    assert!(git(d, &["add", "docs/roadmaps/entries/PMAT-77.yaml"])
+        .status
+        .success());
+    assert!(
+        !hook_refuses(d, "fix: x\n\nPmat-Ticket: PMAT-77\n"),
+        "a staged fragment is a roadmap row"
+    );
+    assert!(
+        hook_refuses(d, "fix: x\n\nPmat-Ticket: PMAT-78\n"),
+        "an id in neither the roadmap nor a fragment is still refused"
+    );
+    let f = d.join(".git").join("PMAT727_HOOK_MSG");
+    std::fs::write(&f, "fix: x\n").expect("write message");
+    let out = Command::new("bash")
+        .current_dir(d)
+        .arg(d.join(".git").join("hooks").join("commit-msg"))
+        .arg(&f)
+        .output()
+        .expect("run hook");
+    assert!(out.status.success(), "one staged fragment names the ticket");
+    let msg = std::fs::read_to_string(&f).expect("read message");
+    assert!(
+        msg.contains("Pmat-Ticket: PMAT-77"),
+        "the trailer was added: {msg}"
+    );
+}
+
+/// Review finding: a fragment supersedes its base row, so the fragment's status
+/// decides (as in CB-2113), and a message that already names a ticket gets no
+/// auto trailer.
+#[test]
+fn a_fragment_status_supersedes_the_base_row_and_a_named_ticket_gets_no_auto_trailer() {
+    let tmp = roadmap_repo(&[("PMAT-5", "planned")]);
+    let d = tmp.path();
+    std::fs::create_dir_all(d.join("docs/roadmaps/entries")).expect("mkdir entries");
+    std::fs::write(
+        d.join("docs/roadmaps/entries/PMAT-5.yaml"),
+        "- id: PMAT-5\n  status: completed\n  title: done in fragment\n",
+    )
+    .expect("write fragment");
+    assert!(git(d, &["add", "docs/roadmaps/entries/PMAT-5.yaml"])
+        .status
+        .success());
+    assert!(
+        hook_refuses(d, "fix: x\n\nPmat-Ticket: PMAT-5\n"),
+        "the fragment says completed; the base row must not win"
+    );
+    let f = d.join(".git").join("PMAT727_HOOK_MSG");
+    std::fs::write(&f, "fix: x (#1234)\n").expect("write message");
+    let _ = Command::new("bash")
+        .current_dir(d)
+        .arg(d.join(".git").join("hooks").join("commit-msg"))
+        .arg(&f)
+        .output()
+        .expect("run hook");
+    let msg = std::fs::read_to_string(&f).expect("read message");
+    assert!(
+        !msg.contains("Pmat-Ticket: PMAT-5"),
+        "a message naming its ticket gets no auto trailer: {msg}"
+    );
+}
+
+/// PMAT-1595 (#1595) + PMAT-1418 (#1418): the pre-commit complexity gate refuses
+/// only under `[hooks] strict`, and the documentation check knows the roadmap
+/// that `pmat work` writes.
+#[test]
+fn the_complexity_gate_warns_unless_strict_and_the_doc_check_knows_roadmap_yaml() {
+    let cmd = HooksCommand::new(
+        std::path::PathBuf::from("/tmp"),
+        std::path::PathBuf::from("/tmp"),
+    );
+    let hook = cmd.generate_quality_checks();
+    assert!(
+        hook.contains("warning only: CI enforces complexity at the gate"),
+        "complexity must warn outside strict"
+    );
+    assert!(
+        hook.contains(r#"[ -f "docs/roadmaps/roadmap.yaml" ]"#),
+        "the documentation check must accept the roadmap pmat work writes"
+    );
+}
