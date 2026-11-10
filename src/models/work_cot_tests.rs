@@ -569,3 +569,20 @@ fn every_aprender_gh_663_to_672_contract_derives_zero_empty_statements() {
     }
     assert_eq!(seen, 10, "all ten aprender contracts were exercised");
 }
+
+/// #1255 (MACS-007): `pmat work status` shows a v2 step and a legacy L0 prose
+/// step alike, and says which is which; a discharged step is marked.
+#[test]
+fn status_renders_v2() {
+    let mut v2 = step("CoT-1", "input holds", "run the test");
+    v2.discharged_by = DischargeRef::parse("CoT-0");
+    let mut l0 = step("CoT-2", "old question", "old answer");
+    l0.structured = false;
+    let lines = render_steps(&[v2, l0]);
+    assert_eq!(lines.len(), 2);
+    assert!(lines[0].starts_with("CoT-1 [v2] input holds => implication of CoT-1"));
+    assert!(lines[0].contains("(evidence: run the test) [discharged]"));
+    assert!(lines[1].starts_with("CoT-2 [L0] "));
+    assert!(!lines[1].contains("[discharged]"));
+    assert!(render_steps(&[]).is_empty());
+}

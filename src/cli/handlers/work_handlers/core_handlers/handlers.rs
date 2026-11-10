@@ -772,6 +772,7 @@ pub async fn handle_work_status(
         if let Some(gh) = item.github_issue {
             println!("   {} #{}", c::label("GitHub:"), c::number(&gh.to_string()));
         }
+        print_cot_steps(&project_path, &item.id);
         println!();
     } else {
         // Show all items
@@ -843,6 +844,33 @@ pub async fn handle_work_status(
     }
 
     Ok(())
+}
+
+/// Print a ticket's chain_of_thought steps under `pmat work status <id>`
+/// (#1255, MACS-007). A ticket with no contract or no steps prints nothing.
+fn print_cot_steps(project_path: &std::path::Path, id: &str) {
+    let path = project_path
+        .join(".pmat-work")
+        .join(id)
+        .join("contract.json");
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return;
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return;
+    };
+    let steps = crate::models::work_cot::parse_steps(&value);
+    if steps.is_empty() {
+        return;
+    }
+    println!(
+        "   {} {} step(s)",
+        c::label("Chain of thought:"),
+        c::number(&steps.len().to_string())
+    );
+    for line in crate::models::work_cot::render_steps(&steps) {
+        println!("      {line}");
+    }
 }
 
 /// Run final invariant check before completion (DbC §4.3).

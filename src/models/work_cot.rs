@@ -347,6 +347,26 @@ pub fn hollow_steps(steps: &[CotStepView]) -> Vec<String> {
         .collect()
 }
 
+/// One display line per step for `pmat work status <id>` (#1255, MACS-007):
+/// v2 structured steps and legacy L0 prose steps both render, none dropped.
+pub fn render_steps(steps: &[CotStepView]) -> Vec<String> {
+    steps
+        .iter()
+        .map(|s| {
+            let kind = if s.structured { "v2" } else { "L0" };
+            let discharged = if s.discharged_by.is_some() {
+                " [discharged]"
+            } else {
+                ""
+            };
+            format!(
+                "{} [{kind}] {} => {} (evidence: {}){discharged}",
+                s.id, s.assumption, s.implication, s.evidence_method
+            )
+        })
+        .collect()
+}
+
 /// A CB-1640 chain-integrity violation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Cb1640Violation {
