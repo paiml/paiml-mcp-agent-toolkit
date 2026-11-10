@@ -18,6 +18,26 @@ use octocrab::models::IssueState;
 use octocrab::Octocrab;
 use std::env;
 
+/// Split an `owner/name` repo spec. Exactly one slash, and neither side may be
+/// empty or contain whitespace; anything else is a named error (pmat#1233),
+/// never a client with an empty owner or name.
+fn parse_repo_spec(repo: &str) -> Result<[&str; 2]> {
+    let parts: Vec<&str> = repo.split('/').collect();
+    if parts.len() != 2 {
+        anyhow::bail!("Invalid repo format: '{}'. Expected 'owner/name'", repo);
+    }
+    if parts
+        .iter()
+        .any(|p| p.is_empty() || p.chars().any(char::is_whitespace))
+    {
+        anyhow::bail!(
+            "Invalid repo format: '{}'. Owner and name must be non-empty and contain no whitespace",
+            repo
+        );
+    }
+    Ok([parts[0], parts[1]])
+}
+
 /// GitHub API client for repository operations
 #[derive(Debug)]
 pub struct GitHubClient {
@@ -41,10 +61,7 @@ impl GitHubClient {
     /// - Failed to initialize octocrab client
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(repo: &str) -> Result<Self> {
-        let parts: Vec<&str> = repo.split('/').collect();
-        if parts.len() != 2 {
-            anyhow::bail!("Invalid repo format: '{}'. Expected 'owner/name'", repo);
-        }
+        let parts = parse_repo_spec(repo)?;
 
         let token = env::var("GITHUB_TOKEN").context(
             "GITHUB_TOKEN environment variable not set. Please set it to use GitHub API.",
@@ -71,10 +88,7 @@ impl GitHubClient {
     /// * `repo` - Repository in "owner/name" format
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_unauthenticated(repo: &str) -> Result<Self> {
-        let parts: Vec<&str> = repo.split('/').collect();
-        if parts.len() != 2 {
-            anyhow::bail!("Invalid repo format: '{}'. Expected 'owner/name'", repo);
-        }
+        let parts = parse_repo_spec(repo)?;
 
         let octocrab = Octocrab::builder()
             .build()
@@ -292,41 +306,36 @@ mod tests {
 
     #[test]
     fn test_invalid_repo_format_trailing_slash() {
-        // "owner/" splits into ["owner", ""] — two parts, so it PASSES the
-        // format check and then fails (or not) on GITHUB_TOKEN.
-        //
-        // This used to read `if result.is_ok() { ...assert... }`, which asserted
-        // nothing whenever GITHUB_TOKEN was unset — i.e. on every CI machine and
-        // most laptops. The subject here is the FORMAT rule, not the token, so
-        // assert on the format outcome directly and unconditionally.
-        match GitHubClient::new("owner/") {
-            Ok(client) => {
-                assert_eq!(client.repo_owner, "owner");
-                assert_eq!(client.repo_name, "");
-            }
-            Err(e) => assert!(
-                !e.to_string().contains("Invalid repo format"),
-                "an empty name is two parts and must pass the format check; \
-                 the only acceptable failure here is the token: {e}"
-            ),
-        }
+        let err = parse_repo_spec("owner/").unwrap_err().to_string();
+        assert!(err.contains("non-empty"), "{err}");
+        assert!(GitHubClient::new_unauthenticated("owner/").is_err());
     }
 
     #[test]
     fn test_invalid_repo_format_leading_slash() {
-        // "/repo" splits into ["", "repo"] — also two parts, so it too passes
-        // the format check. Same reasoning as above: assert unconditionally.
-        match GitHubClient::new("/repo") {
-            Ok(client) => {
-                assert_eq!(client.repo_owner, "");
-                assert_eq!(client.repo_name, "repo");
-            }
-            Err(e) => assert!(
-                !e.to_string().contains("Invalid repo format"),
-                "an empty owner is two parts and must pass the format check; \
-                 the only acceptable failure here is the token: {e}"
-            ),
+        let err = parse_repo_spec("/repo").unwrap_err().to_string();
+        assert!(err.contains("non-empty"), "{err}");
+        assert!(GitHubClient::new_unauthenticated("/repo").is_err());
+    }
+
+    #[test]
+    fn test_parse_repo_spec_rejects_malformed_with_named_errors() {
+        for bad in [
+            "", "x", "a/b/c", " /b", "a/ b", "a /b", "a/b ", "\t/b", "/", "//",
+        ] {
+            let err = parse_repo_spec(bad).unwrap_err().to_string();
+            assert!(err.contains("Invalid repo format"), "{bad:?}: {err}");
         }
+        let url = parse_repo_spec("https://github.com/o/r")
+            .unwrap_err()
+            .to_string();
+        assert!(url.contains("Expected 'owner/name'"), "{url}");
+    }
+
+    #[test]
+    fn test_parse_repo_spec_accepts_well_formed() {
+        assert_eq!(parse_repo_spec("paiml/pmat").unwrap(), ["paiml", "pmat"]);
+        assert_eq!(parse_repo_spec("a.b/c_d-1").unwrap(), ["a.b", "c_d-1"]);
     }
 
     #[tokio::test]
