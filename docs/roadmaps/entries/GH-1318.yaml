@@ -1,0 +1,17 @@
+- id: GH-1318
+  github_issue: 1318
+  item_type: task
+  title: 'cancel-in-progress leaves a QUEUED predecessor alive; the new run sits pending with 0 jobs'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-10T07:30:00Z
+  updated: 2026-11-10T07:30:00Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0

@@ -1,0 +1,17 @@
+- id: GH-1236
+  github_issue: 1236
+  item_type: task
+  title: 'Progress rendering is a documented no-op: long analyses render as silence'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-10T07:30:00Z
+  updated: 2026-11-10T07:30:00Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.44.0
