@@ -138,3 +138,17 @@ fn gs03_curl_mid_line_and_leading_curl_each_flag() {
     assert_eq!(detect_gs03(&wf(mid)).findings.len(), 1);
     assert_eq!(detect_gs03(&wf(lead)).findings.len(), 1);
 }
+
+#[test]
+fn job_if_not_equal_schedule_is_still_on_pr_path() {
+    for cond in [
+        "github.event_name != 'schedule'",
+        "github.event_name != \"workflow_dispatch\"",
+        "github.event_name  !=  'schedule' && github.event_name != 'workflow_dispatch'",
+    ] {
+        let t = format!("on: pull_request\njobs:\n  gate:\n    runs-on: x\n    if: {cond}\n    steps:\n      - run: gh api repos/a/b\n");
+        assert_eq!(detect_gs03(&wf(&t)).findings.len(), 1, "cond: {cond}");
+    }
+    let confined = "on: pull_request\njobs:\n  gate:\n    runs-on: x\n    if: github.event_name == 'schedule'\n    steps:\n      - run: gh api repos/a/b\n";
+    assert!(detect_gs03(&wf(confined)).findings.is_empty());
+}
