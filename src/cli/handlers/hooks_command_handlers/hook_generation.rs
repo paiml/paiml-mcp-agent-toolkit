@@ -426,12 +426,12 @@ else
 fi
 
 # 4. Documentation synchronization (only if docs structure exists)
-if [ -d "docs/execution" ] || [ -f "CHANGELOG.md" ]; then
+if [ -d "docs/roadmaps" ] || [ -f "CHANGELOG.md" ]; then
     echo -n "  Documentation check... "
-    if [ -f "docs/execution/roadmap.md" ] && [ -f "CHANGELOG.md" ]; then
+    if [ -f "docs/roadmaps/roadmap.yaml" ] && [ -f "CHANGELOG.md" ]; then
         echo "✅"
     else
-        echo "⚠️  (docs/execution/roadmap.md or CHANGELOG.md missing)"
+        echo "⚠️  (docs/roadmaps/roadmap.yaml or CHANGELOG.md missing)"
     fi
 fi
 
@@ -991,6 +991,36 @@ mod complexity_gate_tests {
         assert!(
             diff_scope_is_wired_for_rust_only(&unwired).is_err(),
             "a SCOPE_FLAG that no invocation passes must be caught"
+        );
+    }
+}
+
+#[cfg(test)]
+mod roadmap_guard_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    /// #1418: the documentation check must guard the path `pmat work` writes.
+    ///
+    /// `pmat work` keeps its ledger at `docs/roadmaps/roadmap.yaml`. The hook
+    /// used to `[ -f ]`-guard `docs/execution/roadmap.md`, which no `pmat work`
+    /// repo has, so the check always took its skip branch and reported a check
+    /// it never performed.
+    #[test]
+    fn documentation_check_guards_the_path_pmat_work_writes() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        assert!(
+            !hook.contains("docs/execution/roadmap.md"),
+            "the hook must not guard docs/execution/roadmap.md, a path pmat work no longer writes"
+        );
+        assert!(
+            hook.contains(r#"[ -f "docs/roadmaps/roadmap.yaml" ] && [ -f "CHANGELOG.md" ]"#),
+            "the documentation check must guard docs/roadmaps/roadmap.yaml"
+        );
+        assert!(
+            hook.contains(r#"[ -d "docs/roadmaps" ] || [ -f "CHANGELOG.md" ]"#),
+            "the check must run when the real roadmap directory exists"
         );
     }
 }
