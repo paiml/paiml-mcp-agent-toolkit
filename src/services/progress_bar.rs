@@ -203,7 +203,7 @@ impl SimpleProgressBar {
     /// Whether an update is due, given the last emit time.
     #[must_use]
     pub fn emit_due(last: Option<std::time::Instant>, now: std::time::Instant) -> bool {
-        last.map_or(true, |t| now.duration_since(t) >= Self::EMIT_INTERVAL)
+        last.is_none_or(|t| now.duration_since(t) >= Self::EMIT_INTERVAL)
     }
 
     /// Write one `\r`-rewritten line to `w` if shown and due. Returns whether
