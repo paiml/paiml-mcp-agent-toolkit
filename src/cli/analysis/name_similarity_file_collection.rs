@@ -33,8 +33,8 @@ async fn collect_source_files(
     Ok(files)
 }
 
-// Recursively collect files
-async fn collect_files_recursive(
+/// Recursively collect source files (public so the Sprint 85 tests exercise the real code, #1486)
+pub async fn collect_files_recursive(
     dir: &Path,
     files: &mut Vec<PathBuf>,
     include: &Option<String>,
@@ -120,8 +120,8 @@ fn should_include_file(path: &Path, include: &Option<String>) -> bool {
     }
 }
 
-// Check if file is a code file
-fn is_code_file(path: &Path) -> bool {
+/// Check if file is a code file (public for the Sprint 85 tests, #1486)
+pub fn is_code_file(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "go")

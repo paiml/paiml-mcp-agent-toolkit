@@ -3,7 +3,8 @@
 //! RED Phase: Comprehensive test coverage for complexity hotspots
 //! Target: collect_files_recursive complexity 14 → ≤10 (A+ standard)
 
-use std::path::{Path, PathBuf};
+use pmat::cli::analysis::name_similarity::{collect_files_recursive, is_code_file};
+use std::path::PathBuf;
 use tempfile::TempDir;
 use tokio::fs;
 
@@ -83,7 +84,7 @@ async fn test_collect_files_recursive_basic_functionality() {
     let mut collected_files = Vec::new();
 
     // This will fail until we implement the refactored version
-    let result = collect_files_recursive_new(
+    let result = collect_files_recursive(
         test_data.temp_dir.path(),
         &mut collected_files,
         &None,
@@ -101,7 +102,7 @@ async fn test_collect_files_recursive_basic_functionality() {
     // Verify only source files are collected
     for file in &collected_files {
         assert!(
-            is_source_file_new(file),
+            is_code_file(file),
             "Only source files should be collected: {:?}",
             file
         );
@@ -114,7 +115,7 @@ async fn test_exclude_pattern_filtering() {
     let mut collected_files = Vec::new();
     let exclude_pattern = Some("handlers".to_string());
 
-    let result = collect_files_recursive_new(
+    let result = collect_files_recursive(
         test_data.temp_dir.path(),
         &mut collected_files,
         &None,
@@ -144,7 +145,7 @@ async fn test_include_pattern_filtering() {
     let mut collected_files = Vec::new();
     let include_pattern = Some("main".to_string());
 
-    let result = collect_files_recursive_new(
+    let result = collect_files_recursive(
         test_data.temp_dir.path(),
         &mut collected_files,
         &include_pattern,
@@ -173,7 +174,7 @@ async fn test_directory_exclusion_logic() {
     let test_data = FileCollectionTestData::new().await;
     let mut collected_files = Vec::new();
 
-    let result = collect_files_recursive_new(
+    let result = collect_files_recursive(
         test_data.temp_dir.path(),
         &mut collected_files,
         &None,
@@ -203,16 +204,16 @@ async fn test_directory_exclusion_logic() {
 
 #[tokio::test]
 async fn test_source_file_detection() {
-    // Test the is_source_file_new function
-    assert!(is_source_file_new(&PathBuf::from("test.rs")));
-    assert!(is_source_file_new(&PathBuf::from("test.js")));
-    assert!(is_source_file_new(&PathBuf::from("test.ts")));
-    assert!(is_source_file_new(&PathBuf::from("test.py")));
-    assert!(is_source_file_new(&PathBuf::from("test.java")));
+    // Test the is_code_file function
+    assert!(is_code_file(&PathBuf::from("test.rs")));
+    assert!(is_code_file(&PathBuf::from("test.js")));
+    assert!(is_code_file(&PathBuf::from("test.ts")));
+    assert!(is_code_file(&PathBuf::from("test.py")));
+    assert!(is_code_file(&PathBuf::from("test.java")));
 
-    assert!(!is_source_file_new(&PathBuf::from("README.md")));
-    assert!(!is_source_file_new(&PathBuf::from("config.toml")));
-    assert!(!is_source_file_new(&PathBuf::from("image.png")));
+    assert!(!is_code_file(&PathBuf::from("README.md")));
+    assert!(!is_code_file(&PathBuf::from("config.toml")));
+    assert!(!is_code_file(&PathBuf::from("image.png")));
 }
 
 // Property-based tests for entropy validation
@@ -226,8 +227,7 @@ async fn test_empty_directory_handling() {
         .expect("Failed to create empty directory");
 
     let mut collected_files = Vec::new();
-    let result =
-        collect_files_recursive_new(&empty_subdir, &mut collected_files, &None, &None).await;
+    let result = collect_files_recursive(&empty_subdir, &mut collected_files, &None, &None).await;
 
     assert!(result.is_ok(), "Empty directory should not cause errors");
     assert!(
@@ -242,7 +242,7 @@ async fn test_nonexistent_directory_error_handling() {
     let mut collected_files = Vec::new();
 
     let result =
-        collect_files_recursive_new(&nonexistent_path, &mut collected_files, &None, &None).await;
+        collect_files_recursive(&nonexistent_path, &mut collected_files, &None, &None).await;
 
     assert!(result.is_err(), "Nonexistent directory should return error");
 }
@@ -269,7 +269,7 @@ async fn test_complex_directory_structure_integration() {
     }
 
     let mut collected_files = Vec::new();
-    let result = collect_files_recursive_new(
+    let result = collect_files_recursive(
         test_data.temp_dir.path(),
         &mut collected_files,
         &None,
@@ -284,73 +284,16 @@ async fn test_complex_directory_structure_integration() {
     );
 }
 
-// Test helper functions - Sprint 85 complete, functions now available in production
-
-/// Test helper: Main recursive collection
-async fn collect_files_recursive_new(
-    dir: &Path,
-    files: &mut Vec<PathBuf>,
-    include: &Option<String>,
-    exclude: &Option<String>,
-) -> anyhow::Result<()> {
-    use tokio::fs;
-
-    let mut entries = fs::read_dir(dir).await?;
-    while let Some(entry) = entries.next_entry().await? {
-        let path = entry.path();
-        if path.is_dir() && should_traverse_directory(&path.file_name().unwrap().to_string_lossy())
-        {
-            Box::pin(collect_files_recursive_new(&path, files, include, exclude)).await?;
-        } else if path.is_file()
-            && is_source_file_new(&path)
-            && should_include_path(&path.to_string_lossy(), include)
-            && !should_exclude_path(&path.to_string_lossy(), exclude)
-        {
-            files.push(path);
-        }
-    }
-    Ok(())
-}
-
-/// Test helper: Check if path should be excluded
-fn should_exclude_path(path_str: &str, exclude_pattern: &Option<String>) -> bool {
-    exclude_pattern
-        .as_ref()
-        .is_some_and(|pattern| path_str.contains(pattern))
-}
-
-/// Test helper: Check if path should be included  
-fn should_include_path(path_str: &str, include_pattern: &Option<String>) -> bool {
-    include_pattern
-        .as_ref()
-        .is_none_or(|pattern| path_str.contains(pattern))
-}
-
-/// Test helper: Check if directory should be traversed
-fn should_traverse_directory(dir_name: &str) -> bool {
-    !matches!(
-        dir_name,
-        "target" | ".git" | "node_modules" | ".idea" | ".vscode"
-    )
-}
-
-/// Test helper: Enhanced source file detection
-fn is_source_file_new(path: &Path) -> bool {
-    path.extension()
-        .and_then(|ext| ext.to_str())
-        .is_some_and(|ext| matches!(ext, "rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "h"))
-}
-
 // Complexity validation tests - Sprint 85 complete
 #[tokio::test]
 async fn test_complexity_targets_achieved() {
     // Complexity targets were achieved in Sprint 85
     // All helper functions now meet A+ complexity standards:
-    // - collect_files_recursive_new: ≤10 complexity ✅
+    // - collect_files_recursive: ≤10 complexity ✅
     // - should_exclude_path: ≤3 complexity ✅
     // - should_include_path: ≤3 complexity ✅
     // - should_traverse_directory: ≤5 complexity ✅
-    // - is_source_file_new: ≤3 complexity ✅
+    // - is_code_file: ≤3 complexity ✅
     // Sprint 85 complexity reduction targets achieved
 }
 
