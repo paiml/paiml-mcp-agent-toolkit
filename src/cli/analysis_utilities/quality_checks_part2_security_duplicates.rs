@@ -1,9 +1,16 @@
 // Security check helpers and duplicate code detection
 // Included by quality_checks_part2.rs
 
+/// AWS access-key-id shape (long-term `AKIA`, temporary `ASIA`): a 4-char prefix
+/// plus 16 upper-case alphanumerics. Shared by the project-wide and single-file
+/// security checks (GH-1129).
+const AWS_ACCESS_KEY_PATTERN: &str = r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b";
+const AWS_ACCESS_KEY_MESSAGE: &str = "Hardcoded AWS access key id detected";
+
 /// Extract Method: Get security violation patterns
 fn get_security_patterns() -> Vec<(&'static str, &'static str)> {
     vec![
+        (AWS_ACCESS_KEY_PATTERN, AWS_ACCESS_KEY_MESSAGE),
         (
             r#"(?i)password\s*=\s*["'][^"']+["']"#,
             "Hardcoded password detected",
@@ -276,11 +283,22 @@ mod security_duplicates_tests {
     #[test]
     fn test_get_security_patterns_contains_password_api_key_secret() {
         let patterns = get_security_patterns();
-        assert_eq!(patterns.len(), 3);
+        assert_eq!(patterns.len(), 4);
         let messages: Vec<&str> = patterns.iter().map(|(_, m)| *m).collect();
         assert!(messages.iter().any(|m| m.contains("password")));
         assert!(messages.iter().any(|m| m.contains("API key")));
         assert!(messages.iter().any(|m| m.contains("secret")));
+        assert!(messages.iter().any(|m| m.contains("AWS access key")));
+    }
+
+    #[test]
+    fn test_aws_access_key_pattern_matches_akia_and_asia_only() {
+        let re = regex::Regex::new(AWS_ACCESS_KEY_PATTERN).unwrap();
+        assert!(re.is_match(r#"let key = "AKIAIOSFODNN7EXAMPLE";"#));
+        assert!(re.is_match("ASIAIOSFODNN7EXAMPLE"));
+        assert!(!re.is_match("AKIAshort"), "too short");
+        assert!(!re.is_match("xAKIAIOSFODNN7EXAMPLE"), "needs a word boundary");
+        assert!(!re.is_match("akiaiosfodnn7example"), "ids are upper-case");
     }
 
     #[test]

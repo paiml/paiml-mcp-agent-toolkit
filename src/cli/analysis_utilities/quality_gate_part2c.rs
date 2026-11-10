@@ -171,6 +171,7 @@ async fn check_single_file_security(
 
     // Security patterns to check
     let security_patterns = vec![
+        (AWS_ACCESS_KEY_PATTERN, AWS_ACCESS_KEY_MESSAGE),
         (
             r#"(?i)password\s*=\s*["'][^"']+["']"#,
             "Hardcoded password detected",
