@@ -21,7 +21,7 @@
 //! tree that carries that file — which is every checkout, but not the published
 //! crate, where `/docs/` is excluded (`Cargo.toml:26`).
 
-/// The 19 tools registered by `SimpleUnifiedServer::run()`, in registration
+/// The tools registered by `SimpleUnifiedServer::run()`, in registration
 /// order, with their catalog descriptions. Source of truth for `mcp.json`.
 ///
 /// Which `analyze_*` tools belong here is not a judgement made in this file:
@@ -129,12 +129,12 @@ pub const LIVE_MCP_TOOLS: &[(&str, &str)] = &[
     ),
 ];
 
-/// The 19 live tools' `metadata()`, in registration order — the SAME objects
+/// The live tools' `metadata()`, in registration order — the SAME objects
 /// `tools/list` serves, so the manifest cannot describe a tool differently
 /// from the server (CRUX-09, #1150).
 ///
 /// The previous renderer chose one of three canned inputSchemas by tool NAME:
-/// 15 of 19 tools were advertised as taking `paths: string[]` whatever they
+/// 15 of the then-19 tools were advertised as taking `paths: string[]` whatever they
 /// actually took, six could not be called at all as the shipped file described
 /// them, and `pmat_index_stats` was declared `additionalProperties: false` with
 /// no properties while the live tool accepts `rebuild` — so a validating
