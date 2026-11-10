@@ -12,7 +12,10 @@ on:
   workflow_dispatch:
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # infra#3828: a new push to an ordinary PR cancels that PR's superseded run. Runs on master,
+  # merge_group and train/* or batch/* heads are never cancelled: a cancelled master run is a
+  # master with no verdict.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'train/') && !startsWith(github.head_ref, 'batch/') }}
 jobs:
   ci:
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0 # main
@@ -91,12 +94,15 @@ jobs:
   # `success` exits 1 — so `always()` converts "the check never reported" into
   # a red gate rather than a missing one.
   gate:
-    runs-on: ubuntu-24.04
+    # Roll-up only (reads results, no checkout): the gate-light pool, hosted for fork PRs.
+    runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 15
     needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability, tdg-ratchet]
     if: always()
     steps:
       - name: Check required jobs
+        env:
+          HEAVY: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
         run: |
           rc=0
           for j in "ci:${{ needs.ci.result }}" \
@@ -107,6 +113,12 @@ jobs:
                    "tdg-ratchet:${{ needs.tdg-ratchet.result }}"; do
             name=${j%%:*}
             result=${j#*:}
+            # infra#3828: windows-check is a HEAVY leg. On an ordinary PR it is skipped and
+            # reported NOT MEASURED, never as a pass; on every other event skipped is red.
+            if [ "$name" = "windows-check" ] && [ "$result" = "skipped" ] && [ "$HEAVY" != "true" ]; then
+              echo "$name: NOT MEASURED on this PR (owed on train/*, batch/*, full-ci and every non-PR event)"
+              continue
+            fi
             if [ "$result" != "success" ]; then
               echo "$name failed: $result"
               rc=1
@@ -374,7 +386,7 @@ jobs:
   # context. A check that reports and cannot block is not a check.
   reusable-pin-drift:
     name: reusable workflow pins agree
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -434,6 +446,9 @@ jobs:
   # /actions/runs/{id}/jobs even when its step exited non-zero, so the API's
   # green is not evidence on its own.
   windows-check:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
