@@ -9,6 +9,11 @@ concurrency:
   group: pr-checks-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# infra#3828: a new push or edit cancels this PR's superseded run.
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   # PMAT-900001: the same lint ci.yml's required traceability job runs, re-run when the
   # title or body is edited (ci.yml does not trigger on `edited`).
