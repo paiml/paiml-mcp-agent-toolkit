@@ -139,14 +139,7 @@ fn rs_is_pr(text: &str) -> bool {
             }
             continue;
         }
-        if in_on
-            && line
-                .chars()
-                .next()
-                .is_some_and(|c| !matches!(c, ' ' | '\t' | '#'))
-        {
-            in_on = false;
-        }
+        in_on &= !rs_ends_block(line);
         if in_on && RS_RE_PR_KEY.is_match(line) {
             pr = true;
         }
@@ -173,14 +166,7 @@ fn rs_non_nightly(text: &str) -> bool {
                 .any(|t| !rs_is_nightly_key(t) && !t.starts_with('#'));
             continue;
         }
-        if in_on
-            && line
-                .chars()
-                .next()
-                .is_some_and(|c| !matches!(c, ' ' | '\t' | '#'))
-        {
-            in_on = false;
-        }
+        in_on &= !rs_ends_block(line);
         if in_on && rs_is_top_trigger_key(line) {
             let key = strip(
                 line.split(':').next().unwrap_or(""),
@@ -212,28 +198,49 @@ struct RsJob {
     runs_on: String,
 }
 
+/// awk `/^[^ \t#]/`: a line that starts at column 0 with something other than a comment.
+fn rs_ends_block(raw: &str) -> bool {
+    raw.chars()
+        .next()
+        .is_some_and(|c| !matches!(c, ' ' | '\t' | '#'))
+}
+
+/// awk `/^jobs:[ \t]*$/`.
+fn rs_opens_jobs(raw: &str) -> bool {
+    raw.strip_prefix("jobs:")
+        .is_some_and(|r| r.chars().all(|c| matches!(c, ' ' | '\t')))
+}
+
+/// The awk statements that read one line inside a job body.
+fn rs_job_line(job: &mut RsJob, s: &str, in_runs_on: &mut bool) {
+    job.has_timeout |= s.starts_with("    timeout-minutes:");
+    job.reusable |= s.starts_with("    uses:");
+    if RS_RE_KEY4.is_match(s) {
+        *in_runs_on = false;
+    }
+    if let Some(value) = s.strip_prefix("    runs-on:") {
+        *in_runs_on = true;
+        job.runs_on = value.trim_start_matches([' ', '\t']).to_string();
+    } else if *in_runs_on {
+        job.runs_on = format!("{} {}", job.runs_on, s);
+    }
+}
+
 /// `jobs_tsv`: the awk job splitter, ported statement for statement.
 fn rs_jobs(text: &str) -> Vec<RsJob> {
     let mut jobs: Vec<RsJob> = Vec::new();
     let (mut in_jobs, mut in_runs_on) = (false, false);
     for (idx, raw) in rs_lines(text).enumerate() {
-        let s = rs_strip_ws_comment(raw);
-        if raw
-            .strip_prefix("jobs:")
-            .is_some_and(|r| r.chars().all(|c| matches!(c, ' ' | '\t')))
-        {
+        if rs_opens_jobs(raw) {
             in_jobs = true;
             continue;
         }
-        if in_jobs
-            && raw
-                .chars()
-                .next()
-                .is_some_and(|c| !matches!(c, ' ' | '\t' | '#'))
-        {
-            in_jobs = false;
+        in_jobs &= !rs_ends_block(raw);
+        if !in_jobs {
+            continue;
         }
-        if in_jobs && RS_RE_JOB.is_match(&s) {
+        let s = rs_strip_ws_comment(raw);
+        if RS_RE_JOB.is_match(&s) {
             let id: String = s
                 .chars()
                 .filter(|c| !matches!(c, ' ' | ':' | '\t'))
@@ -246,27 +253,8 @@ fn rs_jobs(text: &str) -> Vec<RsJob> {
                 runs_on: String::new(),
             });
             in_runs_on = false;
-            continue;
-        }
-        let Some(job) = jobs.last_mut().filter(|_| in_jobs) else {
-            continue;
-        };
-        if s.starts_with("    timeout-minutes:") {
-            job.has_timeout = true;
-        }
-        if s.starts_with("    uses:") {
-            job.reusable = true;
-        }
-        if RS_RE_KEY4.is_match(&s) {
-            in_runs_on = false;
-        }
-        if let Some(value) = s.strip_prefix("    runs-on:") {
-            in_runs_on = true;
-            job.runs_on = value.trim_start_matches([' ', '\t']).to_string();
-            continue;
-        }
-        if in_runs_on {
-            job.runs_on = format!("{} {}", job.runs_on, s);
+        } else if let Some(job) = jobs.last_mut() {
+            rs_job_line(job, &s, &mut in_runs_on);
         }
     }
     jobs
