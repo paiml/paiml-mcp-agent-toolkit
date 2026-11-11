@@ -262,8 +262,10 @@ fn macs_walk_markdown(dir: &Path, f: &mut dyn FnMut(&Path, &str)) {
 }
 
 /// CB-1655: ROADMAP.yaml must be at least as fresh as the ledger (MACS F6).
-/// Red when `.pmat-work/ledger.jsonl` is newer than `ROADMAP.yaml` (or the
-/// roadmap is absent while a ledger exists) — run `pmat roadmap sync`.
+/// Fail (red) when `.pmat-work/ledger.jsonl` is newer than `ROADMAP.yaml` (or
+/// the roadmap is absent while a ledger exists) — run `pmat roadmap sync`.
+/// MACS-013 (#1256): red, not a warning. Repos on the `entries/` fragments route
+/// are skipped (#1370); `pmat roadmap sync --check` gates those.
 pub(crate) fn check_roadmap_fresh(project_path: &Path) -> ComplianceCheck {
     let name = "CB-1655: Canonical Roadmap Fresh";
     match crate::roadmap::sync::roadmap_is_stale(project_path) {
@@ -276,10 +278,10 @@ pub(crate) fn check_roadmap_fresh(project_path: &Path) -> ComplianceCheck {
         },
         Some(true) => ComplianceCheck {
             name: name.to_string(),
-            status: CheckStatus::Warn,
+            status: CheckStatus::Fail,
             message: "ROADMAP.yaml is stale (ledger is newer) — run `pmat roadmap sync`"
                 .to_string(),
-            severity: Severity::Warning,
+            severity: Severity::Error,
         },
     }
 }

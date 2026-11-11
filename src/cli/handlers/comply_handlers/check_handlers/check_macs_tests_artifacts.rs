@@ -211,12 +211,34 @@ mod tests_macs_roadmap_fresh {
     }
 
     #[test]
-    fn cb1655_warn_when_roadmap_missing() {
+    fn cb1655_red_when_roadmap_missing() {
         let project = tempdir().unwrap();
         std::fs::create_dir_all(project.path().join(".pmat-work")).unwrap();
         std::fs::write(project.path().join(".pmat-work/ledger.jsonl"), "{}\n").unwrap();
         let check = check_roadmap_fresh(project.path());
-        assert_eq!(check.status, CheckStatus::Warn);
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("roadmap sync"), "{}", check.message);
+    }
+
+    /// MACS-013 spec RED test (modern-agentic-coding-support.md:937): a ledger newer
+    /// than ROADMAP.yaml is a failed check, not a warning.
+    #[test]
+    fn cb1655_red_when_ledger_newer_than_artifact() {
+        let project = tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join(".pmat-work")).unwrap();
+        let roadmap = project.path().join("ROADMAP.yaml");
+        std::fs::write(&roadmap, "items:\n").unwrap();
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        std::fs::File::options()
+            .write(true)
+            .open(&roadmap)
+            .unwrap()
+            .set_modified(old)
+            .unwrap();
+        std::fs::write(project.path().join(".pmat-work/ledger.jsonl"), "{}\n").unwrap();
+        let check = check_roadmap_fresh(project.path());
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
+        assert_eq!(check.severity, Severity::Error);
         assert!(check.message.contains("roadmap sync"), "{}", check.message);
     }
 
