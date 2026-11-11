@@ -76,6 +76,25 @@ fn gs_kv(line: &str) -> Option<(&str, &str)> {
     Some((k.trim(), v.trim()))
 }
 
+/// The key of a top-level `key: ...` line.
+fn gs_top_key(line: &str) -> Option<&str> {
+    let (k, _) = line.trim_start().split_once(':')?;
+    Some(gs_unquote(k))
+}
+
+/// The event named by a line directly under `on:` (`pull_request:` or `- pull_request`).
+fn gs_event_key(line: &str) -> &str {
+    let t = line.trim_start();
+    let t = t.strip_prefix("- ").unwrap_or(t);
+    gs_unquote(t.split(':').next().unwrap_or(""))
+}
+
+/// `pull_request` or `pull_request_target` as a whole word of a trigger line.
+fn gs_names_pull_request(text: &str) -> bool {
+    text.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .any(|w| w == "pull_request" || w == "pull_request_target")
+}
+
 fn gs_is_jobs_header(line: &str) -> bool {
     gs_indent(line) == 0 && line.trim_start().starts_with("jobs:")
 }
@@ -116,10 +135,17 @@ impl GsWorkflow {
 
     /// Does the workflow run on `pull_request`? Only the trigger block counts.
     fn is_pr_workflow(&self) -> bool {
-        self.lines
-            .iter()
-            .take_while(|(_, l)| !gs_is_jobs_header(l))
-            .any(|(_, l)| l.contains("pull_request"))
+        let mut in_on = false;
+        let mut event_indent = None;
+        self.lines.iter().any(|(_, l)| {
+            if gs_indent(l) == 0 {
+                in_on = gs_top_key(l).is_some_and(|k| matches!(k, "on" | "true"));
+                event_indent = None;
+                return in_on && gs_names_pull_request(l.split_once(':').map_or("", |(_, v)| v));
+            }
+            let at = *event_indent.get_or_insert(gs_indent(l));
+            in_on && gs_indent(l) == at && gs_names_pull_request(gs_event_key(l))
+        })
     }
 
     fn jobs(&self) -> Vec<GsJob<'_>> {
@@ -136,26 +162,33 @@ impl GsWorkflow {
         if child == 0 {
             return vec![];
         }
-        let mut jobs: Vec<GsJob<'_>> = vec![];
-        for (n, l) in it {
-            let ind = gs_indent(l);
-            if ind < child {
-                break;
-            }
-            let t = l.trim();
-            if ind == child && t.ends_with(':') && !t.starts_with('-') {
-                jobs.push(GsJob {
-                    id: t.trim_end_matches(':'),
-                    line: *n,
-                    indent: ind,
-                    body: vec![],
-                });
-            } else if let Some(j) = jobs.last_mut() {
-                j.body.push((*n, l.as_str()));
-            }
-        }
-        jobs
+        gs_collect_jobs(it, child)
     }
+}
+
+/// Group the lines under a `jobs:` header into jobs: a line at the child indent
+/// ending in `:` opens one, deeper lines belong to the last opened, and the
+/// first line shallower than the child indent ends the block.
+fn gs_collect_jobs<'a>(
+    lines: impl Iterator<Item = &'a (usize, String)>,
+    child: usize,
+) -> Vec<GsJob<'a>> {
+    let mut jobs: Vec<GsJob<'a>> = vec![];
+    for (n, l) in lines.take_while(|(_, l)| gs_indent(l) >= child) {
+        let ind = gs_indent(l);
+        let t = l.trim();
+        if ind == child && t.ends_with(':') && !t.starts_with('-') {
+            jobs.push(GsJob {
+                id: t.trim_end_matches(':'),
+                line: *n,
+                indent: ind,
+                body: vec![],
+            });
+        } else if let Some(j) = jobs.last_mut() {
+            j.body.push((*n, l.as_str()));
+        }
+    }
+    jobs
 }
 
 impl<'a> GsJob<'a> {
@@ -163,6 +196,9 @@ impl<'a> GsJob<'a> {
     fn key(&self, key: &str) -> Option<(usize, &'a str)> {
         let at = self.body.first().map(|(_, l)| gs_indent(l))?;
         self.body.iter().find_map(|(n, l)| {
+            if l.trim_start().starts_with("- ") {
+                return None;
+            }
             let (k, v) = gs_kv(l)?;
             (gs_indent(l) == at && k == key).then_some((*n, v))
         })
@@ -276,7 +312,9 @@ fn gs_scan_timeout_supersede(workflows: &[GsWorkflow]) -> Vec<String> {
 
 fn gs_cancels_superseded(wf: &GsWorkflow) -> bool {
     wf.lines.iter().any(|(_, l)| {
-        gs_kv(l).is_some_and(|(k, v)| k == "cancel-in-progress" && !v.is_empty() && v != "false")
+        gs_kv(l).is_some_and(|(k, v)| {
+            k == "cancel-in-progress" && !gs_unquote(v).is_empty() && gs_unquote(v) != "false"
+        })
     })
 }
 

@@ -101,27 +101,18 @@ const HEAVY: &[&str] = &[
     "32-core",
 ];
 
+/// Line openers that only inspect the result of a needed job.
+const RESULT_CHECK_PREFIXES: &[&str] = &[
+    "echo", "exit", "if ", "fi", "then", "else", "test ", "[", "for ", "done", "case", "esac",
+    ";;", "true", "false", "fail=", "failed=",
+];
+
 /// A line that only inspects the result of a needed job.
 fn is_result_check(line: &str) -> bool {
     let l = line.to_lowercase();
-    let guard = l.starts_with("echo")
-        || l.starts_with("exit")
-        || l.starts_with("if ")
-        || l.starts_with("fi")
-        || l.starts_with("then")
-        || l.starts_with("else")
-        || l.starts_with("test ")
-        || l.starts_with('[')
-        || l.starts_with("for ")
-        || l.starts_with("done")
-        || l.starts_with("case")
-        || l.starts_with("esac")
-        || l.starts_with(";;")
-        || l.starts_with("true")
-        || l.starts_with("false")
-        || l.starts_with("fail=")
-        || l.starts_with("failed=");
-    guard || l.contains("needs.") || l.contains("needs_json")
+    RESULT_CHECK_PREFIXES.iter().any(|p| l.starts_with(p))
+        || l.contains("needs.")
+        || l.contains("needs_json")
 }
 
 /// GS-05: a roll-up job (only `needs` and a result check) asks for a heavy runner.
