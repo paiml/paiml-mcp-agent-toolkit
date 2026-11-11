@@ -1,1 +1,1 @@
-RS-09	ci.yml:1	draft pull requests start this workflow (no draft == false condition, no ready_for_review type)
+RS-09	./.github/workflows/ci.yml:1	draft pull requests start this workflow (no draft == false condition, no ready_for_review type)

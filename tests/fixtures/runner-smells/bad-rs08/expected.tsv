@@ -1,1 +1,1 @@
-RS-08	ci.yml:20	not pinned to a commit sha: actions/checkout@v7
+RS-08	./.github/workflows/ci.yml:20	not pinned to a commit sha: actions/checkout@v7

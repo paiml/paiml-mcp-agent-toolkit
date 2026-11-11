@@ -1,1 +1,1 @@
-RS-02	ci.yml:15	job 'test' has no timeout-minutes: a hung job holds its runner for 6 h
+RS-02	./.github/workflows/ci.yml:15	job 'test' has no timeout-minutes: a hung job holds its runner for 6 h

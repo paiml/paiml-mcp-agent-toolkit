@@ -1,1 +1,1 @@
-RS-01	ci.yml:1	pull_request workflow has no concurrency cancel-in-progress: a new push leaves the old run holding runners
+RS-01	./.github/workflows/ci.yml:1	pull_request workflow has no concurrency cancel-in-progress: a new push leaves the old run holding runners

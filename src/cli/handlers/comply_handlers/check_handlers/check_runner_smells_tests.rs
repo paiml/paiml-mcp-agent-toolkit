@@ -65,7 +65,10 @@ mod runner_smells_tests {
     #[test]
     fn no_workflows_means_nothing_scanned_and_every_rule_skips() {
         let dir = tempfile::tempdir().expect("tempdir");
-        assert!(rs_scan(dir.path()).is_none());
+        assert_eq!(
+            rs_scan(dir.path()),
+            Err("decline: no .github/workflows/*.yml".to_string())
+        );
         let checks = check_runner_smells(dir.path());
         assert_eq!(checks.len(), 12);
         assert!(checks.iter().all(|c| c.status == CheckStatus::Skip));
@@ -85,10 +88,111 @@ mod runner_smells_tests {
         assert_eq!(warn, ["RS-03"]);
         assert!(checks.iter().all(|c| c.status != CheckStatus::Fail));
         assert!(
-            checks[2].message.starts_with("1 hit(s): ci.yml:"),
+            checks[2].message.starts_with("1 hit(s): ./.github/workflows/ci.yml:"),
             "{}",
             checks[2].message
         );
+    }
+
+    // ---- inputs the script was measured on (@5f7f049, `cd <repo> && runner-smells.sh .`) ----
+
+    fn repo_with(files: &[(&str, &[u8])]) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join(".github/workflows")).expect("mkdir");
+        for (name, bytes) in files {
+            std::fs::write(dir.path().join(".github/workflows").join(name), bytes).expect("write");
+        }
+        dir
+    }
+
+    const PR_JOB: &str = "on: pull_request\njobs:\n  a:\n    runs-on: self-hosted\n    steps:\n      - run: ls\n";
+
+    #[test]
+    fn a_crlf_workflow_has_no_job_lines_exactly_as_in_the_script() {
+        let crlf = PR_JOB.replace('\n', "\r\n");
+        let dir = repo_with(&[("ci.yml", crlf.as_bytes())]);
+        assert_eq!(
+            tsv(&rs_scan(dir.path()).expect("scanned")),
+            "RS-01\t./.github/workflows/ci.yml:1\tpull_request workflow has no concurrency cancel-in-progress: a new push leaves the old run holding runners\n\
+             RS-09\t./.github/workflows/ci.yml:1\tdraft pull requests start this workflow (no draft == false condition, no ready_for_review type)\n"
+        );
+    }
+
+    #[test]
+    fn a_workflow_that_is_not_utf8_is_scanned_not_dropped() {
+        let mut bytes = b"# caf\xe9 latin-1\n".to_vec();
+        bytes.extend_from_slice(PR_JOB.as_bytes());
+        assert!(std::str::from_utf8(&bytes).is_err());
+        let dir = repo_with(&[("ci.yml", &bytes)]);
+        let found = tsv(&rs_scan(dir.path()).expect("scanned"));
+        assert_eq!(
+            found,
+            "RS-01\t./.github/workflows/ci.yml:1\tpull_request workflow has no concurrency cancel-in-progress: a new push leaves the old run holding runners\n\
+             RS-02\t./.github/workflows/ci.yml:4\tjob 'a' has no timeout-minutes: a hung job holds its runner for 6 h\n\
+             RS-09\t./.github/workflows/ci.yml:1\tdraft pull requests start this workflow (no draft == false condition, no ready_for_review type)\n"
+        );
+        let checks = check_runner_smells(dir.path());
+        assert!(checks.iter().all(|c| c.status != CheckStatus::Skip));
+    }
+
+    #[test]
+    fn a_dotfile_workflow_is_skipped_as_the_shell_glob_skips_it() {
+        let pr = b"on: pull_request\n" as &[u8];
+        let dir = repo_with(&[("w1.yml", pr), ("w2.yml", pr), ("w3.yml", pr), (".wip.yml", pr)]);
+        let found = rs_scan(dir.path()).expect("scanned");
+        assert!(found.iter().all(|f| !f.file.contains(".wip")), "{found:?}");
+        assert!(found.iter().all(|f| f.rule != "RS-10"), "{found:?}");
+        assert_eq!(found.len(), 6, "RS-01 + RS-09 for each of w1..w3");
+        let only_dot = repo_with(&[(".wip.yml", pr)]);
+        assert!(rs_scan(only_dot.path()).is_err());
+    }
+
+    #[test]
+    fn yml_files_come_before_yaml_files_and_each_set_is_in_byte_order() {
+        let pr = b"on: pull_request\n" as &[u8];
+        let dir = repo_with(&[("a.yaml", pr), ("b.yml", pr), ("CI.yml", pr)]);
+        let files: Vec<String> = rs_scan(dir.path())
+            .expect("scanned")
+            .into_iter()
+            .filter(|f| f.rule == "RS-01")
+            .map(|f| f.file)
+            .collect();
+        assert_eq!(
+            files,
+            [
+                "./.github/workflows/CI.yml",
+                "./.github/workflows/b.yml",
+                "./.github/workflows/a.yaml"
+            ]
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_unreadable_workflow_is_not_measured_and_every_rule_skips() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = repo_with(&[("ci.yml", PR_JOB.as_bytes()), ("locked.yml", PR_JOB.as_bytes())]);
+        let locked = dir.path().join(".github/workflows/locked.yml");
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).expect("chmod");
+        if std::fs::read(&locked).is_ok() {
+            return; // root reads through the mode bits: nothing to measure here
+        }
+        let why = rs_scan(dir.path()).expect_err("unreadable");
+        assert!(
+            why.starts_with("not_measured: cannot read ./.github/workflows/locked.yml:"),
+            "{why}"
+        );
+        let checks = check_runner_smells(dir.path());
+        assert_eq!(checks.len(), 12);
+        assert!(checks.iter().all(|c| c.status == CheckStatus::Skip && c.message == why));
+    }
+
+    #[test]
+    fn records_end_at_newline_only_and_a_final_newline_opens_no_record() {
+        assert_eq!(rs_lines("").count(), 0);
+        assert_eq!(rs_lines("a\n").collect::<Vec<_>>(), ["a"]);
+        assert_eq!(rs_lines("a\r\nb").collect::<Vec<_>>(), ["a\r", "b"]);
+        assert_eq!(rs_lines("a\n\n").collect::<Vec<_>>(), ["a", ""]);
     }
 
     // ---- boundaries the fixtures do not reach ---------------------------------------
@@ -122,7 +226,7 @@ mod runner_smells_tests {
         let text = "on: push\njobs:\n  call:\n    uses: o/r/.github/workflows/x.yml@abc\n  plain:\n    runs-on: self-hosted\n";
         assert_eq!(
             scan_one(text).iter().filter(|l| l.starts_with("RS-02\t")).collect::<Vec<_>>(),
-            ["RS-02\tw.yml:5\tjob 'plain' has no timeout-minutes: a hung job holds its runner for 6 h"]
+            ["RS-02\t./.github/workflows/w.yml:5\tjob 'plain' has no timeout-minutes: a hung job holds its runner for 6 h"]
         );
     }
 
@@ -133,7 +237,7 @@ mod runner_smells_tests {
         };
         assert!(scan_one(&on("pull_request"))
             .iter()
-            .any(|l| l.starts_with("RS-03\tw.yml:3\t")));
+            .any(|l| l.starts_with("RS-03\t./.github/workflows/w.yml:3\t")));
         assert!(!scan_one(&on("push")).iter().any(|l| l.starts_with("RS-03")));
     }
 
@@ -143,7 +247,7 @@ mod runner_smells_tests {
         let found = scan_one(text);
         let rs05: Vec<&String> = found.iter().filter(|l| l.starts_with("RS-05")).collect();
         assert_eq!(rs05.len(), 1);
-        assert!(rs05[0].starts_with("RS-05\tw.yml:2\t"), "{rs05:?}");
+        assert!(rs05[0].starts_with("RS-05\t./.github/workflows/w.yml:2\t"), "{rs05:?}");
     }
 
     #[test]
@@ -201,7 +305,7 @@ mod runner_smells_tests {
             .any(|l| l.starts_with("RS-11")));
         assert!(scan_one(&on("cargo test --all-targets"))
             .iter()
-            .any(|l| l.starts_with("RS-11\tw.yml:9\t")));
+            .any(|l| l.starts_with("RS-11\t./.github/workflows/w.yml:9\t")));
     }
 
     #[test]
