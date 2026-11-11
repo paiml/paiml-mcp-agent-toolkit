@@ -5,8 +5,24 @@
 //
 // Included from check.rs: no `use` imports, so every path is fully qualified. Static, no
 // network, no YAML parser (the awk original is line-based, and so is this).
-// Warn-level: RS-12 is HARD in the script's ratchet, but a comply Warn is the strongest a
-// check may be here without breaking this repo's own gate.
+//
+// Level. The script's default mode is `report`: it prints every finding, RS-12 included,
+// and exits 0. RS-12 is hard only under its `--ratchet` and `--strict` modes. So every rule
+// here is a Warn by default and `pmat comply check --strict` is the blocking mode, as in the
+// script. A rule may block by default only once CI shows it PASS on the last shipped
+// artifact and FAIL on a planted defect; the script @5f7f049 finds 2 RS-12 lines in this
+// repository, so RS-12 as Fail would be an unproven blocking gate.
+//
+// Parity choices, each measured against the script @5f7f049 (see the tests):
+// - bytes, not UTF-8: a workflow that is not valid UTF-8 is still scanned (lossy decode);
+// - records end at `\n` only, as in awk and sed: a `\r` stays on the line, so a CRLF file
+//   has no job lines here either. A CRLF fix belongs in the script first, then here;
+// - the shell glob skips dotfiles, and so does this; files are ordered by bytes (the glob
+//   under LC_ALL=C). Another locale changes the order of findings only, never the set;
+// - paths print as the script prints them when run as `runner-smells.sh .` in the repo;
+// - a workflow that cannot be read is not measured: all twelve rules Skip, none Pass.
+
+const RS_WORKFLOWS: &str = "./.github/workflows";
 
 const RS_TITLES: [(&str, &str); 12] = [
     ("RS-01", "No Concurrency Cancel"),
@@ -95,9 +111,16 @@ static RS_RE_CLIPPY_CHECK: std::sync::LazyLock<regex::Regex> =
 static RS_RE_MUTANTS: std::sync::LazyLock<regex::Regex> =
     std::sync::LazyLock::new(|| rs_re(r"(^|[^[:alnum:]_])cargo[ -]mutants([^[:alnum:]_]|$)"));
 
+/// The records awk and sed see: split at `\n` only (a `\r` is kept), and a final
+/// newline does not open an empty last record. `str::lines` would strip the `\r`.
+fn rs_lines(text: &str) -> impl Iterator<Item = &str> {
+    let body = text.strip_suffix('\n').unwrap_or(text);
+    body.split('\n').filter(move |_| !text.is_empty())
+}
+
 /// The script's `nocomment`: `sed -E 's/(^|[[:space:]])#.*$//'`, line by line.
 fn rs_nocomment(text: &str) -> Vec<String> {
-    text.lines()
+    rs_lines(text)
         .map(|l| RS_RE_COMMENT.replace(l, "").into_owned())
         .collect()
 }
@@ -105,7 +128,7 @@ fn rs_nocomment(text: &str) -> Vec<String> {
 /// `is_pr`: `on:` names pull_request or pull_request_target.
 fn rs_is_pr(text: &str) -> bool {
     let (mut in_on, mut pr) = (false, false);
-    for line in text.lines() {
+    for line in rs_lines(text) {
         if RS_RE_ON.is_match(line) {
             in_on = true;
             let value = line
@@ -140,7 +163,7 @@ fn rs_non_nightly(text: &str) -> bool {
     let (mut in_on, mut bad) = (false, false);
     let strip =
         |s: &str, drop: &[char]| s.chars().filter(|c| !drop.contains(c)).collect::<String>();
-    for line in text.lines() {
+    for line in rs_lines(text) {
         if RS_RE_ON.is_match(line) {
             in_on = true;
             let value = line.split_once(':').map_or("", |(_, v)| v);
@@ -193,7 +216,7 @@ struct RsJob {
 fn rs_jobs(text: &str) -> Vec<RsJob> {
     let mut jobs: Vec<RsJob> = Vec::new();
     let (mut in_jobs, mut in_runs_on) = (false, false);
-    for (idx, raw) in text.lines().enumerate() {
+    for (idx, raw) in rs_lines(text).enumerate() {
         let s = rs_strip_ws_comment(raw);
         if raw
             .strip_prefix("jobs:")
@@ -428,29 +451,39 @@ fn rs12(file: &str, text: &str) -> Vec<RsFinding> {
         .unwrap_or_default()
 }
 
-/// The workflow files of `dir/.github/workflows`, `*.yml` then `*.yaml`, each sorted.
-/// `None` when the directory is absent or holds no workflow (nothing scanned).
-fn rs_workflow_files(dir: &Path) -> Option<Vec<(String, String)>> {
-    let entries = std::fs::read_dir(dir.join(".github/workflows")).ok()?;
-    let mut names: Vec<String> = entries
+/// The workflow files of `dir/.github/workflows` as `(printed path, text)`: `*.yml` then
+/// `*.yaml`, each in byte order, dotfiles skipped (the shell glob). Text is decoded lossily,
+/// so a file that is not UTF-8 is scanned, not dropped. `Err` says why nothing was measured.
+fn rs_workflow_files(dir: &Path) -> Result<Vec<(String, String)>, String> {
+    let none = || "decline: no .github/workflows/*.yml".to_string();
+    let root = dir.join(".github/workflows");
+    let entries = std::fs::read_dir(&root).map_err(|_| none())?;
+    let mut names: Vec<(String, std::ffi::OsString)> = entries
         .filter_map(Result::ok)
         .filter(|e| e.path().is_file())
-        .filter_map(|e| e.file_name().into_string().ok())
-        .filter(|n| n.ends_with(".yml") || n.ends_with(".yaml"))
+        .map(|e| (e.file_name().to_string_lossy().into_owned(), e.file_name()))
+        .filter(|(n, _)| !n.starts_with('.') && (n.ends_with(".yml") || n.ends_with(".yaml")))
         .collect();
-    names.sort_by_key(|n| (n.ends_with(".yaml"), n.clone()));
-    let files: Vec<(String, String)> = names
+    if names.is_empty() {
+        return Err(none());
+    }
+    names.sort_by(|a, b| (a.0.ends_with(".yaml"), &a.0).cmp(&(b.0.ends_with(".yaml"), &b.0)));
+    names
         .into_iter()
-        .filter_map(|n| {
-            let text = std::fs::read_to_string(dir.join(".github/workflows").join(&n)).ok()?;
-            Some((n, text))
+        .map(|(shown, raw)| {
+            let bytes = std::fs::read(root.join(&raw))
+                .map_err(|e| format!("not_measured: cannot read {RS_WORKFLOWS}/{shown}: {e}"))?;
+            Ok((
+                format!("{RS_WORKFLOWS}/{shown}"),
+                String::from_utf8_lossy(&bytes).into_owned(),
+            ))
         })
-        .collect();
-    (!files.is_empty()).then_some(files)
+        .collect()
 }
 
 /// `scan`: every rule over every workflow file, then the repo-wide RS-10.
-pub(crate) fn rs_scan(dir: &Path) -> Option<Vec<RsFinding>> {
+/// `Err` carries the reason nothing was measured (no workflows, or an unreadable one).
+pub(crate) fn rs_scan(dir: &Path) -> Result<Vec<RsFinding>, String> {
     let files = rs_workflow_files(dir)?;
     let rules: [fn(&str, &str) -> Vec<RsFinding>; 11] = [
         rs01, rs02, rs03, rs04, rs05, rs06, rs07, rs08, rs09, rs11, rs12,
@@ -465,12 +498,12 @@ pub(crate) fn rs_scan(dir: &Path) -> Option<Vec<RsFinding>> {
     if pr > RS_MAX_PR_WORKFLOWS {
         found.push(RsFinding::at(
             "RS-10",
-            "",
+            RS_WORKFLOWS,
             0,
             format!("{pr} workflow files start on pull_request (limit {RS_MAX_PR_WORKFLOWS}): one push fans out into {pr} runs"),
         ));
     }
-    Some(found)
+    Ok(found)
 }
 
 fn rs_verdict(id: &str, title: &str, hits: &[&RsFinding]) -> ComplianceCheck {
@@ -505,16 +538,19 @@ fn rs_verdict(id: &str, title: &str, hits: &[&RsFinding]) -> ComplianceCheck {
 
 /// RS-01..RS-12 for one repository, in id order.
 pub(crate) fn check_runner_smells(project_path: &Path) -> Vec<ComplianceCheck> {
-    let Some(found) = rs_scan(project_path) else {
-        return RS_TITLES
-            .iter()
-            .map(|(id, title)| ComplianceCheck {
-                name: format!("{id}: {title}"),
-                status: CheckStatus::Skip,
-                message: "decline: no .github/workflows/*.yml".into(),
-                severity: Severity::Info,
-            })
-            .collect();
+    let found = match rs_scan(project_path) {
+        Ok(found) => found,
+        Err(why) => {
+            return RS_TITLES
+                .iter()
+                .map(|(id, title)| ComplianceCheck {
+                    name: format!("{id}: {title}"),
+                    status: CheckStatus::Skip,
+                    message: why.clone(),
+                    severity: Severity::Info,
+                })
+                .collect();
+        }
     };
     RS_TITLES
         .iter()
