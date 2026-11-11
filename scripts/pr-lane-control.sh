@@ -4,11 +4,11 @@
 #
 #   arm 1 GREEN  ci.yml does NOT enable nextest, and says in the file why not
 #   arm 2 RED    a workflow that enables nextest without lifting the thread cap is refused
-#   arm 3 GREEN  the fast lane's exclusion names exactly two tests
-#   arm 4 GREEN  both named tests still exist in the tree
+#   arm 3 GREEN  the fast lane excludes no test (PMAT-1314 removed the eof_drain pair)
+#   arm 4        retired
 #   arm 5 RED    an exclusion naming a test that does not exist is refused
-#   arm 6 GREEN  nothing excludes those two from the pre-release lane
-#   arm 7 RED    a Makefile that skips one of them from `cargo test` is refused
+#   arm 6 RED    a planted exclusion is seen by the predicate arm 3 uses
+#   arm 7        retired
 #   arm 8 GREEN  the coverage ratchet file is tracked, parses, and is where ci.yml says
 #   arm 9 RED    the gate's own arithmetic fails a floor above a fixture's coverage
 #   arm 10 GREEN the gate's own arithmetic passes a floor at the fixture's coverage
@@ -65,37 +65,31 @@ fi
 echo "pr-lane-control: arm 2 RED   — enabling nextest under the thread cap is refused"
 
 # ── arm 3 ─────────────────────────────────────────────────────────────────────
+# PMAT-1314 removed the two-test exclusion: the "hang" was a 300 s uncancellable
+# DRAIN_BACKSTOP sleep that the tests now run on a paused clock. The fast lane
+# excludes nothing, so a default-filter naming any test is a regression.
 N=$(excluded_tests "$NT" | grep -c . )
-[ "$N" -eq 2 ] || fail_arm 3 "the fast lane's exclusion must name exactly two tests, found $N"
-echo "pr-lane-control: arm 3 GREEN — the exclusion names exactly 2 tests"
+[ "$N" -eq 0 ] || fail_arm 3 "the fast lane must exclude no test (PMAT-1314), found $N"
+echo "pr-lane-control: arm 3 GREEN — the fast lane excludes no test"
 
-# ── arm 4 ─────────────────────────────────────────────────────────────────────
-while read -r t; do
-  [ -n "$t" ] || continue
-  test_exists "$t" || fail_arm 4 "excluded test does not exist in the tree: $t (a filter naming a renamed test excludes nothing, silently)"
-done < <(excluded_tests "$NT")
-echo "pr-lane-control: arm 4 GREEN — every excluded test exists"
+# ── arm 4 (retired with the exclusion) ────────────────────────────────────────
+echo "pr-lane-control: arm 4 retired — no excluded test left to find"
 
-# ── arm 5 (falsifier) ─────────────────────────────────────────────────────────
+# ── arm 5 ─────────────────────────────────────────────────────────────────────
 if test_exists "a::b::this_test_was_renamed_or_deleted_and_the_filter_was_not"; then
   fail_arm 5 "the existence predicate must refuse a test that is not in the tree"
 fi
 echo "pr-lane-control: arm 5 RED   — an exclusion naming a missing test is refused"
 
-# ── arm 6 ─────────────────────────────────────────────────────────────────────
-for f in Makefile "$WF"; do
-  not_skipped_in_slow_lane "$f" \
-    || fail_arm 6 "$f skips a test the fast lane already excludes — then NOTHING runs it"
-done
-echo "pr-lane-control: arm 6 GREEN — the pre-release lane still runs both"
+# ── arm 6 (falsifier) ─────────────────────────────────────────────────────────
+# A filter that brings an exclusion back must be counted by the predicate arm 3 uses.
+printf "default-filter = 'not test(=a::b::c)'\n" > "$T/nextest.toml"
+[ "$(excluded_tests "$T/nextest.toml" | grep -c .)" -eq 1 ] \
+  || fail_arm 6 "excluded_tests must see a planted exclusion, or arm 3 can never fail"
+echo "pr-lane-control: arm 6 RED   — a planted exclusion is seen by arm 3's predicate"
 
-# ── arm 7 (falsifier) ─────────────────────────────────────────────────────────
-first=$(excluded_tests "$NT" | head -1); first=${first##*::}
-printf 'test-x:\n\tcargo test --lib -- --skip %s\n' "$first" > "$T/Makefile"
-if not_skipped_in_slow_lane "$T/Makefile"; then
-  fail_arm 7 "a Makefile that also skips an excluded test must be refused"
-fi
-echo "pr-lane-control: arm 7 RED   — double-exclusion is refused"
+# ── arm 7 (retired with the exclusion) ────────────────────────────────────────
+echo "pr-lane-control: arm 7 retired — nothing excluded, so nothing to double-exclude"
 
 # ── arms 8–11: the coverage ratchet ──────────────────────────────────────────
 # ci.yml sets coverage_min and coverage_baseline_file; sovereign-ci.yml's
@@ -126,4 +120,4 @@ if gate_verdict "$T/empty.lcov" 0; then fail_arm 11 "an lcov with no DA records 
 echo "pr-lane-control: arm 11 RED   — empty coverage data is refused"
 
 [ "$FAIL" -eq 0 ] || { echo "pr-lane-control: FAILED"; exit 1; }
-echo "pr-lane-control: all 11 arms behaved — nextest is off with its measurement recorded, the local fast lane excludes exactly two named tests that exist, and cargo test still runs them"
+echo "pr-lane-control: all 11 arms behaved — nextest is off with its measurement recorded, the local fast lane excludes no test"
