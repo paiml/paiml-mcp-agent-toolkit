@@ -470,7 +470,7 @@ jobs:
         let checks = check_gate_smells(repo_with(Some(&pinned)).path());
         let status = |id: &str| {
             let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
-            c.status.clone()
+            c.status
         };
         assert_eq!(status("GS-12"), CheckStatus::Skip, "{checks:?}");
         for id in ["GS-03", "GS-04", "GS-05", "GS-14"] {
