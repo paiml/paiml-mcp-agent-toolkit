@@ -451,11 +451,40 @@ jobs:
     }
 
     #[test]
-    fn wave2_rules_pass_a_clean_repo_and_never_fail() {
+    fn wave2_rules_pass_a_clean_repo() {
         let checks = check_gate_smells(repo_with(Some(CLEAN)).path());
         for id in ["GS-03", "GS-04", "GS-05", "GS-12", "GS-14"] {
             let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
-            assert_ne!(c.status, CheckStatus::Fail, "{id}: {c:?}");
+            assert_eq!(c.status, CheckStatus::Pass, "{id}: {c:?}");
+        }
+    }
+
+    /// A shared-workflow sha nothing here can resolve is GS-12's blind spot alone:
+    /// the other four rules measured the file and must still say Pass.
+    #[test]
+    fn an_unresolved_shared_sha_skips_gs12_and_no_other_rule() {
+        let pinned = format!(
+            "{CLEAN}  shared:\n    uses: paiml/.github/.github/workflows/ci.yml@{}\n",
+            "fbee3788a0ed92d09974ac21ea9bc97d373af6f0"
+        );
+        let checks = check_gate_smells(repo_with(Some(&pinned)).path());
+        let status = |id: &str| {
+            let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
+            c.status.clone()
+        };
+        assert_eq!(status("GS-12"), CheckStatus::Skip, "{checks:?}");
+        for id in ["GS-03", "GS-04", "GS-05", "GS-14"] {
+            assert_eq!(status(id), CheckStatus::Pass, "{id}: {checks:?}");
+        }
+    }
+
+    /// A workflow that does not parse was measured by no rule: all five decline.
+    #[test]
+    fn an_unparsable_workflow_skips_all_five_wave2_rules() {
+        let checks = check_gate_smells(repo_with(Some("jobs: [\n")).path());
+        for id in ["GS-03", "GS-04", "GS-05", "GS-12", "GS-14"] {
+            let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
+            assert_eq!(c.status, CheckStatus::Skip, "{id}: {c:?}");
         }
     }
 }
