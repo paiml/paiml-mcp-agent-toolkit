@@ -58,6 +58,14 @@ fn gs05_flags_heavy_rollup() {
     let r = detect_gs05(&wf(GS05_SMELLY));
     assert_eq!(ids(&r), ["GS-05"]);
     assert_eq!(r.findings[0].job, "rollup");
+    // A loop over the results: only the `for` line names `needs.`; the other
+    // four lines are result checks by their opener alone.
+    let looped = GS05_SMELLY.replace(
+        "if [ \"${{ needs.build.result }}\" != success ]; then exit 1; fi",
+        "fail=0\n          for r in ${{ needs.build.result }}; do\n          [ \"$r\" = \"success\" ] || fail=1\n          done\n          exit $fail",
+    );
+    assert_ne!(looped, GS05_SMELLY);
+    assert_eq!(ids(&detect_gs05(&wf(&looped))), ["GS-05"]);
 }
 #[test]
 fn gs05_hosted_rollup_and_heavy_worker_pass() {

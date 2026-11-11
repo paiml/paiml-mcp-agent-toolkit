@@ -240,6 +240,12 @@ jobs:
     fn gs13_block_list_stops_at_the_next_job_key() {
         let text = "jobs:\n  a:\n    runs-on:\n      - self-hosted\n    name: ubuntu-latest\n";
         assert!(gs_scan_hosted_runner(&wf(text)).is_empty());
+        // The first top-level key after `jobs:` ends the block: what follows
+        // is not a job, whatever it is indented like.
+        let after = format!("{CLEAN}env:\n  runs-on: ubuntu-latest\n");
+        assert!(gs_scan_hosted_runner(&wf(&after)).is_empty());
+        let nested = format!("{CLEAN}env:\n  later:\n    runs-on: ubuntu-latest\n");
+        assert!(gs_scan_hosted_runner(&wf(&nested)).is_empty());
     }
 
     #[test]
