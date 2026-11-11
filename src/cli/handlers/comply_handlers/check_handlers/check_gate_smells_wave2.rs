@@ -29,9 +29,26 @@ fn gs_wave2_skip(id: &str, title: &str, why: String) -> ComplianceCheck {
     }
 }
 
+/// The first `not_measured` entry that blinds rule `id`. A detector tags its own
+/// entry with its rule id (`GS-12 file:job: ...`), and that entry blinds that rule
+/// only. An untagged entry is a workflow that did not parse, which no rule measured.
+fn gs_wave2_unmeasured<'a>(
+    report: &'a crate::services::gate_smells::Report,
+    id: &str,
+) -> Option<&'a String> {
+    report
+        .not_measured
+        .iter()
+        .find(|why| match why.split_once(' ') {
+            Some((tag, _)) if tag.starts_with("GS-") => tag == id,
+            _ => true,
+        })
+}
+
 /// GS-03, GS-04, GS-05, GS-12 and GS-14 for one repository, in id order.
 /// GS-12 needs git reachability of a shared-workflow sha; no resolver is wired
-/// here, so a repo that pins one reports it as not measured, never as a pass.
+/// here, so a repo that pins one reports GS-12 as not measured, never as a pass.
+/// The other four rules do not depend on that sha and keep their own verdict.
 fn gs_wave2_checks(project_path: &Path) -> Vec<ComplianceCheck> {
     let dir = project_path.join(".github/workflows");
     let scanned = crate::services::gate_smells::scan_workflows(&dir, &|_, _| None);
@@ -41,7 +58,7 @@ fn gs_wave2_checks(project_path: &Path) -> Vec<ComplianceCheck> {
             Err(e) => gs_wave2_skip(id, title, format!("decline: no readable workflows ({e})")),
             Ok(report) => {
                 let hits = gs_wave2_hits(report, id);
-                match (hits.is_empty(), report.not_measured.first()) {
+                match (hits.is_empty(), gs_wave2_unmeasured(report, id)) {
                     (true, Some(why)) => gs_wave2_skip(id, title, format!("not_measured: {why}")),
                     _ => gs_verdict(id, title, &hits),
                 }
