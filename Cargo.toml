@@ -45,6 +45,7 @@ required-features = ["mcp-integration"]
 [dependencies]
 # Sovereign stack: shared utilities (batuta-common: old name, lib.name still batuta_common)
 batuta-common = "0.1"
+aprender-update = "0.72"
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
