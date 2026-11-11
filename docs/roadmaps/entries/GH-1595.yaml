@@ -2,7 +2,7 @@
   github_issue: 1595
   item_type: task
   title: pre-commit complexity check hard-codes exit 1 (hook_generation.rs:397); needs [hooks] warn mode
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-04T13:21:46.460114588+00:00
