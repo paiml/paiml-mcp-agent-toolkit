@@ -149,6 +149,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
+name = "annotate-snippets"
+version = "0.12.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2a5b0a5ab8561c603f16c3b78c24a386b1f70e7fc1b1b1e8c15738828e4a176"
+dependencies = [
+ "anstyle",
+ "memchr",
+ "unicode-width 0.2.2",
+]
+
+[[package]]
 name = "anstream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -206,9 +217,9 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "apr-format"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d95b6b84fa5d6a4f6b27e662f46ce214705df20033358badab06ba6268f8695"
+checksum = "b4b4339aa85905d7a202d9f3cbb4d7d7a774245e7a847f24262bb4438a467f79"
 dependencies = [
  "bincode",
  "half",
@@ -242,30 +253,37 @@ dependencies = [
 
 [[package]]
 name = "aprender"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cc7023dfe64eb43abe7abbc8a58c7e6ee80a76cd26cbe3b36b74889bc343722"
+checksum = "57ce8cdf6aa9a99e7edc995528c697398663a62f78c9e912cb5bcd45641a7fb3"
 dependencies = [
  "aprender-core",
 ]
 
 [[package]]
-name = "aprender-common"
-version = "0.64.0"
+name = "aprender-build-sha"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65485eb4e8733dd4de411f946dd91f4894ba5c7a4e2211275f5a5bcbae24060d"
+checksum = "191e0135522f0a47720c306991a5d5812ed4efa387ba3be85abbdbab3290a341"
+
+[[package]]
+name = "aprender-common"
+version = "0.72.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f75543a9935520ff8280a1c84a0fee92b00162244c5b0db9ff597b09b4ec87fe"
 dependencies = [
  "lz4_flex 0.11.6",
- "zstd",
+ "zstd 0.14.3",
 ]
 
 [[package]]
 name = "aprender-compute"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df3ffe7f0d70e042446d29e86957643e23fb25ea0ff2365e92e5cd419d8c5b37"
+checksum = "de58cc0836661282b1a7d157fdee6dcc215f0d0f72d89b03f7cb2f509b0f9f22"
 dependencies = [
  "anyhow",
+ "aprender-contracts",
  "aprender-contracts-macros",
  "aprender-gemm-codegen",
  "aprender-quant",
@@ -276,8 +294,8 @@ dependencies = [
  "num_cpus",
  "pollster",
  "serde",
+ "serde-saphyr",
  "serde_json",
- "serde_yaml_ng",
  "thiserror 2.0.21",
  "toml 0.8.23",
  "wgpu 27.0.1",
@@ -285,23 +303,27 @@ dependencies = [
 
 [[package]]
 name = "aprender-contracts"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31fca1e31a6262d16c277d1b2a0c6c682db6db6d3e145c51c2fe7d82f7dff1ef"
+checksum = "71151a6cef55577a2bcc28a72bb46aad48c5b1c9864947dcaf674e71b8c1fab3"
 dependencies = [
  "aprender-contracts-macros",
+ "blake3",
+ "proc-macro2",
  "regex",
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2 0.10.9",
+ "syn 2.0.118",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "aprender-contracts-macros"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "814b6c359367ef742ef9f4f019dfc075aa385c8f848268519f8c7d6ad206c883"
+checksum = "aa2998a140de6b82993f2b0573b32db500e98c3043b8de84e5dd4d13256895a2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -310,13 +332,14 @@ dependencies = [
 
 [[package]]
 name = "aprender-core"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb3dc9ae789a6030a877128730e9796e1c8125768fb71dab4270542ca7520c65"
+checksum = "311256750263d37d9cf9454524cc68900e723a5b6cdf9a6290727b57bdfd26ea"
 dependencies = [
  "apr-format",
  "aprender-common",
  "aprender-compute",
+ "aprender-contracts",
  "aprender-contracts-macros",
  "aprender-quant",
  "bincode",
@@ -328,20 +351,22 @@ dependencies = [
  "rayon",
  "rmp-serde",
  "serde",
+ "serde-saphyr",
  "serde_json",
- "serde_yaml_ng",
  "tempfile",
 ]
 
 [[package]]
 name = "aprender-db"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "678fea162f77b0343cddfa95fd892bc71fd133dbbe04a60e90f5b340446dbb03"
+checksum = "d0a8e7326a54c92956e23f6d13ed350c4e33d82b6df248d429e148ba64b99510"
 dependencies = [
  "anyhow",
+ "aprender-build-sha",
  "aprender-common",
  "aprender-compute",
+ "aprender-contracts",
  "arrow",
  "bytemuck",
  "chrono",
@@ -352,9 +377,9 @@ dependencies = [
  "parquet",
  "rustc-hash 2.1.3",
  "serde",
+ "serde-saphyr",
  "serde-wasm-bindgen",
  "serde_json",
- "serde_yaml_ng",
  "sqlparser",
  "thiserror 2.0.21",
  "tracing",
@@ -367,9 +392,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-gemm-codegen"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89a0418bc20392d21c3e65170f133b322da21e3fd819668c227584d050107731"
+checksum = "2a98ab8b7929aa7fee7c91b59674b5eee260109a072b13498809b4aeea7b3d2b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -378,9 +403,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-graph"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "189d5d89c9986e53dc592d27c25257e3367108d1f51ea141e5fd13f743edbcf9"
+checksum = "e76ccdd77cb8098b7a097d4648882e5408cb0a15f28b4a6073790111fa555707"
 dependencies = [
  "anyhow",
  "aprender-compute",
@@ -391,38 +416,40 @@ dependencies = [
 
 [[package]]
 name = "aprender-present-core"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "657fed587813760458899806ae8c7d9fd30b5da9349da5b2fc0451535410a3c3"
+checksum = "fbcdfa3436966b6c2966483c5b8816d97848b4bd75400f57a4be6ca1f71bb9dd"
 dependencies = [
+ "aprender-contracts",
  "aprender-contracts-macros",
  "serde",
+ "serde-saphyr",
  "serde_json",
- "serde_yaml_ng",
 ]
 
 [[package]]
 name = "aprender-quant"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09b02dcf9a47930ae9be5acd8c66336c6b1fc0890ecd02c5814f3f1b3d4b52f4"
+checksum = "96d2d525277ba771b6a18bccb39aa7a058f57f9cc6175f181eb2e886e8ba5bfd"
 dependencies = [
  "half",
 ]
 
 [[package]]
 name = "aprender-rag"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f33f168079c3a7e1dcdd7e7d044945c739949abb4ecedf9af7ae6f0b638d68a"
+checksum = "2ea72c03e91413cc4d1128bbd1c9801ca2b3076988758e414cf5ae40d142740e"
 dependencies = [
  "aprender-common",
  "aprender-compute",
+ "aprender-contracts",
  "async-trait",
  "rusqlite",
  "serde",
+ "serde-saphyr",
  "serde_json",
- "serde_yaml_ng",
  "thiserror 2.0.21",
  "tokio",
  "uuid",
@@ -430,24 +457,27 @@ dependencies = [
 
 [[package]]
 name = "aprender-viz"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0346aa0e93d9161c218eced6ee512620ffc1d30100ceb6f4e99ca305858d3e05"
+checksum = "ee53ff63d2d69a77aadd05db25e54522be5012c25d12f5b0f19b0cb3c58ba47a"
 dependencies = [
  "aprender-common",
  "aprender-compute",
  "aprender-graph",
  "base64 0.22.1",
  "libc",
+ "libm",
  "png",
+ "roxmltree",
+ "sha2 0.10.9",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "aprender-zram-core"
-version = "0.64.0"
+version = "0.72.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df2e596f13c5c5805005869dbec7871609dc8b09fdb8c8863ba5296d2b8f79b6"
+checksum = "e3930cc7b3fed81041e6f0cc0fcdc55c933f0bceac9b9adcbf8170dfd5671d3f"
 dependencies = [
  "thiserror 2.0.21",
 ]
@@ -471,6 +501,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arraydeque"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
+
+[[package]]
 name = "arrayvec"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -478,9 +514,9 @@ checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
 
 [[package]]
 name = "arrow"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c14b3d39f306bc28fd639d59f06e17a0f377d0021e1b7e9054e4d6fedc98774"
+checksum = "d965156f2220e94dcf676e04322b7b0b41c97e85cb3e1c365b8e56d0f70be999"
 dependencies = [
  "arrow-arith",
  "arrow-array",
@@ -499,9 +535,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-arith"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce2961626677665b2195eb59242af4c7befe7b8737ca2050295389362380104e"
+checksum = "ca16fdd1daeb1eccefb42df52ec65448ef33eec72488598675d46dfa9ce58923"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -513,9 +549,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-array"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e5f6adeffdf587d7a31db5d2266189624b526730cd3627f9ff9fedae97ad584"
+checksum = "0f3d22a41d3df78b71df0b685af219ae3a94188ab98d6fb29c958eb55c3247f4"
 dependencies = [
  "ahash",
  "arrow-buffer",
@@ -531,9 +567,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-buffer"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "097d193003ce7995d5d087089069ec2a6e0187faf5a6f8c9f38af2645d987182"
+checksum = "7bd46a530bc1a8e763102fc36c1dc0f51f3ffa150c78e7f5658ccb54b1458ade"
 dependencies = [
  "bytes",
  "half",
@@ -543,9 +579,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-cast"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "635c9c635668ad26adf76cce8fb276c4be7cf06e63bd516de7da514f9680ee53"
+checksum = "baa83a0752814a1922d5ee75032524ca9bbfb7f60ee35a67ed4ab8b275260aaf"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -563,10 +599,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "arrow-csv"
-version = "59.3.0"
+name = "arrow-cmp"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c2ebf8d631e79b02c16cf5ae860561272c26024ec88fce389a56aaddd558e86"
+checksum = "1913e57a64fbf2c4502fa6d54b547d6a1ae59e3146cbc15321d47468c937abd1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-schema",
+]
+
+[[package]]
+name = "arrow-csv"
+version = "60.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4572af05fadde76a063139805c089d0915b7eb64ed5bef14456c6e458a80b28"
 dependencies = [
  "arrow-array",
  "arrow-cast",
@@ -579,9 +626,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-data"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ba2f832eaeca24b8f26143dba750e42ee4ab51cf7d65e701ca9607cfda9f358"
+checksum = "415b7fbc4cf56b080bb5677a4ae74211b5c79e571ed37a1d547633ec07f3b43b"
 dependencies = [
  "arrow-buffer",
  "arrow-schema",
@@ -592,9 +639,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-ipc"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcc41681ea80f521df14c36725b74d4c60702c47f0793af2be469c04527e2599"
+checksum = "45f3e766bccf5a0cb57a5de52a4cba450dea5171547c2cb5939b486d08887cba"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -606,9 +653,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-json"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2f57d7a81969f24ccf80809587b76c09897e6f829d2d65a5976bfb3218851f1"
+checksum = "d843cca4b5361d7667564083b151a30d816d2b7e7ce2baa53948e2188f087f06"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -631,12 +678,13 @@ dependencies = [
 
 [[package]]
 name = "arrow-ord"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c900759f3bd8354fd4196bc4403eee846894dc2adf66b4225472006a0bf18c5"
+checksum = "4c58f2ae6dd1480fc413f7320a547e39dcc499c23d4f36ca19572b685811e6e4"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
+ "arrow-cmp",
  "arrow-data",
  "arrow-schema",
  "arrow-select",
@@ -644,9 +692,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-row"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4c6425032e28266e3fc4ff680805e57e670d6ea92473043f3e65b7ed6ac79f2"
+checksum = "68f9db8345b0638416d3b56d117d262d13070fdef788c6d75b53a180215c477e"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -657,19 +705,20 @@ dependencies = [
 
 [[package]]
 name = "arrow-schema"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10fab8d4563491417ba801fab29d205104d20d4bdf37bda6cd1cf425cff598cd"
+checksum = "de2c8e714b466404cdc1189e89f892426efea614d938e16c15518c340cd43ba3"
 
 [[package]]
 name = "arrow-select"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc58569193c2525915f3cc6310edba3792f1200f65d6e9ed330aa33e691493b8"
+checksum = "a5af3f6656c5f2c6944f93d9a357a7f204c93d5f349385a44cf46c4a26fbcf30"
 dependencies = [
  "ahash",
  "arrow-array",
  "arrow-buffer",
+ "arrow-cmp",
  "arrow-data",
  "arrow-schema",
  "num-traits",
@@ -677,9 +726,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-string"
-version = "59.3.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e0813f3c35c1cfea65e14c20a953440f7783c088b7ad2d0db162ccdeefcec14"
+checksum = "ab1be9306b9a413b5b004e2a5a19caac728870d76e8891b351f040d554c93862"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -752,9 +801,9 @@ dependencies = [
 
 [[package]]
 name = "atoi"
-version = "2.0.0"
+version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f28d99ec8bfea296261ca1af174f24225171fea9664ba9003cbebee704810528"
+checksum = "d12c37257553c19e9aee6cba77814fdc9e07844abfc8b3a2c377cd920ee5a993"
 dependencies = [
  "num-traits",
 ]
@@ -897,7 +946,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97eb4c76189d694d880ab9affaf6087fb88bc7afe2de7c7e9c9452745788f478"
 dependencies = [
  "lz4_flex 0.11.6",
- "zstd",
+ "zstd 0.13.3",
 ]
 
 [[package]]
@@ -2139,6 +2188,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "encoding_rs_io"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fba3fe847045ecff794b9c138293a80db914678c453ad63fbf0c6a9eb6e00b22"
+dependencies = [
+ "encoding_rs",
+]
+
+[[package]]
 name = "endian-type"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2791,6 +2849,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdf242682df893b86f33a73828fb09ca4b2d3bb6cc95249707fc684d27484b91"
 dependencies = [
  "bitflags 2.13.0",
+]
+
+[[package]]
+name = "granit-parser"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e20f99e46474f56bd905c56e817ebddcf377a611f94c53ac4649e4d3fa3c0cd0"
+dependencies = [
+ "arraydeque",
+ "smallvec",
 ]
 
 [[package]]
@@ -4211,6 +4279,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "nohash-hasher"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
+
+[[package]]
 name = "nom"
 version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4656,9 +4730,9 @@ dependencies = [
 
 [[package]]
 name = "parquet"
-version = "59.2.0"
+version = "60.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7065842956a20c2a536924ce8e4d9955f7422451511b9eb7500d7bfe5077e59c"
+checksum = "806eaa0f1c0436dcb43bee8e6a82bf2efff90521a60172f8281cb9ef577b43a4"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -4860,7 +4934,7 @@ dependencies = [
  "actix",
  "actix-rt",
  "anyhow",
- "aprender 0.64.0",
+ "aprender 0.72.3",
  "aprender-compute",
  "aprender-contracts",
  "aprender-contracts-macros",
@@ -5701,6 +5775,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "roxmltree"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
+
+[[package]]
 name = "ruchy"
 version = "4.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6018,6 +6098,23 @@ checksum = "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba"
 dependencies = [
  "serde_core",
  "serde_derive",
+]
+
+[[package]]
+name = "serde-saphyr"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8050abb251097357e24aff63ba2c52a6309ecb7d23a5474023df960a02694d8"
+dependencies = [
+ "annotate-snippets",
+ "base64 0.23.1",
+ "encoding_rs_io",
+ "granit-parser",
+ "nohash-hasher",
+ "num-traits",
+ "serde_core",
+ "smallvec",
+ "zmij",
 ]
 
 [[package]]
@@ -8952,7 +9049,16 @@ version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e91ee311a569c327171651566e07972200e76fcfe2242a4fa446149a3881c08a"
 dependencies = [
- "zstd-safe",
+ "zstd-safe 7.2.4",
+]
+
+[[package]]
+name = "zstd"
+version = "0.14.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db3ae9bf90af6e40197bef767eeefc46ad6397420fe873830bd85e5fbbfb3c70"
+dependencies = [
+ "zstd-safe 8.2.0",
 ]
 
 [[package]]
@@ -8960,6 +9066,15 @@ name = "zstd-safe"
 version = "7.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f49c4d5f0abb602a93fb8736af2a4f4dd9512e36f7f570d66e65ff867ed3b9d"
+dependencies = [
+ "zstd-sys",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "8.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ded520f16b29e1a9b771c722221b2b0a0398c2316d9bb3c42b458a5414d7434b"
 dependencies = [
  "zstd-sys",
 ]
