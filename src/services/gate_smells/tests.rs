@@ -76,7 +76,8 @@ fn shared(sha: &str) -> String {
 
 #[test]
 fn gs12_parse_shared_ref() {
-    let r = parse_shared_ref(&format!("paiml/.github/.github/workflows/x.yml@{SHA}")).unwrap();
+    let r = parse_shared_ref(&format!("paiml/.github/.github/workflows/x.yml@{SHA}"))
+        .expect("a 40-hex ref parses");
     assert_eq!((r.repo.as_str(), r.sha.as_str()), ("paiml/.github", SHA));
     assert!(parse_shared_ref("paiml/.github/.github/workflows/x.yml@main").is_none());
     assert!(parse_shared_ref(&format!("actions/checkout@{SHA}")).is_none());
@@ -120,12 +121,12 @@ fn gs14_clean_and_nightly_pass() {
 // ---- scan ----
 #[test]
 fn scan_reports_each_smell_and_unparseable_file() {
-    let d = tempfile::TempDir::new().unwrap();
-    std::fs::write(d.path().join("a.yml"), GS03_SMELLY).unwrap();
-    std::fs::write(d.path().join("b.yml"), GS14_SMELLY).unwrap();
-    std::fs::write(d.path().join("c.yml"), "jobs: [unclosed").unwrap();
-    std::fs::write(d.path().join("d.txt"), "ignored").unwrap();
-    let r = scan_workflows(d.path(), &|_, _| None).unwrap();
+    let d = tempfile::TempDir::new().expect("tempdir");
+    std::fs::write(d.path().join("a.yml"), GS03_SMELLY).expect("write fixture");
+    std::fs::write(d.path().join("b.yml"), GS14_SMELLY).expect("write fixture");
+    std::fs::write(d.path().join("c.yml"), "jobs: [unclosed").expect("write fixture");
+    std::fs::write(d.path().join("d.txt"), "ignored").expect("write fixture");
+    let r = scan_workflows(d.path(), &|_, _| None).expect("scan succeeds");
     let got = ids(&r);
     assert!(got.contains(&"GS-03") && got.contains(&"GS-14"), "{got:?}");
     assert_eq!(r.not_measured.len(), 1);
