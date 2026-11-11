@@ -594,4 +594,35 @@ mod tests {
             "corrupt history must be preserved aside, not destroyed"
         );
     }
+
+    /// pmat#1278: equal hotness scores came out in HashMap order, so two runs of
+    /// `show-metrics` disagreed and the flag-efficacy sweep skipped the command.
+    #[test]
+    fn hot_metrics_breaks_score_ties_by_name() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
+        for name in ["zeta", "alpha", "mid", "beta", "omega", "gamma"] {
+            store.hotness_cache.insert(name.to_string(), 0.5);
+        }
+        store.hotness_cache.insert("top".to_string(), 0.9);
+        let names: Vec<String> = store.hot_metrics().into_iter().map(|(n, _)| n).collect();
+        assert_eq!(
+            names,
+            ["top", "alpha", "beta", "gamma", "mid", "omega", "zeta"],
+            "score descending, then name ascending"
+        );
+    }
+
+    /// pmat#1278: `metrics()` returned `read_dir` order.
+    #[test]
+    fn metrics_are_listed_in_name_order() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let trends = temp_dir.path().join("trends");
+        let mut store = MetricTrendStore::from_path(&trends).unwrap();
+        for name in ["zeta", "alpha", "mid"] {
+            std::fs::write(trends.join(format!("{name}.json")), "[]").unwrap();
+        }
+        std::fs::write(trends.join("alpha.lock"), "").unwrap();
+        assert_eq!(store.metrics().unwrap(), ["alpha", "mid", "zeta"]);
+    }
 }

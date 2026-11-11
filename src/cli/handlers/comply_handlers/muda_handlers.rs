@@ -15,7 +15,7 @@
 //! Score: 0-100 (lower is better, 0 = zero waste)
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
 /// Muda Waste Report aggregating all seven wastes
@@ -39,9 +39,12 @@ pub struct MudaReport {
     pub total_score: f64,
     /// Grade based on total score
     pub grade: MudaGrade,
-    /// Maps each Muda category to its top contributing files (up to 5 per category)
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub file_details: HashMap<String, Vec<String>>,
+    /// Maps each Muda category to its top contributing files (up to 5 per category).
+    /// A `BTreeMap`, never a `HashMap`: CB-300 prints these in iteration order, and a
+    /// `HashMap` reordered the lines from run to run, so the flag-efficacy sweep skipped
+    /// all of `comply report` as a nondeterministic baseline (pmat#1278).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub file_details: BTreeMap<String, Vec<String>>,
 }
 
 /// Muda grade classification
@@ -101,7 +104,7 @@ pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
     let defects = measure_defects(project_path);
 
     // Collect file details for categories with concrete file mappings
-    let mut file_details = HashMap::new();
+    let mut file_details = BTreeMap::new();
     let overproduction_files = collect_overproduction_files(project_path);
     if !overproduction_files.is_empty() {
         file_details.insert("Overproduction".to_string(), overproduction_files);

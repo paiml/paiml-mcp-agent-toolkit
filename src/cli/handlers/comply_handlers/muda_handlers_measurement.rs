@@ -229,7 +229,9 @@ fn collect_overproduction_files(project_path: &Path) -> Vec<String> {
                     }
                 }
                 let mut sorted: Vec<(&&str, &usize)> = file_counts.iter().collect();
-                sorted.sort_by(|a, b| b.1.cmp(a.1));
+                // Count descending, then path: `file_counts` is a HashMap, so a tie at
+                // the top-5 cut picked a different file on each run (pmat#1278).
+                sorted.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
                 return sorted
                     .into_iter()
                     .take(5)

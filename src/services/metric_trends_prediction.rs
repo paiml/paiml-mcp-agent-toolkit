@@ -18,8 +18,12 @@ impl MetricTrendStore {
 
             // Get timestamp from reverse mapping
             if let Some(timestamp) = self.reverse_node_map.get(&node_id) {
-                // Find which metric this observation belongs to
-                for (metric_name, observations) in &self.cache {
+                // Find which metric this observation belongs to. Two metrics can share
+                // a timestamp, so the FIRST match wins, and "first" must not be
+                // HashMap order or the scores move from run to run (pmat#1278).
+                let mut cached: Vec<_> = self.cache.iter().collect();
+                cached.sort_by(|a, b| a.0.cmp(b.0));
+                for (metric_name, observations) in cached {
                     if observations.iter().any(|obs| obs.timestamp == *timestamp) {
                         metric_scores
                             .entry(metric_name.clone())
@@ -49,7 +53,11 @@ impl MetricTrendStore {
             .iter()
             .map(|(name, score)| (name.clone(), *score))
             .collect();
-        metrics.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        // Score descending, then name: equal scores are common (every metric with one
+        // observation scores the same), and `hotness_cache` is a HashMap, so without
+        // the name tie-break `show-metrics` printed them in a different order on each
+        // run (pmat#1278).
+        metrics.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
         metrics
     }
 

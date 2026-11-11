@@ -117,7 +117,9 @@ impl CommandDispatcher {
                         (m.clone(), score)
                     })
                     .collect();
-                sorted_metrics.sort_by(|a, b| b.1.total_cmp(&a.1));
+                // Name breaks ties, so equal hotness never prints in a varying order
+                // (pmat#1278).
+                sorted_metrics.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
                 for (metric_name, _hotness) in sorted_metrics {
                     if let Ok(trend_analysis) = store.trend(&metric_name, days) {

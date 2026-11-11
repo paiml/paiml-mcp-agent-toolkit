@@ -144,7 +144,7 @@ fn contains_todo() {} // no marker, just identifier
         let report = calculate_muda_score(&project_path);
         // On a real Rust project, at least some file details should be populated
         // (e.g. Defects from .unwrap() usage, Inventory from SATD markers)
-        // file_details is a HashMap<String, Vec<String>>
+        // file_details is a BTreeMap<String, Vec<String>>
         for files in report.file_details.values() {
             // Each entry should have at most 5 files
             assert!(files.len() <= 5, "File details capped at 5 per category");
@@ -296,7 +296,7 @@ fn complex() {
 
     #[test]
     fn test_muda_report_serialization_with_file_details() {
-        let mut file_details = HashMap::new();
+        let mut file_details = BTreeMap::new();
         file_details.insert(
             "Defects".to_string(),
             vec!["src/main.rs (5 unwrap)".to_string()],
@@ -323,6 +323,36 @@ fn complex() {
         assert!(parsed.file_details.contains_key("Defects"));
     }
 
+    /// pmat#1278: `file_details` was a HashMap, so CB-300's detail lines and the
+    /// JSON keys came out in a different order on each run. Insertion order is the
+    /// one `calculate_muda_score` uses; the output must be name order regardless.
+    #[test]
+    fn test_file_details_order_is_stable() {
+        let mut file_details = BTreeMap::new();
+        for cat in ["Overproduction", "Inventory", "Over-processing", "Defects"] {
+            file_details.insert(cat.to_string(), vec![format!("src/{cat}.rs")]);
+        }
+        let keys: Vec<&str> = file_details.keys().map(String::as_str).collect();
+        assert_eq!(keys, ["Defects", "Inventory", "Over-processing", "Overproduction"]);
+        let report = MudaReport {
+            overproduction: 0.0,
+            waiting: 0.0,
+            inventory: 0.0,
+            transport: 0.0,
+            over_processing: 0.0,
+            motion: 0.0,
+            defects: 0.0,
+            total_score: 0.0,
+            grade: MudaGrade::Lean,
+            file_details,
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        let pos = |k: &str| json.find(&format!("\"{k}\"")).unwrap();
+        assert!(pos("Defects") < pos("Inventory"));
+        assert!(pos("Inventory") < pos("Over-processing"));
+        assert!(pos("Over-processing") < pos("Overproduction"));
+    }
+
     #[test]
     fn test_muda_report_serialization_empty_file_details() {
         let report = MudaReport {
@@ -335,7 +365,7 @@ fn complex() {
             defects: 0.0,
             total_score: 0.0,
             grade: MudaGrade::Lean,
-            file_details: HashMap::new(),
+            file_details: BTreeMap::new(),
         };
         let json = serde_json::to_string(&report).unwrap();
         // Empty file_details should be skipped in serialization

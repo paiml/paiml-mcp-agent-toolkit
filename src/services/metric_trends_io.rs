@@ -138,6 +138,9 @@ impl MetricTrendStore {
                 metrics.push(name.to_string_lossy().to_string());
             }
         }
+        // `read_dir` order is whatever the filesystem returns; sort so every caller,
+        // and every report built from this list, sees one order (pmat#1278).
+        metrics.sort();
         Ok(metrics)
     }
 }
