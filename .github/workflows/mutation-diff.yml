@@ -86,7 +86,7 @@ on:
 
 concurrency:
   group: mutation-diff-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'train/') && !startsWith(github.head_ref, 'batch/') }}
 
 # LAB lane (operator rule C324): a red opens or updates ONE ticket with ONE owner,
 # then stays silent; red for 7 days and the lane stops until its owner brings it
