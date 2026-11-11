@@ -616,7 +616,7 @@ const GROUP_IDS_TICKET_RELEASE: &[RuleDecl] = &[
 ];
 const GROUP_IDS_SPEC_EPICS: &[RuleDecl] = &[("cb-2110", "Spec Epics")];
 const GROUP_IDS_SPEC_REVIEWS: &[RuleDecl] = &[("cb-2111", "Spec Reviews")];
-// 190 distinct ids across 23 groups; declared in more than one group: none
+// 195 distinct ids across 24 groups; declared in more than one group: none
 
 /// A named compliance-check group, the rule ids it can emit, and the thunk that
 /// produces its checks. The ids are known before the group runs (PMAT-1296), so
