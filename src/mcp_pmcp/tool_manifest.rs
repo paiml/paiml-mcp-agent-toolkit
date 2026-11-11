@@ -21,7 +21,7 @@
 //! tree that carries that file — which is every checkout, but not the published
 //! crate, where `/docs/` is excluded (`Cargo.toml:26`).
 
-/// The 19 tools registered by `SimpleUnifiedServer::run()`, in registration
+/// The tools registered by `SimpleUnifiedServer::run()`, in registration
 /// order, with their catalog descriptions. Source of truth for `mcp.json`.
 ///
 /// Which `analyze_*` tools belong here is not a judgement made in this file:
@@ -129,12 +129,12 @@ pub const LIVE_MCP_TOOLS: &[(&str, &str)] = &[
     ),
 ];
 
-/// The 19 live tools' `metadata()`, in registration order — the SAME objects
+/// The live tools' `metadata()`, in registration order — the SAME objects
 /// `tools/list` serves, so the manifest cannot describe a tool differently
 /// from the server (CRUX-09, #1150).
 ///
 /// The previous renderer chose one of three canned inputSchemas by tool NAME:
-/// 15 of 19 tools were advertised as taking `paths: string[]` whatever they
+/// Most of the tools were advertised as taking `paths: string[]` whatever they
 /// actually took, six could not be called at all as the shipped file described
 /// them, and `pmat_index_stats` was declared `additionalProperties: false` with
 /// no properties while the live tool accepts `rebuild` — so a validating
@@ -668,5 +668,31 @@ mod tests {
             manifest_tool_names(&legacy),
             vec!["generate_template", "generate_unified_context"]
         );
+    }
+
+    /// #1230: the tool COUNT lives in `LIVE_MCP_TOOLS.len()` only. A literal
+    /// "<N> tools" in this file's prose goes stale the day a tool is added
+    /// (it said 19 while the list held 20), so the prose may not carry one.
+    #[test]
+    fn prose_states_no_literal_tool_count() {
+        let src = include_str!("tool_manifest.rs");
+        let tests_at = src.find("#[cfg(test)]").expect("tests module present");
+        for (i, line) in src[..tests_at].lines().enumerate() {
+            let t = line.trim_start();
+            if !(t.starts_with("///") || t.starts_with("//!")) {
+                continue;
+            }
+            let words: Vec<&str> = t.split_whitespace().collect();
+            for w in words.windows(2) {
+                let n = w[0].trim_matches(|c: char| !c.is_ascii_digit());
+                let tool = w[1].trim_matches(|c: char| !c.is_ascii_alphabetic());
+                assert!(
+                    n.is_empty() || n.parse::<u32>().is_err() || tool != "tools",
+                    "line {}: prose states a literal tool count ({} tools); use LIVE_MCP_TOOLS.len()",
+                    i + 1,
+                    n
+                );
+            }
+        }
     }
 }
