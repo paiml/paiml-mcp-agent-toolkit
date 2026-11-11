@@ -587,6 +587,11 @@ const GROUP_IDS_GATE_SMELLS: &[RuleDecl] = &[
     ("GS-02", "Floating Version"),
     ("GS-07", "No Timeout Or Supersede"),
     ("GS-13", "Hosted Runner In Sovereign Repo"),
+    ("GS-03", "Live External Read In PR Job"),
+    ("GS-04", "Gate Self-Test On Product Path"),
+    ("GS-05", "Roll-Up On Heavy Runner"),
+    ("GS-12", "Unreachable Shared Workflow Sha"),
+    ("GS-14", "Repo-Global Check On PR Path"),
 ];
 const GROUP_IDS_RUNNER_SMELLS: &[RuleDecl] = &[
     ("RS-01", "No Concurrency Cancel"),
@@ -1974,6 +1979,7 @@ include!("check_builders_gate_effect.rs");
 include!("check_metrics_ratchet.rs");
 include!("check_builders_ratchet.rs");
 include!("check_gate_smells.rs");
+include!("check_gate_smells_wave2.rs");
 include!("check_builders_gate_smells.rs");
 include!("check_runner_smells.rs");
 include!("check_builders_runner_smells.rs");
