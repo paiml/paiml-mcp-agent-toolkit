@@ -11,6 +11,8 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+    # infra#3828 RS-09: a draft starts nothing; marking it ready starts the run.
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
   schedule:
     # AD-01: the release check below runs daily on master, so a merged release
@@ -19,7 +21,7 @@ on:
 
 concurrency:
   group: quality-gate-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'train/') && !startsWith(github.head_ref, 'batch/') }}
 
 env:
   RUST_MIN_STACK: "8388608"
@@ -27,6 +29,9 @@ env:
 
 jobs:
   score:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: pmat score
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -175,6 +180,7 @@ jobs:
   # audit: docs/specifications/audit-pmat-support-l1-l5-aprender-provable-contracts.md (ALADR-001/006).
   # This wires the ladder engine into CI — the audit's highest-leverage move (R0).
   provable-ladder:
+    if: ${{ github.event.pull_request.draft != true }}
     name: provable ladder
     runs-on: ubuntu-24.04
     timeout-minutes: 30

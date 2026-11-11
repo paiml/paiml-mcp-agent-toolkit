@@ -61,6 +61,7 @@ pub mod contract_index; // R-9: O(1) contract binding lookup from binding-index.
 pub mod dap; // Sprint 71: Debug Adapter Protocol server (optional - 13 transitive deps)
 pub mod detection; // Toyota Way: Unified detection framework (consolidates detection services)
 pub mod facades;
+pub mod gate_smells; // GH-1673: gate-smell detectors GS-03/04/05/12/14
 pub mod language_analyzer;
 pub mod language_registry;
 pub mod languages;
