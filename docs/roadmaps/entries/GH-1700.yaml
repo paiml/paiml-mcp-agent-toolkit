@@ -1,0 +1,16 @@
+- id: GH-1700
+  github_issue: 1700
+  item_type: task
+  title: 'work sync github-to-yaml writes unquoted titles containing '' #N'', truncating them (YAML comment)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-10T00:00:00.000000000+00:00
+  updated: 2026-11-10T00:00:00.000000000+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

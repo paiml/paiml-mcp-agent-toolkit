@@ -136,26 +136,33 @@ impl GsWorkflow {
         if child == 0 {
             return vec![];
         }
-        let mut jobs: Vec<GsJob<'_>> = vec![];
-        for (n, l) in it {
-            let ind = gs_indent(l);
-            if ind < child {
-                break;
-            }
-            let t = l.trim();
-            if ind == child && t.ends_with(':') && !t.starts_with('-') {
-                jobs.push(GsJob {
-                    id: t.trim_end_matches(':'),
-                    line: *n,
-                    indent: ind,
-                    body: vec![],
-                });
-            } else if let Some(j) = jobs.last_mut() {
-                j.body.push((*n, l.as_str()));
-            }
-        }
-        jobs
+        gs_collect_jobs(it, child)
     }
+}
+
+/// Group the lines under a `jobs:` header into jobs: a line at the child indent
+/// ending in `:` opens one, deeper lines belong to the last opened, and the
+/// first line shallower than the child indent ends the block.
+fn gs_collect_jobs<'a>(
+    lines: impl Iterator<Item = &'a (usize, String)>,
+    child: usize,
+) -> Vec<GsJob<'a>> {
+    let mut jobs: Vec<GsJob<'a>> = vec![];
+    for (n, l) in lines.take_while(|(_, l)| gs_indent(l) >= child) {
+        let ind = gs_indent(l);
+        let t = l.trim();
+        if ind == child && t.ends_with(':') && !t.starts_with('-') {
+            jobs.push(GsJob {
+                id: t.trim_end_matches(':'),
+                line: *n,
+                indent: ind,
+                body: vec![],
+            });
+        } else if let Some(j) = jobs.last_mut() {
+            j.body.push((*n, l.as_str()));
+        }
+    }
+    jobs
 }
 
 impl<'a> GsJob<'a> {
