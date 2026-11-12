@@ -5,6 +5,8 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+    # infra#3828 RS-09: a draft starts nothing; marking it ready starts the run.
+    types: [opened, synchronize, reopened, ready_for_review]
   # PMAT-719 (goal-mode.md §7.1): a gate that is not evaluated on the merge
   # queue is a gate the queue bypasses. No queue is known to be enabled; the
   # trigger costs nothing and closes the hole before anyone opens it.
@@ -12,9 +14,19 @@ on:
   workflow_dispatch:
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # infra#3828: a new push to an ordinary PR cancels that PR's superseded run. Runs on master,
+  # merge_group and train/* or batch/* heads are never cancelled: a cancelled master run is a
+  # master with no verdict.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'train/') && !startsWith(github.head_ref, 'batch/') }}
+# infra#3828 RS-06: no debug info and no incremental state in CI builds.
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+
 jobs:
   ci:
+    if: ${{ github.event.pull_request.draft != true }}
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0 # main
     with:
       repo: ${{ github.event.repository.name }}
@@ -91,12 +103,15 @@ jobs:
   # `success` exits 1 — so `always()` converts "the check never reported" into
   # a red gate rather than a missing one.
   gate:
-    runs-on: ubuntu-24.04
+    # Roll-up only (reads results, no checkout): the gate-light pool, hosted for fork PRs.
+    runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 15
     needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability, tdg-ratchet]
-    if: always()
+    if: ${{ always() && github.event.pull_request.draft != true }}
     steps:
       - name: Check required jobs
+        env:
+          HEAVY: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
         run: |
           rc=0
           for j in "ci:${{ needs.ci.result }}" \
@@ -107,6 +122,12 @@ jobs:
                    "tdg-ratchet:${{ needs.tdg-ratchet.result }}"; do
             name=${j%%:*}
             result=${j#*:}
+            # infra#3828: windows-check is a HEAVY leg. On an ordinary PR it is skipped and
+            # reported NOT MEASURED, never as a pass; on every other event skipped is red.
+            if [ "$name" = "windows-check" ] && [ "$result" = "skipped" ] && [ "$HEAVY" != "true" ]; then
+              echo "$name: NOT MEASURED on this PR (owed on train/*, batch/*, full-ci and every non-PR event)"
+              continue
+            fi
             if [ "$result" != "success" ]; then
               echo "$name failed: $result"
               rc=1
@@ -127,8 +148,12 @@ jobs:
   # old code), and first proves the validator can fail: a fixture with a
   # duplicated id must exit 1, or the gate is measuring nothing. Exit codes are
   # documented in `pmat work validate --help`: 0 valid, 1 invalid or unreadable.
-  roadmap-validate:
-    name: roadmap validates
+  # infra#3828 build audit: pmat is compiled ONCE per push. The three jobs below
+  # used to run `cargo build --bin pmat` each; they now download this binary.
+  # A failed build fails all three (a skipped job is not accepted by `gate`).
+  build-pmat:
+    if: ${{ github.event.pull_request.draft != true }}
+    name: build pmat (once per push)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -137,6 +162,27 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: build pmat from this tree
         run: cargo build --bin pmat --locked
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pmat-bin
+          path: target/debug/pmat
+          if-no-files-found: error
+          retention-days: 1
+
+  roadmap-validate:
+    if: ${{ github.event.pull_request.draft != true }}
+    name: roadmap validates
+    needs: build-pmat
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: fetch the pmat built once for this push (build-pmat)
+        uses: actions/download-artifact@v4
+        with:
+          name: pmat-bin
+          path: target/debug
+      - run: chmod +x target/debug/pmat
       - name: control — a duplicated id must be refused (exit 1)
         shell: bash
         run: |
@@ -171,15 +217,19 @@ jobs:
   # planted, including a real pmat run over one definition planted below grade A,
   # and must be reached before the verdict on this tree is believed.
   tdg-ratchet:
+    if: ${{ github.event.pull_request.draft != true }}
     name: CB-200 ratchet measured
+    needs: build-pmat
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.98.1
-      - uses: Swatinem/rust-cache@v2
-      - name: build pmat from this tree
-        run: cargo build --bin pmat --locked
+      - name: fetch the pmat built once for this push (build-pmat)
+        uses: actions/download-artifact@v4
+        with:
+          name: pmat-bin
+          path: target/debug
+      - run: chmod +x target/debug/pmat
       - name: control — every CB-200 verdict is reachable, and a planted below-A definition is refused
         run: bash scripts/cb200-ratchet-gate.sh ./target/debug/pmat --control
       - name: CB-200 is measured and equals the recorded baseline
@@ -206,7 +256,9 @@ jobs:
   # its GREEN on this tree is believed. `fetch-depth: 0` + `fetch-tags` because
   # the rule reads `merge-base` against the base branch and the latest `v*` tag.
   traceability:
+    if: ${{ github.event.pull_request.draft != true }}
     name: traceability
+    needs: build-pmat
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -216,8 +268,12 @@ jobs:
           fetch-tags: true
       - uses: dtolnay/rust-toolchain@1.98.1
       - uses: Swatinem/rust-cache@v2
-      - name: build pmat from this tree
-        run: cargo build --bin pmat --locked
+      - name: fetch the pmat built once for this push (build-pmat)
+        uses: actions/download-artifact@v4
+        with:
+          name: pmat-bin
+          path: target/debug
+      - run: chmod +x target/debug/pmat
       - name: control — a commit with no Pmat-Ticket trailer must be refused (exit 1)
         run: bash scripts/traceability-control.sh ./target/debug/pmat
       - name: control — an open item naming a closed issue must be refused (CB-2115, exit 1)
@@ -373,8 +429,9 @@ jobs:
   # In `gate`'s `needs`, so the verdict reaches the required `ci / gate`
   # context. A check that reports and cannot block is not a check.
   reusable-pin-drift:
+    if: ${{ github.event.pull_request.draft != true }}
     name: reusable workflow pins agree
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -434,6 +491,9 @@ jobs:
   # /actions/runs/{id}/jobs even when its step exited non-zero, so the API's
   # green is not evidence on its own.
   windows-check:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -443,104 +503,6 @@ jobs:
       - name: cargo check --bin pmat (default features)
         run: cargo check --bin pmat --locked
 
-  # GH-275: Post-merge mutation testing for RPS Rust Tooling score.
-  # Runs only on push to master (never on PRs — takes 30-120 min).
-  # `continue-on-error: true` keeps this informational, not blocking.
-  # NOT a gate yet, deliberately, and the order matters.
-  #
-  # This job has never executed a single mutant, so `min_mutation_score_pct =
-  # 80.0` in .pmat-metrics.toml names a quantity that has never been measured.
-  # Removing `continue-on-error` before a run reports a non-zero caught/missed
-  # count would replace a silent no-op with a gate whose threshold nobody has
-  # ever seen a real value for — AND would immediately redden master, because
-  # this job is red today.
-  #
-  # THE TIMEOUT IS FIXED; THE JOB IS STILL RED, FOR A DIFFERENT REASON. Measured
-  # from the log of run 32561067282, job 97004396184, master, 2026-08-22 — not
-  # from the API, which reports `"conclusion": "success"` for both this job and
-  # its run step because of the two `continue-on-error` below:
-  #
-  #   Found 10969 mutants to test          <- the baseline now BUILDS and RUNS
-  #   FAILED  Unmutated baseline
-  #   test result: FAILED. 20437 passed; 9 failed; 144 ignored ... in 345.92s
-  #   *** result: Failure(101)             <- a test failure, NOT a timeout
-  #   ##[error]Process completed with exit code 4
-  #
-  # The 9 failures are environmental to this self-hosted container, not defects
-  # in the tree: they are the git-dependent tests —
-  # models::git_context::tests::{test_from_current_dir_extracts_author_info,
-  # test_from_current_dir_extracts_commit_sha, test_git_context_serialization,
-  # test_is_git_repo_returns_true_for_git_repo},
-  # mcp_pmcp::context_handlers::coverage_tests::test_git_status_tool_with_current_dir,
-  # cli::handlers::bottleneck_handler::tests::test_handle_bottleneck_runs, and
-  # the three services::metrics_ratchet::drive_tests — all of which shell out to
-  # git against the working tree. `--in-place` runs them in the container's
-  # bind-mounted checkout, where that does not hold. The same tests pass in the
-  # `ci` leg.
-  #
-  # Sequence to make it real, in this order:
-  #   1. DONE — the `--timeout 300` absolute budget that killed the baseline is
-  #      replaced by `--timeout-multiplier 1.5 --minimum-test-timeout 600`.
-  #   2. NEXT — make the baseline pass in this container: the 9 git-dependent
-  #      tests above must either work under `--in-place` in the container or be
-  #      excluded from the mutation run by name. Do NOT reach for `--no-check`,
-  #      `|| true`, or a wider skip list: a baseline that cannot run is the
-  #      signal that the mutation result would be meaningless.
-  #   3. observe one master run that reports an actual caught/missed count
-  #   4. `needs: [gate]` must go: adding `mutants` to gate's `needs` while it
-  #      needs `gate` is a cycle. Scope to changed files and run on PRs instead.
-  #   5. ratchet from the measured baseline, not the absolute 80.0
-  #   6. only then remove both `continue-on-error`
-  mutants:
-    runs-on: [self-hosted, clean-room, mutants]
-    continue-on-error: true
-    container:
-      image: localhost:5000/sovereign-ci:stable
-    timeout-minutes: 120
-    needs: [gate]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install cargo-mutants
-        run: cargo install cargo-mutants --locked
-      - name: Run mutation testing
-        # `--timeout 300` was the FIRST defect: it is an absolute per-test budget
-        # that applies to the UNMUTATED BASELINE too, and this crate's
-        # `cargo test --lib` takes ~346 s. So every run died with
-        # `TIMEOUT Unmutated baseline` -> exit 4, having executed ZERO mutants,
-        # and the two `continue-on-error` painted that green.
-        #
-        # Deriving from the measured baseline, with a floor so fast mutants are
-        # not killed by jitter, fixed that: the baseline now compiles and runs to
-        # completion (`Found 10969 mutants to test`, 345.92 s). It still exits 4,
-        # now on `Failure(101)` — 9 git-dependent lib tests that do not hold in
-        # this container. See the job comment above for the list and the plan.
-        # This job has therefore still never tested a mutant.
-        run: |
-          cargo mutants --no-times --in-place \
-            --timeout-multiplier 1.5 --minimum-test-timeout 600 \
-            --file 'src/services/**' --file 'src/models/**' \
-            -- --lib
-        continue-on-error: true
-      - name: Upload mutation results
-        uses: actions/upload-artifact@v7
-        with:
-          name: mutation-results
-          path: mutants.out/
-
-      - name: Restore the runner's ownership of its _work tree (#1185)
-        # This job runs as root inside the container and writes into the runner's shared
-        # _work tree; a following job on the same runner (any repo) then dies at "Set up
-        # runner" on root-owned files. Runs whatever the outcome; prints the residue it
-        # found so the log carries the evidence, and the count after must be 0.
-        if: always()
-        run: |
-          owner=$(stat -c %u:%g "$GITHUB_WORKSPACE/..")
-          uid=${owner%%:*}
-          before=$(find "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" ! -user "$uid" 2>/dev/null | wc -l)
-          if ! chown -R "$owner" "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" 2>/dev/null; then
-            echo "chown reported errors; the recount below decides"
-          fi
-          after=$(find "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" ! -user "$uid" 2>/dev/null | wc -l)
-          echo "runner ownership: $before path(s) not owned by $owner before, $after after"
-          [ "$after" = 0 ] || { echo "::error::$after path(s) under the runner's _work tree are still not owned by $owner"; exit 1; }
+  # infra#3828 (operator ruling 2026-11-10 16:50Z): mutation testing runs in a scheduled nightly
+  # workflow and nowhere else. The post-merge `mutants` job that lived here ran on every push to
+  # master and is removed; the nightly run is .github/workflows/mutation-diff.yml.

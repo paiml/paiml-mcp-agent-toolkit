@@ -80,7 +80,7 @@ ci-only | ci / gate | roadmap-fragment-parity | sovereign-ci.yml security "roadm
 
 # ── gate — ci.yml top-level job; the org ruleset requires it. Its needs are ci (above) plus:
 step    | gate | reusable-pin-drift | .github/workflows/ci.yml#reusable-pin-drift#every reusable workflow is referenced at exactly one ref | - | -
-step    | gate | build-pmat | .github/workflows/ci.yml#roadmap-validate#build pmat from this tree | - | -
+step    | gate | build-pmat | .github/workflows/ci.yml#build-pmat#build pmat from this tree | - | -
 step    | gate | roadmap-validate-control | .github/workflows/ci.yml#roadmap-validate#control — a duplicated id must be refused (exit 1) | - | -
 step    | gate | roadmap-validate | .github/workflows/ci.yml#roadmap-validate#pmat work validate (0 = valid, 1 = invalid or unreadable) | - | -
 step    | gate | traceability-control | .github/workflows/ci.yml#traceability#control — a commit with no Pmat-Ticket trailer must be refused (exit 1) | - | -
@@ -132,7 +132,7 @@ step    | provable ladder | pv-obligations | .github/workflows/quality-gate.yml#
 ci-only | provable ladder | comply-ladder | quality-gate.yml provable-ladder "Ladder gate — pmat comply" | not-gating: CI runs it with continue-on-error, so it gates nothing there either | -
 
 # ── not a required context, named so nobody assumes it ran
-ci-only | mutation-diff (not required) | mutation-diff | .github/workflows/mutation-diff.yml | not-required: runs nightly and on pull requests labelled `mutation` | -
+ci-only | mutation-diff (not required) | mutation-diff | .github/workflows/mutation-diff.yml | not-required: runs on the nightly schedule only | -
 
 # ── EXTENSION POINT ─────────────────────────────────────────────────────────────────────────
 # Sibling gates append their rows BELOW this marker, in their own pull requests:
