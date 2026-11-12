@@ -36,13 +36,16 @@
 # Per-mutant cost times mutant count puts a busy PR in the hours. A gate that
 # takes hours on every push is a gate someone switches off, and switching it off
 # is the failure this backlog exists to remove. So it runs, whole and
-# uncushioned, in three places, and nowhere is it softened:
+# uncushioned, in ONE place, and nowhere is it softened:
 #
-#   1. NIGHTLY over everything that landed on master in the previous 24h. This
-#      is the standing cadence — no merge escapes it for longer than a day.
-#   2. ON A PULL REQUEST LABELLED `mutation`. Opt-in per PR, for a change whose
-#      author wants the proof before merging rather than the morning after.
-#   3. ON DEMAND (`workflow_dispatch`), with an explicit base.
+#   NIGHTLY over everything that landed on master in the previous 24h. No merge
+#   escapes it for longer than a day.
+#
+# infra#3828 (operator ruling 2026-11-10 16:50Z): mutation runs on the nightly
+# schedule only. The `mutation` label on a pull request and the manual dispatch
+# are gone; no PR, push, merge queue or train run executes it, and no required
+# check or gate depends on it. Text below that describes the label or a required
+# `mutation-diff` context is history.
 #
 # A timeout here is a failure, deliberately: "mutation could not finish
 # analysing this range" is not "this range is verified".
@@ -80,36 +83,53 @@ on:
   schedule:
     # 03:17 UTC, off the hour to avoid the top-of-hour scheduling queue.
     - cron: '0 2 * * *'
-  pull_request:
-    branches: [main, master]
-    types: [opened, synchronize, reopened, labeled]
-  workflow_dispatch:
-    inputs:
-      base:
-        description: 'Git ref to diff against (default origin/master)'
-        required: false
-        default: 'origin/master'
 
 concurrency:
   group: mutation-diff-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'train/') && !startsWith(github.head_ref, 'batch/') }}
 
+# LAB lane (operator rule C324): a red opens or updates ONE ticket with ONE owner,
+# then stays silent; red for 7 days and the lane stops until its owner brings it
+# back. `issues: write` is what lets the `ticket` job below open that ticket.
+# Pinned by scripts/mutation-lab-control.sh.
 permissions:
   contents: read
+  issues: write
 
 jobs:
+  # LAB rule: red for 7 days and the lane stops until its owner brings it back.
+  # An open `lab-mutation` ticket older than 604800 s means seven nights went by
+  # without the owner fixing the lane; the run then does nothing and exits 0.
+  # Re-arm: close the ticket. On a hosted runner because the clean-room
+  # container image ships no `gh` and no `jq`.
+  arm:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.arm.outputs.run }}
+    steps:
+      - name: stop after 7 red days
+        id: arm
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          n="$(gh issue list --state open --label lab-mutation --json number,createdAt --jq '[.[]|select(.createdAt < (now-604800|todate))]|.[0].number // empty')"
+          if [ -n "$n" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "stopped: owner must re-arm (close #$n)"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "armed: no lab-mutation ticket older than 7 days"
+          fi
+
   mutation-diff:
-    # Only when asked for, or on the nightly schedule. A pull_request run
-    # without the `mutation` label is SKIPPED — not silently passed in the
-    # sense of asserting anything false, since it asserts nothing at all — but
-    # branch protection's required-status-check semantics read a skipped run
-    # as passing regardless, so an unlabelled PR is exactly as ungated as it
-    # was before this became a required check (see the header comment above
-    # `name:`). Add the `mutation` label to a PR to make this job, and
-    # therefore this requirement, real for it.
-    if: >-
-      github.event_name != 'pull_request' ||
-      contains(github.event.pull_request.labels.*.name, 'mutation')
+    # Nightly schedule only (infra#3828). Any other event is refused here as well as in `on:`.
+    # Skipped (not red) when `arm` found the 7-day stop.
+    needs: arm
+    if: github.event_name == 'schedule' && needs.arm.outputs.run == 'true'
     runs-on: [self-hosted, X64, Linux, clean-room]
     container:
       image: localhost:5000/sovereign-ci:stable
@@ -225,3 +245,30 @@ jobs:
           after=$(find "$GITHUB_WORKSPACE/.." "$RUNNER_TEMP" ! -user "$uid" 2>/dev/null | wc -l)
           echo "runner ownership: $before path(s) not owned by $owner before, $after after"
           [ "$after" = 0 ] || { echo "::error::$after path(s) under the runner's _work tree are still not owned by $owner"; exit 1; }
+
+  # LAB rule: a red opens ONE ticket with ONE owner, then stays silent. If a
+  # `lab-mutation` ticket is already open, nothing is posted (no comment spam).
+  # This job never turns the run green: `mutation-diff` (or `arm`) has already
+  # failed, and the workflow's conclusion is red whatever this job does.
+  ticket:
+    needs: [arm, mutation-diff]
+    if: failure()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: open the one ticket on red
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          n="$(gh issue list --state open --label lab-mutation --json number --jq '.[0].number // empty')"
+          if [ -n "$n" ]; then
+            echo "ticket #$n is already open; staying silent"
+            exit 0
+          fi
+          gh label create lab-mutation --force --color B60205 \
+            --description "LAB: nightly mutation lane is red (one ticket, one owner, 7-day stop)"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          body="$(printf 'The nightly mutation lane (.github/workflows/mutation-diff.yml) is red.\n\nOwner: pmat-cop\n\nRun: %s\n\nThis is a LAB check: it blocks no merge or release. While this ticket is open no further ticket or comment is posted. If it stays open for 7 days the lane stops running; fix the lane, then close this ticket to re-arm it.\n' "$run_url")"
+          gh issue create --title "LAB: nightly mutation lane is red" --label lab-mutation --body "$body"

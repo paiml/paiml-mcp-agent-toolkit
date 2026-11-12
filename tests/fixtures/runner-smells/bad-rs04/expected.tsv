@@ -1,0 +1,1 @@
+RS-04	./.github/workflows/ci.yml:1	heavy suite runs on every pull_request push; run it on train/* and the default branch only

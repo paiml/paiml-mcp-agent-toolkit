@@ -167,19 +167,20 @@ jobs:
         run: |
           TARGET="${{ matrix.target }}"
           BIN_PATH="target/${TARGET}/release/pmat"
-          # Each cross image ships the matching ${triple}-strip; the
-          # gnu image does NOT carry the musl variant and vice-versa
-          # (regression: v3.16.0 first run failed aarch64-musl because
-          # this step called aarch64-linux-gnu-strip in the musl image).
-          case "$TARGET" in
-            aarch64-unknown-linux-musl) STRIP=aarch64-linux-musl-strip ;;
-            aarch64-unknown-linux-gnu)  STRIP=aarch64-linux-gnu-strip ;;
-            *)                          STRIP="" ;;
-          esac
-          if [ -n "$STRIP" ]; then
-            docker run --rm -v "$PWD/target:/target:Z" \
-              "ghcr.io/cross-rs/${TARGET}:main" \
-              "$STRIP" "/$BIN_PATH"
+          # `[profile.release] strip = "symbols"` (Cargo.toml) already strips
+          # every target at link time. A cross row therefore runs no strip
+          # tool: it ASSERTS the result with the runner's own `file`. The
+          # old step ran `${triple}-strip` inside ghcr.io/cross-rs/<target>:main,
+          # a floating image; v3.44.0 failed aarch64-musl twice because that
+          # image no longer has aarch64-linux-musl-strip on PATH (#1732).
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            desc=$(file -b "$BIN_PATH")
+            echo "$desc"
+            case "$desc" in
+              *"not stripped"*) echo "::error::$BIN_PATH is not stripped: profile.release strip=symbols did not apply"; exit 1 ;;
+              *stripped*)       ;;
+              *)                echo "::error::file(1) gave no strip verdict for $BIN_PATH"; exit 1 ;;
+            esac
           else
             strip "$BIN_PATH"
           fi
