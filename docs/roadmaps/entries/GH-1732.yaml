@@ -1,7 +1,7 @@
 - id: GH-1732
   github_issue: 1732
   item_type: task
-  title: 'binary-release: aarch64-unknown-linux-musl fails in Strip binary; v3.44.0 asset missing'
+  title: 'binary-release: aarch64-unknown-linux-musl fails in Strip binary (cross image has no aarch64-linux-musl-strip); v3.44.0 asset missing'
   status: planned
   priority: high
   assigned_to: null
