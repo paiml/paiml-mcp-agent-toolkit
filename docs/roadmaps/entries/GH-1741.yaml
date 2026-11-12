@@ -1,0 +1,16 @@
+- id: GH-1741
+  github_issue: 1741
+  item_type: task
+  title: 'deps: carry dependabot PRs #1726-#1729 as one trailered train (S lane of #1356)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-12T17:40:07.245315678+00:00
+  updated: 2026-11-12T17:40:07.245315678+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
