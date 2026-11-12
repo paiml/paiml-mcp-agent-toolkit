@@ -2,11 +2,11 @@
   github_issue: 1735
   item_type: task
   title: 'release.yml: unified-gate pin predates the https infra sync (paiml/.github#126), so the release gate cannot read its policy checkout'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-12T00:00:00.000000000+00:00
-  updated: 2026-11-12T00:00:00.000000000+00:00
+  updated: 2026-11-12T14:33:00.488267326+00:00
   spec: null
   acceptance_criteria: []
   phases: []
