@@ -4,6 +4,7 @@
 // Implements the hybrid write-through architecture for GitHub and YAML tracking.
 // Split into submodules for file health compliance (CB-040).
 
+mod branch_ticket;
 mod checkpoint;
 mod commit;
 mod contract;
