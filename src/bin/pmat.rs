@@ -157,6 +157,8 @@ mod full {
     #[tokio::main]
     #[allow(unreachable_pub)]
     pub async fn real_main() {
+        let args: Vec<String> = std::env::args().collect();
+        pmat::self_update::run(&args);
         let exit_code = match run_main().await {
             Ok(()) => ExitCode::Success,
             Err(e) => {
