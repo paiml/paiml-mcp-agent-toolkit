@@ -27,6 +27,9 @@ include!("coherence_handler.rs");
 // CB-2104: `pmat comply numeric-claims` — replicated and self-contradicting numbers
 include!("numeric_claims_handler.rs");
 
+// GHC-001: `pmat comply github` — the GitHub-facing rules R1-R6
+include!("github_handler.rs");
+
 // Command dispatch (needs access to both check_handlers and migrate_handlers items)
 include!("command_dispatch.rs");
 
