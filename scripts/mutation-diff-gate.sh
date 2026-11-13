@@ -133,8 +133,14 @@ cmd_run() {
     # and no diff could ever go green. A denied lint is a property of this
     # crate's style, not of the change under test, and must not decide whether a
     # mutant can be killed.
+    # `--cargo-arg=--lib` scopes EVERY cargo invocation (the baseline build, not
+    # just the test run) to the library. The trailing `-- --lib` reaches only
+    # `cargo test`, so the baseline built every example and the linker was
+    # OOM-killed (`clang: Killed`), which kept the lane red since 2026-11-10
+    # (GH-1731).
     cargo mutants \
         --in-place --no-times --colors never --cap-lints true \
+        --cargo-arg=--lib \
         --in-diff "$diff" \
         --timeout-multiplier "${MUTATION_GATE_TIMEOUT_MULTIPLIER:-1.5}" \
         --minimum-test-timeout "${MUTATION_GATE_MIN_TIMEOUT:-900}" \

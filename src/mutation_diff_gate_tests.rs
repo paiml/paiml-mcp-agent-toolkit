@@ -106,6 +106,21 @@ fn the_producer_clears_a_stale_report_before_running() {
     );
 }
 
+/// GH-1731: the baseline build must be scoped to the library. A trailing
+/// `-- --lib` reaches only `cargo test`, so without `--cargo-arg=--lib` the
+/// baseline links every example and the runner OOM-kills the linker.
+#[test]
+fn the_producer_scopes_every_cargo_invocation_to_the_lib() {
+    let s = code_of(SCRIPT);
+    let run = s
+        .find("cargo mutants \\")
+        .expect("the producer must invoke cargo mutants");
+    assert!(
+        s[run..].contains("--cargo-arg=--lib"),
+        "without --cargo-arg=--lib the baseline builds every example (GH-1731)"
+    );
+}
+
 /// One verdict, in one place. A shell reimplementation would be a second set of
 /// rules to keep in sync, and the copy CI does not run is the one that drifts.
 #[test]
