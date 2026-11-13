@@ -1,3 +1,10 @@
+---
+schema_version: "1.0"
+kind: cli
+entrypoints: [src/bin/pmat.rs]
+contract_count: 175
+---
+
 <h1 align="center">PMAT</h1>
 
 <p align="center">
@@ -63,14 +70,14 @@ Every result includes TDG grade, Big-O complexity, git churn, code clones, patte
 
 ## Installation
 
-```bash
+```console
 # Install from crates.io
 cargo install pmat
 ```
 
 > **Note for macOS Users:** If you experience issues installing via `rustup`, we recommend installing/updating Rust using Homebrew: `brew install rust` before running `cargo install pmat`.
 
-```bash
+```console
 # Or from source (latest)
 git clone https://github.com/paiml/paiml-mcp-agent-toolkit
 cd paiml-mcp-agent-toolkit && cargo install --path .
@@ -95,7 +102,7 @@ they share one tool registry — you pick a surface, not a feature set.
 
 Claude Code launches pmat as a subprocess. Nothing to keep running, nothing to authenticate.
 
-```bash
+```console
 cargo install pmat
 claude mcp add --scope user pmat -- pmat --mode mcp
 claude mcp list
@@ -115,7 +122,7 @@ Claude Desktop takes the same command as JSON, in its own `claude_desktop_config
 For clients that cannot pass flags, `MCP_VERSION=1 pmat` starts the identical server.
 Smoke-test the stdio surface without any client at all:
 
-```bash
+```console
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
   | pmat --mode mcp 2>/dev/null | jq -r '.result.tools | length'
 # 19
@@ -125,7 +132,7 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
 
 One server, many clients. Copy-paste the whole block:
 
-```bash
+```console
 cargo install pmat
 
 export PMAT_MCP_HTTP_TOKEN='pmat-mcp-demo-token-0123456789'   # >= 16 chars; use your own
@@ -149,7 +156,7 @@ surface can read and analyse any path the server process can read.
 
 **1. MCP is served at the root path `/`, not `/mcp`.** There is no path prefix.
 
-```bash
+```console
 for p in / /mcp /health; do
   printf '%-7s %s\n' "$p" "$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:8765$p" \
     -H "Authorization: Bearer $PMAT_MCP_HTTP_TOKEN" \
@@ -167,7 +174,7 @@ the server refuses to start rather than falling back to serving unauthenticated 
 underlying pmcp transport answers every request when no auth provider is wired, so "no
 token" has to mean "no server". Requests with no token, or a wrong one, get `401`.
 
-```bash
+```console
 PMAT_MCP_HTTP_TOKEN=too-short-123 pmat serve --transport http --port 8765
 # Error: PMAT_MCP_HTTP_TOKEN must be at least 16 characters; got 13
 ```
@@ -176,7 +183,7 @@ PMAT_MCP_HTTP_TOKEN=too-short-123 pmat serve --transport http --port 8765
 streamable transport rejects the request without it, and `curl -f` turns that into an
 empty string with no message — so probe with plain `curl -s` while debugging.
 
-```bash
+```console
 curl -s -w '\n-> HTTP %{http_code}\n' -X POST http://127.0.0.1:8765/ \
   -H "Authorization: Bearer $PMAT_MCP_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -189,7 +196,7 @@ curl -s -w '\n-> HTTP %{http_code}\n' -X POST http://127.0.0.1:8765/ \
 .../health` readiness loop never turns green and never says why. Probe with a real
 `tools/list` call instead:
 
-```bash
+```console
 curl -s -X POST http://127.0.0.1:8765/ \
   -H "Authorization: Bearer $PMAT_MCP_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -207,7 +214,7 @@ No MCP session id is involved: `initialize` returns no `Mcp-Session-Id` header, 
 Both transports are built from the same registry, so HTTP serves **all 20 tools, not a
 subset**. The `tools/list` payloads are byte-identical:
 
-```bash
+```console
 printf '%s\n%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"p","version":"1"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
@@ -240,7 +247,7 @@ registrations — so it cannot drift from what the two transports actually serve
 implemented; each exits `2` with a message saying so. `http` is the only value that
 serves.
 
-```bash
+```console
 pmat serve --transport web-socket --port 8765
 # error: pmat serve --transport websocket is not yet implemented
 ```
@@ -250,7 +257,7 @@ There is no `stdio` value for `--transport` — passing one is a clap error. Std
 
 ## Usage
 
-```bash
+```console
 # Generate AI-ready context
 pmat context --output context.md --format llm-optimized
 
@@ -305,7 +312,7 @@ before they drive fixes — see the release case studies in the
 
 Generate comprehensive context for AI assistants:
 
-```bash
+```console
 pmat context                           # Basic analysis
 pmat context --format llm-optimized    # AI-optimized output
 pmat context --include-large-files     # Include files >500KB normally skipped
@@ -315,7 +322,7 @@ pmat context --include-large-files     # Include files >500KB normally skipped
 
 Six orthogonal metrics for accurate quality assessment:
 
-```bash
+```console
 pmat analyze tdg                       # Project-wide grade
 pmat analyze tdg --include-components  # Per-component breakdown
 pmat tdg baseline create               # Create quality baseline
@@ -332,7 +339,7 @@ pmat tdg check-regression              # Detect quality degradation
 
 Validate test suite effectiveness:
 
-```bash
+```console
 pmat mutate --target src/lib.rs        # Single file
 pmat mutate --target src/ --threshold 85  # Quality gate
 pmat mutate --failures-only            # CI optimization
@@ -344,7 +351,7 @@ pmat mutate --failures-only            # CI optimization
 
 Evidence-based quality metrics (0-289 scale, 11 categories):
 
-```bash
+```console
 pmat rust-project-score                # Fast mode (~3 min)
 pmat rust-project-score --full         # Comprehensive (~10-15 min)
 pmat repo-score . --deep               # Full git history
@@ -354,7 +361,7 @@ pmat repo-score . --deep               # Full git history
 
 Pre-configured AI prompts enforcing EXTREME TDD:
 
-```bash
+```console
 pmat prompt --list                     # Available prompts
 pmat prompt code-coverage              # 85%+ coverage enforcement
 pmat prompt debug                      # Five Whys analysis
@@ -365,7 +372,7 @@ pmat prompt quality-enforcement        # All quality gates
 
 Search git history by intent using TF-IDF semantic embeddings:
 
-```bash
+```console
 # Fuse git history into code search
 pmat query "fix memory leak" -G
 
@@ -373,7 +380,7 @@ pmat query "fix memory leak" -G
 pmat query "error handling" --churn --duplicates --entropy --faults
 ```
 
-```bash
+```console
 # Run the example
 cargo run --example git_history_demo
 ```
@@ -382,7 +389,7 @@ cargo run --example git_history_demo
 
 Automatic quality enforcement:
 
-```bash
+```console
 pmat hooks install                     # Install pre-commit hooks
 pmat hooks install --tdg-enforcement   # With TDG quality gates
 pmat hooks status                      # Check hook status
@@ -392,7 +399,7 @@ pmat hooks status                      # Check hook status
 
 162 automated checks across code quality, best practices, and governance:
 
-```bash
+```console
 pmat comply check                      # Run all compliance checks
 pmat comply check --strict             # Exit non-zero on failure
 pmat comply check --format json        # Machine-readable output
@@ -429,7 +436,7 @@ comply:
 
 CI/CD quality scoring (0-100 + 10 bonus for provable-contracts):
 
-```bash
+```console
 pmat infra-score                       # Text output
 pmat infra-score --format json         # Machine-readable
 pmat infra-score -v --failures-only    # Show only failing checks
@@ -443,7 +450,7 @@ Provable Contracts bonus (10pts).
 
 Search documentation files (Markdown, text, YAML) alongside code:
 
-```bash
+```console
 pmat query "authentication" --docs          # Code + docs results
 pmat query "deployment" --docs-only         # Only documentation
 pmat query "API endpoints" --no-docs        # Exclude docs (default)
@@ -453,7 +460,7 @@ pmat query "API endpoints" --no-docs        # Exclude docs (default)
 
 Toyota Way continuous improvement — scan, auto-fix, commit:
 
-```bash
+```console
 pmat kaizen --dry-run                  # Scan only (no changes)
 pmat kaizen                            # Apply safe auto-fixes
 pmat kaizen --push                     # Fix, commit, and push (use --no-commit to skip)
@@ -469,7 +476,7 @@ pmat kaizen --cross-stack -f json      # Grouped JSON report
 
 Extract function boundaries with metadata:
 
-```bash
+```console
 pmat extract --list src/lib.rs         # Function/struct/enum/trait boundaries, as JSON
 ```
 
@@ -477,7 +484,7 @@ pmat extract --list src/lib.rs         # Function/struct/enum/trait boundaries, 
 
 ### Generate Context for AI
 
-```bash
+```console
 # For Claude Code
 pmat context --output context.md --format llm-optimized
 
@@ -499,7 +506,7 @@ steps:
 
 ### Quality Baseline Workflow
 
-```bash
+```console
 # 1. Create baseline
 pmat tdg baseline create --output .pmat/baseline.json
 
@@ -552,7 +559,7 @@ Per [Popper's demarcation criterion](https://en.wikipedia.org/wiki/Demarcation_p
 
 **How to Verify:**
 
-```bash
+```console
 # Run self-assessment with Popper Falsifiability Score
 pmat popper-score --verbose
 
@@ -639,6 +646,22 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 - [MCP Tools](docs/mcp/TOOLS.md) - MCP integration guide
 - [Specifications](docs/specifications/) - Technical specs
 - 🤖 [Coursera Hugging Face AI Development Specialization](https://www.coursera.org/specializations/hugging-face-ai-development) - Build Production AI systems with Hugging Face in Pure Rust
+
+## Verify
+
+A `bash` fence in this file is a claim: every command in one is a step CI runs on the merge path, and
+`pv-readme --check` refuses the README if one is not. Commands shown for illustration are in `console` fences.
+
+```bash
+cargo build --bin pmat --locked
+```
+
+## Contracts
+
+The behaviour pmat promises is written as <!-- CONTRACT_COUNT_START -->175<!-- CONTRACT_COUNT_END --> contracts
+under [`contracts/`](contracts/), validated by `pv validate` in CI. This README is one of their subjects:
+[`contracts/readme-root.yaml`](contracts/readme-root.yaml) holds the `readme:Readme` shape it must satisfy, and
+the count above is rendered by `pv-readme --write`, never typed.
 
 ## Contributing
 

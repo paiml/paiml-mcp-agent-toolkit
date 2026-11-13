@@ -102,11 +102,34 @@ jobs:
   # depends on is checked explicitly below, and anything that is not literally
   # `success` exits 1 — so `always()` converts "the check never reported" into
   # a red gate rather than a missing one.
+  # pmat#1757: README.md is a graded document. `pv-readme --check` turns it into
+  # one readme:Readme node and validates it against the SHACL shape in
+  # contracts/readme-root.yaml. A text parse, no build. An absent verifier is a
+  # NO-GO, never a skip. Skipped only where `ci` is: on a draft PR.
+  # Same pattern as paiml/forjar#1017 and paiml/bashrs#512.
+  readme-shape:
+    if: ${{ github.event.pull_request.draft != true }}
+    runs-on: [self-hosted, clean-room]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: pv-readme must be present
+        run: |
+          command -v pv-readme >/dev/null || {
+            echo "::error::pv-readme is not installed — README.md is unvalidatable, which is a NO-GO not a skip"
+            exit 1
+          }
+          pv-readme --version
+      - name: README.md conforms to its readme:Readme shape
+        run: pv-readme --check
+      - name: A planted bad README must be refused
+        run: sh tests/readme-shape-falsifier.sh
+
   gate:
     # Roll-up only (reads results, no checkout): the gate-light pool, hosted for fork PRs.
     runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 15
-    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability, tdg-ratchet]
+    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability, tdg-ratchet, readme-shape]
     if: ${{ always() && github.event.pull_request.draft != true }}
     steps:
       - name: Check required jobs
@@ -119,7 +142,8 @@ jobs:
                    "reusable-pin-drift:${{ needs.reusable-pin-drift.result }}" \
                    "roadmap-validate:${{ needs.roadmap-validate.result }}" \
                    "traceability:${{ needs.traceability.result }}" \
-                   "tdg-ratchet:${{ needs.tdg-ratchet.result }}"; do
+                   "tdg-ratchet:${{ needs.tdg-ratchet.result }}" \
+                   "readme-shape:${{ needs.readme-shape.result }}"; do
             name=${j%%:*}
             result=${j#*:}
             # infra#3828: windows-check is a HEAVY leg. On an ordinary PR it is skipped and

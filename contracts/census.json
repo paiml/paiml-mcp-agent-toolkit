@@ -1,0 +1,34 @@
+{
+  "schema": "ont.paiml.dev/census/v1alpha1",
+  "git_sha": null,
+  "n_files": 175,
+  "n_parsed": 175,
+  "n_parse_errors": 0,
+  "parse_errors": [],
+  "quarantined_n": 0,
+  "no_falsification_tests": 140,
+  "unwalked": 1,
+  "by_kind": {
+    "kernel": 2,
+    "pattern": 13,
+    "registry": 38,
+    "schema": 122
+  },
+  "by_entity_type": {
+    "readme": 1
+  },
+  "by_concept": {},
+  "by_anchoring": {
+    "unanchored": 174,
+    "class": 0,
+    "instance": 1
+  },
+  "id_set_sha256": "785d5573986df2c7f6e6aa87f2422e2c4bd99e491984eb1d536881f8a1f2cb93",
+  "declared_external": [],
+  "timing": {
+    "census_cpu_ms_p50": null,
+    "lint_cpu_ms_p50": null,
+    "host_class": null,
+    "n_runs": 5
+  }
+}

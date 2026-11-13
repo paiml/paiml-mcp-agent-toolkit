@@ -1,0 +1,89 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# readme-root — the repository README as a graded document (#1757, PMAT-1758)
+#
+# WHAT IS GRADED. `pv-readme --check` reads README.md's frontmatter, its headings and its CLAIM fences, turns
+# them into one `readme:Readme` node and validates that node against the `shape:` block below. A claim fence is
+# a CommonMark backtick or tilde fence whose first info token, lower-cased with `{` and `.` stripped, is bash,
+# sh or shell. Every command in one must equal a `run:` line of a merge-path workflow step (push,
+# pull_request, pull_request_target, merge_group; not `if: false`) — `resolves: ci-step`. One no workflow runs
+# is refused by name, `readme:verifiedCommand unresolved: <cmd>`. A fence that is illustration, not a claim,
+# says so with `text` or `console`, which is a visible, reviewable edit.
+#
+# Same shape and checker as paiml/aprender, paiml/forjar#1017 and paiml/bashrs#512.
+#
+# KIND: pattern. One shape over one focus node; the proof is tests/readme-shape-falsifier.sh, which plants a
+# bad README and requires exit 1.
+# ─────────────────────────────────────────────────────────────────────────────
+name: readme-root
+version: "1.0.0"
+scope: >
+  README.md at the repository root: its frontmatter, its sections, and every command it presents as runnable.
+  Out of scope: prose accuracy, link targets, anything in a non-claim fence.
+status: active
+
+metadata:
+  version: "1.0.0"
+  kind: pattern
+  created: '2026-11-13'
+  last_modified: '2026-11-13'
+  author: PAIML Engineering
+  description: >
+    README.md becomes a readme:Readme node; every claim-fence command must be one a merge-path CI step runs,
+    every entrypoint must exist, and the contract count it prints must equal census.json n_files.
+  references:
+    - 'paiml/forjar#1017, paiml/bashrs#512 (same pattern)'
+    - 'paiml/aprender contracts/readme-root.yaml and crates/aprender-contracts-cli/src/readme_cmd.rs (pv-readme)'
+
+entity:
+  type: readme
+  ref: README.md
+
+shape:
+  targetClass: readme:Readme
+  closed: true
+  properties:
+    - {path: readme:schemaVersion, minCount: 1, maxCount: 1, pattern: "^[0-9]+\\.[0-9]+$"}
+    - {path: readme:kind, minCount: 1, maxCount: 1, in: [library, cli, service, spec]}
+    - {path: readme:entrypoint, minCount: 1, resolves: path}
+    - {path: readme:verifiedCommand, minCount: 1, resolves: ci-step}
+    - {path: readme:section, minCount: 3}
+    - {path: readme:contractCount, maxCount: 1, resolves: census}
+
+equations:
+  claim_resolves:
+    formula: "∀ c ∈ claims(README.md): normalise(c) ∈ run_lines(merge_path_workflows)"
+    domain: every command line of every claim fence in README.md
+    codomain: readme:verifiedCommand values, or a refusal naming the command
+    invariants:
+      - a claim is decided by its fence's info token, never by its content
+      - an unresolved claim is refused by name, never skipped
+    preconditions:
+      - .github/workflows/*.yml parse
+    postconditions:
+      - every command README.md presents as runnable is one CI runs on the merge path
+    lean_theorem: "none — L4 not declared"
+
+invariants:
+  - id: RDM-INV-001
+    property: every README claim-fence command is one a merge-path workflow runs
+    formal: '∀ c ∈ claims(README.md): normalise(c) ∈ run_lines(W_merge)'
+    prose: false
+  - id: RDM-INV-002
+    property: the printed contract count equals the census
+    formal: 'frontmatter(README.md).contract_count ≡ census.json.n_files'
+    prose: false
+
+falsification_tests:
+  - id: FALSIFY-RDM-001
+    rule: an unrun claim is refused
+    prediction: >
+      adding a bash fence to README.md whose command no workflow runs makes `pv-readme --check` exit 1 naming
+      `readme:verifiedCommand unresolved: <cmd>`; relabelling it `text` makes it pass again
+    test: sh tests/readme-shape-falsifier.sh
+    if_fails: the README can advertise a command nothing has ever run
+  - id: FALSIFY-RDM-002
+    rule: a README without its frontmatter is refused
+    prediction: >
+      removing the `kind:` line, or the whole frontmatter, makes `pv-readme --check` exit 1
+    test: sh tests/readme-shape-falsifier.sh
+    if_fails: the README can drop the facts the shape grades and still pass
