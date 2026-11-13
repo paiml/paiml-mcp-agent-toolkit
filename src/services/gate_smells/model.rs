@@ -109,8 +109,7 @@ impl Workflow {
             return false;
         }
         let cond = job.node.get("if").and_then(Value::as_str).unwrap_or("");
-        let confined = cond.contains("schedule") || cond.contains("workflow_dispatch");
-        !(confined && !cond.contains("pull_request"))
+        !confined_off_pr(cond)
     }
 }
 
@@ -161,11 +160,17 @@ impl Job<'_> {
         out.retain(|l| !l.contains("${{"));
         out.iter().map(|l| l.to_lowercase()).collect()
     }
+}
 
-    pub(crate) fn has_expression_runner(&self) -> bool {
-        self.node
-            .get("runs-on")
-            .map(as_strings)
-            .is_some_and(|v| v.iter().any(|l| l.contains("${{")))
+/// True when an `if:` confines a job to schedule or manual runs. A negated test
+/// (`event_name != 'schedule'`) keeps the job on the PR path, so those are removed
+/// before looking for the event names.
+fn confined_off_pr(cond: &str) -> bool {
+    let mut c: String = cond.split_whitespace().collect::<Vec<_>>().join("");
+    for kw in ["schedule", "workflow_dispatch"] {
+        for q in ["'", "\""] {
+            c = c.replace(&format!("!={q}{kw}{q}"), "");
+        }
     }
+    (c.contains("schedule") || c.contains("workflow_dispatch")) && !c.contains("pull_request")
 }

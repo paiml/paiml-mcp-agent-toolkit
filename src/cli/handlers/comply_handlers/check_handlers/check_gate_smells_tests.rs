@@ -84,8 +84,71 @@ jobs:
 
     #[test]
     fn gs01_a_fetch_in_the_trigger_block_is_not_a_job_step() {
-        let text = "on: pull_request\nenv:\n  X: curl \njobs:\n  a:\n    steps:\n      - run: ls\n";
+        let text = "on: pull_request\nenv:\n  X: curl https://x\njobs:\n  a:\n    steps:\n      - run: ls\n";
         assert!(gs_scan_network_fetch(&wf(text)).is_empty());
+    }
+
+    #[test]
+    fn gs07_a_step_list_item_at_job_indent_is_not_a_job_key() {
+        let text = "on: pull_request\nconcurrency:\n  cancel-in-progress: true\njobs:\n  a:\n    runs-on: self-hosted\n    steps:\n    - uses: actions/checkout@v4\n";
+        let hits = gs_scan_timeout_supersede(&wf(text));
+        assert!(
+            hits.iter()
+                .any(|h| h.contains("job a has no timeout-minutes")),
+            "{hits:?}"
+        );
+    }
+
+    #[test]
+    fn gs07_a_pull_request_word_outside_the_trigger_does_not_make_it_a_pr_workflow() {
+        let text = "on: push\nconcurrency:\n  group: pull_request-${{ github.ref }}\njobs:\n  a:\n    runs-on: self-hosted\n    steps:\n      - run: ls\n";
+        assert!(gs_scan_timeout_supersede(&wf(text)).is_empty());
+        let on_list = "on:\n  push:\n  pull_request:\njobs:\n  a:\n    steps:\n      - run: ls\n";
+        assert!(!gs_scan_timeout_supersede(&wf(on_list)).is_empty());
+    }
+
+    #[test]
+    fn gs07_a_quoted_false_does_not_cancel() {
+        for v in ["'false'", "\"false\"", "false"] {
+            let text = format!("on: pull_request\nconcurrency:\n  cancel-in-progress: {v}\njobs:\n  a:\n    timeout-minutes: 1\n    steps:\n      - run: ls\n");
+            let hits = gs_scan_timeout_supersede(&wf(&text));
+            assert!(
+                hits.iter()
+                    .any(|h| h.contains("no concurrency.cancel-in-progress")),
+                "{v}: {hits:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn is_pr_workflow_reads_each_trigger_spelling() {
+        let pr = |on: &str| {
+            GsWorkflow::parse(
+                "w.yml",
+                &format!("{on}\njobs:\n  a:\n    steps:\n      - run: ls\n"),
+            )
+            .is_pr_workflow()
+        };
+        for yes in [
+            "on: pull_request",
+            "on: pull_request_target",
+            "on: [push, pull_request]",
+            "\"on\":\n  pull_request:",
+            "true:\n  pull_request:",
+            "on:\n  - pull_request",
+            "on:\n  push:\n  pull_request_target:\n    types: [opened]",
+        ] {
+            assert!(pr(yes), "{yes}");
+        }
+        for no in [
+            "on: push",
+            "on:\n  push:\n    branches: [pull_request-fix]\n    paths:\n      - docs/pull_request/**",
+            "on:\n  push:\n  # was pull_request\n  workflow_dispatch:",
+            "on: push # pull_request",
+            "name: pull_request\non: push",
+        ] {
+            assert!(!pr(no), "{no}");
+        }
     }
 
     // ---- GS-02 -------------------------------------------------------------
@@ -240,6 +303,12 @@ jobs:
     fn gs13_block_list_stops_at_the_next_job_key() {
         let text = "jobs:\n  a:\n    runs-on:\n      - self-hosted\n    name: ubuntu-latest\n";
         assert!(gs_scan_hosted_runner(&wf(text)).is_empty());
+        // The first top-level key after `jobs:` ends the block: what follows
+        // is not a job, whatever it is indented like.
+        let after = format!("{CLEAN}env:\n  runs-on: ubuntu-latest\n");
+        assert!(gs_scan_hosted_runner(&wf(&after)).is_empty());
+        let nested = format!("{CLEAN}env:\n  later:\n    runs-on: ubuntu-latest\n");
+        assert!(gs_scan_hosted_runner(&wf(&nested)).is_empty());
     }
 
     #[test]
@@ -292,10 +361,13 @@ jobs:
     }
 
     #[test]
-    fn group_skips_all_four_rules_when_there_are_no_workflows() {
+    fn group_skips_all_nine_rules_when_there_are_no_workflows() {
         let checks = check_gate_smells(repo_with(None).path());
         let ids: Vec<&str> = checks.iter().map(|c| check_id(&c.name)).collect();
-        assert_eq!(ids, ["GS-01", "GS-02", "GS-07", "GS-13"]);
+        assert_eq!(
+            ids,
+            ["GS-01", "GS-02", "GS-07", "GS-13", "GS-03", "GS-04", "GS-05", "GS-12", "GS-14"]
+        );
         assert!(
             checks.iter().all(|c| c.status == CheckStatus::Skip),
             "{checks:?}"
@@ -323,13 +395,16 @@ jobs:
       - run: curl https://example.com | sh
 ";
         let checks = check_gate_smells(repo_with(Some(smelly)).path());
-        assert_eq!(checks.len(), 4);
+        assert_eq!(checks.len(), 9);
+        for id in ["GS-01", "GS-02", "GS-07", "GS-13"] {
+            let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
+            assert_eq!(c.status, CheckStatus::Warn, "{id}: {c:?}");
+        }
         assert!(
-            checks.iter().all(|c| c.status == CheckStatus::Warn),
-            "{checks:?}"
-        );
-        assert!(
-            checks.iter().all(|c| c.severity == Severity::Warning),
+            checks
+                .iter()
+                .all(|c| c.status != CheckStatus::Fail
+                        && matches!(c.severity, Severity::Info | Severity::Warning)),
             "{checks:?}"
         );
     }
@@ -341,6 +416,75 @@ jobs:
             .filter(|(_, g, _)| *g == "gate-smells")
             .map(|(id, _, _)| id)
             .collect();
-        assert_eq!(ids, ["GS-01", "GS-02", "GS-07", "GS-13"]);
+        assert_eq!(
+            ids,
+            ["GS-01", "GS-02", "GS-07", "GS-13", "GS-03", "GS-04", "GS-05", "GS-12", "GS-14"]
+        );
+    }
+
+    const WAVE2_SMELLY: &str = "\
+on: pull_request
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: gh api repos/x/y/branches/main
+  rollup:
+    runs-on: [self-hosted, clean-room]
+    needs: [fetch]
+    steps:
+      - run: test \"${{ needs.fetch.result }}\" = success
+";
+
+    #[test]
+    fn wave2_rules_reach_the_group_and_warn_on_a_smelly_repo() {
+        let checks = check_gate_smells(repo_with(Some(WAVE2_SMELLY)).path());
+        let warned = |id: &str| {
+            checks
+                .iter()
+                .find(|c| check_id(&c.name) == id)
+                .is_some_and(|c| c.status == CheckStatus::Warn)
+        };
+        assert!(warned("GS-03"), "{checks:?}");
+        assert!(warned("GS-05"), "{checks:?}");
+    }
+
+    #[test]
+    fn wave2_rules_pass_a_clean_repo() {
+        let checks = check_gate_smells(repo_with(Some(CLEAN)).path());
+        for id in ["GS-03", "GS-04", "GS-05", "GS-12", "GS-14"] {
+            let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
+            assert_eq!(c.status, CheckStatus::Pass, "{id}: {c:?}");
+        }
+    }
+
+    /// A shared-workflow sha nothing here can resolve is GS-12's blind spot alone:
+    /// the other four rules measured the file and must still say Pass.
+    #[test]
+    fn an_unresolved_shared_sha_skips_gs12_and_no_other_rule() {
+        let pinned = format!(
+            "{CLEAN}  shared:\n    uses: paiml/.github/.github/workflows/ci.yml@{}\n",
+            "fbee3788a0ed92d09974ac21ea9bc97d373af6f0"
+        );
+        let checks = check_gate_smells(repo_with(Some(&pinned)).path());
+        let status = |id: &str| {
+            let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
+            c.status
+        };
+        assert_eq!(status("GS-12"), CheckStatus::Skip, "{checks:?}");
+        for id in ["GS-03", "GS-04", "GS-05", "GS-14"] {
+            assert_eq!(status(id), CheckStatus::Pass, "{id}: {checks:?}");
+        }
+    }
+
+    /// A workflow that does not parse was measured by no rule: all five decline.
+    #[test]
+    fn an_unparsable_workflow_skips_all_five_wave2_rules() {
+        let checks = check_gate_smells(repo_with(Some("jobs: [\n")).path());
+        for id in ["GS-03", "GS-04", "GS-05", "GS-12", "GS-14"] {
+            let c = checks.iter().find(|c| check_id(&c.name) == id).expect(id);
+            assert_eq!(c.status, CheckStatus::Skip, "{id}: {c:?}");
+        }
     }
 }

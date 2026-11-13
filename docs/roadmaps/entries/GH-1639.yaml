@@ -2,7 +2,7 @@
   github_issue: 1639
   item_type: task
   title: 'deps master: one weekly grouped dependabot PR (no solo dependency PRs)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-09T12:40:20.197348363+00:00

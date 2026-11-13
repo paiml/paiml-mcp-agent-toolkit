@@ -80,7 +80,7 @@ jobs:
 
   gate:
     needs: create-release
-    uses: paiml/.github/.github/workflows/unified-gate.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0 # main
+    uses: paiml/.github/.github/workflows/unified-gate.yml@b89bc3c405cc9ec10b9ff51056bf568bf64641c6 # main 2026-11-12: infra sync over https when the caller has an infra read secret (paiml/.github#126)
     with:
       repo: ${{ github.event.repository.name }}
       pr_sha: ${{ needs.create-release.outputs.sha }}

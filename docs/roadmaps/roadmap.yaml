@@ -8526,8 +8526,8 @@ roadmap:
 - id: GH-1673
   github_issue: 1673
   item_type: task
-  title: 'pmat comply detects gate smells (GS-01..14) and resource smells (RS-01..08)'
-  status: in_progress
+  title: pmat comply detects gate smells (GS-01..14) and resource smells (RS-01..08)
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-11-10T13:45:00Z
@@ -8540,6 +8540,8 @@ roadmap:
   estimated_effort: null
   labels:
   - kind:code
+  - orch:fable
+  - orch-basis:release
   notes: null
 - id: PMAT-1605
   github_issue: 1605

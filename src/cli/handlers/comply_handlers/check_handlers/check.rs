@@ -587,6 +587,25 @@ const GROUP_IDS_GATE_SMELLS: &[RuleDecl] = &[
     ("GS-02", "Floating Version"),
     ("GS-07", "No Timeout Or Supersede"),
     ("GS-13", "Hosted Runner In Sovereign Repo"),
+    ("GS-03", "Live External Read In PR Job"),
+    ("GS-04", "Gate Self-Test On Product Path"),
+    ("GS-05", "Roll-Up On Heavy Runner"),
+    ("GS-12", "Unreachable Shared Workflow Sha"),
+    ("GS-14", "Repo-Global Check On PR Path"),
+];
+const GROUP_IDS_RUNNER_SMELLS: &[RuleDecl] = &[
+    ("RS-01", "No Concurrency Cancel"),
+    ("RS-02", "Job Without Timeout"),
+    ("RS-03", "Hosted Runner On PR"),
+    ("RS-04", "Heavy Suite On Every PR Push"),
+    ("RS-05", "pull_request_target Trigger"),
+    ("RS-06", "Cargo Without CI Profile"),
+    ("RS-07", "Heavy Gate Roll-Up Runner"),
+    ("RS-08", "Action Not Pinned To Sha"),
+    ("RS-09", "Draft PRs Start CI"),
+    ("RS-10", "Too Many PR Workflows"),
+    ("RS-11", "Examples Built On PR Path"),
+    ("RS-12", "Mutation Outside Nightly"),
 ];
 const GROUP_IDS_COHERENCE: &[RuleDecl] = &[("cb-2101", "Threshold Coherence")];
 const GROUP_IDS_TRACEABILITY: &[RuleDecl] = &[("cb-2113", "Commit Traceability")];
@@ -597,7 +616,7 @@ const GROUP_IDS_TICKET_RELEASE: &[RuleDecl] = &[
 ];
 const GROUP_IDS_SPEC_EPICS: &[RuleDecl] = &[("cb-2110", "Spec Epics")];
 const GROUP_IDS_SPEC_REVIEWS: &[RuleDecl] = &[("cb-2111", "Spec Reviews")];
-// 178 distinct ids across 22 groups; declared in more than one group: none
+// 195 distinct ids across 24 groups; declared in more than one group: none
 
 /// A named compliance-check group, the rule ids it can emit, and the thunk that
 /// produces its checks. The ids are known before the group runs (PMAT-1296), so
@@ -763,6 +782,11 @@ fn compliance_check_groups<'a>(
             "gate-smells",
             GROUP_IDS_GATE_SMELLS,
             Box::new(move || build_gate_smells_checks(project_path, comply_config)),
+        ),
+        (
+            "runner-smells",
+            GROUP_IDS_RUNNER_SMELLS,
+            Box::new(move || build_runner_smells_checks(project_path, comply_config)),
         ),
         (
             "coherence",
@@ -1955,7 +1979,10 @@ include!("check_builders_gate_effect.rs");
 include!("check_metrics_ratchet.rs");
 include!("check_builders_ratchet.rs");
 include!("check_gate_smells.rs");
+include!("check_gate_smells_wave2.rs");
 include!("check_builders_gate_smells.rs");
+include!("check_runner_smells.rs");
+include!("check_builders_runner_smells.rs");
 include!("check_threshold_coherence.rs");
 include!("check_builders_coherence.rs");
 include!("check_traceability.rs");
@@ -1975,6 +2002,7 @@ include!("check_pv_enforcement_helpers_tests.rs");
 include!("check_pv_lint_verdict_tests.rs");
 include!("check_armed_gates_tests.rs");
 include!("check_gate_smells_tests.rs");
+include!("check_runner_smells_tests.rs");
 
 include!("check_path_guard_tests.rs");
 include!("check_empty_project_guard_tests.rs");

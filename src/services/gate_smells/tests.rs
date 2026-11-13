@@ -58,6 +58,14 @@ fn gs05_flags_heavy_rollup() {
     let r = detect_gs05(&wf(GS05_SMELLY));
     assert_eq!(ids(&r), ["GS-05"]);
     assert_eq!(r.findings[0].job, "rollup");
+    // A loop over the results: only the `for` line names `needs.`; the other
+    // four lines are result checks by their opener alone.
+    let looped = GS05_SMELLY.replace(
+        "if [ \"${{ needs.build.result }}\" != success ]; then exit 1; fi",
+        "fail=0\n          for r in ${{ needs.build.result }}; do\n          [ \"$r\" = \"success\" ] || fail=1\n          done\n          exit $fail",
+    );
+    assert_ne!(looped, GS05_SMELLY);
+    assert_eq!(ids(&detect_gs05(&wf(&looped))), ["GS-05"]);
 }
 #[test]
 fn gs05_hosted_rollup_and_heavy_worker_pass() {
@@ -76,7 +84,8 @@ fn shared(sha: &str) -> String {
 
 #[test]
 fn gs12_parse_shared_ref() {
-    let r = parse_shared_ref(&format!("paiml/.github/.github/workflows/x.yml@{SHA}")).unwrap();
+    let r = parse_shared_ref(&format!("paiml/.github/.github/workflows/x.yml@{SHA}"))
+        .expect("a 40-hex ref parses");
     assert_eq!((r.repo.as_str(), r.sha.as_str()), ("paiml/.github", SHA));
     assert!(parse_shared_ref("paiml/.github/.github/workflows/x.yml@main").is_none());
     assert!(parse_shared_ref(&format!("actions/checkout@{SHA}")).is_none());
@@ -120,12 +129,12 @@ fn gs14_clean_and_nightly_pass() {
 // ---- scan ----
 #[test]
 fn scan_reports_each_smell_and_unparseable_file() {
-    let d = tempfile::TempDir::new().unwrap();
-    std::fs::write(d.path().join("a.yml"), GS03_SMELLY).unwrap();
-    std::fs::write(d.path().join("b.yml"), GS14_SMELLY).unwrap();
-    std::fs::write(d.path().join("c.yml"), "jobs: [unclosed").unwrap();
-    std::fs::write(d.path().join("d.txt"), "ignored").unwrap();
-    let r = scan_workflows(d.path(), &|_, _| None).unwrap();
+    let d = tempfile::TempDir::new().expect("tempdir");
+    std::fs::write(d.path().join("a.yml"), GS03_SMELLY).expect("write fixture");
+    std::fs::write(d.path().join("b.yml"), GS14_SMELLY).expect("write fixture");
+    std::fs::write(d.path().join("c.yml"), "jobs: [unclosed").expect("write fixture");
+    std::fs::write(d.path().join("d.txt"), "ignored").expect("write fixture");
+    let r = scan_workflows(d.path(), &|_, _| None).expect("scan succeeds");
     let got = ids(&r);
     assert!(got.contains(&"GS-03") && got.contains(&"GS-14"), "{got:?}");
     assert_eq!(r.not_measured.len(), 1);
@@ -137,4 +146,18 @@ fn gs03_curl_mid_line_and_leading_curl_each_flag() {
     let lead = "on: pull_request\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: curl https://api.github.com/x\n";
     assert_eq!(detect_gs03(&wf(mid)).findings.len(), 1);
     assert_eq!(detect_gs03(&wf(lead)).findings.len(), 1);
+}
+
+#[test]
+fn job_if_not_equal_schedule_is_still_on_pr_path() {
+    for cond in [
+        "github.event_name != 'schedule'",
+        "github.event_name != \"workflow_dispatch\"",
+        "github.event_name  !=  'schedule' && github.event_name != 'workflow_dispatch'",
+    ] {
+        let t = format!("on: pull_request\njobs:\n  gate:\n    runs-on: x\n    if: {cond}\n    steps:\n      - run: gh api repos/a/b\n");
+        assert_eq!(detect_gs03(&wf(&t)).findings.len(), 1, "cond: {cond}");
+    }
+    let confined = "on: pull_request\njobs:\n  gate:\n    runs-on: x\n    if: github.event_name == 'schedule'\n    steps:\n      - run: gh api repos/a/b\n";
+    assert!(detect_gs03(&wf(confined)).findings.is_empty());
 }
