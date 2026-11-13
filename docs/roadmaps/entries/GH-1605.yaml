@@ -2,11 +2,11 @@
   github_issue: 1605
   item_type: task
   title: 'GHC-001: pmat comply github (R1-R6) + pmat work add guards'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-06T18:24:09.028675347+00:00
-  updated: 2026-11-09T12:55:08.075066360+00:00
+  updated: 2026-11-13T13:14:55.000000000+00:00
   spec: null
   acceptance_criteria:
   - pmat comply github judges R1-R4, R4d (draft TTL 72 h), R6 and R6b (finished epic) per repo or per PR and exits 1 on a violation or an unmeasured read; pmat work add refuses R1 cap and R3 homeless tickets and warns (advisory, exit 0) on an R5 title match; FALSIFY-GHC-001..007 are lib tests

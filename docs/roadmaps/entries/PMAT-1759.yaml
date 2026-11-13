@@ -1,0 +1,18 @@
+- id: PMAT-1759
+  github_issue: 1759
+  item_type: task
+  title: 'README.md: add frontmatter, contract-count block, relabel non-claim fences'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-13T13:03:07Z
+  updated: 2026-11-13T13:03:07Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1757
