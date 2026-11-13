@@ -2,7 +2,7 @@
   github_issue: 1685
   item_type: task
   title: PR Title Check must accept type train and a #N subject
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-10T15:56:34.000000000+00:00
