@@ -8543,3 +8543,22 @@ roadmap:
   - orch:fable
   - orch-basis:release
   notes: null
+- id: PMAT-1605
+  github_issue: 1605
+  item_type: task
+  title: 'GHC-001: pmat comply github (R1-R6) + pmat work add guards'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-05T12:00:00Z
+  updated: 2026-11-05T12:00:00Z
+  spec: null
+  acceptance_criteria:
+  - pmat comply github judges R1-R4, R4d (draft TTL 72 h), R6 and R6b (finished epic) per repo or per PR and exits 1 on a violation or an unmeasured read; pmat work add refuses R1 cap and R3 homeless tickets and warns (advisory, exit 0) on an R5 title match; FALSIFY-GHC-001..007 are lib tests
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1604
