@@ -70,17 +70,12 @@ impl ProjectFileDiscovery {
         }
 
         // Check path patterns
-        if path_str.contains("/target/debug/")
+        path_str.contains("/target/debug/")
             || path_str.contains("/target/release/")
             || path_str.contains("/build/")
             || path_str.contains("/dist/")
             || path_str.contains("/.gradle/")
             || path_str.contains("/bazel-")
-        {
-            return true;
-        }
-
-        false
     }
 
     /// Check if a file is analyzable based on extension or special name
