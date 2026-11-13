@@ -2,7 +2,7 @@
   github_issue: 1605
   item_type: task
   title: 'GHC-001: pmat comply github (R1-R6) + pmat work add guards'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-06T18:24:09.028675347+00:00

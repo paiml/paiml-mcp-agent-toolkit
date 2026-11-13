@@ -1,0 +1,18 @@
+- id: PMAT-1761
+  github_issue: 1761
+  item_type: task
+  title: 'master red: CB-2115 roadmap coherence, 6 findings (2 closed issues still planned, 4 issues without entries)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-13T15:27:53Z
+  updated: 2026-11-13T15:27:53Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1757

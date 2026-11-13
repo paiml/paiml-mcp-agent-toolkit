@@ -7396,7 +7396,7 @@ roadmap:
   github_issue: 1425
   item_type: task
   title: 'Adopt sovereign-update: `update` subcommand + daily update check (pmat) — EPIC aprender#4232'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00

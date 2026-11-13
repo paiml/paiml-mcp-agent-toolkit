@@ -1,0 +1,18 @@
+- id: PMAT-1760
+  github_issue: 1760
+  item_type: task
+  title: 'CI: readme-shape job + falsifier, wired into the gate'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-13T13:03:10Z
+  updated: 2026-11-13T13:03:10Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1757
