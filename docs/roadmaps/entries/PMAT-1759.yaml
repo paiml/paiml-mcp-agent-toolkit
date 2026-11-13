@@ -1,7 +1,7 @@
 - id: PMAT-1759
   github_issue: 1759
   item_type: task
-  title: README.md frontmatter, count-block, bash-fence relabel
+  title: 'README.md: add frontmatter, contract-count block, relabel non-claim fences'
   status: planned
   priority: medium
   assigned_to: null

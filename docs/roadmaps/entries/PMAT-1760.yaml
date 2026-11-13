@@ -1,7 +1,7 @@
 - id: PMAT-1760
   github_issue: 1760
   item_type: task
-  title: Wire readme-shape falsifier + CI job into gate
+  title: 'CI: readme-shape job + falsifier, wired into the gate'
   status: planned
   priority: medium
   assigned_to: null
