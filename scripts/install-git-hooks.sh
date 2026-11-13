@@ -308,6 +308,13 @@ cat > "${HOOK_DIR}/pre-push" <<'HOOK_EOF'
 
 set -e
 
+# OUT-324: Cargo.lock / deny.toml change => cargo deny check advisories (fail-closed).
+# Runs first: the pmat-book section below has early `exit 0` paths.
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+if [ -x "${ROOT_DIR}/scripts/pre-push-advisory-check.sh" ]; then
+    "${ROOT_DIR}/scripts/pre-push-advisory-check.sh" || exit $?
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
