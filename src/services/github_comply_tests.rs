@@ -1,0 +1,730 @@
+//! GHC-001 falsification tests.
+//!
+//! The spec (`Sovereign-AI-Stack claude/GHC-001-github-comply.md`) was not
+//! available when these were written; OUT-204 is the whole statement. The five
+//! FALSIFY ids are therefore assigned by this file, one per behaviour OUT-204
+//! names, each with a planted violation AND the boundary that must pass:
+//!
+//! - FALSIFY-GHC-001  R1 — 101 open issues violate, 100 pass; target median 50 is not a gate.
+//! - FALSIFY-GHC-002  R2 — 5 open non-draft PRs violate, 4 pass; train/* and fix-set/expedite and drafts do not count.
+//! - FALSIFY-GHC-003  R3 + R6 — a ticket with neither milestone nor epic, and a PR body with no
+//!   `owner/repo#N` reference, are each caught; the linked forms pass.
+//! - FALSIFY-GHC-004  R4 — a non-draft PR older than 4 h without a PASS violates; PASS, young, draft do not.
+//! - FALSIFY-GHC-005  R5 — `work add` WARNS (advisory, OUT-281) naming the open ticket a title fits and
+//!   still admits it; it refuses a repo at the R1 cap; a distinct title carries no note; the ticket
+//!   never matches itself.
+//!
+//! OUT-281 additions (ids beyond the spec's 001..005):
+//!
+//! - FALSIFY-GHC-006  R6b — an open epic whose sub-issues are all closed violates; one with an open
+//!   child, with no children, or with an unreported count (not_measured) does not.
+//! - FALSIFY-GHC-007  R4d — a draft PR older than 72 h violates (reported as R4d, apart from R4);
+//!   72 h exactly, younger drafts and non-draft PRs do not.
+//!
+//! Each `falsify_ghc_00N_*` test is the planted-violation arm; `*_control` is the arm that must pass.
+
+use super::*;
+use chrono::{Duration, TimeZone};
+
+fn t0() -> DateTime<Utc> {
+    Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0)
+        .single()
+        .expect("fixture")
+}
+
+fn issue(n: u64, title: &str) -> IssueRec {
+    IssueRec {
+        number: n,
+        title: title.into(),
+        milestone: Some("0.71".into()),
+        parent: None,
+        labels: vec![],
+        sub_issues: 0,
+        sub_issues_closed: None,
+    }
+}
+
+fn pr(n: u64, age_h: i64, checks: CheckState) -> PrRec {
+    PrRec {
+        number: n,
+        title: format!("pr {n}"),
+        is_draft: false,
+        created_at: t0() - Duration::hours(age_h),
+        head_ref: format!("feat/x{n}"),
+        labels: vec![],
+        body: "Part of paiml/x#1".into(),
+        checks,
+    }
+}
+
+fn snap(issues: Vec<IssueRec>, prs: Vec<PrRec>) -> RepoSnapshot {
+    RepoSnapshot {
+        repo: "paiml/x".into(),
+        taken_at: t0(),
+        open_issue_total: issues.len(),
+        open_issues: issues,
+        open_prs: prs,
+    }
+}
+
+fn n_issues(n: usize) -> Vec<IssueRec> {
+    (1..=n as u64)
+        .map(|i| issue(i, &format!("distinct topic {i:04} alpha{i}")))
+        .collect()
+}
+
+fn rules(report: &Report) -> Vec<Rule> {
+    report.violations.iter().map(|v| v.rule).collect()
+}
+
+fn run(s: &RepoSnapshot, rs: &[Rule]) -> Report {
+    evaluate(s, &Policy::default(), rs)
+}
+
+// ---- policy -------------------------------------------------------------
+
+#[test]
+fn policy_defaults_are_the_out_204_numbers() {
+    let p = Policy::default();
+    assert_eq!(p.max_open_issues, 100);
+    assert_eq!(p.target_open_issues, 50);
+    assert_eq!(p.max_open_prs, 4);
+    assert_eq!(p.pr_max_age_hours, 4);
+    assert_eq!(p.pr_exempt, ["train/*", "fix-set/expedite"]);
+}
+
+#[test]
+fn policy_is_per_repo_and_layers_over_defaults() {
+    let text = r#"
+        [defaults]
+        max_open_prs = 6
+        [repo."paiml/x"]
+        max_open_issues = 30
+    "#;
+    let x = Policy::from_toml(text, "paiml/x").expect("fixture");
+    assert_eq!((x.max_open_issues, x.max_open_prs), (30, 6));
+    let other = Policy::from_toml(text, "paiml/y").expect("fixture");
+    assert_eq!((other.max_open_issues, other.max_open_prs), (100, 6));
+}
+
+#[test]
+fn policy_unknown_key_is_an_error_not_a_default() {
+    let err = Policy::from_toml("[defaults]\nmax_open_issue = 5\n", "a/b").unwrap_err();
+    assert!(format!("{err:#}").contains("max_open_issue"), "{err:#}");
+    assert!(Policy::from_toml("[defualts]\n", "a/b").is_err());
+}
+
+#[test]
+fn policy_rejects_out_of_range_values() {
+    assert!(Policy::from_toml("[defaults]\nfit_similarity = 1.5\n", "a/b").is_err());
+    assert!(Policy::from_toml("[defaults]\npr_max_age_hours = -1\n", "a/b").is_err());
+}
+
+#[test]
+fn policy_load_reads_the_file_and_absent_means_defaults() {
+    let dir = tempfile::tempdir().expect("fixture");
+    assert_eq!(
+        Policy::load(dir.path(), "a/b").expect("fixture"),
+        Policy::default()
+    );
+    std::fs::create_dir_all(dir.path().join(".pmat")).expect("fixture");
+    std::fs::write(
+        dir.path().join(POLICY_PATH),
+        "[repo.\"a/b\"]\nmax_open_prs = 9\n",
+    )
+    .expect("fixture");
+    assert_eq!(
+        Policy::load(dir.path(), "a/b")
+            .expect("fixture")
+            .max_open_prs,
+        9
+    );
+    std::fs::write(dir.path().join(POLICY_PATH), "max_open_prs = ").expect("fixture");
+    assert!(Policy::load(dir.path(), "a/b").is_err());
+}
+
+// ---- FALSIFY-GHC-001: R1 ------------------------------------------------
+
+#[test]
+fn falsify_ghc_001_101_open_issues_violate_r1() {
+    let r = run(&snap(n_issues(101), vec![]), &[Rule::R1]);
+    assert_eq!(rules(&r), [Rule::R1]);
+    assert!(!r.ok());
+    assert!(
+        r.violations[0].message.contains("101"),
+        "{:?}",
+        r.violations
+    );
+}
+
+#[test]
+fn falsify_ghc_001_control_100_open_issues_pass_r1() {
+    let r = run(&snap(n_issues(100), vec![]), &[Rule::R1]);
+    assert!(r.ok(), "{:?}", r.violations);
+}
+
+#[test]
+fn r1_reads_the_authoritative_total_not_the_page() {
+    let mut s = snap(n_issues(10), vec![]);
+    s.open_issue_total = 250;
+    assert_eq!(rules(&run(&s, &[Rule::R1])), [Rule::R1]);
+}
+
+#[test]
+fn r1_cap_is_per_repo_policy() {
+    let p = Policy {
+        max_open_issues: 5,
+        ..Policy::default()
+    };
+    let r = evaluate(&snap(n_issues(6), vec![]), &p, &[Rule::R1]);
+    assert_eq!(rules(&r), [Rule::R1]);
+}
+
+// ---- FALSIFY-GHC-002: R2 ------------------------------------------------
+
+fn prs(n: u64) -> Vec<PrRec> {
+    (1..=n).map(|i| pr(i, 1, CheckState::Pass)).collect()
+}
+
+#[test]
+fn falsify_ghc_002_5_open_non_draft_prs_violate_r2() {
+    let r = run(&snap(vec![], prs(5)), &[Rule::R2]);
+    assert_eq!(rules(&r), [Rule::R2]);
+}
+
+#[test]
+fn falsify_ghc_002_control_4_open_non_draft_prs_pass_r2() {
+    assert!(run(&snap(vec![], prs(4)), &[Rule::R2]).ok());
+}
+
+#[test]
+fn r2_exempts_train_branches_the_expedite_set_and_drafts() {
+    let mut v = prs(4);
+    let mut train = pr(10, 1, CheckState::Pass);
+    train.head_ref = "train/0.71".into();
+    let mut expedite = pr(11, 1, CheckState::Pass);
+    expedite.head_ref = "fix-set/expedite".into();
+    let mut labelled = pr(12, 1, CheckState::Pass);
+    labelled.labels = vec!["fix-set/expedite".into()];
+    let mut draft = pr(13, 1, CheckState::Pass);
+    draft.is_draft = true;
+    v.extend([train, expedite, labelled, draft]);
+    assert!(run(&snap(vec![], v), &[Rule::R2]).ok());
+}
+
+#[test]
+fn r2_exemption_is_not_a_substring_match() {
+    let mut v = prs(4);
+    let mut near = pr(10, 1, CheckState::Pass);
+    near.head_ref = "feat/train/x".into(); // does not START with train/
+    v.push(near);
+    assert_eq!(rules(&run(&snap(vec![], v), &[Rule::R2])), [Rule::R2]);
+}
+
+// ---- FALSIFY-GHC-003: R3 + R6 -------------------------------------------
+
+fn orphan(n: u64) -> IssueRec {
+    IssueRec {
+        milestone: None,
+        parent: None,
+        ..issue(n, "orphan")
+    }
+}
+
+#[test]
+fn falsify_ghc_003_ticket_with_no_milestone_and_no_epic_violates_r3() {
+    let r = run(&snap(vec![orphan(7)], vec![]), &[Rule::R3]);
+    assert_eq!(rules(&r), [Rule::R3]);
+    assert_eq!(r.violations[0].subject, Some(7));
+}
+
+#[test]
+fn falsify_ghc_003_control_milestone_or_epic_parent_passes_r3() {
+    let mut sub = orphan(8);
+    sub.parent = Some(1);
+    let with_ms = issue(9, "has milestone");
+    assert!(run(&snap(vec![sub, with_ms], vec![]), &[Rule::R3]).ok());
+}
+
+#[test]
+fn r3_exempts_epics_by_label_by_sub_issue_count_and_by_having_an_open_child() {
+    let mut labelled = orphan(1);
+    labelled.labels = vec!["Epic".into()];
+    let mut counted = orphan(2);
+    counted.sub_issues = 3;
+    let parent_of_open_child = orphan(3);
+    let mut child = orphan(4);
+    child.parent = Some(3);
+    let s = snap(vec![labelled, counted, parent_of_open_child, child], vec![]);
+    let r = run(&s, &[Rule::R3]);
+    assert!(r.ok(), "{:?}", r.violations);
+    // control: an issue that is none of those is still a violation
+    let s = snap(vec![orphan(1), orphan(2)], vec![]);
+    assert_eq!(run(&s, &[Rule::R3]).violations.len(), 2);
+}
+
+#[test]
+fn pr_check_reads_a_bare_hash_reference_as_this_repo_for_r3() {
+    // the ONLY reference is `Closes #7` (no owner/repo): R3 must still judge #7
+    let mut p = pr(5, 1, CheckState::Pass);
+    p.body = "Closes #7".into();
+    let r = evaluate_pr(
+        &snap(vec![orphan(7)], vec![p.clone()]),
+        &Policy::default(),
+        5,
+    );
+    assert!(
+        r.violations
+            .iter()
+            .any(|v| v.rule == Rule::R3 && v.subject == Some(7)),
+        "{:?}",
+        r.violations
+    );
+    // control: the same bare reference to a ticket with a milestone is not an R3 violation
+    let r = evaluate_pr(
+        &snap(vec![issue(7, "has milestone")], vec![p.clone()]),
+        &Policy::default(),
+        5,
+    );
+    assert!(
+        r.violations.iter().all(|v| v.rule != Rule::R3),
+        "{:?}",
+        r.violations
+    );
+    // `Part of #7` reads the same way, and `#77` is not `#7`
+    p.body = "Part of #77".into();
+    let r = evaluate_pr(&snap(vec![orphan(7)], vec![p]), &Policy::default(), 5);
+    assert!(
+        r.violations.iter().all(|v| v.rule != Rule::R3),
+        "{:?}",
+        r.violations
+    );
+}
+
+#[test]
+fn pr_check_is_not_red_on_a_part_of_reference_to_an_epic() {
+    let mut p = pr(5, 1, CheckState::Pass);
+    p.body = "Part of paiml/x#1604".into();
+    let mut epic = orphan(1604);
+    epic.sub_issues = 2;
+    let r = evaluate_pr(&snap(vec![epic], vec![p]), &Policy::default(), 5);
+    assert!(r.ok(), "{:?} {:?}", r.violations, r.not_measured);
+}
+
+#[test]
+fn falsify_ghc_003_pr_body_without_an_owner_repo_reference_violates_r6() {
+    for body in [
+        "",
+        "just prose",
+        "Closes #12",           // bare number: owner/repo is required
+        "Part of #12",          // ditto
+        "closes-ish paiml/x#1", // no keyword boundary
+        "see paiml/x#1",        // a mention is not a link
+    ] {
+        let mut p = pr(1, 1, CheckState::Pass);
+        p.body = body.into();
+        let r = run(&snap(vec![], vec![p]), &[Rule::R6]);
+        assert_eq!(rules(&r), [Rule::R6], "body {body:?} should violate R6");
+    }
+}
+
+#[test]
+fn falsify_ghc_003_control_closing_and_part_of_forms_pass_r6() {
+    for body in [
+        "Closes paiml/x#12",
+        "fixes paiml/pmat.rs#3",
+        "RESOLVES a-b/c_d#99",
+        "Resolved: paiml/x#4",
+        "Part of paiml/x#12",
+        "summary\n\npart of  paiml/x#12\n",
+        "- Closes paiml/x#12",
+    ] {
+        assert!(has_issue_reference(body), "{body:?}");
+    }
+}
+
+#[test]
+fn r6_in_the_repo_run_covers_every_open_pr() {
+    let mut bad = pr(2, 1, CheckState::Pass);
+    bad.body = "nothing".into();
+    let r = run(
+        &snap(vec![], vec![pr(1, 1, CheckState::Pass), bad]),
+        &[Rule::R6],
+    );
+    assert_eq!(r.violations.len(), 1);
+    assert_eq!(r.violations[0].subject, Some(2));
+}
+
+#[test]
+fn pr_check_judges_r6_on_the_body_and_r3_on_the_referenced_ticket() {
+    let mut p = pr(5, 1, CheckState::Pass);
+    p.body = "Closes paiml/x#7".into();
+    let s = snap(vec![orphan(7)], vec![p]);
+    let r = evaluate_pr(&s, &Policy::default(), 5);
+    assert_eq!(rules(&r), [Rule::R3]);
+    assert_eq!(r.violations[0].subject, Some(7));
+    assert_eq!(r.rules_run, [Rule::R3, Rule::R6]);
+}
+
+#[test]
+fn pr_check_names_a_foreign_or_closed_issue_reference_as_not_measured() {
+    // #1633 review: R6 accepts any owner/repo#N, but R3 cannot judge a reference into
+    // another repo or to an issue that is not open; that is NOT MEASURED, never a pass.
+    let mut p = pr(5, 1, CheckState::Pass);
+    p.body = "Closes other/repo#7 and Part of paiml/x#99".into();
+    let r = evaluate_pr(&snap(vec![], vec![p]), &Policy::default(), 5);
+    assert!(r.violations.is_empty());
+    assert_eq!(r.not_measured.len(), 2, "{:?}", r.not_measured);
+    assert!(!r.ok());
+    // control: a PR that is not among the open PRs is genuinely not measured
+    let r = evaluate_pr(&snap(vec![], vec![]), &Policy::default(), 5);
+    assert_eq!(r.not_measured.len(), 1);
+    assert!(!r.ok(), "an unmeasured rule must not read as a pass");
+}
+
+#[test]
+fn pr_check_on_an_unknown_pr_is_not_measured() {
+    let r = evaluate_pr(&snap(vec![], vec![]), &Policy::default(), 404);
+    assert!(!r.ok());
+    assert!(r.not_measured[0].contains("404"));
+}
+
+// ---- FALSIFY-GHC-004: R4 ------------------------------------------------
+
+#[test]
+fn falsify_ghc_004_old_non_draft_pr_without_a_pass_violates_r4() {
+    for state in [CheckState::Pending, CheckState::Fail, CheckState::None] {
+        let r = run(&snap(vec![], vec![pr(1, 5, state)]), &[Rule::R4]);
+        assert_eq!(rules(&r), [Rule::R4], "{state:?}");
+    }
+}
+
+#[test]
+fn falsify_ghc_004_control_pass_young_exact_boundary_and_draft_do_not_violate() {
+    let mut draft = pr(4, 9, CheckState::Pending);
+    draft.is_draft = true;
+    let v = vec![
+        pr(1, 9, CheckState::Pass),    // old but PASS
+        pr(2, 1, CheckState::Pending), // no PASS but young
+        pr(3, 4, CheckState::Pending), // exactly 4 h is not OVER 4 h
+        draft,
+    ];
+    let r = run(&snap(vec![], v), &[Rule::R4]);
+    assert!(r.ok(), "{:?}", r.violations);
+}
+
+#[test]
+fn r4_age_is_measured_from_the_snapshot_not_the_wall_clock() {
+    let mut p = pr(1, 0, CheckState::Pending);
+    p.created_at = t0() - Duration::hours(4) - Duration::minutes(1);
+    assert_eq!(rules(&run(&snap(vec![], vec![p]), &[Rule::R4])), [Rule::R4]);
+}
+
+// ---- FALSIFY-GHC-007: R4d (draft TTL) ------------------------------------
+
+fn draft(n: u64, age_h: i64, age_min: i64) -> PrRec {
+    PrRec {
+        is_draft: true,
+        created_at: t0() - Duration::hours(age_h) - Duration::minutes(age_min),
+        ..pr(n, 0, CheckState::None)
+    }
+}
+
+#[test]
+fn falsify_ghc_007_draft_older_than_72h_violates_r4d_and_not_r4() {
+    let s = snap(vec![], vec![draft(1, 72, 1)]);
+    let r = run(&s, &[Rule::R4d]);
+    assert_eq!(rules(&r), [Rule::R4d]);
+    assert_eq!(r.violations[0].subject, Some(1));
+    // reported separately: the non-draft rule stays silent about a draft
+    assert!(run(&s, &[Rule::R4]).ok());
+    // the TTL is about age, not checks: a draft with a PASS still expires
+    let mut passing = draft(2, 100, 0);
+    passing.checks = CheckState::Pass;
+    assert_eq!(
+        rules(&run(&snap(vec![], vec![passing]), &[Rule::R4d])),
+        [Rule::R4d]
+    );
+}
+
+#[test]
+fn falsify_ghc_007_control_young_exact_and_non_draft_do_not_violate_r4d() {
+    let old_non_draft = pr(3, 200, CheckState::Pending);
+    let s = snap(vec![], vec![draft(1, 72, 0), draft(2, 1, 0), old_non_draft]);
+    assert!(run(&s, &[Rule::R4d]).ok(), "exactly 72 h is not OVER 72 h");
+}
+
+#[test]
+fn r4d_ttl_is_policy() {
+    let p = Policy::from_toml("[defaults]\ndraft_ttl_hours = 10\n", "paiml/x").expect("fixture");
+    let s = snap(vec![], vec![draft(1, 11, 0)]);
+    assert_eq!(rules(&evaluate(&s, &p, &[Rule::R4d])), [Rule::R4d]);
+    assert!(Policy::from_toml("[defaults]\ndraft_ttl_hours = -1\n", "a/b").is_err());
+    assert_eq!(Policy::default().draft_ttl_hours, 72);
+}
+
+// ---- FALSIFY-GHC-006: R6b (finished epic) --------------------------------
+
+fn epic(n: u64, total: u64, closed: Option<u64>) -> IssueRec {
+    IssueRec {
+        labels: vec!["epic".into()],
+        sub_issues: total,
+        sub_issues_closed: closed,
+        ..issue(n, &format!("epic {n}"))
+    }
+}
+
+#[test]
+fn falsify_ghc_006_open_epic_with_all_children_closed_violates_r6b() {
+    let r = run(&snap(vec![epic(9, 3, Some(3))], vec![]), &[Rule::R6b]);
+    assert_eq!(rules(&r), [Rule::R6b]);
+    assert_eq!(r.violations[0].subject, Some(9));
+    assert!(r.violations[0].message.contains("3"), "{:?}", r.violations);
+    assert!(r.not_measured.is_empty());
+}
+
+#[test]
+fn falsify_ghc_006_control_an_open_child_or_no_children_does_not_violate() {
+    let s = snap(
+        vec![epic(1, 3, Some(2)), epic(2, 0, Some(0)), epic(3, 0, None)],
+        vec![],
+    );
+    let r = run(&s, &[Rule::R6b]);
+    assert!(r.ok(), "{:?} {:?}", r.violations, r.not_measured);
+}
+
+#[test]
+fn r6b_a_missing_closed_count_is_not_measured_never_a_pass_or_a_violation() {
+    let r = run(&snap(vec![epic(9, 3, None)], vec![]), &[Rule::R6b]);
+    assert!(r.violations.is_empty());
+    assert_eq!(r.not_measured.len(), 1, "{:?}", r.not_measured);
+    assert!(r.not_measured[0].contains("#9"), "{:?}", r.not_measured);
+    assert!(!r.ok());
+}
+
+#[test]
+fn r6b_judges_any_issue_with_children_not_only_the_epic_label() {
+    // an issue that HAS sub-issues is a parent whatever it is labelled
+    let mut parent = epic(9, 2, Some(2));
+    parent.labels.clear();
+    assert_eq!(
+        rules(&run(&snap(vec![parent], vec![]), &[Rule::R6b])),
+        [Rule::R6b]
+    );
+}
+
+#[test]
+fn r6b_and_r4d_run_in_the_reconciler_and_parse() {
+    assert!(Rule::RECONCILER.contains(&Rule::R6b) && Rule::RECONCILER.contains(&Rule::R4d));
+    assert_eq!(Rule::parse("r6b").expect("fixture"), Rule::R6b);
+    assert_eq!(Rule::parse("R4D").expect("fixture"), Rule::R4d);
+}
+
+// ---- FALSIFY-GHC-005: R5 ------------------------------------------------
+
+fn open_tickets() -> Vec<IssueRec> {
+    vec![
+        issue(1, "Fix flaky tdg grade cache test on Windows"),
+        issue(2, "Add pmat comply github command"),
+    ]
+}
+
+#[test]
+fn falsify_ghc_005_work_add_warns_naming_the_ticket_a_title_fits_and_does_not_refuse() {
+    // OUT-281: R5 title similarity is ADVISORY in v1 — Ok (exit 0) with a note naming #2.
+    let s = snap(open_tickets(), vec![]);
+    let note = guard_new_ticket(
+        &Policy::default(),
+        &s,
+        "Add pmat comply github command",
+        Some(50),
+        Some(3),
+    )
+    .expect("a title match must not refuse")
+    .expect("a title match must carry an advisory");
+    assert!(
+        note.contains("R5") && note.contains("#2") && note.contains("advisory"),
+        "{note}"
+    );
+}
+
+#[test]
+fn r5_advisory_does_not_mask_the_blocking_rules() {
+    // a title match AND the R1 cap: R1 still refuses. A title match AND no home: R3 still refuses.
+    let mut at_cap = n_issues(100);
+    at_cap[1] = issue(2, "Add pmat comply github command");
+    let err = guard_new_ticket(
+        &Policy::default(),
+        &snap(at_cap, vec![]),
+        "Add pmat comply github command",
+        Some(500),
+        Some(3),
+    )
+    .unwrap_err();
+    assert!(format!("{err:#}").contains("R1"), "{err:#}");
+    let err = guard_new_ticket(
+        &Policy::default(),
+        &snap(open_tickets(), vec![]),
+        "Add pmat comply github command",
+        Some(50),
+        None,
+    )
+    .unwrap_err();
+    assert!(format!("{err:#}").contains("R3"), "{err:#}");
+}
+
+#[test]
+fn falsify_ghc_005_work_add_refuses_at_the_r1_cap() {
+    let s = snap(n_issues(100), vec![]);
+    let err = guard_new_ticket(
+        &Policy::default(),
+        &s,
+        "A wholly new idea",
+        Some(500),
+        Some(3),
+    )
+    .unwrap_err();
+    let msg = format!("{err:#}");
+    assert!(msg.contains("R1") && msg.contains("100"), "{msg}");
+}
+
+#[test]
+fn falsify_ghc_005_control_a_distinct_title_under_the_cap_is_admitted() {
+    let s = snap(open_tickets(), vec![]);
+    let note = guard_new_ticket(
+        &Policy::default(),
+        &s,
+        "Rework the roadmap fragment merger",
+        Some(50),
+        Some(3),
+    )
+    .expect("fixture");
+    assert_eq!(note, None, "a distinct title carries no advisory");
+}
+
+#[test]
+fn r5_a_ticket_never_matches_itself() {
+    // --github-issue 2 is the issue being filed: it is already open and has this very title.
+    let s = snap(open_tickets(), vec![]);
+    let note = guard_new_ticket(
+        &Policy::default(),
+        &s,
+        "Add pmat comply github command",
+        Some(2),
+        Some(3),
+    )
+    .expect("fixture");
+    assert_eq!(note, None, "no advisory naming itself");
+}
+
+#[test]
+fn r1_at_creation_counts_the_others_so_the_ticket_itself_is_not_the_101st() {
+    // 100 open including the ticket being filed (#100): the repo holds 99 others.
+    let s = snap(n_issues(100), vec![]);
+    guard_new_ticket(
+        &Policy::default(),
+        &s,
+        "brand new unrelated work",
+        Some(100),
+        Some(3),
+    )
+    .expect("fixture");
+}
+
+#[test]
+fn r5_similarity_is_token_jaccard_and_threshold_is_policy() {
+    let issues = vec![issue(1, "tdg grade cache flaky")];
+    let hit = find_fitting_issue("flaky tdg grade cache", &issues, None, 0.6);
+    assert!(hit.is_some_and(|(i, s)| i.number == 1 && (s - 1.0).abs() < 1e-9));
+    assert!(find_fitting_issue("flaky tdg grade cache", &issues, None, 1.01).is_none());
+    assert!(find_fitting_issue("something else entirely", &issues, None, 0.6).is_none());
+    assert!(find_fitting_issue("flaky tdg grade cache", &issues, Some(1), 0.6).is_none());
+}
+
+#[test]
+fn r3_at_creation_needs_an_epic_or_a_milestone_on_the_ticket() {
+    let s = snap(vec![orphan(50)], vec![]);
+    let err =
+        guard_new_ticket(&Policy::default(), &s, "fresh work item", Some(50), None).unwrap_err();
+    assert!(format!("{err:#}").contains("R3"));
+    // with an epic to be linked under, the ticket will be a sub-issue
+    guard_new_ticket(&Policy::default(), &s, "fresh work item", Some(50), Some(3))
+        .expect("fixture");
+}
+
+// ---- report -------------------------------------------------------------
+
+#[test]
+fn report_text_names_each_rule_and_the_verdict() {
+    let r = run(&snap(n_issues(101), prs(5)), &Rule::RECONCILER);
+    let text = r.render_text();
+    assert!(text.contains("paiml/x"), "{text}");
+    assert!(text.contains("R1") && text.contains("R2"), "{text}");
+    assert!(text.contains("VIOLATION"), "{text}");
+    let clean = run(&snap(vec![], vec![]), &Rule::RECONCILER).render_text();
+    assert!(clean.contains("COMPLIANT"), "{clean}");
+}
+
+#[test]
+fn report_round_trips_through_json() {
+    let r = run(&snap(n_issues(101), vec![]), &[Rule::R1]);
+    let back: Report =
+        serde_json::from_str(&serde_json::to_string(&r).expect("fixture")).expect("fixture");
+    assert_eq!(back, r);
+}
+
+#[test]
+fn every_rule_id_is_its_variant_name_and_snapshot_rules_round_trip() {
+    let all = [
+        Rule::R1,
+        Rule::R2,
+        Rule::R3,
+        Rule::R4,
+        Rule::R5,
+        Rule::R6,
+        Rule::R4d,
+        Rule::R6b,
+    ];
+    for r in all {
+        assert_eq!(
+            r.id(),
+            format!("{r:?}"),
+            "id table out of step with the enum"
+        );
+        assert_eq!(
+            serde_json::to_string(&r).expect("fixture"),
+            format!("\"{}\"", r.id())
+        );
+    }
+    for r in Rule::SNAPSHOT {
+        assert_eq!(Rule::parse(r.id()).expect("fixture"), r);
+    }
+}
+
+#[test]
+fn rule_parse_accepts_the_snapshot_rules_only() {
+    assert_eq!(Rule::parse("r3").expect("fixture"), Rule::R3);
+    assert!(Rule::parse("R5").is_err());
+    assert!(Rule::parse("R9").is_err());
+}
+
+#[test]
+fn snapshot_json_round_trips() {
+    let s = snap(vec![issue(1, "a")], vec![pr(2, 1, CheckState::Fail)]);
+    let back: RepoSnapshot =
+        serde_json::from_str(&serde_json::to_string(&s).expect("fixture")).expect("fixture");
+    assert_eq!(back, s);
+}
+
+#[test]
+fn pr_check_does_not_pass_a_reference_r3_could_not_judge() {
+    // #1633: cross-repo and unknown references land in not_measured, never COMPLIANT
+    for body in ["Part of paiml/other-repo#5", "Part of paiml/x#99999"] {
+        let mut p = pr(5, 1, CheckState::Pass);
+        p.body = body.into();
+        let s = snap(vec![], vec![p]);
+        let r = evaluate_pr(&s, &Policy::default(), 5);
+        assert!(!r.ok(), "{body}: {:?}", r.not_measured);
+        assert!(!r.not_measured.is_empty(), "{body}");
+    }
+}
