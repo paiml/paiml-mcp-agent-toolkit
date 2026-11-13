@@ -119,6 +119,12 @@ fn the_producer_scopes_every_cargo_invocation_to_the_lib() {
         s[run..].contains("--cargo-arg=--lib"),
         "without --cargo-arg=--lib the baseline builds every example (GH-1731)"
     );
+    // The old trailing `-- --lib` plus `--cargo-arg=--lib` hands cargo test
+    // `--lib` twice, which cargo rejects (cargo-mutants exit 4).
+    assert!(
+        !s.contains("-- --lib"),
+        "a trailing `-- --lib` duplicates --cargo-arg=--lib and cargo rejects it"
+    );
 }
 
 /// One verdict, in one place. A shell reimplementation would be a second set of

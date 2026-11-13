@@ -143,8 +143,7 @@ cmd_run() {
         --cargo-arg=--lib \
         --in-diff "$diff" \
         --timeout-multiplier "${MUTATION_GATE_TIMEOUT_MULTIPLIER:-1.5}" \
-        --minimum-test-timeout "${MUTATION_GATE_MIN_TIMEOUT:-900}" \
-        -- --lib
+        --minimum-test-timeout "${MUTATION_GATE_MIN_TIMEOUT:-900}"
     rc=$?
     set -e
 
