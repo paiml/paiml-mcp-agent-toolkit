@@ -1,7 +1,7 @@
 [package]
 name = "pmat"
 default-run = "pmat"
-version = "3.43.0"
+version = "3.44.0"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
@@ -45,6 +45,7 @@ required-features = ["mcp-integration"]
 [dependencies]
 # Sovereign stack: shared utilities (batuta-common: old name, lib.name still batuta_common)
 batuta-common = "0.1"
+aprender-update = "0.72"
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
@@ -182,7 +183,7 @@ globset = { version = "0.4", optional = true }
 csv = { version = "1.3" }
 # hex removed from [dependencies]: replaced with inline format!("{:02x}") (CB-081)
 uuid = { version = "1.17", features = ["v4", "v7", "serde"], optional = true }
-parking_lot = { version = "0.12", optional = true }
+parking_lot = { version = "0.13", optional = true }
 dirs = { version = "6.0", optional = true }
 roaring = { version = "0.11", optional = true }
 rand = { version = "0.10", optional = true }

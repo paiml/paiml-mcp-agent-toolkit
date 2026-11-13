@@ -8543,3 +8543,22 @@ roadmap:
   - orch:fable
   - orch-basis:release
   notes: null
+- id: PMAT-1754
+  github_issue: 1754
+  item_type: task
+  title: master has clippy findings that block every merge-commit hook
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-11-13T00:00:00Z
+  updated: 2026-11-13T11:35:00Z
+  spec: null
+  acceptance_criteria:
+  - cargo clippy --all-targets -- -D warnings -A unused-variables passes clean on master
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
