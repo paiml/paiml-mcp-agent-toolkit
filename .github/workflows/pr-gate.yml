@@ -6,6 +6,10 @@ on:
   pull_request_target:
     types: [opened, reopened]
 
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   authorize:
     uses: paiml/.github/.github/workflows/pr-gate.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0 # main

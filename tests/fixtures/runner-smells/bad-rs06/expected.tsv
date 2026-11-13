@@ -1,0 +1,1 @@
+RS-06	./.github/workflows/ci.yml:17	cargo runs without CARGO_PROFILE_DEV_DEBUG=0 / CARGO_PROFILE_TEST_DEBUG=0 / CARGO_INCREMENTAL=0 (measured: 66G build tree vs 5.5G)
