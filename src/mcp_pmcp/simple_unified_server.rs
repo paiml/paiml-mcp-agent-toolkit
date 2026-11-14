@@ -509,6 +509,14 @@ impl Default for SimpleUnifiedServer {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod eof_drain_tests {
+    // PMAT-1314, root cause: EOF with a request in flight runs
+    // `handle_terminal_receive_error`, whose `sleep(DRAIN_BACKSTOP)` (300 s) is
+    // uncancellable here — production drops the future via the actor's biased
+    // `select!`, these tests do not. They were never order-dependent; they
+    // waited out five real minutes (cargo test: `ok` after ~384 s, nextest: killed
+    // at its slow-timeout). The two that reach that path run on a PAUSED tokio
+    // clock, so the backstop elapses in virtual time and they finish in
+    // milliseconds under both runners.
     use super::*;
     use pmcp::types::{JSONRPCResponse, RequestId};
 
@@ -570,7 +578,7 @@ mod eof_drain_tests {
 
     /// The regression: EOF observed while a request is still being handled
     /// must NOT end the session, or that response is truncated.
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn eof_does_not_signal_while_a_request_is_in_flight() {
         let (mut transport, mut session_end) =
             EofSignalingTransport::new(ScriptedTransport::new(vec![Some(a_request()), None]));
@@ -608,7 +616,7 @@ mod eof_drain_tests {
     }
 
     /// Several requests may be consumed before EOF; all must be answered.
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn waits_for_every_outstanding_request() {
         let (mut transport, mut session_end) =
             EofSignalingTransport::new(ScriptedTransport::new(vec![
