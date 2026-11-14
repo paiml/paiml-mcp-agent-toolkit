@@ -61,7 +61,10 @@ skipped_readmitted() {    # $1 = file that may carry cargo-test skips; prints ea
     for t in "${READMITTED[@]}"; do
       case "$t" in *"$p"*) echo "$t (--skip $p)" ;; esac
     done
-  done < <(grep -oE -- '--skip[= ]+[^[:space:]\\"'"'"'`]+' "$1" | sed -E 's/^--skip[= ]+//')
+  # The pattern may sit behind an opening quote, shell ("p", 'p') or escaped inside a
+  # YAML/JSON string (\"p\"): a class that refuses quotes right after `--skip ` saw none.
+  done < <(grep -oE -- '--skip(=|[[:space:]]+)\\?["'"'"'`]?[^[:space:]\\"'"'"'`]+' "$1" \
+             | sed -E 's/^--skip(=|[[:space:]]+)\\?["'"'"'`]?//')
 }
 slow_lane_files() {       # every file that can carry a cargo-test --skip, minus this one
   printf '%s\n' Makefile scripts/gate.sh
@@ -124,13 +127,16 @@ echo "pr-lane-control: arm 6 RED   — a planted default-filter of every form is
 # Each planted skip drops a re-admitted test from `cargo test`; each must be refused.
 for p in eof_does_not_signal_while_a_request_is_in_flight eof_drain \
          simple_unified_server::eof_drain_tests::waits_for_every_outstanding_request; do
-  for form in "--skip $p" "--skip=$p"; do
+  # Quoted forms too: a pattern grep cannot see past an opening quote is a skip arm 4 passes.
+  for form in "--skip $p" "--skip=$p" "--skip	$p" \
+              "--skip \"$p\"" "--skip '$p'" "--skip=\"$p\"" "--skip='$p'" \
+              "--skip \\\"$p\\\"" "--skip=\\\"$p\\\""; do
     printf 'test-x:\n\tcargo test --lib -- --skip libsql %s \\\n\t\t--skip cli_integration_tests\n' "$form" > "$T/Makefile"
     [ -n "$(skipped_readmitted "$T/Makefile")" ] \
       || fail_arm 7 "a Makefile with '$form' skips a re-admitted test and must be refused"
   done
 done
-printf 'test-x:\n\tcargo test --lib -- --skip libsql --skip cli_integration_tests\n' > "$T/Makefile"
+printf 'test-x:\n\tcargo test --lib -- --skip libsql --skip "cli_integration_tests" --skip='"'"'eof_unrelated'"'"'\n' > "$T/Makefile"
 [ -z "$(skipped_readmitted "$T/Makefile")" ] \
   || fail_arm 7 "skips that name no re-admitted test must not be refused"
 echo "pr-lane-control: arm 7 RED   — skipping a re-admitted test from the slow lane is refused"
