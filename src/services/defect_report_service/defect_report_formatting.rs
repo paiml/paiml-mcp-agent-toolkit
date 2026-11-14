@@ -84,54 +84,54 @@ impl DefectReportService {
         ));
 
         if include_executive_summary {
-        // Executive Summary
-        md.push_str("## Executive Summary\n\n");
-        md.push_str(&format!(
-            "- **Total Defects**: {}\n",
-            report.summary.total_defects
-        ));
-        md.push_str(&format!(
-            "- **Files Analyzed**: {}\n",
-            report.metadata.total_files_analyzed
-        ));
-        md.push_str(&format!(
-            "- **Analysis Duration**: {}ms\n\n",
-            report.metadata.analysis_duration_ms
-        ));
-
-        // Severity Distribution
-        md.push_str("### Severity Distribution\n\n");
-        md.push_str("```\n");
-
-        let total = report.summary.total_defects as f64;
-        for (severity, count) in &report.summary.by_severity {
-            let percentage = (*count as f64 / total) * 100.0;
-            let bar_length = (percentage / 5.0) as usize;
-            let progress_bar = "\u{2588}".repeat(bar_length);
-            let empty = "\u{2591}".repeat(20 - bar_length);
+            // Executive Summary
+            md.push_str("## Executive Summary\n\n");
             md.push_str(&format!(
-                "{severity:<8} {progress_bar}{empty} {count} ({percentage:.1}%)\n"
+                "- **Total Defects**: {}\n",
+                report.summary.total_defects
             ));
-        }
-        md.push_str("```\n\n");
+            md.push_str(&format!(
+                "- **Files Analyzed**: {}\n",
+                report.metadata.total_files_analyzed
+            ));
+            md.push_str(&format!(
+                "- **Analysis Duration**: {}ms\n\n",
+                report.metadata.analysis_duration_ms
+            ));
 
-        // Top Hotspot Files
-        if !report.summary.hotspot_files.is_empty() {
-            md.push_str("### Top 10 Hotspot Files\n\n");
-            md.push_str("| Rank | File | Defects | Severity Score |\n");
-            md.push_str("|------|------|---------|----------------|\n");
+            // Severity Distribution
+            md.push_str("### Severity Distribution\n\n");
+            md.push_str("```\n");
 
-            for (i, hotspot) in report.summary.hotspot_files.iter().enumerate() {
+            let total = report.summary.total_defects as f64;
+            for (severity, count) in &report.summary.by_severity {
+                let percentage = (*count as f64 / total) * 100.0;
+                let bar_length = (percentage / 5.0) as usize;
+                let progress_bar = "\u{2588}".repeat(bar_length);
+                let empty = "\u{2591}".repeat(20 - bar_length);
                 md.push_str(&format!(
-                    "| {} | {} | {} | {:.1} |\n",
-                    i + 1,
-                    hotspot.path.display(),
-                    hotspot.defect_count,
-                    hotspot.severity_score
+                    "{severity:<8} {progress_bar}{empty} {count} ({percentage:.1}%)\n"
                 ));
             }
-            md.push('\n');
-        }
+            md.push_str("```\n\n");
+
+            // Top Hotspot Files
+            if !report.summary.hotspot_files.is_empty() {
+                md.push_str("### Top 10 Hotspot Files\n\n");
+                md.push_str("| Rank | File | Defects | Severity Score |\n");
+                md.push_str("|------|------|---------|----------------|\n");
+
+                for (i, hotspot) in report.summary.hotspot_files.iter().enumerate() {
+                    md.push_str(&format!(
+                        "| {} | {} | {} | {:.1} |\n",
+                        i + 1,
+                        hotspot.path.display(),
+                        hotspot.defect_count,
+                        hotspot.severity_score
+                    ));
+                }
+                md.push('\n');
+            }
         }
 
         // Detailed Findings by Category

@@ -710,6 +710,94 @@ mod tests {
         assert!(err.to_string().contains("not implemented"), "{err}");
     }
 
+    /// GH-1473: clap yields None when omitted, Some(true) for a bare flag and
+    /// Some(false) for `=false`, so an explicit value is distinguishable.
+    #[test]
+    fn test_report_include_flags_parse_to_option_gh1473() {
+        let outcome = std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(|| {
+                use clap::Parser;
+                let parse = |extra: &[&str]| {
+                    let mut argv = vec!["pmat", "report"];
+                    argv.extend_from_slice(extra);
+                    match crate::cli::Cli::try_parse_from(argv)
+                        .expect("must parse")
+                        .command
+                    {
+                        crate::cli::Commands::Report {
+                            include_executive_summary,
+                            include_recommendations,
+                            ..
+                        } => (include_executive_summary, include_recommendations),
+                        other => panic!("not a report command: {other:?}"),
+                    }
+                };
+                assert_eq!(parse(&[]), (None, None));
+                assert_eq!(parse(&["--include-executive-summary"]), (Some(true), None));
+                assert_eq!(
+                    parse(&["--include-executive-summary=false"]),
+                    (Some(false), None)
+                );
+                assert_eq!(
+                    parse(&["--include-recommendations", "--markdown"]),
+                    (None, Some(true))
+                );
+            })
+            .expect("spawn")
+            .join();
+        assert!(outcome.is_ok(), "report flag parsing must hold");
+    }
+
+    /// GH-1473 end to end: markdown with `Some(false)` writes a report without
+    /// the section, `Some(true)`/`None` keep it, and an explicit executive-summary
+    /// flag is refused for json, csv, text and html.
+    #[tokio::test]
+    async fn test_generate_report_executive_summary_end_to_end_gh1473() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("lib.rs"), "fn main() {}").expect("write");
+        let run = |fmt: ReportOutputFormat, es: Option<bool>, out: Option<PathBuf>| {
+            handle_generate_report(
+                dir.path().to_path_buf(),
+                fmt,
+                false,
+                false,
+                false,
+                false,
+                es,
+                None,
+                vec![],
+                50,
+                out,
+                false,
+            )
+        };
+        for (es, expect) in [(Some(false), false), (Some(true), true), (None, true)] {
+            let out = dir.path().join("r.md");
+            run(ReportOutputFormat::Markdown, es, Some(out.clone()))
+                .await
+                .expect("markdown must succeed");
+            let body = std::fs::read_to_string(&out).expect("read");
+            assert_eq!(body.contains("## Executive Summary"), expect, "es={es:?}");
+        }
+        for fmt in [
+            ReportOutputFormat::Json,
+            ReportOutputFormat::Csv,
+            ReportOutputFormat::Text,
+            ReportOutputFormat::Html,
+        ] {
+            for v in [true, false] {
+                let err = run(fmt.clone(), Some(v), None)
+                    .await
+                    .expect_err("explicit flag must be refused");
+                assert!(
+                    err.to_string().contains("--include-executive-summary"),
+                    "{err}"
+                );
+            }
+        }
+    }
+
     #[tokio::test]
     async fn test_write_report_output_writes_explicit_path() {
         let dir = tempfile::tempdir().expect("tempdir");
