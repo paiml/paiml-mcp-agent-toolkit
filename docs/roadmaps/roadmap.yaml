@@ -7396,11 +7396,11 @@ roadmap:
   github_issue: 1425
   item_type: task
   title: 'Adopt sovereign-update: `update` subcommand + daily update check (pmat) — EPIC aprender#4232'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-13T12:10:55.000000000+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7614,11 +7614,11 @@ roadmap:
   github_issue: 1461
   item_type: task
   title: 'release.yml prerelease job cannot dispatch the release listeners (HTTP 403, missing actions: write)'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-28T01:46:25Z
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-11-13T15:55:18.000000000+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -8516,6 +8516,45 @@ roadmap:
   spec: null
   acceptance_criteria:
   - scaffold tests restore the cwd on drop and the cwd-reading lint_hotspot test is serial, so no parallel test sees a moved or deleted cwd
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1457
+- id: GH-1673
+  github_issue: 1673
+  item_type: task
+  title: pmat comply detects gate smells (GS-01..14) and resource smells (RS-01..08)
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-11-10T13:45:00Z
+  updated: 2026-11-10T16:55:00Z
+  spec: null
+  acceptance_criteria:
+  - GS-01, GS-02, GS-07 and GS-13 are static, warn-level workflow scans, each with a smelly and a clean fixture
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  - orch:fable
+  - orch-basis:release
+  notes: null
+- id: PMAT-1754
+  github_issue: 1754
+  item_type: task
+  title: master has clippy findings that block every merge-commit hook
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-11-13T00:00:00Z
+  updated: 2026-11-13T11:35:00Z
+  spec: null
+  acceptance_criteria:
+  - cargo clippy --all-targets -- -D warnings -A unused-variables passes clean on master
   phases: []
   subtasks: []
   estimated_effort: null

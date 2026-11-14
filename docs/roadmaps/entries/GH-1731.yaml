@@ -1,0 +1,16 @@
+- id: GH-1731
+  github_issue: 1731
+  item_type: task
+  title: 'LAB: nightly mutation lane is red'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-11-12T00:00:00.000000000+00:00
+  updated: 2026-11-13T07:38:02.000000000+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

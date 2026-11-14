@@ -29,6 +29,24 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             result
         }
 
+        ComplyCommands::Github {
+            repo,
+            pr,
+            rules,
+            path,
+            format,
+            snapshot,
+            backfill,
+        } => handle_github_command(
+            &path,
+            repo.as_deref(),
+            pr,
+            &rules,
+            format,
+            snapshot.as_deref(),
+            backfill,
+        ),
+
         ComplyCommands::Migrate {
             path,
             version,
