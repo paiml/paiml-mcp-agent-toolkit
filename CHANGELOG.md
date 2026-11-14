@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.45.0] - 2026-11-14
+
+### Added
+
+- **`pmat update` self-update (#1425)**: `pmat update [--check]` uses aprender-update's
+  `self_update` against this repo's GitHub releases, plus a daily startup check (#1751).
+- **`pmat comply github` R1-R6 (GHC-001, #1633)**: GitHub hygiene rules, and `pmat work add`
+  refuses an orphan ticket (#1750).
+- **`pmat work status` reports the active ticket from the branch (#1591)**: on a
+  `work/PMAT-NNNN` branch, `pmat work status` with no id prints the active ticket, taken
+  from the branch name only (#1752).
+
+### Fixed
+
+- **release**: the prerelease job may dispatch `binary-release.yml` and `post-release.yml`
+  (`actions: write`; they returned HTTP 403 on v3.41.1 and v3.42.0) (PMAT-1461, #1462);
+  published release assets are never replaced and the clean-room gate pin syncs infra over
+  https (#1738); cross rows assert the binary is stripped instead of running a strip tool
+  from a floating image (#1733).
+- **mutation**: the diff-gate baseline build is scoped to `--lib`, so the nightly lane no
+  longer OOMs linking examples (GH-1731, #1749).
+- **clippy**: three `needless_bool` findings on master (PMAT-1754, #1755).
+- **ledger and roadmap**: the unrun-tests ledger is re-rendered (GH-1673, #1740); CB-2115
+  roadmap coherence is clean on master (#1734, #1739, #1743, #1747, #1765).
+
+### Changed
+
+- **deps**: cargo-weekly lock updates and parking_lot 0.13 (#1744).
+
 ## [3.44.0] - 2026-11-12
 
 ### Added
