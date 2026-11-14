@@ -635,11 +635,11 @@ pub enum Commands {
         include_visualizations: bool,
 
         /// Include executive summary
-        #[arg(long, default_value_t = true)]
+        #[arg(long, default_value_t = true, num_args = 0..=1, default_missing_value = "true", action = clap::ArgAction::Set)]
         include_executive_summary: bool,
 
         /// Include actionable recommendations
-        #[arg(long, default_value_t = true)]
+        #[arg(long, default_value_t = true, num_args = 0..=1, default_missing_value = "true", action = clap::ArgAction::Set)]
         include_recommendations: bool,
 
         /// Analysis types to include

@@ -184,8 +184,8 @@ pub async fn handle_generate_report(
     markdown: bool,
     csv: bool,
     include_visualizations: bool,
-    _include_executive_summary: bool,
-    _include_recommendations: bool,
+    include_executive_summary: bool,
+    include_recommendations: bool,
     _analyses: Vec<AnalysisType>,
     _confidence_threshold: u8,
     output: Option<PathBuf>,
@@ -201,13 +201,22 @@ pub async fn handle_generate_report(
 
     let actual_format = determine_output_format(output_format, text, markdown, csv);
     reject_unimplemented_visualizations(include_visualizations)?;
+    reject_markdown_only_sections_off(
+        &actual_format,
+        include_executive_summary,
+        include_recommendations,
+    )?;
     log_report_generation_start(&project_path, &actual_format);
 
     let service = DefectReportService::new();
     let report = service.generate_report(&project_path).await?;
 
     let service_format = convert_to_service_format(actual_format)?;
-    let formatted_output = format_report_output(&service, &report, service_format)?;
+    let formatted_output = if matches!(service_format, ReportFormat::Markdown) {
+        service.format_markdown_with(&report, include_executive_summary, include_recommendations)?
+    } else {
+        format_report_output(&service, &report, service_format)?
+    };
 
     write_report_output(formatted_output, output).await?;
 
@@ -281,6 +290,31 @@ fn reject_unimplemented_visualizations(include_visualizations: bool) -> Result<(
              nothing in json, csv, markdown or text, and the formats that could embed \
              charts (html, pdf, dashboard) are not implemented either. Re-run without it."
         );
+    }
+    Ok(())
+}
+
+/// GH-1473: `--include-executive-summary=false` / `--include-recommendations=false`
+/// shape the markdown report only. json, csv and text have no such section, so
+/// turning one off there would change nothing: refuse instead of no-op'ing.
+fn reject_markdown_only_sections_off(
+    format: &ReportOutputFormat,
+    include_executive_summary: bool,
+    include_recommendations: bool,
+) -> Result<()> {
+    if matches!(format, ReportOutputFormat::Markdown) {
+        return Ok(());
+    }
+    for (on, name) in [
+        (include_executive_summary, "--include-executive-summary"),
+        (include_recommendations, "--include-recommendations"),
+    ] {
+        if !on {
+            anyhow::bail!(
+                "{name}=false only changes markdown output; it would change nothing in \
+                 {format:?}. Use --markdown or drop the flag."
+            );
+        }
     }
     Ok(())
 }
@@ -587,6 +621,39 @@ mod tests {
             err.to_string().contains("not implemented"),
             "unexpected error: {err}"
         );
+    }
+
+    /// GH-1473: the two include flags must change the markdown output.
+    #[tokio::test]
+    async fn test_markdown_include_flags_change_output_gh1473() {
+        let service = DefectReportService::new();
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("lib.rs"), "fn main() {}").expect("write");
+        let report = service.generate_report(dir.path()).await.expect("report");
+        let full = service
+            .format_markdown_with(&report, true, true)
+            .expect("md");
+        let no_es = service
+            .format_markdown_with(&report, false, true)
+            .expect("md");
+        assert!(full.contains("## Executive Summary"));
+        assert!(
+            !no_es.contains("## Executive Summary"),
+            "flag off must drop the section"
+        );
+        assert!(no_es.contains("## Detailed Findings"));
+    }
+
+    #[test]
+    fn test_include_flags_off_refused_for_non_markdown_gh1473() {
+        assert!(
+            reject_markdown_only_sections_off(&ReportOutputFormat::Markdown, false, false).is_ok()
+        );
+        assert!(reject_markdown_only_sections_off(&ReportOutputFormat::Json, true, true).is_ok());
+        let e = reject_markdown_only_sections_off(&ReportOutputFormat::Json, false, true)
+            .expect_err("must refuse");
+        assert!(e.to_string().contains("--include-executive-summary"));
+        assert!(reject_markdown_only_sections_off(&ReportOutputFormat::Csv, true, false).is_err());
     }
 
     #[tokio::test]
