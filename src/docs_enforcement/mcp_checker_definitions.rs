@@ -11,28 +11,25 @@
 pub fn load_mcp_tool_definitions() -> Result<Vec<McpToolDefinition>> {
     use crate::mcp_pmcp::tool_manifest::{live_tool_infos, LIVE_MCP_TOOLS};
 
-    let tools = live_tool_infos()
-        .into_iter()
-        .zip(LIVE_MCP_TOOLS)
-        .map(|(info, &(name, catalog_description))| {
-            let (description, input_schema) = match info {
-                Some(info) => (
-                    info.description
-                        .unwrap_or_else(|| catalog_description.to_string()),
-                    info.input_schema,
-                ),
-                None => (
-                    catalog_description.to_string(),
-                    serde_json::json!({"type": "object", "properties": {}}),
-                ),
-            };
-            McpToolDefinition {
-                name: name.to_string(),
-                description,
-                input_schema,
-            }
-        })
-        .collect();
+    let infos = live_tool_infos();
+    anyhow::ensure!(
+        infos.len() == LIVE_MCP_TOOLS.len(),
+        "live_tool_infos() yields {} handlers but LIVE_MCP_TOOLS lists {}",
+        infos.len(),
+        LIVE_MCP_TOOLS.len()
+    );
+
+    let mut tools = Vec::with_capacity(infos.len());
+    for (info, &(name, catalog_description)) in infos.into_iter().zip(LIVE_MCP_TOOLS) {
+        let info = info.ok_or_else(|| anyhow::anyhow!("live tool `{name}` declares no metadata"))?;
+        tools.push(McpToolDefinition {
+            name: name.to_string(),
+            description: info
+                .description
+                .unwrap_or_else(|| catalog_description.to_string()),
+            input_schema: info.input_schema,
+        });
+    }
 
     Ok(tools)
 }
