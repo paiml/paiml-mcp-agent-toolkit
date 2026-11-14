@@ -230,3 +230,124 @@ fn docker_publish_is_dispatch_only_and_refuses_without_secrets() {
         "the image is tagged with the crate version: {tags}"
     );
 }
+
+/// The "Upload assets to release" step of binary-release.yml, run for real
+/// under bash against a fake `gh` that records every call. `on_release` is the
+/// asset list the fake release starts with; the return value is the fake's log.
+#[cfg(unix)]
+fn run_upload_step(on_release: &[&str]) -> (bool, String) {
+    use std::os::unix::fs::PermissionsExt;
+    let (_, text) = workflow("binary-release.yml");
+    let doc = yaml(&text);
+    let script = doc["jobs"]["build"]["steps"]
+        .as_sequence()
+        .expect("steps")
+        .iter()
+        .find(|s| s["name"].as_str() == Some("Upload assets to release"))
+        .and_then(|s| s["run"].as_str())
+        .expect("the upload step has a run script")
+        .replace("${{ steps.tag.outputs.tag }}", "v9.9.9")
+        .replace(
+            "${{ steps.package.outputs.archive }}",
+            "pmat-v9.9.9-t.tar.gz",
+        )
+        .replace(
+            "${{ steps.package.outputs.sha }}",
+            "pmat-v9.9.9-t.tar.gz.sha256",
+        );
+    assert!(
+        !script.contains("${{"),
+        "an expression the test does not bind: {script}"
+    );
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let work = dir.path().join("work");
+    let bin = dir.path().join("bin");
+    std::fs::create_dir_all(&work).expect("work");
+    std::fs::create_dir_all(&bin).expect("bin");
+    // The rebuild in the workspace differs from the published archive on purpose.
+    std::fs::write(work.join("pmat-v9.9.9-t.tar.gz"), b"REBUILT").expect("archive");
+    std::fs::write(
+        work.join("pmat-v9.9.9-t.tar.gz.sha256"),
+        b"sha-of-rebuild\n",
+    )
+    .expect("sha");
+    std::fs::write(dir.path().join("assets"), on_release.join("\n")).expect("assets");
+    let fake = r#"#!/usr/bin/env bash
+echo "$*" >> "$FAKE_GH_DIR/log"
+case "$1 $2" in
+  "release view") cat "$FAKE_GH_DIR/assets"; echo ;;
+  "release download")
+    dir=.; while [ "$#" -gt 0 ]; do [ "$1" = "--dir" ] && dir=$2; shift; done
+    printf PUBLISHED > "$dir/pmat-v9.9.9-t.tar.gz" ;;
+  "release upload")
+    for f in "${@:4}"; do [ "${f%.sha256}" != "$f" ] && echo "uploaded-sha: $(cat "$f")" >> "$FAKE_GH_DIR/log"; done ;;
+esac
+"#;
+    let gh = bin.join("gh");
+    std::fs::write(&gh, fake).expect("fake gh");
+    std::fs::set_permissions(&gh, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let status = std::process::Command::new("bash")
+        .args(["-e", "-o", "pipefail", "-c", &script])
+        .current_dir(&work)
+        .env("PATH", path)
+        .env("FAKE_GH_DIR", dir.path())
+        .output()
+        .expect("bash runs");
+    let log = std::fs::read_to_string(dir.path().join("log")).unwrap_or_default();
+    (status.status.success(), log)
+}
+
+#[cfg(unix)]
+#[test]
+fn binary_release_upload_never_replaces_a_published_asset() {
+    const ARCHIVE: &str = "pmat-v9.9.9-t.tar.gz";
+    const SHA: &str = "pmat-v9.9.9-t.tar.gz.sha256";
+    let (_, text) = workflow("binary-release.yml");
+    assert!(
+        !text.contains("--clobber"),
+        "no step may replace a release asset: hosts pin it by sha256"
+    );
+
+    // Nothing on the release yet: both files go up, in one call.
+    let (ok, log) = run_upload_step(&["pmat-v9.9.9-other.tar.gz"]);
+    assert!(ok, "{log}");
+    assert!(
+        log.contains(&format!("release upload v9.9.9 {ARCHIVE} {SHA}")),
+        "{log}"
+    );
+
+    // Both already published: a backfill dispatch uploads nothing.
+    let (ok, log) = run_upload_step(&[ARCHIVE, SHA]);
+    assert!(ok, "{log}");
+    assert!(
+        !log.contains("release upload"),
+        "nothing is replaced: {log}"
+    );
+
+    // Archive published, checksum missing: only the checksum goes up, and it is
+    // the checksum of the PUBLISHED bytes, not of this run's rebuild.
+    let (ok, log) = run_upload_step(&[ARCHIVE]);
+    assert!(ok, "{log}");
+    assert!(
+        log.contains(&format!("release upload v9.9.9 {SHA}")),
+        "{log}"
+    );
+    assert!(
+        !log.lines()
+            .any(|l| l.starts_with("release upload") && l.split(' ').any(|w| w == ARCHIVE)),
+        "the archive is not replaced: {log}"
+    );
+    // sha256("PUBLISHED")
+    assert!(
+        log.contains(
+            "uploaded-sha: 9466f57050053c595fb5b7a8ad1767dbecca63033f5a69db97268f640f6cd648"
+        ),
+        "the checksum describes the published archive: {log}"
+    );
+}

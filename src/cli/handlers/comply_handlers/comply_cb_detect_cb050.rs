@@ -303,9 +303,5 @@ fn is_marker_function(name: &str) -> bool {
     }
 
     let prefix_markers = ["marker_", "sentinel_", "phantom_", "noop_", "dummy_"];
-    if prefix_markers.iter().any(|m| lower_name.starts_with(m)) {
-        return true;
-    }
-
-    false
+    prefix_markers.iter().any(|m| lower_name.starts_with(m))
 }

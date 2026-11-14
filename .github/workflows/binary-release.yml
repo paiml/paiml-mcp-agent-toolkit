@@ -207,10 +207,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ steps.tag.outputs.tag }}" \
-            "${{ steps.package.outputs.archive }}" \
-            "${{ steps.package.outputs.sha }}" \
-            --clobber
+          # A published asset is never replaced: hosts pin it by sha256, and a
+          # rebuild of the same tag is not byte-identical. A backfill dispatch
+          # adds what is missing and leaves the rest alone.
+          TAG="${{ steps.tag.outputs.tag }}"
+          ARCHIVE="${{ steps.package.outputs.archive }}"
+          SHA="${{ steps.package.outputs.sha }}"
+          existing=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          if printf '%s\n' "$existing" | grep -qxF "$ARCHIVE"; then
+            echo "keep $ARCHIVE: already on $TAG, not replaced"
+            if printf '%s\n' "$existing" | grep -qxF "$SHA"; then
+              echo "keep $SHA: already on $TAG, not replaced"
+            else
+              # The checksum must describe the PUBLISHED archive, not this rebuild.
+              mkdir published
+              gh release download "$TAG" --pattern "$ARCHIVE" --dir published
+              (cd published && shasum -a 256 "$ARCHIVE") > "$SHA"
+              gh release upload "$TAG" "$SHA"
+            fi
+          else
+            gh release upload "$TAG" "$ARCHIVE" "$SHA"
+          fi
 
   summary:
     name: Summary

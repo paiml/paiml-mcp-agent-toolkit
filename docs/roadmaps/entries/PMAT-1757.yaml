@@ -1,0 +1,16 @@
+- id: PMAT-1757
+  github_issue: 1757
+  item_type: task
+  title: 'README.md: deterministic pv-readme SHACL gate (PV-README rollout)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-13T12:58:19Z
+  updated: 2026-11-13T12:58:19Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

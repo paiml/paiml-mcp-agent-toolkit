@@ -2,11 +2,11 @@
   github_issue: 1732
   item_type: task
   title: 'binary-release: aarch64-unknown-linux-musl fails in Strip binary (cross image has no aarch64-linux-musl-strip); v3.44.0 asset missing'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-12T00:00:00.000000000+00:00
-  updated: 2026-11-12T00:00:00.000000000+00:00
+  updated: 2026-11-12T14:33:00.488267326+00:00
   spec: null
   acceptance_criteria: []
   phases: []

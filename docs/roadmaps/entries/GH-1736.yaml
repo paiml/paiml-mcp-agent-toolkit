@@ -1,0 +1,16 @@
+- id: GH-1736
+  github_issue: 1736
+  item_type: task
+  title: 'binary-release: a backfill dispatch replaces published assets (gh release upload --clobber), breaking sha256 pins'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-11-12T00:00:00.000000000+00:00
+  updated: 2026-11-12T14:33:00.488267326+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

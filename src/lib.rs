@@ -130,6 +130,10 @@ pub mod ast; // Unified AST module for all language parsing
 #[cfg(feature = "standard-deps")]
 pub mod cli;
 pub mod cli_exit;
+
+/// Sovereign `pmat update` + daily check (pmat#1425).
+pub mod self_update;
+
 #[cfg(feature = "standard-deps")]
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
                    // Feature-gated: Demo/showcase functionality (opt-in, ~13,400 lines)
