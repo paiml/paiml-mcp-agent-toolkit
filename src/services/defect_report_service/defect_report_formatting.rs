@@ -63,18 +63,16 @@ impl DefectReportService {
     /// Format report as Markdown
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_markdown(&self, report: &DefectReport) -> Result<String> {
-        self.format_markdown_with(report, true, true)
+        self.format_markdown_with(report, true)
     }
 
-    /// Format report as Markdown, honouring `--include-executive-summary` and
-    /// `--include-recommendations` (GH-1473): with a flag off, the `## Executive
-    /// Summary` block (and its severity/hotspot sub-sections) or the per-finding
-    /// `Suggestion` lines are omitted.
+    /// Format report as Markdown, honouring `--include-executive-summary`
+    /// (GH-1473): with it off, the `## Executive Summary` block (and its
+    /// severity/hotspot sub-sections) is omitted.
     pub fn format_markdown_with(
         &self,
         report: &DefectReport,
         include_executive_summary: bool,
-        include_recommendations: bool,
     ) -> Result<String> {
         let mut md = String::with_capacity(100_000);
 
@@ -162,7 +160,7 @@ impl DefectReportService {
                     ));
                     md.push_str(&format!("**{}** - {}\n\n", defect.severity, defect.message));
 
-                    if let (true, Some(fix)) = (include_recommendations, &defect.fix_suggestion) {
+                    if let Some(fix) = &defect.fix_suggestion {
                         md.push_str(&format!("> \u{1f4a1} **Suggestion**: {fix}\n\n"));
                     }
                 }

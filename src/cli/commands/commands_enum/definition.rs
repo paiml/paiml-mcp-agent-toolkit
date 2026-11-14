@@ -634,13 +634,13 @@ pub enum Commands {
         #[arg(long)]
         include_visualizations: bool,
 
-        /// Include executive summary
-        #[arg(long, default_value_t = true, num_args = 0..=1, default_missing_value = "true", action = clap::ArgAction::Set)]
-        include_executive_summary: bool,
+        /// Include (or, with `=false`, omit) the executive summary; markdown only, other formats refuse it
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", action = clap::ArgAction::Set)]
+        include_executive_summary: Option<bool>,
 
-        /// Include actionable recommendations
-        #[arg(long, default_value_t = true, num_args = 0..=1, default_missing_value = "true", action = clap::ArgAction::Set)]
-        include_recommendations: bool,
+        /// Not implemented: any explicit value is refused (it changed nothing)
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", action = clap::ArgAction::Set)]
+        include_recommendations: Option<bool>,
 
         /// Analysis types to include
         #[arg(long, value_delimiter = ',', default_value = "all")]
