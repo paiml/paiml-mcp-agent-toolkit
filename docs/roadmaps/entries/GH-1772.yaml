@@ -1,0 +1,16 @@
+- id: GH-1772
+  github_issue: 1772
+  item_type: task
+  title: 'pmat 3.45.0 release prep: version bump + CHANGELOG, master ci/test and traceability green'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-14T18:40:00+00:00
+  updated: 2026-11-14T18:40:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
