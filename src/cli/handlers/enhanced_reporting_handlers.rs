@@ -740,7 +740,7 @@ mod tests {
                     (Some(false), None)
                 );
                 assert_eq!(
-                    parse(&["--include-recommendations", "--markdown"]),
+                    parse(&["--include-recommendations", "--md"]),
                     (None, Some(true))
                 );
             })
