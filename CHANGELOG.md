@@ -29,11 +29,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **mutation**: the diff-gate baseline build is scoped to `--lib`, so the nightly lane no
   longer OOMs linking examples (GH-1731, #1749).
 - **clippy**: three `needless_bool` findings on master (PMAT-1754, #1755).
-- **ledger and roadmap**: the unrun-tests ledger is re-rendered (GH-1673, #1740); CB-2115
-  roadmap coherence is clean on master (#1734, #1739, #1743, #1747, #1765).
+- **work**: `pmat work start` on an InProgress ticket re-activates it instead of refusing
+  (GH-1472, #1769).
+- **tdg**: `pmat tdg storage migrate` fails instead of reporting success when no data was
+  moved (#1485, #1770).
+- **mcp**: the `eof_drain` tests run on a paused clock, so the nextest exclusion for them is
+  dropped (GH-1314, #1771).
+- **ledger and roadmap**: the unrun-tests ledger is re-rendered (GH-1673, #1740, and again
+  for the two tests #1769/#1770 added); CB-2115 roadmap coherence is clean on master (#1734,
+  #1739, #1743, #1747, #1765, and GH-1314/GH-1766/GH-1767 in this release).
 
 ### Changed
 
+- **pre-push**: the hook from `scripts/install-git-hooks.sh` runs `cargo deny check
+  advisories` when `Cargo.lock` or `deny.toml` changes (OUT-324, #1764).
 - **deps**: cargo-weekly lock updates and parking_lot 0.13 (#1744).
 
 ## [3.44.0] - 2026-11-12
