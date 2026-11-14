@@ -70,7 +70,7 @@ cmd     | ci / gate | fmt | sovereign-ci.yml lint "Format check" | - | cargo fmt
 step    | ci / gate;feature-gate | clippy-all-targets | .github/workflows/feature-matrix.yml#all-targets#clippy --all-targets (compiles benches and examples) | - | -
 # lib-tests: `cargo test --lib` takes ~20 min on this machine and nextest under 5 (ci.yml PMAT-1313 comment).
 # The `gate` profile in .config/nextest.toml kills a test only after 10 min, as CI's cargo test kills none.
-cmd     | ci / gate | lib-tests | sovereign-ci.yml test "Run tests" | CI runs `cargo test --lib`; this runs nextest (profile gate), one process per test, without the 2 tests .config/nextest.toml excludes because they hang under nextest (PMAT-1314) | cargo nextest run --lib --locked --no-fail-fast --profile gate
+cmd     | ci / gate | lib-tests | sovereign-ci.yml test "Run tests" | CI runs `cargo test --lib`; this runs nextest (profile gate), one process per test, excluding none (PMAT-1314 removed the eof_drain exclusion) | cargo nextest run --lib --locked --no-fail-fast --profile gate
 # cargo deny: sovereign-ci.yml lint runs `cargo deny check advisories licenses sources`, a subset of this step.
 step    | pmat score;ci / gate | cargo-deny | .github/workflows/quality-gate.yml#score#Supply chain gate — cargo deny (blocking, all families) | - | -
 cmd     | ci / gate | cargo-audit | sovereign-ci.yml security "Audit" | same .cargo/audit.toml ignores; no CI git credential header | flags=(); if [ -f .cargo/audit.toml ]; then while read -r id; do flags+=(--ignore "$id"); done < <(sed -n 's/.*\(RUSTSEC-[0-9]*-[0-9]*\).*/\1/p' .cargo/audit.toml); fi; cargo audit "${flags[@]}"

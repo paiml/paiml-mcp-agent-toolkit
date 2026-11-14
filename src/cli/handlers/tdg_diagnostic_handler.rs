@@ -405,24 +405,24 @@ fn handle_cleanup(storage: &TieredStore, max_age: u64) -> Result<()> {
     Ok(())
 }
 
-/// Handle migrate command
+/// Handle migrate command (#1485).
+///
+/// Nothing here moves data: `TieredStore::migrate_backend` is not wired to this
+/// command. It used to print the prospective configuration and exit 0, which
+/// reads as a completed migration. It now validates the backend, shows the
+/// configuration it would use, and FAILS, so no caller (CLI exit code or the MCP
+/// tool) can mistake it for a migration that happened.
 fn handle_migrate(backend: &str, path: Option<&PathBuf>) -> Result<()> {
     let backend_type = parse_backend_type(backend)?;
     let (warm_config, cold_config) = create_migration_configs(backend_type, path);
 
-    println!(
-        "{}",
-        c::dim(&format!(
-            "Migrating storage to {} backend...",
-            c::label(backend)
-        ))
-    );
-    println!("{}", c::warn("Migration requires restart to take effect"));
-    println!("{}", c::subheader("New configuration:"));
+    println!("{}", c::subheader("Requested configuration (not applied):"));
     println!("  {} {warm_config:?}", c::label("Warm storage:"));
     println!("  {} {cold_config:?}", c::label("Cold storage:"));
 
-    Ok(())
+    anyhow::bail!(
+        "storage migrate is not implemented: no data was moved and the store stays on its existing backends (requested backend: {backend})"
+    )
 }
 
 /// Parse backend type from string
@@ -572,6 +572,23 @@ mod tests {
     #[test]
     fn test_parse_backend_type_empty_errors() {
         assert!(parse_backend_type("").is_err());
+    }
+
+    // ── handle_migrate (#1485) ──────────────────────────────────────────────
+
+    /// RED before the fix: it printed a configuration and returned Ok(()), a success
+    /// exit for a migration that moved nothing.
+    #[test]
+    fn test_handle_migrate_refuses_instead_of_reporting_success() {
+        let err = handle_migrate("libsql", None).expect_err("must not report success");
+        let msg = err.to_string();
+        assert!(msg.contains("not implemented"), "{msg}");
+        assert!(msg.contains("no data was moved"), "{msg}");
+    }
+
+    #[test]
+    fn test_handle_migrate_unknown_backend_is_still_an_error() {
+        assert!(handle_migrate("nope", None).is_err());
     }
 
     // ── create_migration_configs ────────────────────────────────────────────
