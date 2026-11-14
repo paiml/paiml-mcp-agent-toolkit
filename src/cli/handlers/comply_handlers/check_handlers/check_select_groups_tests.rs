@@ -131,7 +131,7 @@ mod tests_select_groups {
             for c in run() {
                 let id = check_id(&c.name);
                 // A rule with no CB id is named by its whole id (`check_id`).
-                let emitted = if id.len() < c.name.len() && id.starts_with("CB-") {
+                let emitted = if id.len() < c.name.len() && (id.starts_with("CB-") || id.starts_with("GS-") || id.starts_with("RS-")) {
                     &c.name[id.len() + 2..]
                 } else {
                     id

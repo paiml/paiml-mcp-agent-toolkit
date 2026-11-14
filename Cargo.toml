@@ -1,7 +1,7 @@
 [package]
 name = "pmat"
 default-run = "pmat"
-version = "3.43.0"
+version = "3.44.0"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
@@ -45,6 +45,7 @@ required-features = ["mcp-integration"]
 [dependencies]
 # Sovereign stack: shared utilities (batuta-common: old name, lib.name still batuta_common)
 batuta-common = "0.1"
+aprender-update = "0.72"
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
@@ -78,7 +79,7 @@ sysinfo = { version = "0.39", optional = true }  # Updated for reduced duplicate
 # the aprender library API, and aprender's lib.rs has zero `cfg(feature)` gates, so
 # turning defaults off costs nothing here. Do not re-enable: every other aprender
 # feature also implies `cli`.
-aprender = { version = "0.64", default-features = false }  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
+aprender = { version = "0.72", default-features = false }  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
 
 # High-Performance Compute (SIMD/GPU)
 #
@@ -93,21 +94,21 @@ aprender = { version = "0.64", default-features = false }  # Aprender monorepo: 
 # What 0.64 buys: aprender-db 0.64 requires arrow/parquet ^59, and parquet 59
 # removed its `thrift` dependency — which is the only route thrift 0.17.0
 # (GHSA-2f9f-gq7v-9h6m) had into this tree.
-aprender-compute = { version = "0.64", optional = true }
-aprender-db = { version = "0.64", optional = true, default-features = false }
+aprender-compute = { version = "0.72", optional = true }
+aprender-db = { version = "0.72", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
-aprender-graph = { version = "0.64", default-features = false }  # CSR graph, PageRank, Louvain
-aprender-rag = { version = "0.64", optional = true }  # RAG pipeline
-aprender-viz = { version = "0.64", optional = true, features = ["terminal", "graph"] }
+aprender-graph = { version = "0.72", default-features = false }  # CSR graph, PageRank, Louvain
+aprender-rag = { version = "0.72", optional = true }  # RAG pipeline
+aprender-viz = { version = "0.72", optional = true, features = ["terminal", "graph"] }
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
 wgpu = { version = "30.0", optional = true, features = ["wgsl"] }
 pollster = { version = "0.4", optional = true }  # Async runtime for wgpu
 bytemuck = { version = "1.14", optional = true }  # Safe cast for GPU buffers
-arrow = { version = "59", optional = true }  # Arrow columnar format. MUST match aprender-db's arrow (59) — pmat passes RecordBatch/arrays across the aprender-db (lib `trueno_db`) boundary, so arrow type identity is required.
+arrow = { version = "60", optional = true }  # Arrow columnar format. MUST match aprender-db's arrow (60) — pmat passes RecordBatch/arrays across the aprender-db (lib `trueno_db`) boundary, so arrow type identity is required.
 # Note: parquet is managed by trueno-db dependency
 
 # Document indexing (PDF text extraction for `pmat query --docs`)
@@ -182,7 +183,7 @@ globset = { version = "0.4", optional = true }
 csv = { version = "1.3" }
 # hex removed from [dependencies]: replaced with inline format!("{:02x}") (CB-081)
 uuid = { version = "1.17", features = ["v4", "v7", "serde"], optional = true }
-parking_lot = { version = "0.12", optional = true }
+parking_lot = { version = "0.13", optional = true }
 dirs = { version = "6.0", optional = true }
 roaring = { version = "0.11", optional = true }
 rand = { version = "0.10", optional = true }
@@ -208,7 +209,7 @@ syntect = { version = "5.2", default-features = false, features = ["default-fanc
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
 lz4_flex = { version = "0.14", optional = true }  # Legacy index format
-aprender-zram-core = { version = "0.64", optional = true }
+aprender-zram-core = { version = "0.72", optional = true }
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }  # SQLite with bundled library
 # sled = REMOVED (unmaintained, migrated to libsql/trueno-db)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
@@ -353,7 +354,7 @@ warp = { version = "0.4", optional = true, features = ["server"] }  # 0.4 gates 
 # presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
 # Benefits: Jidoka verification gates, zero-allocation rendering, 95% coverage
 # presentar-terminal = { version = "0.3.0", path = "../../presentar/crates/presentar-terminal", optional = true }  # Not yet on crates.io
-aprender-present-core = { version = "0.64", optional = true }
+aprender-present-core = { version = "0.72", optional = true }
 # crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
 crossterm = { version = "0.29", optional = true }
 sys-info = { version = "0.9.1", optional = true }
@@ -373,7 +374,7 @@ sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm so
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
 prettyplease = { version = "0.2.37", optional = true }
 fs2 = { version = "0.4.3", optional = true }
-aprender-contracts-macros = "0.64"
+aprender-contracts-macros = "0.72"
 
 
 # POSIX bindings. Non-optional on unix because `run_with_timeout`
@@ -397,7 +398,7 @@ aprender-contracts-macros = "0.64"
 libc = "0.2"
 
 [dev-dependencies]
-aprender-contracts = "0.64"
+aprender-contracts = "0.72"
 rmp-serde = "1.3"  # MessagePack codec for integration tests (replaces bincode after its removal)
 dhat = "0.3"
 tokio-test = "0.4"

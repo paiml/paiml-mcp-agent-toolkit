@@ -214,6 +214,10 @@ board-check: ## the board is cleared: every open PR/issue/ticket has an enacted 
 board-check-selftest: ## Offline self-test for scripts/board-check.sh (planted-gap + covered fixtures)
 	@bash scripts/board-check-selftest.sh
 
+.PHONY: mutation-lab-control
+mutation-lab-control: ## Offline: the nightly mutation lane is LAB (nightly-only, one ticket, one owner, 7-day stop); planted-defect arms
+	@bash scripts/mutation-lab-control.sh
+
 # ── Release gates the dogfood protocol looks for by name.
 #
 # All three were ABSENT, and their absence reported as WARN — which the protocol

@@ -1,0 +1,24 @@
+name: CI
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, "train/**"]
+env:
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
+  CARGO_INCREMENTAL: "0"
+jobs:
+  test:
+    if: github.event.pull_request.draft == false
+    runs-on: [self-hosted, tier2]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: cargo test --workspace --lib
+  gate:
+    needs: [test]
+    runs-on: [self-hosted, gate-light]
+    timeout-minutes: 5
+    steps:
+      - run: echo ok

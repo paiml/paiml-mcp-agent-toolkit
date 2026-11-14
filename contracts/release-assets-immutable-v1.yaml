@@ -1,0 +1,44 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-11-12"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    A published release asset is never replaced. Build hosts pin each pmat
+    archive by its sha256, and a rebuild of the same tag is not byte-identical,
+    so an upload that replaces an asset silently breaks every pin that names it.
+    On 2026-11-12 a backfill dispatch for v3.44.0 (one missing target) re-ran
+    all six rows with `gh release upload --clobber` and replaced five archives
+    that already had published checksums; the pins had to be read again from
+    the release. The upload step of `.github/workflows/binary-release.yml` now
+    adds what is missing and leaves the rest alone.
+  contract: release-assets-immutable
+  status: enforced
+  references:
+    - .github/workflows/binary-release.yml
+    - src/tests/release_workflow_tests.rs
+
+preconditions:
+  - "The release for the tag exists (binary-release.yml creates it when absent)"
+  - "The step has built ARCHIVE and its ARCHIVE.sha256 in the workspace"
+
+postconditions:
+  - "ARCHIVE absent from the release: ARCHIVE and ARCHIVE.sha256 are uploaded"
+  - "ARCHIVE and ARCHIVE.sha256 both on the release: nothing is uploaded"
+  - "ARCHIVE on the release, ARCHIVE.sha256 absent: only the checksum is uploaded, computed from the PUBLISHED archive, never from the rebuild"
+  - "No workflow step passes --clobber to gh release upload"
+
+falsification:
+  - condition: "binary-release.yml contains --clobber"
+    severity: P0
+    action: reject_push
+  - condition: "With ARCHIVE already on the release, the step calls gh release upload with ARCHIVE"
+    severity: P0
+    action: reject_push
+  - condition: "With ARCHIVE on the release and no checksum, the uploaded checksum is that of the rebuilt archive"
+    severity: P0
+    action: reject_push
+
+verification:
+  local: "cargo test --lib binary_release_upload_never_replaces_a_published_asset"
+  ci: ".github/workflows/ci.yml"

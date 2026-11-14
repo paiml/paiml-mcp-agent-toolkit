@@ -172,10 +172,7 @@ impl ClippyFixEngine {
     /// Validate that fix compiles (complexity: 3)
     async fn validate_fix(&self, source: &str) -> Result<bool> {
         // Check for obvious syntax errors
-        if source.contains("{{") || source.contains("}}") {
-            return Ok(false);
-        }
-        Ok(true)
+        Ok(!(source.contains("{{") || source.contains("}}")))
     }
 
     /// Apply batch fixes (complexity: 5)

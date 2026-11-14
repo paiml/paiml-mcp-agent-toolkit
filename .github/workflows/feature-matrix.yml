@@ -39,22 +39,30 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+    # infra#3828 RS-09: a draft starts nothing; marking it ready starts the run.
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 concurrency:
   group: feature-matrix-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'train/') && !startsWith(github.head_ref, 'batch/') }}
 
 env:
   CARGO_TERM_COLOR: always
   # Every leg checks the same dependency graph, so the expensive part compiles
   # once per shard and each feature after that recompiles only the lib.
   CARGO_INCREMENTAL: 0
+  # infra#3828 RS-06: no debug info in CI builds (measured fleet-wide: 66G build tree vs 5.5G).
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
 
 jobs:
   # The user-facing bundles: what someone actually types after
   # `cargo install pmat --features …`. Fast, and blocking.
   bundles:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: bundle / ${{ matrix.feature }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -93,6 +101,9 @@ jobs:
   # which is the same "the check does not know what it is not checking" defect
   # this job exists to catch.
   individual:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: individual / shard ${{ matrix.shard }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -167,6 +178,9 @@ jobs:
   # never touches, and both were broken this release by a field added to a
   # public struct. `--all-targets` is the only invocation that sees them.
   all-targets:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: clippy --all-targets
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -204,6 +218,9 @@ jobs:
   # Scope, deliberately: only features VERIFIED green go in the matrix. Each
   # entry below records the run that earned it a slot.
   feature-tests:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: run the tests / ${{ matrix.features }}
     runs-on: ubuntu-24.04
     # 90, not 60: `full` and `mcp-integration` each spend ~5 min in the test
@@ -330,6 +347,9 @@ jobs:
   # written reason. Adding a new feature that is in neither fails this job, so
   # "nobody noticed the feature existed" stops being a possible outcome.
   orphan-ledger:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: no silent orphan features
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -480,6 +500,9 @@ jobs:
   # Fail well before the wall, so the failure lands on the PR that added the
   # weight rather than on whoever next tries to release.
   package-size:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: package size
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -537,6 +560,9 @@ jobs:
   # unmaintained/yanked findings Dependabot does not model, so neither source
   # subsumes the other.
   dependabot-alerts:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: dependabot alerts
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -636,6 +662,9 @@ jobs:
   # TARBALL, which is a different artefact with a different limit for a
   # different reason. One job, one measurement.
   binary-size:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: binary size band
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -679,6 +708,9 @@ jobs:
   # `mcp-integration` became a leg, i.e. f32f57dcf's parent): all four named,
   # neither twin flagged.
   unrun-tests:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: no test behind a feature nothing runs
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -721,6 +753,9 @@ jobs:
   # In `feature-gate`'s `needs` AND its require-every-leg loop, because that
   # gate is `if: always()` — a job named only in `needs` cannot fail it.
   reachability-ledger:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: every unreachable .rs file is ledgered, and the ledger is current
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -764,6 +799,9 @@ jobs:
   # carries legs that are not about features (orphan-ledger, package-size,
   # unrun-tests); it is the general "every leg must pass" gate.
   differential-corpus:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: falsification / differential-corpus
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -813,6 +851,9 @@ jobs:
   #
   # ~6 minutes: it spawns several hundred processes against three corpora.
   flag-efficacy:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: falsification / flag-efficacy
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -846,6 +887,9 @@ jobs:
   # missing file; put it back and it must go green. A guard nobody has watched fail
   # is indistinguishable from the one this replaced.
   cli-doc-sync-falsifier:
+    # infra#3828: HEAVY. Runs on push, merge_group, schedule, dispatch, and on a pull request only
+    # for a train/* or batch/* head or the full-ci label. On any other PR it is SKIPPED.
+    if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci')) && github.event.pull_request.draft != true }}
     name: falsification / cli-doc-sync
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -916,17 +960,49 @@ jobs:
 
   feature-gate:
     name: feature-gate
-    runs-on: ubuntu-24.04
+    # Roll-up only: the gate-light pool, hosted for fork PRs.
+    runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 15
     needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, dependabot-alerts, unrun-tests, reachability-ledger, differential-corpus, flag-efficacy, cli-doc-sync-falsifier]
-    if: always()
+    if: ${{ always() && github.event.pull_request.draft != true }}
     steps:
       - name: Require every leg
+        env:
+          HEAVY: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'train/') || startsWith(github.head_ref, 'batch/') || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
         run: |
-          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.binary-size.result }}" "${{ needs.dependabot-alerts.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.reachability-ledger.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}" "${{ needs.cli-doc-sync-falsifier.result }}"; do
-            if [ "$r" != "success" ]; then
-              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} binary-size=${{ needs.binary-size.result }} dependabot-alerts=${{ needs.dependabot-alerts.result }} unrun-tests=${{ needs.unrun-tests.result }} reachability-ledger=${{ needs.reachability-ledger.result }} cli-doc-sync=${{ needs.cli-doc-sync-falsifier.result }}"
-              exit 1
+          # infra#3828: every leg is HEAVY. On an ordinary PR the legs are skipped and this job
+          # reports NOT MEASURED (never a pass of the legs); the train/* batch and master run them,
+          # and there anything but success is red. A leg that RAN and failed is red everywhere.
+          rc=0; unmeasured=0
+          for j in "bundles:${{ needs.bundles.result }}" \
+                   "individual:${{ needs.individual.result }}" \
+                   "all-targets:${{ needs.all-targets.result }}" \
+                   "feature-tests:${{ needs.feature-tests.result }}" \
+                   "orphan-ledger:${{ needs.orphan-ledger.result }}" \
+                   "package-size:${{ needs.package-size.result }}" \
+                   "binary-size:${{ needs.binary-size.result }}" \
+                   "dependabot-alerts:${{ needs.dependabot-alerts.result }}" \
+                   "unrun-tests:${{ needs.unrun-tests.result }}" \
+                   "reachability-ledger:${{ needs.reachability-ledger.result }}" \
+                   "differential-corpus:${{ needs.differential-corpus.result }}" \
+                   "flag-efficacy:${{ needs.flag-efficacy.result }}" \
+                   "cli-doc-sync-falsifier:${{ needs.cli-doc-sync-falsifier.result }}"; do
+            name=${j%%:*}
+            result=${j#*:}
+            if [ "$result" = "skipped" ] && [ "$HEAVY" != "true" ]; then
+              unmeasured=$((unmeasured+1))
+              continue
+            fi
+            if [ "$result" != "success" ]; then
+              echo "a leg failed: $name=$result"
+              rc=1
             fi
           done
+          if [ "$rc" -ne 0 ]; then
+            exit 1
+          fi
+          if [ "$unmeasured" -gt 0 ]; then
+            echo "feature-gate: $unmeasured leg(s) NOT MEASURED on this PR (heavy legs are owed on train/*, batch/*, full-ci and every non-PR event)"
+            exit 0
+          fi
           echo "every advertised feature compiles, its tests run or its exemption is written down, no test hides behind a feature nothing runs, the package fits, the binary is inside its size band, and no Dependabot advisory is open that cargo-deny cannot see"

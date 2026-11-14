@@ -31,12 +31,23 @@ issue() { printf '{"id":%s,"number":%s,"state":"%s","labels":[%s]}\n' "$2" "$1" 
 issue 10 9010 open '{"name":"epic"}'          # the epic
 issue 11 9011 closed '{"name":"epic"}'        # a closed epic
 issue 12 9012 open '{"name":"kind:code"}'     # an open issue that is not an epic
-for n in 20 21 22 23 24 25; do issue "$n" "90$n" open ''; done
+for n in 20 21 22 23 24 25 26 27; do issue "$n" "90$n" open ''; done
 echo 21 > "$T/gh/subs/10"                     # #21 is already under #10
 cat > "$T/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 D=$(dirname "$(dirname "$0")")/gh
 printf '%s\n' "$*" >> "$D/calls.log"
+# GHC-001 (OUT-204): `work add` also reads the repo's open issues over GraphQL (R1/R3/R5)
+[ "$1 $2" = "repo view" ] && { echo fx/fx; exit 0; }
+if [ "$1 $2" = "api graphql" ]; then
+  case "$*" in
+    *"issues(states"*) TOT=$(cat "$D/total" 2>/dev/null || echo 1)
+      printf '%s\n' "{\"data\":{\"repository\":{\"issues\":{\"totalCount\":$TOT,\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":null},\"nodes\":[{\"number\":10,\"title\":\"zzz container\",\"milestone\":null,\"parent\":null,\"subIssues\":{\"totalCount\":1},\"labels\":{\"nodes\":[{\"name\":\"epic\"}]}},{\"number\":30,\"title\":\"widget parser rewrite\",\"milestone\":{\"number\":1},\"parent\":null,\"subIssues\":{\"totalCount\":0},\"labels\":{\"nodes\":[]}}]}}}}" ;;
+    *"pullRequests("*) echo '{"data":{"repository":{"pullRequests":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}' ;;
+    *) echo '{"data":{"rateLimit":{"remaining":5000,"resetAt":"2030-01-01T00:00:00Z"}}}' ;;
+  esac
+  exit 0
+fi
 [ "$1" = api ] || exit 1; shift
 post=0; paginate=0; path=""; field=""
 while [ $# -gt 0 ]; do case "$1" in
@@ -116,6 +127,15 @@ arm "12 fragment mode: PMAT-024.yaml carries epic: 10, priority: low, kind:code;
 p0=$(posts); add "t13" --github-issue 20 -p P1 --kind code --epic 10; rc=$?
 [ "$rc" != 0 ] && grep -qF "already exists" "$T/out" && [ "$(posts)" = "$p0" ]
 arm "13 control: an existing ticket is refused before GitHub is written (exit $rc)" $?
+
+# 14 (GHC-001 R1): at the open-issue cap the add is refused, the roadmap is byte-identical, nothing is linked.
+echo 100 > "$T/gh/total"
+refused "14 R1: a repo at the open-issue cap refuses the add" "refused (R1)" "t14" --github-issue 26 -p P1 --kind code --epic 10
+# 15 (GHC-001 R5): a title that matches an open ticket is advisory only: exit 0 and the warning on stderr.
+echo 1 > "$T/gh/total"
+add "widget parser rewrite" --github-issue 27 -p P1 --kind code --epic 10; rc=$?
+[ "$rc" = 0 ] && grep -qF "warning (R5, advisory)" "$T/out"
+arm "15 R5: a matching title warns on stderr and still files (exit $rc)" $?
 
 [ "$red" = 0 ] && echo "work-add-triaged-audit: all arms green" || echo "work-add-triaged-audit: RED"
 exit "$red"

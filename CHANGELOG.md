@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.44.0] - 2026-11-12
+
+### Added
+
+- **`pmat comply check` gate smells (GH-1673)**: nine checks over `.github/workflows` that
+  report a gate which cannot do its job. GS-01, GS-02, GS-07 and GS-13 (#1690); GS-03 Live
+  External Read In PR Job, GS-04 Gate Self-Test On Product Path, GS-05 Roll-Up On Heavy
+  Runner, GS-12 Unreachable Shared Workflow Sha and GS-14 Repo-Global Check On PR Path
+  (#1691, wired into the check listing in #1703). A detector that could not measure
+  reports Skip with `not_measured`, never Pass.
+- **`pmat comply check` runner smells RS-01..RS-12 (GH-1673)**: twelve checks on how
+  workflows use runners (#1725).
+
+### Changed
+
+- **aprender stack 0.64 -> 0.72 with arrow 60** (#1661).
+- **CI**: mutation testing runs on the nightly schedule only (#1689); heavy legs run on
+  train and master only, and superseded PR runs cancel (#1687); draft PRs start no CI and
+  CI builds carry no debug info (#1693); `release-check` is schedule and dispatch only
+  (#1643); shared workflows are pinned to one sha (#1677, #1678); the PR title check
+  accepts type `train` and a `#N` subject (#1686).
+
+### Fixed
+
+- **Gate-smell scan** keeps `!= schedule` jobs on the PR path (#1701), plus the review
+  findings on #1690 (#1698).
+- **Hooks**: fragment-aware roadmap check, strict-only complexity, branch-derived work
+  status (#1669).
+- **CB-2113**: a merge commit is judged against every parent (#1635).
+- **CB-2115**: scope and feature legs so PR gates pass again (#1675).
+- **Ledgers**: the orphan-files ledger is re-rendered for the files #1703 added (#1724);
+  master is green again after #1690 and #1691 (#1719).
+
 ## [3.43.0] - 2026-11-06
 
 ### Added
