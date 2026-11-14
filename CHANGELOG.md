@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.45.1] - 2026-11-15
+
+### Fixed
+
+- **`Cargo.lock` honors the declared `rust-version = 1.91.0` (#1778)**: the lock bumped by #1744
+  needed rustc 1.95 (`lock_api` 0.5.0, `parking_lot` 0.13.0, `parking_lot_core` 0.10.0) and the
+  `serial_test` 4.0 bump needed 1.93.1 (`serial_test` 4.0.1), so `cargo package --locked` failed
+  on rustc 1.93.0 in the release `verify` job. `parking_lot` is back to 0.12 and `serial_test`
+  to 3.x. v3.45.0 was tagged but never published; 3.45.1 is the first published release of that
+  content.
+
 ## [3.45.0] - 2026-11-14
 
 ### Added
