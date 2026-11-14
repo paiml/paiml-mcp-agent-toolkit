@@ -54,20 +54,20 @@ mod tests {
         assert!(!report.is_valid());
     }
 
+    /// GH-1230: the checker's inventory is derived from the live server's, so
+    /// adding a tool to `LIVE_MCP_TOOLS` changes this count with it — and a
+    /// name that is not live (the old `scaffold_agent`) cannot appear.
     #[test]
-    fn test_load_mcp_tool_definitions_returns_four_tools() {
+    fn test_load_mcp_tool_definitions_match_live_inventory() {
         let tools = load_mcp_tool_definitions().unwrap();
-        assert_eq!(tools.len(), 4);
-    }
-
-    #[test]
-    fn test_load_mcp_tool_definitions_tool_names() {
-        let tools = load_mcp_tool_definitions().unwrap();
-        let names: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
-        assert!(names.contains(&"scaffold_agent"));
-        assert!(names.contains(&"validate_roadmap"));
-        assert!(names.contains(&"health_check"));
-        assert!(names.contains(&"generate_tickets"));
+        let loaded: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
+        let live: Vec<&str> = crate::mcp_pmcp::tool_manifest::LIVE_MCP_TOOLS
+            .iter()
+            .map(|&(n, _)| n)
+            .collect();
+        assert_eq!(loaded, live);
+        assert!(!loaded.contains(&"scaffold_agent"));
+        assert!(loaded.contains(&"scaffold_project"));
     }
 
     #[test]
@@ -100,14 +100,6 @@ mod tests {
                 tool.name
             );
         }
-    }
-
-    #[test]
-    fn test_scaffold_agent_requires_name() {
-        let tools = load_mcp_tool_definitions().unwrap();
-        let scaffold = tools.iter().find(|t| t.name == "scaffold_agent").unwrap();
-        let required = scaffold.input_schema["required"].as_array().unwrap();
-        assert!(required.iter().any(|v| v.as_str() == Some("name")));
     }
 
     #[test]
