@@ -1,0 +1,16 @@
+- id: GH-1766
+  github_issue: 1766
+  item_type: task
+  title: 'Closing PRs must flip the roadmap row (CB-2115 reds on master after #1751/#1750/#1462 merged)'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-14T13:59:56+00:00
+  updated: 2026-11-14T13:59:56+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
