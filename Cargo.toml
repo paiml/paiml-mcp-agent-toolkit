@@ -62,7 +62,7 @@ actix-rt = { version = "2.10", optional = true }
 crossbeam = { version = "0.8", optional = true }
 
 # Resource management (only used by mcp-integration feature: resources/)
-sysinfo = { version = "0.39", optional = true }  # Updated for reduced duplicates
+sysinfo = { version = "0.38", optional = true }  # Updated for reduced duplicates
 # libc moved to [target.'cfg(unix)'.dependencies] below: it is a POSIX binding,
 # and `run_with_timeout` needs it in EVERY unix build, not only under a feature.
 
