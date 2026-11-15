@@ -3116,11 +3116,11 @@ roadmap:
   github_issue: 1263
   item_type: task
   title: 'Spec 30: Work Compile-Time Codegen — #[pmat_work_contract] proc macro + CB-1630..1639'
-  status: inprogress
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-04-17T15:43:54Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria:
   - Implements docs/specifications/components/pmat-work-compile-time-codegen.md. New pmat-work-macros crate, pmat work codegen command, generated contracts/work/&lt;ID&gt;.rs modules with debug_assert wrappers.
@@ -3455,11 +3455,11 @@ roadmap:
   github_issue: 1256
   item_type: task
   title: 'MACS-013 remainder: CB-1655 warns instead of failing on a stale ROADMAP.yaml and its stale arm is untested (spec test comply::cb1655_red_when_ledger_newer_than_artifact); decide whether the rendered ROADMAP.yaml survives now that docs/roadmaps/roadmap.yaml is the live roadmap — pmat roadmap sync shipped in #613'
-  status: planned
+  status: cancelled
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3689,11 +3689,11 @@ roadmap:
   github_issue: 1265
   item_type: task
   title: 'binary size: no per-crate ratchet — .text grew ~3.4 MiB since ece3baf11 (pmat +1.9 MiB, pmcp +0.7, reqwest/h2/tokio ~+0.3, clap usage/error-context/suggestions +85 KiB); .pmat-metrics.toml''s ''42 MB'' is a 2025-11-23 comment nothing reads; add cargo-bloat --crates to nightly with a per-crate baseline (CRUX-05 five-whys)'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-02T16:37:48Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3787,7 +3787,7 @@ roadmap:
   labels:
   - deferred:3.41.0
   notes: null
-  release: backlog
+  release: 3.46.0
 - id: PMAT-639
   github_issue: 1268
   item_type: task
@@ -4598,11 +4598,11 @@ roadmap:
   github_issue: 1278
   item_type: task
   title: 'flag-efficacy sweep: show-metrics and comply report baselines are intermittently nondeterministic — skipped whole as [nondeterministic baseline] in the 3.39.0 sweep and in PMAT-688 sweep 3, but checked flag-by-flag in PMAT-688 sweep 2 (show-metrics --failures-only Effective there); by hand two consecutive show-metrics runs on the dumped corpus are byte-identical. Find what changes between the harness''s two baseline runs (a concurrent writer to .pmat-metrics/trends, or PageRank hotness) and pin it, so the two commands'' 21 flags are measured every sweep'
-  status: planned
+  status: cancelled
   priority: low
   assigned_to: null
   created: 2026-09-06T19:45:30Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4669,11 +4669,11 @@ roadmap:
   github_issue: 1202
   item_type: task
   title: '[train/CF] ci/coverage flake root cause (#1202, absorbs #1127): quality_proxy tests compile the host workspace with a nested cargo clippy under llvm-cov (>600 s); move them to a <=50-line fixture crate under tests/fixtures/quality_proxy with its own CARGO_TARGET_DIR, env -u LLVM_PROFILE_FILE/CARGO_LLVM_COV/RUSTFLAGS, a deadline, a process group and prlimit --as in one spawn fn'
-  status: inprogress
+  status: cancelled
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:25Z
-  updated: 2026-10-16T12:10:41.902513022+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4688,11 +4688,11 @@ roadmap:
   github_issue: 1156
   item_type: task
   title: '[train/HB] hermetic build.rs (#1156): vendor gridjs/mermaid/d3 under assets/vendor with a committed SHA256SUMS; build.rs reads and verifies, no network, no rerun-if-changed on gitignored paths; clean-room gate step runs with --network none'
-  status: planned
+  status: cancelled
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:26Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -4726,11 +4726,11 @@ roadmap:
   github_issue: 1124
   item_type: task
   title: '[train/HN] honest not-measured (#1124, #1162, #1131): one typed Measured(x) | NotMeasured{reason} at the model layer rendered verbatim; gates_run complexity = not_measured for bash/C/TS; tdg check-regression delta 0 on an unedited file; quality-gate emits exactly one files_examined'
-  status: planned
+  status: cancelled
   priority: high
   assigned_to: null
   created: 2026-09-07T07:56:29Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5303,11 +5303,11 @@ roadmap:
   github_issue: 1290
   item_type: task
   title: 'goal-mode step 6 flip: create one epic per active spec, add the tickets'' issues as its sub-issues, fill epic: in the front-matter, classify the historical and superseded specs, then run --checks CB-2110 in the traceability job'
-  status: planned
+  status: cancelled
   priority: high
   assigned_to: null
   created: 2026-09-10T13:31:43Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria:
   - 'one open GitHub issue labelled epic exists per active spec under docs/specifications, its sub-issues are the issues of the tickets that implement that spec (GitHub''s native sub-issue relation, goal-mode.md §4.3 - never a label or a title convention), and the spec''s front-matter epic: names it'
@@ -5438,7 +5438,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.45.1
 - id: GH-1090
   github_issue: 1090
   item_type: task
@@ -5455,7 +5455,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: 3.44.0
+  release: 3.47.0
 - id: GH-1118
   github_issue: 1118
   item_type: task
@@ -5596,11 +5596,11 @@ roadmap:
   github_issue: 1129
   item_type: task
   title: 'quality-gate --checks security: scope is now disclosed, breadth is not — an AWS-key-shaped literal is not detected'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5969,11 +5969,11 @@ roadmap:
   github_issue: 1232
   item_type: task
   title: 'pmat_scorer_tests.rs: ignored panic!() placeholders for a shipped feature — hiding that pmat-quality.toml is never read'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6003,11 +6003,11 @@ roadmap:
   github_issue: 1234
   item_type: task
   title: DiscoveryService is publicly re-exported and called from no request handler — wire it or delete it
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6020,11 +6020,11 @@ roadmap:
   github_issue: 1235
   item_type: task
   title: Timeline TUI ships in source, in no binary, and is reachable from no command
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6037,11 +6037,11 @@ roadmap:
   github_issue: 1236
   item_type: task
   title: 'Progress rendering is a documented no-op: long analyses render as silence'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6160,11 +6160,11 @@ roadmap:
   github_issue: 1300
   item_type: task
   title: 'goal-mode step 7 flip: CB-2111 joins the traceability job''s direct step once every active spec''s review is recorded with pmat spec review --record (after PMAT-729 decides which specs stay active)'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-11T02:59:56Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria:
   - every active spec under docs/specifications has a review recorded with pmat spec review --record (a quorum's or a human's; it is JSON, goal-mode.md §6.3), or PMAT-729 has marked it historical or superseded; pmat comply check --checks CB-2111 exits 0 on master
@@ -6201,11 +6201,11 @@ roadmap:
   github_issue: 1303
   item_type: task
   title: 'goal-mode.md carries its own review artifact (goal-mode.md §13 item 6): a five-role agy review of the spec, recorded with pmat spec review --record; the first of PMAT-1300''s 44'
-  status: inprogress
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-11T03:48:34Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria:
   - 'docs/audits/spec-goal-mode-review.json is recorded with pmat spec review --record: five lanes (quality, architecture, security, crux, adversarial), each a separate agy lane that read a read-only copy, every one PASS, the plan being goal-mode.md §11'
@@ -6242,11 +6242,11 @@ roadmap:
   github_issue: 1306
   item_type: task
   title: 'comply: pmat''s own generated work contracts fail CB-1305, and pre-#357 stubs are never flagged stale'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-11T06:16:11.342726639+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -6323,11 +6323,11 @@ roadmap:
   github_issue: 1310
   item_type: task
   title: A fork PR that edits docs/roadmaps/roadmap.yaml or docs/specifications/ must fail closed, not pass as not_applicable (goal-mode.md §3.3, decision D7)
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-11T06:16:11Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria:
   - a fork pull request whose diff touches docs/roadmaps/roadmap.yaml or docs/specifications/ reports not_measured for CB-2110, CB-2112, CB-2114 and CB-2115, naming that reason; one that touches neither still reports not_applicable
@@ -6432,11 +6432,11 @@ roadmap:
   github_issue: 1317
   item_type: task
   title: 'Coverage to 95%: measured 85.25%, the floor is armed at 80 and ratchets from CI''s own number'
-  status: planned
+  status: cancelled
   priority: high
   assigned_to: null
   created: 2026-09-11T09:55:00Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: docs/specifications/goal-mode.md
   acceptance_criteria:
   - .pmat/coverage-baseline.txt exists, carries a number a CI run measured rather than one a laptop measured, and the coverage job fails when coverage drops below it — proven by a deliberate drop and not by reading the condition
@@ -6469,7 +6469,7 @@ roadmap:
   labels:
   - kind:code
   notes: 'Three pushes on #1316 while the clean-room pool was saturated by other repos: each time the superseded run stayed queued, the new run sat pending with 0 jobs, and the instant the predecessor was force-cancelled the new run acquired its 10 jobs. gh run cancel was accepted and ineffective on a queued run; only POST .../force-cancel moved it. The PR lane of goal-mode.md §7.3 exists to answer fast, and this adds the predecessor''s whole queue to every push, silently.'
-  release: backlog
+  release: 3.47.0
 - id: PMAT-1319
   github_issue: 1319
   item_type: bug
@@ -6639,11 +6639,11 @@ roadmap:
   github_issue: 1333
   item_type: bug
   title: 'quorum-review briefs lanes with pmat work status, so scope is judged against a one-line title — PR #1327 took four rounds, the last finding only scope'
-  status: planned
+  status: cancelled
   priority: high
   assigned_to: null
   created: 2026-09-11T19:10:00Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria:
   - a lane's brief contains the ticket's acceptance_criteria verbatim, proven by a test that plants a ticket with a distinctive criterion and asserts the string reaches the lane prompt
@@ -6811,7 +6811,7 @@ roadmap:
   labels:
   - kind:code
   notes: null
-  release: backlog
+  release: 3.45.1
 - id: PMAT-1358
   github_issue: 1358
   item_type: task
@@ -7240,7 +7240,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.46.0
 - id: GH-1415
   github_issue: 1415
   item_type: task
@@ -7279,11 +7279,11 @@ roadmap:
   github_issue: 1418
   item_type: task
   title: pmat hooks install (3.41.1) still guards docs/execution/roadmap.md, a path pmat work no longer writes — the roadmap check always takes its skip branch
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7379,11 +7379,11 @@ roadmap:
   github_issue: 1424
   item_type: task
   title: pmat-agent binary has no nightly — the nightly release ships pmat only
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-09-25T17:15:34.389965525+00:00
-  updated: 2026-09-25T17:15:34.389965525+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7609,7 +7609,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.45.1
 - id: PMAT-1461
   github_issue: 1461
   item_type: task
@@ -7645,7 +7645,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: 3.44.0
+  release: 3.47.0
 - id: GH-1473
   github_issue: 1473
   item_type: task
@@ -7858,11 +7858,11 @@ roadmap:
   github_issue: 1500
   item_type: task
   title: 'pmat comply on a small Rust demo crate: CB-200/1204/1308/2100 fail with no applicable fix path'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7887,7 +7887,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.47.0
 - id: GH-1503
   github_issue: 1503
   item_type: task
@@ -7909,11 +7909,11 @@ roadmap:
   github_issue: 1509
   item_type: task
   title: 'python-ban: rewrite .github/workflows/docsrs.yml in bash'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7926,11 +7926,11 @@ roadmap:
   github_issue: 1510
   item_type: task
   title: 'python-ban: rewrite .github/workflows/feature-matrix.yml in bash'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7943,11 +7943,11 @@ roadmap:
   github_issue: 1511
   item_type: task
   title: 'python-ban: rewrite .github/workflows/quality-gate.yml in bash'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7960,11 +7960,11 @@ roadmap:
   github_issue: 1512
   item_type: task
   title: 'python-ban: rewrite Makefile in bash'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7977,11 +7977,11 @@ roadmap:
   github_issue: 1513
   item_type: task
   title: 'python-ban: rewrite scripts/dependabot-alert-gate.sh in bash'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7994,11 +7994,11 @@ roadmap:
   github_issue: 1514
   item_type: task
   title: 'python-ban: rewrite scripts/dependabot-alerts-gate.sh in bash'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -8011,11 +8011,11 @@ roadmap:
   github_issue: 1515
   item_type: task
   title: 'python-ban: rewrite scripts/gate.sh in bash'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -8028,11 +8028,11 @@ roadmap:
   github_issue: 1516
   item_type: task
   title: 'python-ban: rewrite scripts/pv-obligation-gate.py in bash'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -8074,7 +8074,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.46.0
 - id: GH-1521
   github_issue: 1521
   item_type: task
@@ -8113,11 +8113,11 @@ roadmap:
   github_issue: 1524
   item_type: task
   title: 'FV P0-2 CI: Kani lanes (PR changed-harness, nightly all) and unmute provable-ladder'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -8193,7 +8193,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.45.1
 - id: GH-1529
   github_issue: 1529
   item_type: task
@@ -8210,7 +8210,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.45.1
 - id: PMAT-1530
   github_issue: 1530
   item_type: task
@@ -8252,11 +8252,11 @@ roadmap:
   github_issue: 1538
   item_type: task
   title: 'EPIC: pmat course-language support (Lean 4, Julia, Kotlin, R)'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-29T15:30:59.778230555+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -8269,11 +8269,11 @@ roadmap:
   github_issue: 1539
   item_type: task
   title: 'pmat: Lean 4 real gate — fail on sorry, native_decide, non-standard axioms'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-29T15:30:59.778230555+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -8543,6 +8543,7 @@ roadmap:
   - orch:fable
   - orch-basis:release
   notes: null
+  release: 3.46.0
 - id: PMAT-1754
   github_issue: 1754
   item_type: task
