@@ -94,6 +94,9 @@ pub struct Policy {
     /// R2 exemptions: a glob (`*` only) matched against the head branch and
     /// each label name.
     pub pr_exempt: Vec<String>,
+    /// R1 exemptions: a glob (`*` only) matched case-insensitively against each label
+    /// name; an open issue carrying one (default `parked`) is not counted.
+    pub issue_exempt: Vec<String>,
     /// R4 max age, hours, of a non-draft PR without a PASS.
     pub pr_max_age_hours: i64,
     /// R4d: max age, hours, of a DRAFT PR (OUT-281: 72 h TTL).
@@ -109,6 +112,7 @@ impl Default for Policy {
             target_open_issues: 50,
             max_open_prs: 4,
             pr_exempt: vec!["train/*".into(), "fix-set/expedite".into()],
+            issue_exempt: vec!["parked".into()],
             pr_max_age_hours: 4,
             draft_ttl_hours: 72,
             fit_similarity: 0.6,
@@ -124,6 +128,7 @@ struct PolicyTable {
     target_open_issues: Option<usize>,
     max_open_prs: Option<usize>,
     pr_exempt: Option<Vec<String>>,
+    issue_exempt: Option<Vec<String>>,
     pr_max_age_hours: Option<i64>,
     draft_ttl_hours: Option<i64>,
     fit_similarity: Option<f64>,
@@ -172,6 +177,9 @@ impl Policy {
             .pr_exempt
             .clone()
             .unwrap_or_else(|| self.pr_exempt.clone());
+        if let Some(labels) = &t.issue_exempt {
+            self.issue_exempt = labels.clone();
+        }
         self.pr_max_age_hours = t.pr_max_age_hours.unwrap_or(self.pr_max_age_hours);
         self.draft_ttl_hours = t.draft_ttl_hours.unwrap_or(self.draft_ttl_hours);
         self.fit_similarity = t.fit_similarity.unwrap_or(self.fit_similarity);
