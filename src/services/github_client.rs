@@ -386,6 +386,7 @@ mod tests {
     // === GITHUB_TOKEN environment tests ===
 
     #[test]
+    #[serial_test::serial(env_vars)]
     fn test_new_without_token() {
         // Save current token if exists
         let saved = env::var("GITHUB_TOKEN").ok();
@@ -429,5 +430,103 @@ mod tests {
         let client = GitHubClient::new_unauthenticated("Owner/RepoName").unwrap();
         assert_eq!(client.repo_owner, "Owner");
         assert_eq!(client.repo_name, "RepoName");
+    }
+
+    // === GH-1233: repo-spec rejection and request error mapping ===
+
+    /// Every malformed spec must name itself in the error and state the
+    /// expected shape; none may panic or fall back to a default.
+    #[tokio::test]
+    async fn test_malformed_specs_error_names_spec_and_shape() {
+        let specs = [
+            "https://github.com/paiml/pmat",
+            "github.com/paiml/pmat",
+            "paiml pmat",
+            "a/b/c/d",
+            "noslash",
+            "",
+        ];
+        for spec in specs {
+            for authed in [false, true] {
+                let result = if authed {
+                    GitHubClient::new(spec)
+                } else {
+                    GitHubClient::new_unauthenticated(spec)
+                };
+                assert!(result.is_err(), "spec {spec:?} (authed={authed}) accepted");
+                let msg = result.err().map(|e| e.to_string()).unwrap_or_default();
+                assert!(
+                    msg.contains("Invalid repo format"),
+                    "spec {spec:?} (authed={authed}) gave {msg:?}"
+                );
+                assert!(msg.contains(&format!("'{spec}'")), "spec echoed: {msg}");
+                assert!(msg.contains("'owner/name'"), "shape stated: {msg}");
+            }
+        }
+    }
+
+    /// With GITHUB_TOKEN removed, a malformed spec is reported as a format
+    /// error (the format check runs first) while a well-formed spec fails on
+    /// the missing token. The token is restored afterwards.
+    #[test]
+    #[serial_test::serial(env_vars)]
+    fn test_format_error_precedes_token_error() {
+        let saved = env::var("GITHUB_TOKEN").ok();
+        env::remove_var("GITHUB_TOKEN");
+
+        let malformed = GitHubClient::new("a/b/c");
+        let wellformed = GitHubClient::new("owner/repo");
+
+        if let Some(token) = saved {
+            env::set_var("GITHUB_TOKEN", token);
+        }
+
+        assert!(malformed.is_err(), "malformed spec accepted");
+        let msg = malformed.err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(msg.contains("Invalid repo format"), "{msg}");
+        assert!(!msg.contains("GITHUB_TOKEN"), "{msg}");
+
+        assert!(
+            wellformed.is_err(),
+            "well-formed spec built without a token"
+        );
+        let msg = wellformed.err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(msg.contains("GITHUB_TOKEN"), "{msg}");
+    }
+
+    /// A whitespace-padded spec is kept verbatim, not trimmed.
+    #[tokio::test]
+    async fn test_whitespace_in_spec_is_preserved() -> Result<()> {
+        let client = GitHubClient::new_unauthenticated(" owner/repo ")?;
+        assert_eq!(client.repo_owner, " owner");
+        assert_eq!(client.repo_name, "repo ");
+        Ok(())
+    }
+
+    /// A transport failure surfaces as pmat's own context, with the issue
+    /// number, and the chain keeps the underlying cause. The base URI is an
+    /// ephemeral local port that was bound and released, so nothing listens
+    /// and no external network is touched.
+    #[tokio::test]
+    async fn test_fetch_issue_transport_failure_is_contextualised() -> Result<()> {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")?
+            .local_addr()?
+            .port();
+        let octocrab = Octocrab::builder()
+            .base_uri(format!("http://127.0.0.1:{port}"))?
+            .build()?;
+        let client = GitHubClient {
+            octocrab,
+            repo_owner: "paiml".to_string(),
+            repo_name: "pmat".to_string(),
+        };
+        let result = client.fetch_issue(42).await;
+        assert!(result.is_err(), "fetch against a closed port succeeded");
+        let Err(err) = result else {
+            return Ok(());
+        };
+        assert_eq!(err.to_string(), "Failed to fetch issue #42");
+        assert!(err.chain().count() > 1, "underlying cause was dropped");
+        Ok(())
     }
 }
