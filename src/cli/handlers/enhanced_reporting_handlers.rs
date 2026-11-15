@@ -729,19 +729,23 @@ mod tests {
                             include_executive_summary,
                             include_recommendations,
                             ..
-                        } => (include_executive_summary, include_recommendations),
-                        other => panic!("not a report command: {other:?}"),
+                        } => Some((include_executive_summary, include_recommendations)),
+                        // Not a report command: None fails every assertion below.
+                        _ => None,
                     }
                 };
-                assert_eq!(parse(&[]), (None, None));
-                assert_eq!(parse(&["--include-executive-summary"]), (Some(true), None));
+                assert_eq!(parse(&[]), Some((None, None)));
+                assert_eq!(
+                    parse(&["--include-executive-summary"]),
+                    Some((Some(true), None))
+                );
                 assert_eq!(
                     parse(&["--include-executive-summary=false"]),
-                    (Some(false), None)
+                    Some((Some(false), None))
                 );
                 assert_eq!(
                     parse(&["--include-recommendations", "--md"]),
-                    (None, Some(true))
+                    Some((None, Some(true)))
                 );
             })
             .expect("spawn")
