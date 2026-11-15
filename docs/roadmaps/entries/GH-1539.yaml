@@ -2,11 +2,11 @@
   github_issue: 1539
   item_type: task
   title: 'pmat: Lean 4 real gate — fail on sorry, native_decide, non-standard axioms'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-29T15:30:59.778230555+00:00
-  updated: 2026-11-15T12:00:00+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
