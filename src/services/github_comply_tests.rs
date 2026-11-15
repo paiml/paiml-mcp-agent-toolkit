@@ -180,6 +180,55 @@ fn r1_cap_is_per_repo_policy() {
     assert_eq!(rules(&r), [Rule::R1]);
 }
 
+fn parked(mut issues: Vec<IssueRec>, n: usize) -> Vec<IssueRec> {
+    for i in issues.iter_mut().take(n) {
+        i.labels = vec!["P3".into(), "Parked".into()];
+    }
+    issues
+}
+
+#[test]
+fn r1_does_not_count_parked_issues() {
+    let s = snap(parked(n_issues(101), 1), vec![]);
+    let at_cap = run(&s, &[Rule::R1]);
+    assert!(at_cap.ok(), "100 live + 1 parked is at the cap");
+    // Control: the same 101 with nothing parked is over it.
+    let control = run(&snap(n_issues(101), vec![]), &[Rule::R1]);
+    assert_eq!(rules(&control), [Rule::R1]);
+}
+
+#[test]
+fn r1_reports_how_many_it_excluded() {
+    let r = run(&snap(parked(n_issues(110), 3), vec![]), &[Rule::R1]);
+    assert_eq!(rules(&r), [Rule::R1]);
+    let msg = &r.violations[0].message;
+    assert!(msg.contains("107 open issues"), "{msg}");
+    assert!(msg.contains("3 exempt"), "{msg}");
+}
+
+#[test]
+fn r1_exemption_is_policy_and_can_be_switched_off() {
+    let toml = "[defaults]\nissue_exempt = []\n";
+    let parsed = Policy::from_toml(toml, "paiml/x");
+    assert!(parsed.is_ok(), "{parsed:?}");
+    let p = parsed.unwrap_or_default();
+    assert!(p.issue_exempt.is_empty());
+    assert_eq!(Policy::default().issue_exempt, ["parked"]);
+    let r = evaluate(&snap(parked(n_issues(101), 1), vec![]), &p, &[Rule::R1]);
+    assert_eq!(rules(&r), [Rule::R1]);
+}
+
+#[test]
+fn r1_guard_admits_a_ticket_when_the_excess_is_parked() {
+    let p = Policy::default();
+    let full = snap(n_issues(100), vec![]);
+    let refused = guard_new_ticket(&p, &full, "brand new unrelated zzz", None, Some(1));
+    assert!(refused.is_err(), "{refused:?}");
+    let one_parked = snap(parked(n_issues(100), 1), vec![]);
+    let admitted = guard_new_ticket(&p, &one_parked, "brand new unrelated zzz", None, Some(1));
+    assert!(admitted.is_ok(), "{admitted:?}");
+}
+
 // ---- FALSIFY-GHC-002: R2 ------------------------------------------------
 
 fn prs(n: u64) -> Vec<PrRec> {
