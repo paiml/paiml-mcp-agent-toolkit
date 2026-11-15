@@ -333,8 +333,8 @@
             Some(temp_dir.path().to_path_buf()),
             crate::cli::enums::ReportOutputFormat::Text,
             false,
-            false,
-            false,
+            None,
+            None,
             vec![
                 crate::cli::enums::AnalysisType::DeadCode,
                 crate::cli::enums::AnalysisType::TechnicalDebt,

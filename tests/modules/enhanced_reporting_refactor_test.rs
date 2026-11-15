@@ -22,8 +22,8 @@ async fn test_enhanced_reporting_config_structure() -> Result<()> {
         false, // markdown
         false, // csv
         false, // include_visualizations
-        false, // include_executive_summary
-        false, // include_recommendations
+        None,  // include_executive_summary
+        None,  // include_recommendations
         vec![AnalysisType::Complexity],
         80,    // confidence_threshold
         None,  // output
@@ -49,8 +49,8 @@ async fn test_format_determination_patterns() -> Result<()> {
         false,
         false,
         false,
-        false,
-        false,
+        None,
+        None,
         vec![],
         50,
         None,
@@ -66,8 +66,8 @@ async fn test_format_determination_patterns() -> Result<()> {
         true, // markdown format
         false,
         false,
-        false,
-        false,
+        None,
+        None,
         vec![],
         50,
         None,
@@ -83,8 +83,8 @@ async fn test_format_determination_patterns() -> Result<()> {
         false,
         true, // csv format
         false,
-        false,
-        false,
+        None,
+        None,
         vec![],
         50,
         None,
@@ -108,8 +108,8 @@ async fn test_error_patterns() -> Result<()> {
         false,
         false,
         false,
-        false,
-        false,
+        None,
+        None,
         vec![],
         80,
         None,
@@ -142,8 +142,8 @@ async fn test_handle_generate_report_structure() -> Result<()> {
         false,
         false,
         false,
-        false,
-        false,
+        None,
+        None,
         vec![AnalysisType::Complexity],
         50,
         None, // auto-generate filename
