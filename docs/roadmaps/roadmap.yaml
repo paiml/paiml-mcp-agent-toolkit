@@ -5935,11 +5935,11 @@ roadmap:
   github_issue: 1230
   item_type: task
   title: tool_manifest.rs doc comments say 19 tools; LIVE_MCP_TOOLS holds 20 — and a third inventory names a tool that does not exist
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T00:30:00+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5947,7 +5947,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: backlog
+  release: 3.45.1
 - id: GH-1231
   github_issue: 1231
   item_type: task
