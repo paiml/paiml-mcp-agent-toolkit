@@ -230,6 +230,19 @@ fn r1_guard_admits_a_ticket_when_the_excess_is_parked() {
 }
 
 #[test]
+fn r1_guard_does_not_subtract_a_parked_child_twice() {
+    let p = Policy::default();
+    // 101 open, #1 parked: 100 counted. #1 is the ticket's own issue and is already
+    // left out, so 100 others remain and the guard refuses.
+    let s = snap(parked(n_issues(101), 1), vec![]);
+    let parked_child = guard_new_ticket(&p, &s, "brand new unrelated zzz", Some(1), Some(1));
+    assert!(parked_child.is_err(), "{parked_child:?}");
+    // A counted child (#2) is taken off once: 99 others, admitted.
+    let counted_child = guard_new_ticket(&p, &s, "brand new unrelated zzz", Some(2), Some(1));
+    assert!(counted_child.is_ok(), "{counted_child:?}");
+}
+
+#[test]
 fn r1_exemption_is_not_a_prefix_or_substring_match() {
     for near_miss in ["parked-later", "unparked", "park"] {
         let mut issues = n_issues(101);
