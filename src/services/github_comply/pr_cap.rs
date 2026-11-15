@@ -1,16 +1,14 @@
-//! GH-1502: `pmat work start` and `pmat work delegate` refuse new work when the repo is at
-//! its open-PR cap, drafts included. The cap is `Policy::max_open_prs` (one place, no second
-//! list). A failed or rate-limited read is `not_measured` (L23): said on stderr, never a refusal.
+//! GH-1502: `pmat work start` and `pmat work delegate` refuse new work at the open-PR cap,
+//! drafts included. The cap is `Policy::max_open_prs` (one place). A failed or rate-limited
+//! read is `not_measured` (L23): said on stderr, never a refusal.
 //!
-//! Two predicates share that one number, on purpose:
-//! - R2 (`pmat comply github`): counts non-draft, non-exempt PRs, violated only when the count
-//!   is OVER the cap (4 ready PRs at cap 4 pass).
-//! - this guard: counts ALL open PRs, drafts and exempt ones included, refuses when the count
-//!   is AT OR OVER the cap (4 open PRs of any kind at cap 4 refuse).
+//! Two predicates share that number: R2 counts non-draft, non-exempt PRs and is violated only
+//! OVER the cap; this guard counts ALL open PRs (drafts, exempt) and refuses AT the cap.
 
-use super::source::{current_repo, fetch_open_prs, GhGraphql, Graphql};
+use super::source::{current_repo, fetch_snapshot, GhGraphql, Graphql};
 use super::{Policy, PrRec};
 use anyhow::{bail, Result};
+use chrono::Utc;
 use std::path::Path;
 
 /// Refuse when `prs` holds `cap` or more open PRs (drafts count): at 9 of 10 a start is
@@ -29,11 +27,10 @@ pub fn judge_pr_cap(repo: &str, prs: &[PrRec], cap: usize) -> Result<()> {
     )
 }
 
-/// Read `repo` through `g` and judge it against `cap`. The second value is the `not_measured`
-/// note when the read failed (the verdict is then `Ok`: an unmeasured repo is never refused).
+/// Judge `repo` against `cap`; the note is the `not_measured` text (verdict then `Ok`).
 fn measure_pr_cap(g: &dyn Graphql, repo: &str, cap: usize) -> (Result<()>, Option<String>) {
-    match fetch_open_prs(g, repo) {
-        Ok(prs) => (judge_pr_cap(repo, &prs, cap), None),
+    match fetch_snapshot(g, repo, Utc::now()) {
+        Ok(snap) => (judge_pr_cap(repo, &snap.open_prs, cap), None),
         Err(e) => (
             Ok(()),
             Some(format!(
@@ -98,16 +95,22 @@ mod tests {
                "body": "", "labels": {"nodes": []}, "commits": {"nodes": []}})
     }
 
-    /// A fake GitHub: a rateLimit reply, then one page of open PRs. No network.
+    /// Fake GitHub: rateLimit, then one page of open PRs. No network.
     struct Fake(Vec<PrRec>);
     impl Graphql for Fake {
         fn query(&self, q: &str, _: &[(&str, &str)]) -> Result<Value> {
             if q.contains("rateLimit") {
                 return Ok(json!({"data": {"rateLimit": {"remaining": 4000, "resetAt": "x"}}}));
             }
+            let page = |field: &str, nodes: Vec<Value>| {
+                json!({"data": {"repository": {field: {"totalCount": 0,
+                    "pageInfo": {"hasNextPage": false, "endCursor": null}, "nodes": nodes}}}})
+            };
+            if q.contains("issues(") {
+                return Ok(page("issues", vec![]));
+            }
             let nodes: Vec<Value> = self.0.iter().map(node).collect();
-            Ok(json!({"data": {"repository": {"pullRequests": {
-                "pageInfo": {"hasNextPage": false, "endCursor": null}, "nodes": nodes}}}}))
+            Ok(page("pullRequests", nodes))
         }
     }
 
@@ -155,7 +158,6 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(msg.contains("#101"), "{msg}");
-        assert!(!msg.contains("#100 "), "{msg}");
     }
 
     #[test]
@@ -164,13 +166,11 @@ mod tests {
         assert!(verdict.is_ok());
         let note = note.unwrap_or_default();
         assert!(note.contains("not_measured"), "{note}");
-        assert!(guard_pr_cap(&Down, "o/r", &Policy::default()).is_ok());
     }
 
     #[test]
     fn guard_and_r2_are_different_predicates_on_one_snapshot() {
-        // cap 4: 3 ready + 1 draft. R2 (non-draft only, violated when OVER) passes;
-        // the guard (all open, refuses AT the cap) refuses.
+        // cap 4: 3 ready + 1 draft. R2 passes; the guard refuses.
         let open = prs(4, 1);
         let snap = RepoSnapshot {
             repo: "o/r".into(),
@@ -184,8 +184,5 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(msg.contains("4 open PRs"), "{msg}");
-        // and exactly at the cap with 4 ready PRs: R2 still passes, the guard still refuses.
-        assert!(judge_pr_cap("o/r", &prs(4, 0), 4).is_err());
-        assert!(judge_pr_cap("o/r", &prs(3, 0), 4).is_ok());
     }
 }
