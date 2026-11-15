@@ -172,42 +172,38 @@ pub struct MissingTool {
 fn which_tool(name: &str) -> bool {
     // Handle special cases
     match name {
-        "cargo-clippy" => {
-            std::process::Command::new("cargo")
-                .args(["clippy", "--version"])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false)
-        }
-        "cargo-llvm-cov" => {
-            std::process::Command::new("cargo")
-                .args(["llvm-cov", "--version"])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false)
-        }
-        "cargo-audit" => {
-            std::process::Command::new("cargo")
-                .args(["audit", "--version"])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false)
-        }
-        _ => {
-            std::process::Command::new("which")
-                .arg(name)
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false)
-        }
+        "cargo-clippy" => std::process::Command::new("cargo")
+            .args(["clippy", "--version"])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false),
+        "cargo-llvm-cov" => std::process::Command::new("cargo")
+            .args(["llvm-cov", "--version"])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false),
+        "cargo-audit" => std::process::Command::new("cargo")
+            .args(["audit", "--version"])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false),
+        _ => std::process::Command::new("which")
+            .arg(name)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false),
     }
 }
 
@@ -265,9 +261,7 @@ impl DbcConfig {
 
     /// Parse TOML content into DbcConfig
     fn parse_toml(content: &str) -> Result<Self> {
-        let table: toml::Table = content
-            .parse()
-            .context("Failed to parse config.toml")?;
+        let table: toml::Table = content.parse().context("Failed to parse config.toml")?;
 
         let mut config = DbcConfig::default();
 
@@ -299,10 +293,16 @@ impl DbcConfig {
                 if let Some(cov) = thresholds.get("coverage_pct").and_then(|v| v.as_float()) {
                     config.thresholds.coverage_pct = Some(cov);
                 }
-                if let Some(cx) = thresholds.get("max_complexity").and_then(|v| v.as_integer()) {
+                if let Some(cx) = thresholds
+                    .get("max_complexity")
+                    .and_then(|v| v.as_integer())
+                {
                     config.thresholds.max_complexity = Some(cx as u32);
                 }
-                if let Some(fl) = thresholds.get("max_file_lines").and_then(|v| v.as_integer()) {
+                if let Some(fl) = thresholds
+                    .get("max_file_lines")
+                    .and_then(|v| v.as_integer())
+                {
                     config.thresholds.max_file_lines = Some(fl as usize);
                 }
             }
@@ -328,10 +328,7 @@ impl DbcConfig {
 
 /// Generate claims for a given profile
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-pub fn claims_for_profile(
-    profile: &ContractProfile,
-    config: &DbcConfig,
-) -> Vec<ContractClause> {
+pub fn claims_for_profile(profile: &ContractProfile, config: &DbcConfig) -> Vec<ContractClause> {
     let max_complexity = config.thresholds.max_complexity.unwrap_or(20) as f64;
     let max_file_lines = config.thresholds.max_file_lines.unwrap_or(500) as f64;
     let coverage_pct = config.thresholds.coverage_pct.unwrap_or(95.0);
@@ -364,7 +361,11 @@ pub fn claims_for_profile(
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn classify_claims(
     clauses: &[ContractClause],
-) -> (Vec<ContractClause>, Vec<ContractClause>, Vec<ContractClause>) {
+) -> (
+    Vec<ContractClause>,
+    Vec<ContractClause>,
+    Vec<ContractClause>,
+) {
     let mut require = Vec::new();
     let mut ensure = Vec::new();
     let mut invariant = Vec::new();
@@ -596,8 +597,7 @@ mod profile_tests {
             clause("b", ClauseKind::Ensure),
             clause("c", ClauseKind::Invariant),
         ];
-        let (active, excluded) =
-            apply_exclusions(clauses, &["a".to_string(), "c".to_string()]);
+        let (active, excluded) = apply_exclusions(clauses, &["a".to_string(), "c".to_string()]);
         assert_eq!(active.len(), 1);
         assert_eq!(active[0].id, "b");
         assert_eq!(excluded.len(), 2);
