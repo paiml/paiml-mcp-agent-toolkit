@@ -117,7 +117,7 @@ fn check_content(rule: Rule, snap: &RepoSnapshot, unmeasured: &mut Vec<String>) 
 }
 
 /// Whether an issue carries an `issue_exempt` label (default `parked`).
-fn is_exempt(issue: &IssueRec, policy: &Policy) -> bool {
+fn issue_is_exempt(issue: &IssueRec, policy: &Policy) -> bool {
     issue.labels.iter().any(|l| {
         let l = l.to_lowercase();
         policy
@@ -133,7 +133,7 @@ fn counted_open_issues(snap: &RepoSnapshot, policy: &Policy) -> (usize, usize) {
     let exempt = snap
         .open_issues
         .iter()
-        .filter(|i| is_exempt(i, policy))
+        .filter(|i| issue_is_exempt(i, policy))
         .count();
     let total = snap.open_issue_total.max(snap.open_issues.len());
     (total.saturating_sub(exempt), exempt)
@@ -482,7 +482,7 @@ pub fn guard_new_ticket(
     let child_counted = snap
         .open_issues
         .iter()
-        .any(|i| Some(i.number) == child && !is_exempt(i, policy));
+        .any(|i| Some(i.number) == child && !issue_is_exempt(i, policy));
     let (counted, exempt) = counted_open_issues(snap, policy);
     let others = counted.saturating_sub(usize::from(child_counted));
     if others >= policy.max_open_issues {
