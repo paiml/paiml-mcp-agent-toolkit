@@ -496,7 +496,7 @@ pub enum ComplyCommands {
 
         /// Judge every non-archived repository of this GitHub organisation in one run.
         /// One policy, read from `-p`, applies to all.
-        #[arg(long, value_name = "ORG", conflicts_with_all = ["repo", "pr", "snapshot", "backfill"])]
+        #[arg(long, value_name = "ORG", conflicts_with_all = ["repo", "pr", "snapshot", "backfill", "format"])]
         org: Option<String>,
     },
 }

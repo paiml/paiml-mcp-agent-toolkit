@@ -212,15 +212,17 @@ pub fn list_org_repos(g: &dyn Graphql, org: &str) -> Result<Vec<String>> {
                 out.push(name.to_string());
             }
         }
-        if !conn["pageInfo"]["hasNextPage"].as_bool().unwrap_or(false) {
+        let more = conn["pageInfo"]["hasNextPage"]
+            .as_bool()
+            .with_context(|| format!("{org}: reply has no pageInfo.hasNextPage; not measured"))?;
+        if !more {
             return Ok(out);
         }
-        after = Some(
-            conn["pageInfo"]["endCursor"]
-                .as_str()
-                .context("no endCursor")?
-                .to_string(),
-        );
+        let cursor = conn["pageInfo"]["endCursor"].as_str().unwrap_or_default();
+        if cursor.is_empty() {
+            bail!("{org}: hasNextPage without endCursor; not measured");
+        }
+        after = Some(cursor.to_string());
     }
     bail!("{org}: more than {MAX_PAGES} pages of repositories; not measured")
 }

@@ -98,7 +98,7 @@ pub(crate) fn handle_github_command(
 }
 
 /// `pmat comply github --org`: one row per repository; exit 1 unless every one is clean.
-/// Text only for now: `--format json` is not yet wired to the org report.
+/// Text only for now: clap refuses `--format` together with `--org`.
 pub(crate) fn handle_github_org(path: &Path, org: &str, rules: &[String]) -> Result<()> {
     let policy = ghc::Policy::load(path, &format!("{org}/*"))?;
     let (gh, now) = (&ghc_source::GhGraphql, chrono::Utc::now());

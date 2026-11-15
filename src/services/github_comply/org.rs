@@ -41,6 +41,9 @@ impl OrgReport {
             out += &format!("  {:<40} {row}\n", r.repo);
         }
         let (c, v, nm) = self.counts();
+        if self.repos.is_empty() {
+            out += "  no repository was judged (none found, or all archived)\n";
+        }
         out + &format!("  totals: {c} compliant, {v} violating, {nm} not_measured\n")
     }
 }
