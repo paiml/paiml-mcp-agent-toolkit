@@ -171,40 +171,30 @@ pub struct MissingTool {
 /// Check if a tool binary exists in PATH
 fn which_tool(name: &str) -> bool {
     // Handle special cases
-    match name {
-        "cargo-clippy" => std::process::Command::new("cargo")
-            .args(["clippy", "--version"])
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false),
-        "cargo-llvm-cov" => std::process::Command::new("cargo")
-            .args(["llvm-cov", "--version"])
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false),
-        "cargo-audit" => std::process::Command::new("cargo")
-            .args(["audit", "--version"])
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false),
-        _ => std::process::Command::new("which")
-            .arg(name)
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false),
-    }
+    let mut cmd = match name {
+        "cargo-clippy" | "cargo-llvm-cov" | "cargo-audit" => {
+            let mut c = std::process::Command::new("cargo");
+            c.args([name.trim_start_matches("cargo-"), "--version"]);
+            c
+        }
+        _ => {
+            let mut c = std::process::Command::new("which");
+            c.arg(name);
+            c
+        }
+    };
+    probe_succeeds(&mut cmd)
+}
+
+/// #1472: run a tool probe with no stdin, so a non-interactive shell can never
+/// leave `work start` blocked on an inherited descriptor.
+fn probe_succeeds(cmd: &mut std::process::Command) -> bool {
+    cmd.stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 /// Check toolchain requirements for a profile. Returns list of missing tools.
@@ -400,6 +390,21 @@ pub fn apply_exclusions(
         .collect();
 
     (active, excluded)
+}
+
+#[cfg(test)]
+mod probe_stdin_tests {
+    use super::*;
+
+    /// #1472: the probe must override a caller-set stdin with /dev/null.
+    #[cfg(unix)]
+    #[test]
+    fn probe_runs_with_null_stdin() {
+        let mut cmd = std::process::Command::new("sh");
+        cmd.args(["-c", "[ /dev/stdin -ef /dev/null ]"])
+            .stdin(std::process::Stdio::piped());
+        assert!(probe_succeeds(&mut cmd), "probe child must get /dev/null");
+    }
 }
 
 #[cfg(test)]
