@@ -5918,11 +5918,11 @@ roadmap:
   github_issue: 1229
   item_type: task
   title: 'rust-docs/cli-reference.md documents a binary name that does not exist (blocked by #1228)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T09:48:44+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -5986,11 +5986,11 @@ roadmap:
   github_issue: 1233
   item_type: task
   title: github_client.rs request logic is untested (wiremock does NOT apply — the client wraps octocrab)
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-15T11:52:00+00:00
   spec: null
   acceptance_criteria: []
   phases: []
