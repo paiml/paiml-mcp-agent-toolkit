@@ -367,9 +367,10 @@ fn test_no_undocumented_commands() {
     );
 }
 
-/// Whether a documented line is a plain `pmat ...` example this suite can
-/// parse. Shell composition is out of scope: this checks that documented pmat
-/// commands exist, not that a pipeline runs.
+/// Whether a documented line is a plain `pmat ...` or `paiml-mcp-agent-toolkit...`
+/// example this suite can run through clap. Shell composition (`|`, `$`, `>`,
+/// `&&`) is out of scope: this checks that documented commands exist, not that
+/// a pipeline runs.
 fn is_checkable_pmat_line(command_line: &str) -> bool {
     if command_line.is_empty() || command_line.starts_with('#') {
         return false;
@@ -500,23 +501,40 @@ fn test_documentation_examples_are_valid() {
 }
 
 /// #1229: the document named a binary no user types. The real binary is `pmat`
-/// (`name = "pmat"` in `cli_struct.rs`), so no example may open with the old
-/// crate name and the grammar must name `pmat`.
+/// (`name = "pmat"` in `cli_struct.rs`). The old name `paiml-mcp-agent-toolkit`
+/// may survive only as the repo or crate name in a URL path
+/// (`paiml/paiml-mcp-agent-toolkit`, `crates/paiml-mcp-agent-toolkit`); anywhere
+/// else, inline or fenced, bare or prefixed, it is a stale command.
 #[test]
 fn test_documentation_names_the_real_binary() {
-    let Some(doc) = cli_reference() else {
-        return;
-    };
+    let doc = cli_reference();
     assert!(
-        doc.contains("binary-name ::= \"pmat\""),
-        "the grammar's binary-name must be \"pmat\" (#1229)"
+        doc.is_some(),
+        "cli-reference.md could not be read, so the binary name is unchecked (#1229)"
     );
+    let doc = doc.unwrap_or_default();
+
+    let grammar: Vec<&str> = doc
+        .lines()
+        .map(str::trim)
+        .filter(|l| l.starts_with("binary-name ::="))
+        .collect();
+    assert_eq!(
+        grammar,
+        vec![r#"binary-name ::= "pmat""#],
+        "the grammar must define binary-name exactly once, as \"pmat\" (#1229)"
+    );
+
     let stale: Vec<&str> = doc
         .lines()
-        .filter(|l| l.trim_start().starts_with("paiml-mcp-agent-toolkit "))
+        .filter(|l| {
+            l.replace("paiml/paiml-mcp-agent-toolkit", "")
+                .replace("crates/paiml-mcp-agent-toolkit", "")
+                .contains("paiml-mcp-agent-toolkit")
+        })
         .collect();
     assert!(
         stale.is_empty(),
-        "examples still use the nonexistent binary name (#1229): {stale:?}"
+        "the nonexistent binary name is still used (#1229): {stale:?}"
     );
 }
