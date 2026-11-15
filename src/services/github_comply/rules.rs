@@ -475,12 +475,11 @@ pub fn guard_new_ticket(
     epic: Option<u64>,
 ) -> Result<Option<String>> {
     let child_listed = child.is_some_and(|c| snap.open_issues.iter().any(|i| i.number == c));
-    let others = counted_open_issues(snap, policy)
-        .0
-        .saturating_sub(usize::from(child_listed));
+    let (counted, exempt) = counted_open_issues(snap, policy);
+    let others = counted.saturating_sub(usize::from(child_listed));
     if others >= policy.max_open_issues {
         bail!(
-            "refused (R1): {} already has {others} open issues — the cap is {} (target {}); close or merge tickets before filing another",
+            "refused (R1): {} already has {others} open issues — the cap is {} (target {}; {exempt} exempt by label not counted); close or merge tickets before filing another",
             snap.repo,
             policy.max_open_issues,
             policy.target_open_issues

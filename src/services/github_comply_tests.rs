@@ -229,6 +229,37 @@ fn r1_guard_admits_a_ticket_when_the_excess_is_parked() {
     assert!(admitted.is_ok(), "{admitted:?}");
 }
 
+#[test]
+fn r1_exemption_is_not_a_prefix_or_substring_match() {
+    for near_miss in ["parked-later", "unparked", "park"] {
+        let mut issues = n_issues(101);
+        issues[0].labels = vec![near_miss.into()];
+        let r = run(&snap(issues, vec![]), &[Rule::R1]);
+        assert_eq!(rules(&r), [Rule::R1], "`{near_miss}` must still be counted");
+    }
+}
+
+#[test]
+fn r1_never_counts_a_pull_request_as_an_issue() {
+    let at_cap = run(&snap(n_issues(100), prs(4)), &[Rule::R1]);
+    assert!(at_cap.ok(), "100 issues and 4 PRs is at the issue cap");
+}
+
+#[test]
+fn r1_guard_refusal_reports_counted_and_exempt() {
+    let s = snap(parked(n_issues(103), 2), vec![]);
+    let refused = guard_new_ticket(
+        &Policy::default(),
+        &s,
+        "brand new unrelated zzz",
+        None,
+        Some(1),
+    );
+    let msg = refused.err().map(|e| e.to_string()).unwrap_or_default();
+    assert!(msg.contains("101 open issues"), "{msg}");
+    assert!(msg.contains("2 exempt"), "{msg}");
+}
+
 // ---- FALSIFY-GHC-002: R2 ------------------------------------------------
 
 fn prs(n: u64) -> Vec<PrRec> {
