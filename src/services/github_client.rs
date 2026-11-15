@@ -430,4 +430,74 @@ mod tests {
         assert_eq!(client.repo_owner, "Owner");
         assert_eq!(client.repo_name, "RepoName");
     }
+
+    // === GH-1233: repo-spec rejection and request error mapping ===
+
+    /// Every malformed spec must name itself in the error and state the
+    /// expected shape; none may panic or fall back to a default.
+    #[tokio::test]
+    async fn test_malformed_specs_error_names_spec_and_shape() {
+        let specs = [
+            "https://github.com/paiml/pmat",
+            "github.com/paiml/pmat",
+            "paiml pmat",
+            "a/b/c/d",
+            "noslash",
+            "",
+        ];
+        for spec in specs {
+            for authed in [false, true] {
+                let result = if authed {
+                    GitHubClient::new(spec)
+                } else {
+                    GitHubClient::new_unauthenticated(spec)
+                };
+                let msg = result.err().map(|e| e.to_string()).unwrap_or_default();
+                assert!(
+                    msg.contains("Invalid repo format"),
+                    "spec {spec:?} (authed={authed}) gave {msg:?}"
+                );
+                assert!(msg.contains(&format!("'{spec}'")), "spec echoed: {msg}");
+                assert!(msg.contains("'owner/name'"), "shape stated: {msg}");
+            }
+        }
+    }
+
+    /// The format check runs before the token lookup, so a malformed spec is
+    /// reported as a format error even when no token is available.
+    #[test]
+    fn test_format_error_precedes_token_error() {
+        let msg = GitHubClient::new("a/b/c")
+            .err()
+            .map(|e| e.to_string())
+            .unwrap_or_default();
+        assert!(msg.contains("Invalid repo format"), "{msg}");
+        assert!(!msg.contains("GITHUB_TOKEN"), "{msg}");
+    }
+
+    /// A whitespace-padded spec is kept verbatim, not trimmed.
+    #[tokio::test]
+    async fn test_whitespace_in_spec_is_preserved() -> Result<()> {
+        let client = GitHubClient::new_unauthenticated(" owner/repo ")?;
+        assert_eq!(client.repo_owner, " owner");
+        assert_eq!(client.repo_name, "repo ");
+        Ok(())
+    }
+
+    /// A transport failure surfaces as pmat's own context, with the issue
+    /// number, rather than a bare octocrab error. The base URI is a closed
+    /// local port, so no external network is touched.
+    #[tokio::test]
+    async fn test_fetch_issue_transport_failure_is_contextualised() -> Result<()> {
+        let octocrab = Octocrab::builder().base_uri("http://127.0.0.1:1")?.build()?;
+        let client = GitHubClient {
+            octocrab,
+            repo_owner: "paiml".to_string(),
+            repo_name: "pmat".to_string(),
+        };
+        let err = client.fetch_issue(42).await.err();
+        let msg = err.map(|e| e.to_string()).unwrap_or_default();
+        assert_eq!(msg, "Failed to fetch issue #42");
+        Ok(())
+    }
 }
