@@ -1,46 +1,59 @@
 //! GH-1502: `pmat work start` and `pmat work delegate` refuse new work when the repo is at
 //! its open-PR cap, drafts included. The cap is `Policy::max_open_prs` (one place, no second
 //! list). A failed or rate-limited read is `not_measured` (L23): said on stderr, never a refusal.
+//!
+//! Two predicates share that one number, on purpose:
+//! - R2 (`pmat comply github`): counts non-draft, non-exempt PRs, violated only when the count
+//!   is OVER the cap (4 ready PRs at cap 4 pass).
+//! - this guard: counts ALL open PRs, drafts and exempt ones included, refuses when the count
+//!   is AT OR OVER the cap (4 open PRs of any kind at cap 4 refuse).
 
-use super::source::{current_repo, fetch_snapshot, GhGraphql, Graphql};
-use super::{Policy, RepoSnapshot};
+use super::source::{current_repo, fetch_open_prs, GhGraphql, Graphql};
+use super::{Policy, PrRec};
 use anyhow::{bail, Result};
-use chrono::Utc;
 use std::path::Path;
 
-/// Refuse when `snap` holds `cap` or more open PRs (drafts count): at 9 of 10 a start is
+/// Refuse when `prs` holds `cap` or more open PRs (drafts count): at 9 of 10 a start is
 /// allowed, at 10 of 10 it is refused. The message names the count, the cap and the oldest PR.
-pub fn judge_pr_cap(snap: &RepoSnapshot, cap: usize) -> Result<()> {
-    let open = snap.open_prs.len();
+pub fn judge_pr_cap(repo: &str, prs: &[PrRec], cap: usize) -> Result<()> {
+    let open = prs.len();
     if open < cap {
         return Ok(());
     }
-    let oldest = snap
-        .open_prs
-        .iter()
-        .min_by_key(|p| p.created_at)
-        .map_or_else(
-            || "none".to_string(),
-            |p| format!("#{} \"{}\" (opened {})", p.number, p.title, p.created_at),
-        );
+    let oldest = prs.iter().min_by_key(|p| p.created_at).map_or_else(
+        || "none".to_string(),
+        |p| format!("#{} \"{}\" (opened {})", p.number, p.title, p.created_at),
+    );
     bail!(
-        "refused: {} has {open} open PRs (drafts included), at its cap of {cap}; oldest is {oldest}. Merge or close one before starting new work",
-        snap.repo
+        "refused: {repo} has {open} open PRs (drafts included), at its cap of {cap}; oldest is {oldest}. Merge or close one before starting new work"
     )
+}
+
+/// Read `repo` through `g` and judge it against `cap`. The second value is the `not_measured`
+/// note when the read failed (the verdict is then `Ok`: an unmeasured repo is never refused).
+fn measure_pr_cap(g: &dyn Graphql, repo: &str, cap: usize) -> (Result<()>, Option<String>) {
+    match fetch_open_prs(g, repo) {
+        Ok(prs) => (judge_pr_cap(repo, &prs, cap), None),
+        Err(e) => (
+            Ok(()),
+            Some(format!(
+                "not_measured: open-PR cap of {repo} not read ({e:#}); not refusing"
+            )),
+        ),
+    }
 }
 
 /// Read `repo` through `g` and judge it against `policy.max_open_prs`.
 pub fn guard_pr_cap(g: &dyn Graphql, repo: &str, policy: &Policy) -> Result<()> {
-    match fetch_snapshot(g, repo, Utc::now()) {
-        Ok(snap) => judge_pr_cap(&snap, policy.max_open_prs),
-        Err(e) => {
-            eprintln!("not_measured: open-PR cap of {repo} not read ({e:#}); not refusing");
-            Ok(())
-        }
+    let (verdict, note) = measure_pr_cap(g, repo, policy.max_open_prs);
+    if let Some(note) = note {
+        eprintln!("{note}");
     }
+    verdict
 }
 
 /// The entry-point guard for `work start` and `work delegate`, run before anything is written.
+/// `work add` is not guarded here (it has its own R1/R3/R5 filing guard).
 pub fn guard_pr_cap_at(project_path: &Path) -> Result<()> {
     let repo = match current_repo(project_path) {
         Ok(r) => r,
@@ -56,29 +69,45 @@ pub fn guard_pr_cap_at(project_path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::github_comply::{CheckState, PrRec};
-    use serde_json::Value;
+    use crate::services::github_comply::{evaluate, CheckState, RepoSnapshot, Rule};
+    use serde_json::{json, Value};
 
-    fn snap(n: u64, drafts: u64) -> RepoSnapshot {
-        let t0 = chrono::DateTime::<Utc>::from_timestamp(1_793_491_200, 0).unwrap_or_default();
-        let open_prs = (0..n)
-            .map(|i| PrRec {
-                number: 100 + i,
-                title: format!("pr{i}"),
-                is_draft: i < drafts,
-                created_at: t0 + chrono::Duration::hours(i as i64),
-                head_ref: format!("b{i}"),
-                labels: vec![],
-                body: String::new(),
-                checks: CheckState::None,
-            })
-            .collect();
-        RepoSnapshot {
-            repo: "o/r".into(),
-            taken_at: t0,
-            open_issue_total: 0,
-            open_issues: vec![],
-            open_prs,
+    const T0: i64 = 1_793_491_200;
+
+    fn pr(i: u64, draft: bool, hours: i64) -> PrRec {
+        PrRec {
+            number: 100 + i,
+            title: format!("pr{i}"),
+            is_draft: draft,
+            created_at: chrono::DateTime::<chrono::Utc>::from_timestamp(T0, 0).unwrap_or_default()
+                + chrono::Duration::hours(hours),
+            head_ref: format!("b{i}"),
+            labels: vec![],
+            body: String::new(),
+            checks: CheckState::None,
+        }
+    }
+
+    fn prs(n: u64, drafts: u64) -> Vec<PrRec> {
+        (0..n).map(|i| pr(i, i < drafts, i as i64)).collect()
+    }
+
+    fn node(p: &PrRec) -> Value {
+        json!({"number": p.number, "title": p.title, "isDraft": p.is_draft,
+               "createdAt": p.created_at.to_rfc3339(), "headRefName": p.head_ref,
+               "body": "", "labels": {"nodes": []}, "commits": {"nodes": []}})
+    }
+
+    /// A fake GitHub: a rateLimit reply, then one page of open PRs. No network.
+    struct Fake(Vec<PrRec>);
+    impl Graphql for Fake {
+        fn query(&self, q: &str, _: &[(&str, &str)]) -> Result<Value> {
+            if q.contains("rateLimit") {
+                return Ok(json!({"data": {"rateLimit": {"remaining": 4000, "resetAt": "x"}}}));
+            }
+            let nodes: Vec<Value> = self.0.iter().map(node).collect();
+            Ok(json!({"data": {"repository": {"pullRequests": {
+                "pageInfo": {"hasNextPage": false, "endCursor": null}, "nodes": nodes}}}}))
         }
     }
 
@@ -89,26 +118,74 @@ mod tests {
         }
     }
 
-    #[test]
-    fn nine_open_of_ten_may_start() {
-        assert!(judge_pr_cap(&snap(9, 0), 10).is_ok());
+    fn policy(cap: usize) -> Policy {
+        Policy {
+            max_open_prs: cap,
+            ..Policy::default()
+        }
     }
 
     #[test]
-    fn ten_open_of_ten_is_refused_naming_count_cap_and_oldest() {
-        let msg = judge_pr_cap(&snap(10, 0), 10).unwrap_err().to_string();
+    fn guard_nine_open_of_ten_may_start() {
+        assert!(guard_pr_cap(&Fake(prs(9, 0)), "o/r", &policy(10)).is_ok());
+    }
+
+    #[test]
+    fn guard_ten_open_of_ten_is_refused_naming_count_cap_and_oldest() {
+        let msg = guard_pr_cap(&Fake(prs(10, 0)), "o/r", &policy(10))
+            .unwrap_err()
+            .to_string();
         assert!(msg.contains("10 open PRs"), "{msg}");
         assert!(msg.contains("cap of 10"), "{msg}");
         assert!(msg.contains("#100"), "{msg}");
+        assert!(msg.contains("drafts included"), "{msg}");
     }
 
     #[test]
-    fn drafts_count_toward_the_cap() {
-        assert!(judge_pr_cap(&snap(10, 10), 10).is_err());
+    fn guard_counts_drafts_toward_the_cap() {
+        assert!(guard_pr_cap(&Fake(prs(10, 10)), "o/r", &policy(10)).is_err());
     }
 
     #[test]
-    fn unreadable_repo_is_not_measured_and_does_not_refuse() {
+    fn guard_names_the_oldest_by_created_at_not_list_order() {
+        let mut list = prs(3, 0);
+        list[0].created_at += chrono::Duration::days(5);
+        list[1].created_at -= chrono::Duration::days(5);
+        let msg = guard_pr_cap(&Fake(list), "o/r", &policy(3))
+            .unwrap_err()
+            .to_string();
+        assert!(msg.contains("#101"), "{msg}");
+        assert!(!msg.contains("#100 "), "{msg}");
+    }
+
+    #[test]
+    fn guard_read_failure_is_not_measured_and_does_not_refuse() {
+        let (verdict, note) = measure_pr_cap(&Down, "o/r", 10);
+        assert!(verdict.is_ok());
+        let note = note.unwrap_or_default();
+        assert!(note.contains("not_measured"), "{note}");
         assert!(guard_pr_cap(&Down, "o/r", &Policy::default()).is_ok());
+    }
+
+    #[test]
+    fn guard_and_r2_are_different_predicates_on_one_snapshot() {
+        // cap 4: 3 ready + 1 draft. R2 (non-draft only, violated when OVER) passes;
+        // the guard (all open, refuses AT the cap) refuses.
+        let open = prs(4, 1);
+        let snap = RepoSnapshot {
+            repo: "o/r".into(),
+            taken_at: open[0].created_at,
+            open_issue_total: 0,
+            open_issues: vec![],
+            open_prs: open.clone(),
+        };
+        assert!(evaluate(&snap, &policy(4), &[Rule::R2]).ok());
+        let msg = guard_pr_cap(&Fake(open), "o/r", &policy(4))
+            .unwrap_err()
+            .to_string();
+        assert!(msg.contains("4 open PRs"), "{msg}");
+        // and exactly at the cap with 4 ready PRs: R2 still passes, the guard still refuses.
+        assert!(judge_pr_cap("o/r", &prs(4, 0), 4).is_err());
+        assert!(judge_pr_cap("o/r", &prs(3, 0), 4).is_ok());
     }
 }

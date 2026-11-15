@@ -152,6 +152,23 @@ pub fn fetch_snapshot(g: &dyn Graphql, repo: &str, now: DateTime<Utc>) -> Result
     })
 }
 
+/// Every open PR of `repo` (`owner/name`), and nothing else: the budget check plus the PR
+/// pages, without the open-issue pages [`fetch_snapshot`] also reads.
+pub fn fetch_open_prs(g: &dyn Graphql, repo: &str) -> Result<Vec<PrRec>> {
+    let (owner, name) = repo
+        .split_once('/')
+        .filter(|(o, n)| !o.is_empty() && !n.is_empty() && !n.contains('/'))
+        .with_context(|| format!("repo must be owner/name, got {repo:?}"))?;
+    check_budget(g)?;
+    let mut open_prs = Vec::new();
+    for page in pages(g, PRS_QUERY, owner, name, "pullRequests")? {
+        for node in nodes(&page)? {
+            open_prs.push(parse_pr(node)?);
+        }
+    }
+    Ok(open_prs)
+}
+
 /// Every merged PR of `repo` (`owner/name`): number, title, body. Budget checked first;
 /// a PR node without a number is an error, never skipped.
 pub fn fetch_merged_prs(g: &dyn Graphql, repo: &str) -> Result<Vec<super::backfill::MergedPr>> {
