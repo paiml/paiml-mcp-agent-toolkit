@@ -493,6 +493,11 @@ pub enum ComplyCommands {
         /// PR, as DONE / PARTIAL / WRONG-LINK. Reads only; closes nothing.
         #[arg(long, conflicts_with_all = ["pr", "rules", "snapshot"])]
         backfill: bool,
+
+        /// Judge every non-archived repository of this GitHub organisation in one run.
+        /// One policy, read from `-p`, applies to all.
+        #[arg(long, value_name = "ORG", conflicts_with_all = ["repo", "pr", "snapshot", "backfill"])]
+        org: Option<String>,
     },
 }
 

@@ -35,6 +35,10 @@ repository(owner:$owner,name:$name){pullRequests(states:MERGED,first:100,after:$
 pageInfo{hasNextPage endCursor} \
 nodes{number title body closingIssuesReferences(first:20){nodes{number repository{nameWithOwner}}}}}}}";
 
+const ORG_REPOS_QUERY: &str = "query($org:String!,$after:String){\
+organization(login:$org){repositories(first:100,after:$after){\
+pageInfo{hasNextPage endCursor} nodes{nameWithOwner isArchived}}}}";
+
 /// One GraphQL round trip, so tests can stand in for GitHub.
 pub trait Graphql {
     fn query(&self, query: &str, vars: &[(&str, &str)]) -> Result<Value>;
@@ -186,6 +190,39 @@ pub fn fetch_merged_prs(g: &dyn Graphql, repo: &str) -> Result<Vec<super::backfi
         }
     }
     Ok(out)
+}
+
+/// `owner/name` of every non-archived repository of `org`. An unreadable organisation
+/// or a node without its flags is an error, never a shorter list.
+pub fn list_org_repos(g: &dyn Graphql, org: &str) -> Result<Vec<String>> {
+    let (mut out, mut after) = (Vec::new(), None::<String>);
+    for _ in 0..MAX_PAGES {
+        let mut vars = vec![("org", org)];
+        if let Some(a) = after.as_deref() {
+            vars.push(("after", a));
+        }
+        let v = g.query(ORG_REPOS_QUERY, &vars)?;
+        let conn = &v["data"]["organization"]["repositories"];
+        if conn.is_null() {
+            bail!("{org}: organisation not readable (no `repositories` in the reply)");
+        }
+        for n in nodes(conn)? {
+            let name = n["nameWithOwner"].as_str().context("no nameWithOwner")?;
+            if !n["isArchived"].as_bool().context("isArchived missing")? {
+                out.push(name.to_string());
+            }
+        }
+        if !conn["pageInfo"]["hasNextPage"].as_bool().unwrap_or(false) {
+            return Ok(out);
+        }
+        after = Some(
+            conn["pageInfo"]["endCursor"]
+                .as_str()
+                .context("no endCursor")?
+                .to_string(),
+        );
+    }
+    bail!("{org}: more than {MAX_PAGES} pages of repositories; not measured")
 }
 
 fn nodes(page: &Value) -> Result<&Vec<Value>> {

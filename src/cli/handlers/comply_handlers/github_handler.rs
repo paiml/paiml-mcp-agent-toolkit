@@ -86,12 +86,28 @@ pub(crate) fn handle_github_command(
     format: crate::cli::commands::GithubComplyFormat,
     snapshot: Option<&Path>,
     backfill: bool,
+    org: Option<&str>,
 ) -> Result<()> {
-    if backfill {
+    if let Some(org) = org {
+        handle_github_org(path, org, rules)
+    } else if backfill {
         handle_github_backfill(path, repo, format)
     } else {
         handle_github(path, repo, pr, rules, format, snapshot)
     }
+}
+
+/// `pmat comply github --org`: one row per repository; exit 1 unless every one is clean.
+/// Text only for now: `--format json` is not yet wired to the org report.
+pub(crate) fn handle_github_org(path: &Path, org: &str, rules: &[String]) -> Result<()> {
+    let policy = ghc::Policy::load(path, &format!("{org}/*"))?;
+    let (gh, now) = (&ghc_source::GhGraphql, chrono::Utc::now());
+    let report = ghc::org::evaluate_org(gh, org, &policy, &github_rules(None, rules)?, now)?;
+    print!("{}", report.render_text());
+    if !report.ok() {
+        std::process::exit(1);
+    }
+    Ok(())
 }
 
 /// `pmat comply github --backfill`: read open issues and merged PRs over GraphQL and
@@ -134,7 +150,10 @@ mod github_handler_tests {
 
     #[test]
     fn default_rules_are_the_reconciler_set_and_pr_is_the_pr_check() {
-        assert_eq!(github_rules(None, &[]).expect("fixture"), ghc::Rule::RECONCILER);
+        assert_eq!(
+            github_rules(None, &[]).expect("fixture"),
+            ghc::Rule::RECONCILER
+        );
         assert_eq!(
             github_rules(Some(3), &[]).expect("fixture"),
             [ghc::Rule::R3, ghc::Rule::R6]
@@ -152,7 +171,9 @@ mod github_handler_tests {
         let r = github_report(&p, &snap(101), None, &[], "snapshot-file").expect("fixture");
         assert_eq!(r.source, "snapshot-file");
         assert!(!r.ok());
-        assert!(github_report(&p, &snap(100), None, &[], "x").expect("fixture").ok());
+        assert!(github_report(&p, &snap(100), None, &[], "x")
+            .expect("fixture")
+            .ok());
     }
 
     #[test]

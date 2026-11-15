@@ -281,6 +281,7 @@ pub struct Report {
 }
 
 pub mod backfill;
+pub mod org;
 mod rules;
 pub mod source;
 pub use rules::*;
@@ -292,6 +293,10 @@ mod tests;
 #[cfg(test)]
 #[path = "github_comply_source_tests.rs"]
 mod source_tests;
+
+#[cfg(test)]
+#[path = "github_comply_org_tests.rs"]
+mod org_tests;
 
 #[cfg(test)]
 #[path = "github_comply_backfill_tests.rs"]
