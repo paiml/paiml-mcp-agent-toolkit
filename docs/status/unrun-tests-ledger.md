@@ -14,7 +14,7 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-24586 of 27713 lib tests are executed; 3127 are compiled by no leg.
+24586 of 27717 lib tests are executed; 3131 are compiled by no leg.
 
 ## `<unsatisfiable>` — 2098 test(s)
 
@@ -3013,17 +3013,20 @@ crate::services::git_history::commit_parser::tests::test_parse_commits_returns_r
 crate::services::git_history::commit_parser::tests::test_split_message_subject_only
 crate::services::git_history::commit_parser::tests::test_split_message_with_body
 
-## `github-api` — 18 test(s)
+## `github-api` — 22 test(s)
 
 orphan-ledger has it 'compile-checked only'.
 
 crate::services::github_client::tests::test_client_can_be_reused
+crate::services::github_client::tests::test_fetch_issue_transport_failure_is_contextualised
+crate::services::github_client::tests::test_format_error_precedes_token_error
 crate::services::github_client::tests::test_github_client_creation_requires_valid_repo_format
 crate::services::github_client::tests::test_github_client_debug
 crate::services::github_client::tests::test_invalid_repo_format_empty
 crate::services::github_client::tests::test_invalid_repo_format_leading_slash
 crate::services::github_client::tests::test_invalid_repo_format_no_slash
 crate::services::github_client::tests::test_invalid_repo_format_trailing_slash
+crate::services::github_client::tests::test_malformed_specs_error_names_spec_and_shape
 crate::services::github_client::tests::test_new_without_token
 crate::services::github_client::tests::test_repo_full_name
 crate::services::github_client::tests::test_repo_full_name_various
@@ -3035,6 +3038,7 @@ crate::services::github_client::tests::test_unauthenticated_client_creation
 crate::services::github_client::tests::test_unauthenticated_invalid_format
 crate::services::github_client::tests::test_unauthenticated_too_many_parts
 crate::services::github_client::tests::test_valid_repo_format_unauthenticated
+crate::services::github_client::tests::test_whitespace_in_spec_is_preserved
 
 ## `java-ast` — 10 test(s)
 
