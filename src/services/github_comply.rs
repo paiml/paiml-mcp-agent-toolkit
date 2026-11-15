@@ -281,6 +281,7 @@ pub struct Report {
 }
 
 pub mod backfill;
+pub mod pr_cap;
 mod rules;
 pub mod source;
 pub use rules::*;

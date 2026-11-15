@@ -143,6 +143,7 @@ pub async fn handle_work_start(
     level: Option<String>,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    crate::services::github_comply::pr_cap::guard_pr_cap_at(&project_path)?;
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
     let explicit_level = level
@@ -302,6 +303,7 @@ fn print_work_start_next_steps(id: &str) {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_delegate(id: String, agy: bool, path: Option<PathBuf>) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    crate::services::github_comply::pr_cap::guard_pr_cap_at(&project_path)?;
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
 
