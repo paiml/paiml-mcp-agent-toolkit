@@ -190,7 +190,7 @@ pmat generate makefile rust/cli \
   -o Makefile
 
 # Generate .gitignore to stdout
-pmat gen gitignore rust/cli
+pmat generate gitignore rust/cli
 ```
 
 ### `scaffold`
