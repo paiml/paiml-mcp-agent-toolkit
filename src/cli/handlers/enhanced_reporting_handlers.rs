@@ -97,8 +97,8 @@ use tracing::info;
 ///     false, // not markdown shortcut
 ///     false, // not csv shortcut
 ///     false, // include visualizations (rejected: not implemented for any format)
-///     true,  // include executive summary
-///     true,  // include recommendations
+///     None,  // executive summary: markdown default (on)
+///     None,  // recommendations: not implemented, leave unset
 ///     vec![AnalysisType::Complexity, AnalysisType::TechnicalDebt],
 ///     80,    // 80% confidence threshold
 ///     Some(dir.path().join("project-report.md")),
@@ -120,8 +120,8 @@ use tracing::info;
 ///     false, // not markdown
 ///     true,  // force CSV format
 ///     false, // no visualizations
-///     false, // no executive summary
-///     false, // no recommendations
+///     None,  // executive summary: unset
+///     None,  // recommendations: unset
 ///     vec![AnalysisType::Complexity],
 ///     50,    // lower confidence threshold
 ///     None,  // no --output: report goes to stdout, no file is created
@@ -184,8 +184,8 @@ pub async fn handle_generate_report(
     markdown: bool,
     csv: bool,
     include_visualizations: bool,
-    _include_executive_summary: bool,
-    _include_recommendations: bool,
+    include_executive_summary: Option<bool>,
+    include_recommendations: Option<bool>,
     _analyses: Vec<AnalysisType>,
     _confidence_threshold: u8,
     output: Option<PathBuf>,
@@ -201,13 +201,22 @@ pub async fn handle_generate_report(
 
     let actual_format = determine_output_format(output_format, text, markdown, csv);
     reject_unimplemented_visualizations(include_visualizations)?;
+    reject_inert_report_flags(
+        &actual_format,
+        include_executive_summary,
+        include_recommendations,
+    )?;
     log_report_generation_start(&project_path, &actual_format);
 
     let service = DefectReportService::new();
     let report = service.generate_report(&project_path).await?;
 
     let service_format = convert_to_service_format(actual_format)?;
-    let formatted_output = format_report_output(&service, &report, service_format)?;
+    let formatted_output = if matches!(service_format, ReportFormat::Markdown) {
+        service.format_markdown_with(&report, include_executive_summary.unwrap_or(true))?
+    } else {
+        format_report_output(&service, &report, service_format)?
+    };
 
     write_report_output(formatted_output, output).await?;
 
@@ -280,6 +289,35 @@ fn reject_unimplemented_visualizations(include_visualizations: bool) -> Result<(
             "--include-visualizations is not implemented for `pmat report`: it changed \
              nothing in json, csv, markdown or text, and the formats that could embed \
              charts (html, pdf, dashboard) are not implemented either. Re-run without it."
+        );
+    }
+    Ok(())
+}
+
+/// GH-1473: refuse `--include-executive-summary` / `--include-recommendations`
+/// wherever they would change nothing, like `--include-visualizations`.
+///
+/// The flags are `Option<bool>` so an explicit value (`Some(true)` as well as
+/// `Some(false)`) is distinguishable from "not passed".
+/// - `--include-recommendations`: no format has a recommendations section, so
+///   any explicit value is refused.
+/// - `--include-executive-summary`: only markdown has that section (on by
+///   default; `=false` removes it). Explicit use with json, csv or text is refused.
+fn reject_inert_report_flags(
+    format: &ReportOutputFormat,
+    include_executive_summary: Option<bool>,
+    include_recommendations: Option<bool>,
+) -> Result<()> {
+    if include_recommendations.is_some() {
+        anyhow::bail!(
+            "--include-recommendations is not implemented for `pmat report`: no format has a \
+             recommendations section, so it changed nothing. Re-run without it."
+        );
+    }
+    if include_executive_summary.is_some() && !matches!(format, ReportOutputFormat::Markdown) {
+        anyhow::bail!(
+            "--include-executive-summary only applies to markdown output; it would change \
+             nothing in {format:?}. Use --markdown or drop the flag."
         );
     }
     Ok(())
@@ -528,8 +566,8 @@ mod tests {
             false,
             false,
             false,
-            false,
-            false,
+            None,
+            None,
             vec![],
             0,
             None,
@@ -573,8 +611,8 @@ mod tests {
             false,
             false,
             true, // --include-visualizations
-            false,
-            false,
+            None,
+            None,
             vec![],
             50,
             None,
@@ -587,6 +625,177 @@ mod tests {
             err.to_string().contains("not implemented"),
             "unexpected error: {err}"
         );
+    }
+
+    /// GH-1473: `--include-executive-summary` true keeps and false drops the
+    /// markdown section, so the flag changes the output.
+    #[tokio::test]
+    async fn test_markdown_executive_summary_flag_changes_output_gh1473() {
+        let service = DefectReportService::new();
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("lib.rs"), "fn main() {}").expect("write");
+        let report = service.generate_report(dir.path()).await.expect("report");
+        let on = service.format_markdown_with(&report, true).expect("md");
+        let off = service.format_markdown_with(&report, false).expect("md");
+        assert!(on.contains("## Executive Summary"));
+        assert!(
+            !off.contains("## Executive Summary"),
+            "false must drop the section"
+        );
+        assert!(off.contains("## Detailed Findings"));
+        assert_ne!(on, off);
+    }
+
+    /// GH-1473: explicit recommendations flag is refused in every format, true or false.
+    #[test]
+    fn test_include_recommendations_refused_everywhere_gh1473() {
+        for fmt in [
+            ReportOutputFormat::Markdown,
+            ReportOutputFormat::Json,
+            ReportOutputFormat::Csv,
+            ReportOutputFormat::Text,
+        ] {
+            for v in [true, false] {
+                let e = reject_inert_report_flags(&fmt, None, Some(v))
+                    .expect_err("--include-recommendations must be refused");
+                assert!(e.to_string().contains("--include-recommendations"), "{e}");
+            }
+        }
+    }
+
+    /// GH-1473: explicit executive-summary flag (true or false) is refused outside
+    /// markdown; unset is always fine; markdown accepts both values.
+    #[test]
+    fn test_include_executive_summary_refused_outside_markdown_gh1473() {
+        for fmt in [
+            ReportOutputFormat::Json,
+            ReportOutputFormat::Csv,
+            ReportOutputFormat::Text,
+        ] {
+            assert!(reject_inert_report_flags(&fmt, None, None).is_ok());
+            for v in [true, false] {
+                let e = reject_inert_report_flags(&fmt, Some(v), None)
+                    .expect_err("explicit flag must be refused");
+                assert!(e.to_string().contains("--include-executive-summary"), "{e}");
+            }
+        }
+        for v in [true, false] {
+            assert!(
+                reject_inert_report_flags(&ReportOutputFormat::Markdown, Some(v), None).is_ok()
+            );
+        }
+    }
+
+    /// GH-1473 end to end: the handler refuses an explicit recommendations flag.
+    #[tokio::test]
+    async fn test_generate_report_refuses_recommendations_flag_gh1473() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("lib.rs"), "fn main() {}").expect("write");
+        let err = handle_generate_report(
+            dir.path().to_path_buf(),
+            ReportOutputFormat::Markdown,
+            false,
+            false,
+            false,
+            false,
+            None,
+            Some(true),
+            vec![],
+            50,
+            None,
+            false,
+        )
+        .await
+        .expect_err("must be refused");
+        assert!(err.to_string().contains("not implemented"), "{err}");
+    }
+
+    /// GH-1473: clap yields None when omitted, Some(true) for a bare flag and
+    /// Some(false) for `=false`, so an explicit value is distinguishable.
+    #[test]
+    fn test_report_include_flags_parse_to_option_gh1473() {
+        let outcome = std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(|| {
+                use clap::Parser;
+                let parse = |extra: &[&str]| {
+                    let mut argv = vec!["pmat", "report"];
+                    argv.extend_from_slice(extra);
+                    match crate::cli::Cli::try_parse_from(argv)
+                        .expect("must parse")
+                        .command
+                    {
+                        crate::cli::Commands::Report {
+                            include_executive_summary,
+                            include_recommendations,
+                            ..
+                        } => (include_executive_summary, include_recommendations),
+                        other => panic!("not a report command: {other:?}"),
+                    }
+                };
+                assert_eq!(parse(&[]), (None, None));
+                assert_eq!(parse(&["--include-executive-summary"]), (Some(true), None));
+                assert_eq!(
+                    parse(&["--include-executive-summary=false"]),
+                    (Some(false), None)
+                );
+                assert_eq!(
+                    parse(&["--include-recommendations", "--md"]),
+                    (None, Some(true))
+                );
+            })
+            .expect("spawn")
+            .join();
+        assert!(outcome.is_ok(), "report flag parsing must hold");
+    }
+
+    /// GH-1473 end to end: markdown with `Some(false)` writes a report without
+    /// the section, `Some(true)`/`None` keep it, and an explicit executive-summary
+    /// flag is refused for json, csv, text and html.
+    #[tokio::test]
+    async fn test_generate_report_executive_summary_end_to_end_gh1473() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("lib.rs"), "fn main() {}").expect("write");
+        let run = |fmt: ReportOutputFormat, es: Option<bool>, out: Option<PathBuf>| {
+            handle_generate_report(
+                dir.path().to_path_buf(),
+                fmt,
+                false,
+                false,
+                false,
+                false,
+                es,
+                None,
+                vec![],
+                50,
+                out,
+                false,
+            )
+        };
+        for (es, expect) in [(Some(false), false), (Some(true), true), (None, true)] {
+            let out = dir.path().join("r.md");
+            run(ReportOutputFormat::Markdown, es, Some(out.clone()))
+                .await
+                .expect("markdown must succeed");
+            let body = std::fs::read_to_string(&out).expect("read");
+            assert_eq!(body.contains("## Executive Summary"), expect, "es={es:?}");
+        }
+        for fmt in [
+            ReportOutputFormat::Json,
+            ReportOutputFormat::Csv,
+            ReportOutputFormat::Text,
+            ReportOutputFormat::Html,
+        ] {
+            for v in [true, false] {
+                let err = run(fmt.clone(), Some(v), None)
+                    .await
+                    .expect_err("explicit flag must be refused");
+                assert!(
+                    err.to_string().contains("--include-executive-summary"),
+                    "{err}"
+                );
+            }
+        }
     }
 
     #[tokio::test]
