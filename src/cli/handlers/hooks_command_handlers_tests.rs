@@ -891,7 +891,7 @@ mod coverage_tests {
         assert!(checks.contains("no source files staged"));
 
         // Docs check should be conditional on docs structure existing
-        assert!(checks.contains("docs/execution"));
+        assert!(checks.contains("docs/roadmaps/roadmap.yaml"));
     }
 
     #[test]
