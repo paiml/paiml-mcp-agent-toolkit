@@ -489,7 +489,9 @@ mod tests {
     /// local port, so no external network is touched.
     #[tokio::test]
     async fn test_fetch_issue_transport_failure_is_contextualised() -> Result<()> {
-        let octocrab = Octocrab::builder().base_uri("http://127.0.0.1:1")?.build()?;
+        let octocrab = Octocrab::builder()
+            .base_uri("http://127.0.0.1:1")?
+            .build()?;
         let client = GitHubClient {
             octocrab,
             repo_owner: "paiml".to_string(),
