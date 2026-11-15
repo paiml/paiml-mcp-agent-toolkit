@@ -2,11 +2,11 @@
   github_issue: 1514
   item_type: task
   title: 'python-ban: rewrite scripts/dependabot-alerts-gate.sh in bash'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-11-15T12:00:00+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []

@@ -2,11 +2,11 @@
   github_issue: 1598
   item_type: task
   title: 'HF2: no-hot-aggregate comply rule (nightly LAB) + roadmap render from entries/* + scaffold in fragment layout'
-  status: planned
+  status: cancelled
   priority: high
   assigned_to: null
   created: 2026-11-04T07:00:00Z
-  updated: 2026-11-09T12:55:08.075066360+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria:
   - docs/roadmaps/entries/ exists in the tree (.gitkeep) so the fragment layout is opt-in ready; roadmap.yaml stays tracked

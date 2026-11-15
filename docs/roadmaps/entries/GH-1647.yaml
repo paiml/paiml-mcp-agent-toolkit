@@ -2,11 +2,11 @@
   github_issue: 1647
   item_type: task
   title: 'deps: arrow 59.3 -> 60.1 (breaking; PR #1631 fails 38 checks)'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-11-09T12:40:20.197348363+00:00
-  updated: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []

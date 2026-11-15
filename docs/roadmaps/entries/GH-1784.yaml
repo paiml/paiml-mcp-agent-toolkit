@@ -2,11 +2,11 @@
   github_issue: 1784
   item_type: task
   title: 'comply github R1 counts parked tickets: exclude issues carrying an exempt label (default parked)'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-15T12:00:00+00:00
-  updated: 2026-11-15T12:00:00+00:00
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
