@@ -367,14 +367,27 @@ fn test_no_undocumented_commands() {
     );
 }
 
-#[test]
-fn test_documentation_examples_are_valid() {
-    // `None` only when the document was never shipped — see cli_reference().
-    let Some(content) = cli_reference() else {
-        return;
-    };
+/// Whether a documented line is a plain `pmat ...` example this suite can
+/// parse. Shell composition is out of scope: this checks that documented pmat
+/// commands exist, not that a pipeline runs.
+fn is_checkable_pmat_line(command_line: &str) -> bool {
+    if command_line.is_empty() || command_line.starts_with('#') {
+        return false;
+    }
+    let composed =
+        ['|', '$', '>'].iter().any(|c| command_line.contains(*c)) || command_line.contains("&&");
+    !composed
+        && (command_line.starts_with("paiml-mcp-agent-toolkit")
+            || command_line.starts_with("pmat "))
+}
 
-    // Extract bash code blocks - use a simpler approach
+/// Whether clap's stderr says the documented command or flag does not exist.
+fn names_unknown_cli_item(stderr: &str) -> bool {
+    stderr.contains("unrecognized subcommand") || stderr.contains("unexpected argument")
+}
+
+/// Every fenced ```bash block of the document, each as its own string.
+fn extract_bash_blocks(content: &str) -> Vec<String> {
     let mut in_bash_block = false;
     let mut current_block = String::new();
     let mut bash_blocks = Vec::new();
@@ -393,6 +406,17 @@ fn test_documentation_examples_are_valid() {
             current_block.push('\n');
         }
     }
+    bash_blocks
+}
+
+#[test]
+fn test_documentation_examples_are_valid() {
+    // `None` only when the document was never shipped — see cli_reference().
+    let Some(content) = cli_reference() else {
+        return;
+    };
+
+    let bash_blocks = extract_bash_blocks(&content);
     let binary_path = pmat_binary_path();
 
     // #1228: this loop used to take `code_block.lines().next()` — the FIRST line
@@ -409,21 +433,7 @@ fn test_documentation_examples_are_valid() {
 
             // Per LINE, not per block: a comment above an example must not take
             // the example down with it.
-            if command_line.is_empty() || command_line.starts_with('#') {
-                continue;
-            }
-            // Shell composition is out of scope — this checks that documented
-            // pmat commands exist, not that a pipeline runs.
-            if command_line.contains('|')
-                || command_line.contains('$')
-                || command_line.contains('>')
-                || command_line.contains("&&")
-            {
-                continue;
-            }
-            if !command_line.starts_with("paiml-mcp-agent-toolkit")
-                && !command_line.starts_with("pmat ")
-            {
+            if !is_checkable_pmat_line(command_line) {
                 continue;
             }
 
@@ -457,8 +467,7 @@ fn test_documentation_examples_are_valid() {
                 .unwrap_or_else(|e| panic!("could not spawn pmat for {command_line:?}: {e}"));
 
             let stderr = String::from_utf8_lossy(&output.stderr);
-            if stderr.contains("unrecognized subcommand") || stderr.contains("unexpected argument")
-            {
+            if names_unknown_cli_item(&stderr) {
                 // Collected, not asserted here: a document that has drifted has
                 // usually drifted in several places, and failing on the first
                 // turns one fix into N runs.
@@ -487,5 +496,27 @@ fn test_documentation_examples_are_valid() {
          wrong, fix the CLI.",
         drifted.len(),
         drifted.join("\n")
+    );
+}
+
+/// #1229: the document named a binary no user types. The real binary is `pmat`
+/// (`name = "pmat"` in `cli_struct.rs`), so no example may open with the old
+/// crate name and the grammar must name `pmat`.
+#[test]
+fn test_documentation_names_the_real_binary() {
+    let Some(doc) = cli_reference() else {
+        return;
+    };
+    assert!(
+        doc.contains("binary-name ::= \"pmat\""),
+        "the grammar's binary-name must be \"pmat\" (#1229)"
+    );
+    let stale: Vec<&str> = doc
+        .lines()
+        .filter(|l| l.trim_start().starts_with("paiml-mcp-agent-toolkit "))
+        .collect();
+    assert!(
+        stale.is_empty(),
+        "examples still use the nonexistent binary name (#1229): {stale:?}"
     );
 }

@@ -4,7 +4,7 @@
 
 ```ebnf
 command     ::= binary-name [global-opts] subcommand [subcommand-opts]
-binary-name ::= "paiml-mcp-agent-toolkit"
+binary-name ::= "pmat"
 global-opts ::= "--mode" mode-value
 mode-value  ::= "cli" | "mcp"
 subcommand  ::= "generate" | "scaffold" | "list" | "search" | "validate" | "context" | "analyze"
@@ -34,7 +34,7 @@ Force specific execution mode. Auto-detected by default based on environment.
 
 - **Values**: `cli`, `mcp`
 - **Default**: Auto-detect (MCP when STDIO is redirected)
-- **Example**: `paiml-mcp-agent-toolkit --mode mcp`
+- **Example**: `pmat --mode mcp`
 
 ## Commands
 
@@ -118,17 +118,17 @@ The demo supports multiple export formats for analysis results:
 
 ```bash
 # Basic demo with table output
-paiml-mcp-agent-toolkit demo
+pmat demo
 
 # Demo with specific protocol and API introspection
-paiml-mcp-agent-toolkit demo --protocol cli --show-api
+pmat demo --protocol cli --show-api
 
 # Analyze GitHub repository with MCP protocol
-paiml-mcp-agent-toolkit demo --url https://github.com/user/repo --protocol mcp
+pmat demo --url https://github.com/user/repo --protocol mcp
 
 
 # Compare all protocols
-paiml-mcp-agent-toolkit demo --protocol all --format json
+pmat demo --protocol all --format json
 
 ```
 
@@ -183,14 +183,14 @@ impl FromStr for TypedValue {
 
 ```bash
 # Generate Makefile for Rust CLI project
-paiml-mcp-agent-toolkit generate makefile rust/cli \
+pmat generate makefile rust/cli \
   -p project_name=my-project \
   -p has_tests=true \
   -p has_benchmarks=false \
   -o Makefile
 
 # Generate .gitignore to stdout
-paiml-mcp-agent-toolkit gen gitignore rust/cli
+pmat gen gitignore rust/cli
 ```
 
 ### `scaffold`
@@ -236,10 +236,10 @@ List available templates with filtering options.
 
 ```bash
 # List all templates in table format
-paiml-mcp-agent-toolkit list
+pmat list
 
 # List Rust templates as JSON
-paiml-mcp-agent-toolkit list --toolchain rust --format json
+pmat list --toolchain rust --format json
 ```
 
 ### `search`
@@ -256,10 +256,10 @@ Search templates using fuzzy matching with relevance scoring.
 
 ```bash
 # Search for makefile templates
-paiml-mcp-agent-toolkit search makefile
+pmat search makefile
 
 # Search Rust-specific templates
-paiml-mcp-agent-toolkit search cli --toolchain rust --limit 10
+pmat search cli --toolchain rust --limit 10
 ```
 
 ### `validate`
@@ -275,7 +275,7 @@ Validate template parameters before generation.
 
 ```bash
 # Validate makefile parameters
-paiml-mcp-agent-toolkit validate template://makefile/rust/cli \
+pmat validate template://makefile/rust/cli \
   -p project_name=my-project \
   -p has_tests=true
 ```
@@ -326,10 +326,10 @@ Analyze code change frequency using git history.
 **Examples:**
 ```bash
 # Analyze last 30 days of code churn
-paiml-mcp-agent-toolkit analyze churn
+pmat analyze churn
 
 # Generate markdown report for last week
-paiml-mcp-agent-toolkit analyze churn \
+pmat analyze churn \
   -d 7 \
   --format markdown \
   -o HOTSPOTS.md
@@ -368,26 +368,26 @@ The ranking table includes:
 **Examples:**
 ```bash
 # Analyze with default thresholds
-paiml-mcp-agent-toolkit analyze complexity
+pmat analyze complexity
 
 # Show top 5 most complex files
-paiml-mcp-agent-toolkit analyze complexity --top-files 5
+pmat analyze complexity --top-files 5
 
 # Generate SARIF report for IDE integration
-paiml-mcp-agent-toolkit analyze complexity \
+pmat analyze complexity \
   --format sarif \
   --max-cyclomatic 15 \
   --max-cognitive 20 \
   -o complexity.sarif
 
 # Analyze specific files with top 3 ranking
-paiml-mcp-agent-toolkit analyze complexity \
+pmat analyze complexity \
   --include "src/**/*.rs" \
   --include "tests/**/*.rs" \
   --top-files 3
 
 # JSON output with ranking data
-paiml-mcp-agent-toolkit analyze complexity \
+pmat analyze complexity \
   --top-files 10 \
   --format json \
   -o complexity-report.json
@@ -408,12 +408,12 @@ Generate dependency graphs using Mermaid syntax.
 **Examples:**
 ```bash
 # Generate call graph
-paiml-mcp-agent-toolkit analyze dag \
+pmat analyze dag \
   --dag-type call-graph \
   -o call-graph.mmd
 
 # Generate import graph with complexity
-paiml-mcp-agent-toolkit analyze dag \
+pmat analyze dag \
   --dag-type import-graph \
   --show-complexity \
   --max-depth 3 \
@@ -467,16 +467,16 @@ Deep context analysis combines multiple analysis types:
 **Examples:**
 ```bash
 # Basic deep context analysis with markdown output
-paiml-mcp-agent-toolkit analyze deep-context
+pmat analyze deep-context
 
 # Targeted analysis with specific components
-paiml-mcp-agent-toolkit analyze deep-context \
+pmat analyze deep-context \
   --include "complexity,churn,satd" \
   --format json \
   -o deep-context.json
 
 # Full analysis with all components and SARIF output
-paiml-mcp-agent-toolkit analyze deep-context \
+pmat analyze deep-context \
   --include "ast,complexity,churn,dag,dead-code,satd,defect-probability" \
   --format sarif \
   --period-days 90 \
@@ -484,7 +484,7 @@ paiml-mcp-agent-toolkit analyze deep-context \
   -o analysis.sarif
 
 # Comprehensive analysis with custom patterns
-paiml-mcp-agent-toolkit analyze deep-context \
+pmat analyze deep-context \
   --include "complexity,dead-code,satd" \
   --include-pattern "src/**/*.rs" \
   --include-pattern "tests/**/*.rs" \
@@ -495,7 +495,7 @@ paiml-mcp-agent-toolkit analyze deep-context \
   -o DEEP_CONTEXT.md
 
 # Performance-optimized analysis with offline cache
-paiml-mcp-agent-toolkit analyze deep-context \
+pmat analyze deep-context \
   --include "complexity,churn" \
   --cache-strategy offline \
   --max-depth 5 \
