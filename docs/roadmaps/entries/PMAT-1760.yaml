@@ -2,11 +2,11 @@
   github_issue: 1760
   item_type: task
   title: 'CI: readme-shape job + falsifier, wired into the gate'
-  status: planned
+  status: cancelled
   priority: medium
   assigned_to: null
   created: 2026-11-13T13:03:10Z
-  updated: 2026-11-13T13:03:10Z
+  updated: 2026-11-15T21:52:40+00:00
   spec: null
   acceptance_criteria: []
   phases: []
