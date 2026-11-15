@@ -108,8 +108,13 @@ fn missing_or_non_boolean_has_next_page_is_an_error_not_a_short_list() {
 fn has_next_page_with_null_or_empty_cursor_is_an_error() {
     let null = json!({"hasNextPage":true,"endCursor":null});
     let empty = json!({"hasNextPage":true,"endCursor":""});
-    assert!(list_org_repos(&reply(null), "acme").is_err());
-    assert!(list_org_repos(&reply(empty), "acme").is_err());
+    for page in [null, empty] {
+        let e = list_org_repos(&reply(page), "acme").map_err(|e| format!("{e:#}"));
+        assert!(
+            e.is_err_and(|m| m.contains("without endCursor")),
+            "wrong error"
+        );
+    }
 }
 
 #[test]
