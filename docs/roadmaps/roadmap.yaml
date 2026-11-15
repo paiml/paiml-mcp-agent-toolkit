@@ -7650,11 +7650,11 @@ roadmap:
   github_issue: 1473
   item_type: task
   title: 'pmat report: --include-executive-summary and --include-recommendations are accepted and change nothing'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
-  updated: 2026-10-24T16:31:29.561530032+00:00
+  updated: 2026-11-15T07:40:00+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -7662,7 +7662,7 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-  release: 3.44.0
+  release: 3.45.1
 - id: GH-1474
   github_issue: 1474
   item_type: task
