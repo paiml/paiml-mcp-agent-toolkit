@@ -432,12 +432,12 @@ else
 fi
 
 # 4. Documentation synchronization (only if docs structure exists)
-if [ -d "docs/execution" ] || [ -f "CHANGELOG.md" ]; then
+if [ -d "docs/roadmaps" ] || [ -f "CHANGELOG.md" ]; then
     echo -n "  Documentation check... "
-    if { [ -f "docs/roadmaps/roadmap.yaml" ] || [ -f "docs/execution/roadmap.md" ]; } && [ -f "CHANGELOG.md" ]; then
+    if { [ -f "docs/roadmaps/roadmap.yaml" ] || [ -d "docs/roadmaps/entries" ]; } && [ -f "CHANGELOG.md" ]; then
         echo "✅"
     else
-        echo "⚠️  (docs/roadmaps/roadmap.yaml, docs/execution/roadmap.md or CHANGELOG.md missing)"
+        echo "⚠️  SKIPPED (docs/roadmaps/roadmap.yaml, docs/roadmaps/entries or CHANGELOG.md missing)"
     fi
 fi
 
@@ -997,6 +997,37 @@ mod complexity_gate_tests {
         assert!(
             diff_scope_is_wired_for_rust_only(&unwired).is_err(),
             "a SCOPE_FLAG that no invocation passes must be caught"
+        );
+    }
+}
+
+#[cfg(test)]
+mod roadmap_guard_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    /// #1418: the documentation check must guard the roadmap paths `pmat work`
+    /// writes, never the retired `docs/execution/roadmap.md`, which no
+    /// `pmat work` repo has (the guard silently took its skip branch).
+    #[test]
+    fn documentation_check_guards_the_current_roadmap_paths() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        assert!(
+            !hook.contains("docs/execution"),
+            "the hook must not name docs/execution, a path pmat work no longer writes"
+        );
+        assert!(
+            hook.contains(r#"[ -f "docs/roadmaps/roadmap.yaml" ] || [ -d "docs/roadmaps/entries" ]"#),
+            "the documentation check must guard docs/roadmaps/roadmap.yaml and docs/roadmaps/entries"
+        );
+        assert!(
+            hook.contains(r#"[ -d "docs/roadmaps" ] || [ -f "CHANGELOG.md" ]"#),
+            "the check must run when the real roadmap directory exists"
+        );
+        assert!(
+            hook.contains("SKIPPED ("),
+            "the missing-file branch must announce a skip, not read like a pass"
         );
     }
 }
