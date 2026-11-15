@@ -180,6 +180,111 @@ fn r1_cap_is_per_repo_policy() {
     assert_eq!(rules(&r), [Rule::R1]);
 }
 
+fn parked(mut issues: Vec<IssueRec>, n: usize) -> Vec<IssueRec> {
+    for i in issues.iter_mut().take(n) {
+        i.labels = vec!["P3".into(), "Parked".into()];
+    }
+    issues
+}
+
+#[test]
+fn r1_does_not_count_parked_issues() {
+    let s = snap(parked(n_issues(101), 1), vec![]);
+    let at_cap = run(&s, &[Rule::R1]);
+    assert!(at_cap.ok(), "100 live + 1 parked is at the cap");
+    // Control: the same 101 with nothing parked is over it.
+    let control = run(&snap(n_issues(101), vec![]), &[Rule::R1]);
+    assert_eq!(rules(&control), [Rule::R1]);
+}
+
+#[test]
+fn r1_reports_how_many_it_excluded() {
+    let r = run(&snap(parked(n_issues(110), 3), vec![]), &[Rule::R1]);
+    assert_eq!(rules(&r), [Rule::R1]);
+    let msg = &r.violations[0].message;
+    assert!(msg.contains("107 open issues"), "{msg}");
+    assert!(msg.contains("3 exempt"), "{msg}");
+}
+
+#[test]
+fn r1_exemption_is_policy_and_can_be_switched_off() {
+    let toml = "[defaults]\nissue_exempt = []\n";
+    let parsed = Policy::from_toml(toml, "paiml/x");
+    assert!(parsed.is_ok(), "{parsed:?}");
+    let p = parsed.unwrap_or_default();
+    assert!(p.issue_exempt.is_empty());
+    assert_eq!(Policy::default().issue_exempt, ["parked"]);
+    let r = evaluate(&snap(parked(n_issues(101), 1), vec![]), &p, &[Rule::R1]);
+    assert_eq!(rules(&r), [Rule::R1]);
+}
+
+#[test]
+fn r1_exemption_policy_entry_matches_in_any_case() {
+    // The policy entry is upper case and the label is `Parked`: both sides are
+    // lowered before the match, so the issue is still left out of the count.
+    let parsed = Policy::from_toml("[defaults]\nissue_exempt = [\"PARKED\"]\n", "paiml/x");
+    assert!(parsed.is_ok(), "{parsed:?}");
+    let p = parsed.unwrap_or_default();
+    assert_eq!(p.issue_exempt, ["PARKED"]);
+    let r = evaluate(&snap(parked(n_issues(101), 1), vec![]), &p, &[Rule::R1]);
+    assert!(r.ok(), "100 live + 1 exempt is at the cap: {:?}", rules(&r));
+}
+
+#[test]
+fn r1_guard_admits_a_ticket_when_the_excess_is_parked() {
+    let p = Policy::default();
+    let full = snap(n_issues(100), vec![]);
+    let refused = guard_new_ticket(&p, &full, "brand new unrelated zzz", None, Some(1));
+    assert!(refused.is_err(), "{refused:?}");
+    let one_parked = snap(parked(n_issues(100), 1), vec![]);
+    let admitted = guard_new_ticket(&p, &one_parked, "brand new unrelated zzz", None, Some(1));
+    assert!(admitted.is_ok(), "{admitted:?}");
+}
+
+#[test]
+fn r1_guard_does_not_subtract_a_parked_child_twice() {
+    let p = Policy::default();
+    // 101 open, #1 parked: 100 counted. #1 is the ticket's own issue and is already
+    // left out, so 100 others remain and the guard refuses.
+    let s = snap(parked(n_issues(101), 1), vec![]);
+    let parked_child = guard_new_ticket(&p, &s, "brand new unrelated zzz", Some(1), Some(1));
+    assert!(parked_child.is_err(), "{parked_child:?}");
+    // A counted child (#2) is taken off once: 99 others, admitted.
+    let counted_child = guard_new_ticket(&p, &s, "brand new unrelated zzz", Some(2), Some(1));
+    assert!(counted_child.is_ok(), "{counted_child:?}");
+}
+
+#[test]
+fn r1_exemption_is_not_a_prefix_or_substring_match() {
+    for near_miss in ["parked-later", "unparked", "park"] {
+        let mut issues = n_issues(101);
+        issues[0].labels = vec![near_miss.into()];
+        let r = run(&snap(issues, vec![]), &[Rule::R1]);
+        assert_eq!(rules(&r), [Rule::R1], "`{near_miss}` must still be counted");
+    }
+}
+
+#[test]
+fn r1_never_counts_a_pull_request_as_an_issue() {
+    let at_cap = run(&snap(n_issues(100), prs(4)), &[Rule::R1]);
+    assert!(at_cap.ok(), "100 issues and 4 PRs is at the issue cap");
+}
+
+#[test]
+fn r1_guard_refusal_reports_counted_and_exempt() {
+    let s = snap(parked(n_issues(103), 2), vec![]);
+    let refused = guard_new_ticket(
+        &Policy::default(),
+        &s,
+        "brand new unrelated zzz",
+        None,
+        Some(1),
+    );
+    let msg = refused.err().map(|e| e.to_string()).unwrap_or_default();
+    assert!(msg.contains("101 open issues"), "{msg}");
+    assert!(msg.contains("2 exempt"), "{msg}");
+}
+
 // ---- FALSIFY-GHC-002: R2 ------------------------------------------------
 
 fn prs(n: u64) -> Vec<PrRec> {

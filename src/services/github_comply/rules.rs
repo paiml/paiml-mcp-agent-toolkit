@@ -116,8 +116,31 @@ fn check_content(rule: Rule, snap: &RepoSnapshot, unmeasured: &mut Vec<String>) 
     }
 }
 
+/// Whether an issue carries an `issue_exempt` label (default `parked`).
+fn issue_is_exempt(issue: &IssueRec, policy: &Policy) -> bool {
+    issue.labels.iter().any(|l| {
+        let l = l.to_lowercase();
+        policy
+            .issue_exempt
+            .iter()
+            .any(|g| glob_match(&g.to_lowercase(), &l))
+    })
+}
+
+/// Open issues R1 counts, and how many it left out: an issue carrying an `issue_exempt`
+/// label (default `parked`) is open on GitHub but is not backlog.
+fn counted_open_issues(snap: &RepoSnapshot, policy: &Policy) -> (usize, usize) {
+    let exempt = snap
+        .open_issues
+        .iter()
+        .filter(|i| issue_is_exempt(i, policy))
+        .count();
+    let total = snap.open_issue_total.max(snap.open_issues.len());
+    (total.saturating_sub(exempt), exempt)
+}
+
 fn check_r1(snap: &RepoSnapshot, policy: &Policy) -> Vec<Violation> {
-    let open = snap.open_issue_total.max(snap.open_issues.len());
+    let (open, exempt) = counted_open_issues(snap, policy);
     if open <= policy.max_open_issues {
         return vec![];
     }
@@ -125,7 +148,7 @@ fn check_r1(snap: &RepoSnapshot, policy: &Policy) -> Vec<Violation> {
         Rule::R1,
         None,
         format!(
-            "{open} open issues exceed the cap of {} (target {})",
+            "{open} open issues exceed the cap of {} (target {}; {exempt} exempt by label not counted)",
             policy.max_open_issues, policy.target_open_issues
         ),
     )]
@@ -454,14 +477,17 @@ pub fn guard_new_ticket(
     child: Option<u64>,
     epic: Option<u64>,
 ) -> Result<Option<String>> {
-    let child_listed = child.is_some_and(|c| snap.open_issues.iter().any(|i| i.number == c));
-    let others = snap
-        .open_issue_total
-        .max(snap.open_issues.len())
-        .saturating_sub(usize::from(child_listed));
+    // The ticket's own issue is taken off the count only when it was counted: an
+    // exempt (parked) child is already left out, and must not be subtracted twice.
+    let child_counted = snap
+        .open_issues
+        .iter()
+        .any(|i| Some(i.number) == child && !issue_is_exempt(i, policy));
+    let (counted, exempt) = counted_open_issues(snap, policy);
+    let others = counted.saturating_sub(usize::from(child_counted));
     if others >= policy.max_open_issues {
         bail!(
-            "refused (R1): {} already has {others} open issues — the cap is {} (target {}); close or merge tickets before filing another",
+            "refused (R1): {} already has {others} open issues — the cap is {} (target {}; {exempt} exempt by label not counted); close or merge tickets before filing another",
             snap.repo,
             policy.max_open_issues,
             policy.target_open_issues

@@ -508,3 +508,35 @@ fn attempt_rescue_for_failures(
         println!();
     }
 }
+
+#[cfg(test)]
+mod receipt_level_tests {
+    use super::*;
+    use crate::cli::handlers::work_verification_level::VerificationLevel;
+
+    /// MACS-006 (spec test `ledger::receipt_records_both_levels`): driving the
+    /// real completion path writes a receipt that records BOTH the level the
+    /// ticket claimed and the level its evidence earned, and the two differ
+    /// when the evidence falls short of the claim.
+    #[tokio::test]
+    async fn receipt_records_both_levels() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let mut contract = WorkContract::new("MACS-LEVELS".to_string(), "deadbeef".to_string());
+        contract.claims.clear();
+        contract.verification_level = VerificationLevel::L3;
+
+        // No bound equation: the evidence earns L1, below the claimed L3.
+        run_contract_tests(dir.path(), &contract, &None, &None, "MACS-LEVELS", None).await?;
+
+        let receipt = FalsificationLedger::new(dir.path())
+            .latest_receipt("MACS-LEVELS")?
+            .ok_or_else(|| anyhow::anyhow!("completion wrote no receipt"))?;
+        assert_eq!(receipt.claimed_level.as_deref(), Some("L3"));
+        assert_eq!(receipt.achieved_level.as_deref(), Some("L1"));
+        assert!(
+            receipt.verify_integrity(),
+            "the levels are sealed into the content hash"
+        );
+        Ok(())
+    }
+}
