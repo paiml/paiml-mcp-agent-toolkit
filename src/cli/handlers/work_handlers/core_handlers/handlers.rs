@@ -740,6 +740,44 @@ pub async fn handle_work_complete(
     Ok(())
 }
 
+/// Plain-text chain-of-thought lines for `pmat work status <id>` (MACS-007).
+/// Reads the ticket's contract and renders every step through the v2-aware
+/// parser, so legacy prose steps appear (annotated L0) beside v2 steps.
+/// Empty when the ticket has no contract or no steps.
+fn cot_status_lines(project_path: &std::path::Path, id: &str) -> Vec<String> {
+    let contract_path = project_path
+        .join(".pmat-work")
+        .join(id)
+        .join("contract.json");
+    let Some(value) = std::fs::read_to_string(contract_path)
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+    else {
+        return Vec::new();
+    };
+    crate::models::work_cot::parse_steps(&value)
+        .iter()
+        .map(|s| {
+            format!(
+                "{}: {} => {} [{}]",
+                s.id, s.assumption, s.implication, s.evidence_method
+            )
+        })
+        .collect()
+}
+
+/// Print the chain-of-thought block of `pmat work status <id>`, if any.
+fn print_cot_status(project_path: &std::path::Path, id: &str) {
+    let cot = cot_status_lines(project_path, id);
+    if cot.is_empty() {
+        return;
+    }
+    println!("   {}", c::label("Chain of thought:"));
+    for line in cot {
+        println!("     {line}");
+    }
+}
+
 /// Handle work status command
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_status(
@@ -784,6 +822,7 @@ pub async fn handle_work_status(
         if let Some(gh) = item.github_issue {
             println!("   {} #{}", c::label("GitHub:"), c::number(&gh.to_string()));
         }
+        print_cot_status(&project_path, &item.id);
         println!();
     } else {
         // Show all items
@@ -1465,5 +1504,46 @@ mod branch_ticket_tests {
                 .success());
         }
         assert_eq!(ticket_from_branch(d), Some("PMAT-123".into()));
+    }
+}
+
+#[cfg(test)]
+mod cot_status_tests {
+    use super::*;
+
+    fn write_contract(dir: &std::path::Path, id: &str, body: &str) -> Result<()> {
+        let d = dir.join(".pmat-work").join(id);
+        std::fs::create_dir_all(&d)?;
+        std::fs::write(d.join("contract.json"), body)?;
+        Ok(())
+    }
+
+    /// MACS-007 (spec invariant `cot::status_renders_v2`): `pmat work status <id>`
+    /// still renders chain-of-thought steps after the v2 schema, for both the v2
+    /// object form and legacy prose steps (migrated, never dropped).
+    #[test]
+    fn status_renders_v2() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        write_contract(
+            dir.path(),
+            "T-1",
+            r#"{"chain_of_thought":[
+                {"id":"CoT-1","assumption":"inputs are sorted","implication":"binary search is valid","evidence_method":"unit test"},
+                {"step":2,"question":"why legacy?","answer":"prose predates v2"}]}"#,
+        )?;
+        let out = cot_status_lines(dir.path(), "T-1").join("\n");
+        assert!(out.contains("CoT-1"), "v2 step id rendered: {out}");
+        assert!(out.contains("inputs are sorted"), "assumption: {out}");
+        assert!(out.contains("binary search is valid"), "implication: {out}");
+        assert!(out.contains("CoT-2"), "legacy step kept: {out}");
+        assert!(out.contains("prose predates v2"), "legacy answer: {out}");
+        assert!(out.contains("L0"), "legacy step annotated L0: {out}");
+        Ok(())
+    }
+
+    #[test]
+    fn status_renders_nothing_without_a_contract() {
+        let dir = std::path::Path::new("/does/not/exist/pmat-cot-status");
+        assert!(cot_status_lines(dir, "T-1").is_empty());
     }
 }
