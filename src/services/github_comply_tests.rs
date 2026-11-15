@@ -219,6 +219,18 @@ fn r1_exemption_is_policy_and_can_be_switched_off() {
 }
 
 #[test]
+fn r1_exemption_policy_entry_matches_in_any_case() {
+    // The policy entry is upper case and the label is `Parked`: both sides are
+    // lowered before the match, so the issue is still left out of the count.
+    let parsed = Policy::from_toml("[defaults]\nissue_exempt = [\"PARKED\"]\n", "paiml/x");
+    assert!(parsed.is_ok(), "{parsed:?}");
+    let p = parsed.unwrap_or_default();
+    assert_eq!(p.issue_exempt, ["PARKED"]);
+    let r = evaluate(&snap(parked(n_issues(101), 1), vec![]), &p, &[Rule::R1]);
+    assert!(r.ok(), "100 live + 1 exempt is at the cap: {:?}", rules(&r));
+}
+
+#[test]
 fn r1_guard_admits_a_ticket_when_the_excess_is_parked() {
     let p = Policy::default();
     let full = snap(n_issues(100), vec![]);
