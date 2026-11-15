@@ -402,6 +402,23 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn github_to_yaml_round_trips_a_title_containing_a_hash_comment_marker() {
+        // GH-1700: ` #N` in an unquoted scalar is a YAML comment and truncates it.
+        let title = "PR Title Check must accept type train and a #N subject";
+        let nine = format!(
+            r#"{{"number":9,"title":"{title}","state":"open","labels":[],"updated_at":"2026-09-09T12:00:00Z"}}"#
+        );
+        let (dir, roadmap, snap_path) =
+            project(MATCHED_ITEM, &snap(&format!("{ISSUE_TWO},{nine}")));
+        let mut o = opts(&dir, &snap_path);
+        o.direction = SyncDirection::GithubToYaml;
+        handle_work_sync(o).await.expect("github-to-yaml succeeds");
+        let saved = RoadmapService::new(&roadmap).load().expect("reload");
+        let gh9 = saved.find_item("GH-9").expect("GH-9 was created");
+        assert_eq!(gh9.title, title, "the title must not be truncated at ` #`");
+    }
+
+    #[tokio::test]
     async fn a_collided_item_is_never_written() {
         let items = "- id: M0\n  github_issue: 612\n  item_type: task\n  title: zero\n  status: planned\n- id: M1\n  github_issue: 612\n  item_type: task\n  title: one\n  status: planned\n";
         let closed = r#"{"number":612,"title":"macs","state":"closed","state_reason":"completed","labels":[],"updated_at":"2026-09-09T12:00:00Z"}"#;

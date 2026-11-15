@@ -504,3 +504,27 @@ fn restamp(block: &str) -> String {
         })
         .collect()
 }
+
+/// GH-1700: a plain (unquoted) `title:` scalar holding ` #` is cut at the `#` by
+/// every YAML reader, because ` #` opens a comment. The serializer quotes such a
+/// title; this pins that no committed fragment carries one the serializer did not write.
+#[test]
+fn no_committed_fragment_has_an_unquoted_title_holding_a_comment_marker() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/roadmaps/entries");
+    let mut bad = Vec::new();
+    for entry in std::fs::read_dir(&dir).expect("entries dir readable") {
+        let path = entry.expect("dir entry").path();
+        let text = std::fs::read_to_string(&path).unwrap_or_default();
+        for line in text.lines() {
+            let Some(value) = line.strip_prefix("  title:") else {
+                continue;
+            };
+            let value = value.trim_start();
+            let plain = !value.starts_with(['\'', '"', '|', '>']);
+            if plain && value.contains(" #") {
+                bad.push(format!("{}: {line}", path.display()));
+            }
+        }
+    }
+    assert!(bad.is_empty(), "unquoted ` #` titles: {bad:#?}");
+}
