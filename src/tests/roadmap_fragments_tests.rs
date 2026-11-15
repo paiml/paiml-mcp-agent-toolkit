@@ -525,6 +525,12 @@ fn unquoted_comment_title_detector_cases() {
     assert!(!is_unquoted_comment_title("  title: C# and a#b"));
     assert!(!is_unquoted_comment_title("  title: |"));
     assert!(!is_unquoted_comment_title("  title: >-"));
+    assert!(!is_unquoted_comment_title(
+        "  title: | # block header comment"
+    ));
+    assert!(!is_unquoted_comment_title(
+        "  title: > # block header comment"
+    ));
     assert!(!is_unquoted_comment_title("  status: fix #7"));
 }
 
