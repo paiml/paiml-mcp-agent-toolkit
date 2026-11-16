@@ -52,7 +52,16 @@ pub fn guard_pr_cap(g: &dyn Graphql, repo: &str, policy: &Policy) -> Result<()> 
 /// The entry-point guard for `work start` and `work delegate`, run before anything is written.
 /// `work add` is not guarded here (it has its own R1/R3/R5 filing guard).
 pub fn guard_pr_cap_at(project_path: &Path) -> Result<()> {
-    let repo = match current_repo(project_path) {
+    #[cfg(test)]
+    if let Some((repo, g)) = tests::injected() {
+        return guard_with(project_path, Ok(repo), &*g);
+    }
+    guard_with(project_path, current_repo(project_path), &GhGraphql)
+}
+
+/// Seam under `guard_pr_cap_at`: the repo name and the reader are arguments.
+fn guard_with(project_path: &Path, repo: Result<String>, g: &dyn Graphql) -> Result<()> {
+    let repo = match repo {
         Ok(r) => r,
         Err(e) => {
             eprintln!("not_measured: repository not named ({e:#}); open-PR cap not checked");
@@ -60,7 +69,7 @@ pub fn guard_pr_cap_at(project_path: &Path) -> Result<()> {
         }
     };
     let policy = Policy::load(project_path, &repo)?;
-    guard_pr_cap(&GhGraphql, &repo, &policy)
+    guard_pr_cap(g, &repo, &policy)
 }
 
 #[cfg(test)]
@@ -68,6 +77,20 @@ mod tests {
     use super::*;
     use crate::services::github_comply::{evaluate, CheckState, RepoSnapshot, Rule};
     use serde_json::{json, Value};
+
+    use std::{cell::RefCell, rc::Rc};
+
+    thread_local! {
+        static INJECTED: RefCell<Option<(String, Rc<dyn Graphql>)>> = const { RefCell::new(None) };
+    }
+
+    pub(super) fn injected() -> Option<(String, Rc<dyn Graphql>)> {
+        INJECTED.with(|c| c.borrow().clone())
+    }
+
+    fn inject(g: impl Graphql + 'static) {
+        INJECTED.with(|c| *c.borrow_mut() = Some(("o/r".to_string(), Rc::new(g))));
+    }
 
     const T0: i64 = 1_793_491_200;
 
@@ -184,5 +207,68 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(msg.contains("4 open PRs"), "{msg}");
+    }
+
+    #[test]
+    fn guard_unnamed_repo_is_not_measured_and_does_not_refuse() -> Result<()> {
+        // Pins current behaviour: an unnamed repo is "not checked" (stderr note, Ok), the
+        // same fail-open as a failed read (L23); it is not a refusal.
+        let dir = tempfile::tempdir()?;
+        let r = guard_with(
+            dir.path(),
+            Err(anyhow::anyhow!("no remote")),
+            &Fake(prs(99, 0)),
+        );
+        assert!(r.is_ok());
+        Ok(())
+    }
+
+    async fn start(dir: &Path) -> Result<()> {
+        crate::cli::handlers::work_handlers::core_handlers::handlers::handle_work_start(
+            "GH-1".into(),
+            false,
+            false,
+            Some(dir.to_path_buf()),
+            false,
+            None,
+            vec![],
+            0,
+            vec![],
+            Default::default(),
+            None,
+        )
+        .await
+    }
+
+    async fn delegate(dir: &Path) -> Result<()> {
+        crate::cli::handlers::work_handlers::core_handlers::handlers::handle_work_delegate(
+            "GH-1".into(),
+            false,
+            Some(dir.to_path_buf()),
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn work_start_and_delegate_refuse_at_cap_and_write_nothing() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        inject(Fake(prs(Policy::default().max_open_prs as u64, 0)));
+        for r in [start(dir.path()).await, delegate(dir.path()).await] {
+            let msg = r.err().map(|e| e.to_string()).unwrap_or_default();
+            assert!(msg.contains("refused") && msg.contains("open PRs"), "{msg}");
+        }
+        assert_eq!(std::fs::read_dir(dir.path())?.count(), 0);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn work_start_and_delegate_pass_the_guard_under_cap() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        inject(Fake(prs(Policy::default().max_open_prs as u64 - 1, 0)));
+        for r in [start(dir.path()).await, delegate(dir.path()).await] {
+            let msg = r.err().map(|e| e.to_string()).unwrap_or_default();
+            assert!(!msg.contains("open PRs"), "{msg}");
+        }
+        Ok(())
     }
 }
