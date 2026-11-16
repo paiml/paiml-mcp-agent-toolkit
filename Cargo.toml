@@ -29,9 +29,11 @@ exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions
     # 9,385,367 B (8.951 MiB) with them, over the package-size job's 9.0 budget.
     "/.github/",
     # Receipts, agent skill/rule trees, work-tracking contracts, a lockfile for
-    # the deno scripts, bug reports and an unread training corpus: nothing under
-    # build.rs, src/ or an include_str!/include_bytes! reads any of them
-    # (.agents/hooks stays: templates.rs embeds a hook from it).
+    # the deno scripts, bug reports and an unread training corpus: no build.rs
+    # and no include_str!/include_bytes! reads any of them, so the crate builds
+    # (.agents/hooks stays: templates.rs embeds a hook from it). Tests do read
+    # some at run time (work_ledger_tests.rs, dogfood_skill_drift_tests.rs,
+    # qa_mcp_sweep.rs), so `cargo test` from the unpacked crate fails those.
     "/fixtures/receipts/", "/.claude/", "/.agents/skills/", "/.agents/rules/",
     "/contracts/work/", "/deno.lock", "/bug-reports/", "/models/training-data.json"]
 # PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
