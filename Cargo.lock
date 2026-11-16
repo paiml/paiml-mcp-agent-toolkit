@@ -217,11 +217,11 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "apr-format"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4b4339aa85905d7a202d9f3cbb4d7d7a774245e7a847f24262bb4438a467f79"
+checksum = "17d05f07fcf349a0520f56780f61417de8e4af5edeff7c8dfb3fc00d91205428"
 dependencies = [
- "bincode",
+ "aprender-legacy-codec",
  "half",
  "rmp-serde",
  "serde",
@@ -253,24 +253,24 @@ dependencies = [
 
 [[package]]
 name = "aprender"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57ce8cdf6aa9a99e7edc995528c697398663a62f78c9e912cb5bcd45641a7fb3"
+checksum = "2847098367fd3ad126ae19e91927fb4f632c5c179e1e941abb1dfddd84ae987a"
 dependencies = [
  "aprender-core",
 ]
 
 [[package]]
 name = "aprender-build-sha"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "191e0135522f0a47720c306991a5d5812ed4efa387ba3be85abbdbab3290a341"
+checksum = "d763844533b89638de488e7d0b5fead441bf695e9d047ffebae19f8403838e0b"
 
 [[package]]
 name = "aprender-common"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f75543a9935520ff8280a1c84a0fee92b00162244c5b0db9ff597b09b4ec87fe"
+checksum = "500eb349c7edc3a3a9d3bccff53587081c9839f4f6bbb569d8d4b765125c76f8"
 dependencies = [
  "lz4_flex 0.11.6",
  "zstd 0.14.3",
@@ -278,9 +278,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-compute"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de58cc0836661282b1a7d157fdee6dcc215f0d0f72d89b03f7cb2f509b0f9f22"
+checksum = "2b091895af7587364f8d28d3c3ab92910100d8ff8795c18a7a2c8c9fdc2979bf"
 dependencies = [
  "anyhow",
  "aprender-contracts",
@@ -303,9 +303,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-contracts"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71151a6cef55577a2bcc28a72bb46aad48c5b1c9864947dcaf674e71b8c1fab3"
+checksum = "4b4dd60562cf73a68620b94e3e995f4dfd255a2609f085f39a0d0d70802d70a2"
 dependencies = [
  "aprender-contracts-macros",
  "blake3",
@@ -321,9 +321,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-contracts-macros"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa2998a140de6b82993f2b0573b32db500e98c3043b8de84e5dd4d13256895a2"
+checksum = "02596fe86dc338e1a0634cf951ac95b3aa058a5ce0369045717470c4ae5aec39"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -332,17 +332,17 @@ dependencies = [
 
 [[package]]
 name = "aprender-core"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "311256750263d37d9cf9454524cc68900e723a5b6cdf9a6290727b57bdfd26ea"
+checksum = "62f52a28e79d3cce8b65894b9646d5fe43da2cfa6aff505ae0cc3889968d2b2b"
 dependencies = [
  "apr-format",
  "aprender-common",
  "aprender-compute",
  "aprender-contracts",
  "aprender-contracts-macros",
+ "aprender-legacy-codec",
  "aprender-quant",
- "bincode",
  "getrandom 0.2.17",
  "memmap2",
  "minijinja",
@@ -358,9 +358,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-db"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0a8e7326a54c92956e23f6d13ed350c4e33d82b6df248d429e148ba64b99510"
+checksum = "a89d56b71579ceec1b48fc10daa3e0e40a0e35194b7966cc61e29457b13c8c0a"
 dependencies = [
  "anyhow",
  "aprender-build-sha",
@@ -392,9 +392,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-gemm-codegen"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a98ab8b7929aa7fee7c91b59674b5eee260109a072b13498809b4aeea7b3d2b"
+checksum = "94f4c2b0255f59b9291ec9417e460784719f8d775ff2ad87ebf5500da7ee8148"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -403,9 +403,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-graph"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e76ccdd77cb8098b7a097d4648882e5408cb0a15f28b4a6073790111fa555707"
+checksum = "1d879275e33727530f906e716ad571b56b8fb995e8e481e21e5110e83b568e77"
 dependencies = [
  "anyhow",
  "aprender-compute",
@@ -415,10 +415,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "aprender-present-core"
-version = "0.72.3"
+name = "aprender-legacy-codec"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbcdfa3436966b6c2966483c5b8816d97848b4bd75400f57a4be6ca1f71bb9dd"
+checksum = "ca07dbab47b7f98886f348f31a173af2898a3314d5dabf569499c5b73ae94e8c"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "aprender-present-core"
+version = "0.72.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebd1ba3dd64732dc0db1802e4ed9bc0aaffcf9f7355956ec85c939279155d00c"
 dependencies = [
  "aprender-contracts",
  "aprender-contracts-macros",
@@ -429,9 +438,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-quant"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96d2d525277ba771b6a18bccb39aa7a058f57f9cc6175f181eb2e886e8ba5bfd"
+checksum = "a830ba8d88321560218490e5cc73f88571b25474456f3aa954ea16238a8eef10"
 dependencies = [
  "half",
 ]
@@ -457,9 +466,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-update"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11b7041e288ba62398a0a627bd47faa1a92e91ce96fa127864b7ff52772b8c59"
+checksum = "e7c9a09ba91abcdaae9052817a06ccbf41cf65450c7dedde14ddd2a3a72b0320"
 dependencies = [
  "flate2",
  "semver",
@@ -472,9 +481,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-viz"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee53ff63d2d69a77aadd05db25e54522be5012c25d12f5b0f19b0cb3c58ba47a"
+checksum = "e37ff82d5667ad008aeb83d0001716a244e27a720a892a06140f5967b0dd4e0e"
 dependencies = [
  "aprender-common",
  "aprender-compute",
@@ -490,9 +499,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-zram-core"
-version = "0.72.3"
+version = "0.72.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3930cc7b3fed81041e6f0cc0fcdc55c933f0bceac9b9adcbf8170dfd5671d3f"
+checksum = "34e712394864304f7f123b3b48c9473abcd85cf8dbd9bd9362f92b1f3305c861"
 dependencies = [
  "thiserror 2.0.21",
 ]
@@ -1738,9 +1747,9 @@ dependencies = [
 
 [[package]]
 name = "crc32fast"
-version = "1.5.4"
+version = "1.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f97d3416d5337d15c4b0d78c8c91df922ca143f57ec20e2d1c188333047ef04"
+checksum = "2b929dd2a135771f40afabd1073f85eed59c800b7c61901e5c254270497dad64"
 dependencies = [
  "cfg-if",
 ]
@@ -5038,7 +5047,7 @@ dependencies = [
  "actix",
  "actix-rt",
  "anyhow",
- "aprender 0.72.3",
+ "aprender 0.72.6",
  "aprender-compute",
  "aprender-contracts",
  "aprender-contracts-macros",
@@ -5151,7 +5160,7 @@ dependencies = [
  "walkdir",
  "warp",
  "wasmparser",
- "wgpu 30.0.1",
+ "wgpu 30.0.2",
  "which",
  "xxhash-rust",
 ]
@@ -7761,9 +7770,9 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "ureq"
-version = "3.5.1"
+version = "3.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7be76686bdf7198002062423ca0d8cf9b75a27c8e1de804513b97e97b555d9d"
+checksum = "3ac5cecf619ca81f66a96482db09687c9f7465af65f4300a8c30cca05bd5a59d"
 dependencies = [
  "base64 0.23.1",
  "cookie_store",
@@ -8142,9 +8151,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu"
-version = "30.0.1"
+version = "30.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "527ccdf43dd5b2e8676eed9984ce00e2bbb0a1b85b70c1969dcb6cd2eb55ab9e"
+checksum = "146fc3d654250e6207921a66c87534c621bc886c70df83dcf466c1d66813810e"
 dependencies = [
  "arrayvec",
  "bitflags 2.13.0",
