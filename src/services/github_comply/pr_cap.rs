@@ -224,7 +224,7 @@ mod tests {
     }
 
     async fn start(dir: &Path) -> Result<()> {
-        crate::cli::handlers::work_handlers::core_handlers::handlers::handle_work_start(
+        crate::cli::handlers::work_handlers::handle_work_start(
             "GH-1".into(),
             false,
             false,
@@ -241,7 +241,7 @@ mod tests {
     }
 
     async fn delegate(dir: &Path) -> Result<()> {
-        crate::cli::handlers::work_handlers::core_handlers::handlers::handle_work_delegate(
+        crate::cli::handlers::work_handlers::handle_work_delegate(
             "GH-1".into(),
             false,
             Some(dir.to_path_buf()),
