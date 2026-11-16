@@ -8563,22 +8563,3 @@ roadmap:
   - kind:code
   notes: null
   epic: 1457
-- id: GH-1783
-  github_issue: 1783
-  item_type: task
-  title: 'comply github: --org <ORG> judges every repository of an organisation in one run'
-  status: inprogress
-  priority: high
-  assigned_to: null
-  created: 2026-11-15T00:00:00Z
-  updated: 2026-11-15T00:00:00Z
-  spec: null
-  acceptance_criteria:
-  - pmat comply github --org judges every non-archived repository, one row per repository, and exits 1 on a violation or an unreadable repository
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels:
-  - kind:code
-  notes: null
-  epic: 1457
