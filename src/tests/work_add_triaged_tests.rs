@@ -386,3 +386,35 @@ async fn work_add_writes_the_derived_fields_into_the_row() -> anyhow::Result<()>
     assert_eq!(item.acceptance_criteria[0], "the receipt is committed");
     Ok(())
 }
+
+#[tokio::test]
+async fn work_add_omits_acceptance_criteria_from_the_yaml_when_none_derived() -> anyhow::Result<()> {
+    let dir = tempfile::TempDir::new()?;
+    let path = dir.path().join("docs/roadmaps/roadmap.yaml");
+    std::fs::create_dir_all(path.parent().ok_or_else(|| anyhow::anyhow!("no parent"))?)?;
+    std::fs::write(
+        &path,
+        "roadmap_version: '1.0'\ngithub_enabled: false\ngithub_repo: null\nroadmap: []\n",
+    )?;
+    super::add_ticket_row_derived(
+        "t".to_string(),
+        None,
+        WorkPriority::Critical,
+        None,
+        Some(dir.path().to_path_buf()),
+        false,
+        None,
+        None,
+        Some(CHILD),
+        false,
+        None,
+        derive_from_body("just prose, no section"),
+    )
+    .await?;
+    let text = std::fs::read_to_string(&path)?;
+    assert!(
+        !text.contains("acceptance_criteria"),
+        "underived criteria must be absent, not []: {text}"
+    );
+    Ok(())
+}

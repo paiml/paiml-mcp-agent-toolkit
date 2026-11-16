@@ -111,8 +111,8 @@ pub struct RoadmapItem {
     /// Path to specification file
     pub spec: Option<PathBuf>,
 
-    /// Acceptance criteria (checklist)
-    #[serde(default)]
+    /// Acceptance criteria (checklist); written only when there is at least one
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub acceptance_criteria: Vec<String>,
 
     /// Phases (for multi-phase work)
