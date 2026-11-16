@@ -1548,6 +1548,42 @@ mod start_ordering_tests {
         let after = service.load().expect("reload").roadmap[0].status;
         assert_eq!(after, before, "a failed start must not move the ticket");
     }
+
+    #[tokio::test]
+    async fn successful_start_stores_in_progress() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("docs/roadmaps/roadmap.yaml");
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        let mut item = RoadmapItem::new("T-2".to_string(), "t two".to_string());
+        item.status = crate::models::roadmap::ItemStatus::Planned;
+        let roadmap = Roadmap {
+            roadmap: vec![item],
+            ..Roadmap::default()
+        };
+        let service = RoadmapService::new(&path);
+        service.save(&roadmap).expect("save roadmap");
+
+        let res = handle_work_start(
+            "T-2".to_string(),
+            false,
+            false,
+            Some(dir.path().to_path_buf()),
+            false,
+            None,
+            vec![],
+            1,
+            vec![],
+            Default::default(),
+            None,
+        )
+        .await;
+        assert!(
+            res.is_ok(),
+            "start of a Planned ticket must succeed: {res:?}"
+        );
+        let after = service.load().expect("reload").roadmap[0].status;
+        assert_eq!(after, crate::models::roadmap::ItemStatus::InProgress);
+    }
 }
 
 #[cfg(test)]

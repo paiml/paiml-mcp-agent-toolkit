@@ -450,30 +450,6 @@
     }
 
     #[tokio::test]
-    async fn test_work_start_with_spec() {
-        use crate::cli::commands::WorkCommands;
-        use tempfile::TempDir;
-
-        let temp_dir = TempDir::new().expect("internal error");
-
-        let command = WorkCommands::Start {
-            id: "GH-123".to_string(),
-            with_spec: true,
-            epic: true,
-            path: Some(temp_dir.path().to_path_buf()),
-            create_github: false,
-            profile: None,
-            without: None,
-            iteration: 1,
-            implements: Vec::new(),
-            agent: Default::default(),
-            level: None,
-        };
-        let result = CommandDispatcher::execute_work_command(&command).await;
-        assert!(result.is_ok() || result.is_err());
-    }
-
-    #[tokio::test]
     async fn test_work_sync_directions() {
         use crate::cli::commands::{SyncDirection, WorkCommands};
         use tempfile::TempDir;

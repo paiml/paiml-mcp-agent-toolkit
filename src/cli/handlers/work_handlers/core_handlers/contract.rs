@@ -40,7 +40,6 @@ pub(super) async fn create_work_contract(
     let baseline_commit = std::process::Command::new("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(project_path)
-        .stdin(std::process::Stdio::null())
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_else(|_| "unknown".to_string());
