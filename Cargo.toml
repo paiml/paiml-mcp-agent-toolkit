@@ -27,7 +27,13 @@ exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions
     "/comprehensive_language_test/", "/artifacts/", "/coverage/", "*.crate",
     # CI definitions: no build.rs or include_str! reads them. 3.42.0 measured
     # 9,385,367 B (8.951 MiB) with them, over the package-size job's 9.0 budget.
-    "/.github/"]
+    "/.github/",
+    # Receipts, agent skill/rule trees, work-tracking contracts, a lockfile for
+    # the deno scripts, bug reports and an unread training corpus: nothing under
+    # build.rs, src/ or an include_str!/include_bytes! reads any of them
+    # (.agents/hooks stays: templates.rs embeds a hook from it).
+    "/fixtures/receipts/", "/.claude/", "/.agents/skills/", "/.agents/rules/",
+    "/contracts/work/", "/deno.lock", "/bug-reports/", "/models/training-data.json"]
 # PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
 # Instead, use explicit [[test]] declarations for unified test binaries
 autotests = false
