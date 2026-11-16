@@ -37,6 +37,7 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             format,
             snapshot,
             backfill,
+            org,
         } => handle_github_command(
             &path,
             repo.as_deref(),
@@ -45,6 +46,7 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             format,
             snapshot.as_deref(),
             backfill,
+            org.as_deref(),
         ),
 
         ComplyCommands::Migrate {

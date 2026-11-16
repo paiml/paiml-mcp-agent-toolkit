@@ -35,6 +35,10 @@ repository(owner:$owner,name:$name){pullRequests(states:MERGED,first:100,after:$
 pageInfo{hasNextPage endCursor} \
 nodes{number title body closingIssuesReferences(first:20){nodes{number repository{nameWithOwner}}}}}}}";
 
+const ORG_REPOS_QUERY: &str = "query($org:String!,$after:String){\
+organization(login:$org){repositories(first:100,after:$after){\
+pageInfo{hasNextPage endCursor} nodes{nameWithOwner isArchived}}}}";
+
 /// One GraphQL round trip, so tests can stand in for GitHub.
 pub trait Graphql {
     fn query(&self, query: &str, vars: &[(&str, &str)]) -> Result<Value>;
@@ -186,6 +190,61 @@ pub fn fetch_merged_prs(g: &dyn Graphql, repo: &str) -> Result<Vec<super::backfi
         }
     }
     Ok(out)
+}
+
+/// `owner/name` of every non-archived repository of `org`. An unreadable organisation
+/// or a node without its flags is an error, never a shorter list.
+pub fn list_org_repos(g: &dyn Graphql, org: &str) -> Result<Vec<String>> {
+    let (mut out, mut after) = (Vec::new(), None::<String>);
+    for _ in 0..MAX_PAGES {
+        let conn = org_page(g, org, after.as_deref())?;
+        push_live_repos(&conn, &mut out)?;
+        match next_cursor(org, &conn)? {
+            Some(c) => after = Some(c),
+            None => return Ok(out),
+        }
+    }
+    bail!("{org}: more than {MAX_PAGES} pages of repositories; not measured")
+}
+
+/// One page of `org`'s `repositories` connection; a reply without it is an error.
+fn org_page(g: &dyn Graphql, org: &str, after: Option<&str>) -> Result<Value> {
+    let mut vars = vec![("org", org)];
+    if let Some(a) = after {
+        vars.push(("after", a));
+    }
+    let v = g.query(ORG_REPOS_QUERY, &vars)?;
+    let conn = &v["data"]["organization"]["repositories"];
+    if conn.is_null() {
+        bail!("{org}: organisation not readable (no `repositories` in the reply)");
+    }
+    Ok(conn.clone())
+}
+
+/// Append the name of every non-archived node of `conn`.
+fn push_live_repos(conn: &Value, out: &mut Vec<String>) -> Result<()> {
+    for n in nodes(conn)? {
+        let name = n["nameWithOwner"].as_str().context("no nameWithOwner")?;
+        if !n["isArchived"].as_bool().context("isArchived missing")? {
+            out.push(name.to_string());
+        }
+    }
+    Ok(())
+}
+
+/// The cursor of the next page, or `None` on the last one.
+fn next_cursor(org: &str, conn: &Value) -> Result<Option<String>> {
+    let more = conn["pageInfo"]["hasNextPage"]
+        .as_bool()
+        .with_context(|| format!("{org}: reply has no pageInfo.hasNextPage; not measured"))?;
+    if !more {
+        return Ok(None);
+    }
+    let cursor = conn["pageInfo"]["endCursor"].as_str().unwrap_or_default();
+    if cursor.is_empty() {
+        bail!("{org}: hasNextPage without endCursor; not measured");
+    }
+    Ok(Some(cursor.to_string()))
 }
 
 fn nodes(page: &Value) -> Result<&Vec<Value>> {
