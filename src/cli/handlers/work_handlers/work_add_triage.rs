@@ -42,6 +42,9 @@ pub struct IssueFacts {
     pub open: bool,
     pub is_pull_request: bool,
     pub labels: Vec<String>,
+    /// The issue body (empty when GitHub sends none): #1414 derives the ticket's
+    /// `spec:` and `acceptance_criteria:` from it.
+    pub body: String,
 }
 
 /// The three GitHub calls the gate and the link need, so tests can stand in
@@ -246,5 +249,59 @@ pub fn parse_issue(body: &str) -> Result<IssueFacts> {
         open: state.eq_ignore_ascii_case("open"),
         is_pull_request: v.get("pull_request").is_some_and(|p| !p.is_null()),
         labels,
+        body: v["body"].as_str().unwrap_or_default().to_string(),
     })
+}
+
+/// What `work add --github-issue` can read off the issue body (#1414).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Derived {
+    /// A spec row the body names, e.g. `ARB-APR-001 row 3`.
+    pub spec: Option<String>,
+    /// The lines under a `done_when` / `Acceptance` heading or key.
+    pub acceptance: Vec<String>,
+}
+
+fn heading_text(line: &str) -> String {
+    line.trim()
+        .trim_start_matches('#')
+        .trim_start_matches(['*', '_', '`', ' '])
+        .to_string()
+}
+
+/// Derive what the body states; a field it does not state stays empty.
+pub fn derive_from_body(body: &str) -> Derived {
+    let spec = regex::Regex::new(r"\b([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d{3,}) row (\d+)\b")
+        .ok()
+        .and_then(|re| {
+            re.captures(body)
+                .map(|c| format!("{} row {}", &c[1], &c[2]))
+        });
+    let mut acceptance = Vec::new();
+    let mut inside = false;
+    for line in body.lines() {
+        let head = heading_text(line);
+        let lower = head.to_ascii_lowercase().replace(' ', "_");
+        if lower.starts_with("done_when") || lower.starts_with("acceptance") {
+            inside = true;
+            let rest = head.split_once(':').map_or("", |(_, r)| r);
+            let rest = rest.trim().trim_matches(['*', '_', '`']).trim();
+            if !rest.is_empty() {
+                acceptance.push(rest.to_string());
+            }
+        } else if inside
+            && (line.trim_start().starts_with('#')
+                || (line.trim().is_empty() && !acceptance.is_empty()))
+        {
+            break;
+        } else if inside && !line.trim().is_empty() {
+            acceptance.push(
+                line.trim()
+                    .trim_start_matches(['-', '*', ' '])
+                    .trim()
+                    .to_string(),
+            );
+        }
+    }
+    Derived { spec, acceptance }
 }
