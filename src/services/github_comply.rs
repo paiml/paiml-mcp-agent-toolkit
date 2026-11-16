@@ -89,7 +89,9 @@ pub struct Policy {
     pub max_open_issues: usize,
     /// R1 target (reported, not enforced).
     pub target_open_issues: usize,
-    /// R2 cap on open non-draft PRs.
+    /// R2 cap on open non-draft, non-exempt PRs (violated only when the count is OVER it). The
+    /// `work start`/`work delegate` guard (GH-1502, `pr_cap`) reads the same number but counts ALL
+    /// open PRs, drafts and exempt included, and refuses AT it.
     pub max_open_prs: usize,
     /// R2 exemptions: a glob (`*` only) matched against the head branch and
     /// each label name.
@@ -281,6 +283,7 @@ pub struct Report {
 }
 
 pub mod backfill;
+pub mod pr_cap;
 mod rules;
 pub mod source;
 pub use rules::*;
