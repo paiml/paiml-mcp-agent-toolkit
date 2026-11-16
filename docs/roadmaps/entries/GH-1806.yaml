@@ -1,0 +1,16 @@
+- id: GH-1806
+  github_issue: 1806
+  item_type: task
+  title: 'deps: cargo train 2026-11-16 (weekly group + grouped swc 27)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-16T00:00:00+00:00
+  updated: 2026-11-16T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
