@@ -2,11 +2,11 @@
   github_issue: 1795
   item_type: task
   title: 'pr_cap guard on work start and work delegate (slice 1 of #1502)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-15T20:38:04+00:00
-  updated: 2026-11-15T21:52:40+00:00
+  updated: 2026-11-16T05:00:00+00:00
   spec: null
   acceptance_criteria: []
   phases: []

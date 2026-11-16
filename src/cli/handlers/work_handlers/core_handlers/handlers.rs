@@ -201,16 +201,6 @@ pub async fn handle_work_start(
         );
     }
 
-    // #1426: one row spliced in; a whole-model save re-quoted every other row.
-    service.upsert_item_in_place(&item)?;
-    println!(
-        "{}",
-        c::pass(&format!(
-            "Updated roadmap: {}",
-            c::path(&roadmap_path.display().to_string())
-        ))
-    );
-
     // `pmat work add --level` records the claim as a `level:<L>` label until the
     // contract exists; an explicit --level on start wins over it.
     let claimed_level = match explicit_level {
@@ -233,6 +223,18 @@ pub async fn handle_work_start(
         claimed_level,
     )
     .await?;
+
+    // #1472: the status write is the LAST state change. A run that fails or is
+    // killed while building the contract must not leave the ticket InProgress.
+    // #1426: one row spliced in; a whole-model save re-quoted every other row.
+    service.upsert_item_in_place(&item)?;
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Updated roadmap: {}",
+            c::path(&roadmap_path.display().to_string())
+        ))
+    );
 
     if with_spec {
         create_spec_if_needed(&project_path, &item, &id, is_github_issue)?;
@@ -1506,6 +1508,83 @@ mod branch_ticket_tests {
                 .success());
         }
         assert_eq!(ticket_from_branch(d), Some("PMAT-123".into()));
+    }
+}
+
+#[cfg(test)]
+mod start_ordering_tests {
+    //! #1472: a `work start` that fails mid-way must not leave the ticket InProgress.
+    use super::*;
+    use crate::models::roadmap::{Roadmap, RoadmapItem};
+
+    #[tokio::test]
+    async fn failed_contract_leaves_ticket_unmoved() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("docs/roadmaps/roadmap.yaml");
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        let item = RoadmapItem::new("T-1".to_string(), "t one".to_string());
+        let before = item.status;
+        let roadmap = Roadmap {
+            roadmap: vec![item],
+            ..Roadmap::default()
+        };
+        let service = RoadmapService::new(&path);
+        service.save(&roadmap).expect("save roadmap");
+
+        // An unresolvable --implements token makes contract creation fail fast.
+        let res = handle_work_start(
+            "T-1".to_string(),
+            false,
+            false,
+            Some(dir.path().to_path_buf()),
+            false,
+            None,
+            vec![],
+            1,
+            vec!["no-such-contract#no_such_equation".to_string()],
+            Default::default(),
+            None,
+        )
+        .await;
+        assert!(res.is_err(), "bogus --implements must fail the start");
+        let after = service.load().expect("reload").roadmap[0].status;
+        assert_eq!(after, before, "a failed start must not move the ticket");
+    }
+
+    #[tokio::test]
+    async fn successful_start_stores_in_progress() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("docs/roadmaps/roadmap.yaml");
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        let mut item = RoadmapItem::new("T-2".to_string(), "t two".to_string());
+        item.status = crate::models::roadmap::ItemStatus::Planned;
+        let roadmap = Roadmap {
+            roadmap: vec![item],
+            ..Roadmap::default()
+        };
+        let service = RoadmapService::new(&path);
+        service.save(&roadmap).expect("save roadmap");
+
+        let res = handle_work_start(
+            "T-2".to_string(),
+            false,
+            false,
+            Some(dir.path().to_path_buf()),
+            false,
+            None,
+            vec![],
+            1,
+            vec![],
+            Default::default(),
+            None,
+        )
+        .await;
+        assert!(
+            res.is_ok(),
+            "start of a Planned ticket must succeed: {res:?}"
+        );
+        let after = service.load().expect("reload").roadmap[0].status;
+        assert_eq!(after, crate::models::roadmap::ItemStatus::InProgress);
     }
 }
 
