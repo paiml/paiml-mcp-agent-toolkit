@@ -39,22 +39,18 @@ impl Graphql for Fake {
     }
 }
 
-fn run(pages: Vec<Vec<&'static str>>) -> OrgReport {
+fn run(pages: Vec<Vec<&'static str>>) -> anyhow::Result<OrgReport> {
     let now = chrono::Utc
         .with_ymd_and_hms(2026, 11, 5, 12, 0, 0)
         .single()
         .unwrap_or_default();
-    let r = evaluate_org(
+    evaluate_org(
         &Fake(pages),
         "acme",
         &Policy::default(),
         &Rule::RECONCILER,
         now,
-    );
-    r.unwrap_or_else(|e| OrgReport {
-        org: format!("{e:#}"),
-        repos: vec![],
-    })
+    )
 }
 
 #[test]
@@ -67,20 +63,22 @@ fn two_pages_are_read_and_archived_repos_are_skipped() {
 }
 
 #[test]
-fn clean_org_is_ok_and_nothing_judged_is_not() {
-    let r = run(vec![vec!["a", "b"]]);
+fn clean_org_is_ok_and_nothing_judged_is_not() -> anyhow::Result<()> {
+    let r = run(vec![vec!["a", "b"]])?;
     assert!(r.ok() && r.counts() == (2, 0, 0));
-    assert!(!run(vec![vec!["old"]]).ok());
-    assert!(!run(vec![vec!["a", "bad"]]).ok());
+    assert!(!run(vec![vec!["old"]])?.ok());
+    assert!(!run(vec![vec!["a", "bad"]])?.ok());
+    Ok(())
 }
 
 #[test]
-fn violation_and_unreadable_repo_are_counted_apart_and_named() {
-    let r = run(vec![vec!["a", "big", "bad"]]);
+fn violation_and_unreadable_repo_are_counted_apart_and_named() -> anyhow::Result<()> {
+    let r = run(vec![vec!["a", "big", "bad"]])?;
     assert!(!r.ok());
     assert_eq!(r.counts(), (1, 1, 1));
     let t = r.render_text();
     assert!(t.contains("acme/bad") && t.contains("not_measured: "));
+    Ok(())
 }
 
 /// A canned org-list reply for the pagination-contract tests.
@@ -118,9 +116,24 @@ fn has_next_page_with_null_or_empty_cursor_is_an_error() {
 }
 
 #[test]
-fn empty_org_says_nothing_was_judged() {
-    let t = run(vec![vec!["old"]]).render_text();
+fn empty_org_says_nothing_was_judged() -> anyhow::Result<()> {
+    let t = run(vec![vec!["old"]])?.render_text();
     assert!(t.contains("no repository was judged"), "{t}");
+    Ok(())
+}
+
+#[test]
+fn hitting_the_page_cap_is_an_error_not_the_partial_list() {
+    let e = list_org_repos(&Fake(vec![vec!["a"]; 51]), "acme").map_err(|e| format!("{e:#}"));
+    assert!(e.is_err_and(|m| m.contains("more than")), "wrong result");
+}
+
+#[test]
+fn a_repo_node_without_is_archived_is_an_error() {
+    let nodes = json!([{"nameWithOwner":"acme/a"}]);
+    let pi = json!({"hasNextPage":false,"endCursor":null});
+    let g = Canned(json!({"data":{"organization":{"repositories":{"pageInfo":pi,"nodes":nodes}}}}));
+    assert!(list_org_repos(&g, "acme").is_err());
 }
 
 #[test]
@@ -134,9 +147,20 @@ fn org_refuses_an_explicit_format_but_parses_alone() {
             let json = parse(&[
                 "pmat", "comply", "github", "--org", "acme", "--format", "json",
             ]);
-            (alone, json)
+            let with = |extra: &[&str]| {
+                let mut a = vec!["pmat", "comply", "github", "--org", "acme"];
+                a.extend_from_slice(extra);
+                parse(&a)
+            };
+            let others = [
+                &["--repo", "o/n"][..],
+                &["--pr", "1"],
+                &["--snapshot", "f"],
+                &["--backfill"],
+            ];
+            (alone, json, others.iter().any(|x| with(x)))
         })
-        .map(|h| h.join().unwrap_or((false, true)))
-        .unwrap_or((false, true));
-    assert_eq!(ok, (true, false));
+        .map(|h| h.join().unwrap_or((false, true, true)))
+        .unwrap_or((false, true, true));
+    assert_eq!(ok, (true, false, false));
 }

@@ -150,10 +150,7 @@ mod github_handler_tests {
 
     #[test]
     fn default_rules_are_the_reconciler_set_and_pr_is_the_pr_check() {
-        assert_eq!(
-            github_rules(None, &[]).expect("fixture"),
-            ghc::Rule::RECONCILER
-        );
+        assert_eq!(github_rules(None, &[]).expect("fixture"), ghc::Rule::RECONCILER);
         assert_eq!(
             github_rules(Some(3), &[]).expect("fixture"),
             [ghc::Rule::R3, ghc::Rule::R6]
@@ -171,9 +168,7 @@ mod github_handler_tests {
         let r = github_report(&p, &snap(101), None, &[], "snapshot-file").expect("fixture");
         assert_eq!(r.source, "snapshot-file");
         assert!(!r.ok());
-        assert!(github_report(&p, &snap(100), None, &[], "x")
-            .expect("fixture")
-            .ok());
+        assert!(github_report(&p, &snap(100), None, &[], "x").expect("fixture").ok());
     }
 
     #[test]
