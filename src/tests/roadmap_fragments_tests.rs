@@ -504,3 +504,55 @@ fn restamp(block: &str) -> String {
         })
         .collect()
 }
+
+/// GH-1700: whether a roadmap line is a plain (unquoted) `title:` scalar holding ` #`.
+/// Every YAML reader cuts such a title at the `#`, because ` #` opens a comment.
+fn is_unquoted_comment_title(line: &str) -> bool {
+    let Some(value) = line.strip_prefix("  title:") else {
+        return false;
+    };
+    let value = value.trim_start();
+    let plain = !value.starts_with(['\'', '"', '|', '>']);
+    plain && value.contains(" #")
+}
+
+#[test]
+fn unquoted_comment_title_detector_cases() {
+    assert!(is_unquoted_comment_title("  title: fix thing #7 now"));
+    assert!(is_unquoted_comment_title("  title: a #"));
+    assert!(!is_unquoted_comment_title("  title: \"fix thing #7 now\""));
+    assert!(!is_unquoted_comment_title("  title: 'fix thing #7 now'"));
+    assert!(!is_unquoted_comment_title("  title: C# and a#b"));
+    assert!(!is_unquoted_comment_title("  title: |"));
+    assert!(!is_unquoted_comment_title("  title: >-"));
+    assert!(!is_unquoted_comment_title(
+        "  title: | # block header comment"
+    ));
+    assert!(!is_unquoted_comment_title(
+        "  title: > # block header comment"
+    ));
+    assert!(!is_unquoted_comment_title("  status: fix #7"));
+}
+
+/// No committed fragment, and not the aggregate, carries an unquoted ` #` title.
+#[test]
+fn no_committed_roadmap_has_an_unquoted_title_holding_a_comment_marker() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/roadmaps");
+    let mut files = vec![root.join("roadmap.yaml")];
+    for entry in std::fs::read_dir(root.join("entries")).expect("entries dir readable") {
+        files.push(entry.expect("dir entry").path());
+    }
+    let (mut bad, mut scanned) = (Vec::new(), 0);
+    for path in &files {
+        let text = std::fs::read_to_string(path);
+        assert!(text.is_ok(), "unreadable roadmap file {}", path.display());
+        scanned += 1;
+        for line in text.unwrap_or_default().lines() {
+            if is_unquoted_comment_title(line) {
+                bad.push(format!("{}: {line}", path.display()));
+            }
+        }
+    }
+    assert!(scanned > 1, "no fragments scanned");
+    assert!(bad.is_empty(), "unquoted ` #` titles: {bad:#?}");
+}

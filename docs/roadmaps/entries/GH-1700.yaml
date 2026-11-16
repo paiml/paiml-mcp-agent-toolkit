@@ -2,13 +2,14 @@
   github_issue: 1700
   item_type: task
   title: 'work sync github-to-yaml writes unquoted titles containing '' #N'', truncating them (YAML comment)'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-11-10T00:00:00.000000000+00:00
-  updated: 2026-11-10T00:00:00.000000000+00:00
+  updated: 2026-11-15T21:00:00.000000000+00:00
   spec: null
-  acceptance_criteria: []
+  acceptance_criteria:
+  - a title with ` #N` round-trips through work sync and no committed fragment carries an unquoted one
   phases: []
   subtasks: []
   estimated_effort: null

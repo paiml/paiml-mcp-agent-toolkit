@@ -86,12 +86,28 @@ pub(crate) fn handle_github_command(
     format: crate::cli::commands::GithubComplyFormat,
     snapshot: Option<&Path>,
     backfill: bool,
+    org: Option<&str>,
 ) -> Result<()> {
-    if backfill {
+    if let Some(org) = org {
+        handle_github_org(path, org, rules)
+    } else if backfill {
         handle_github_backfill(path, repo, format)
     } else {
         handle_github(path, repo, pr, rules, format, snapshot)
     }
+}
+
+/// `pmat comply github --org`: one row per repository; exit 1 unless every one is clean.
+/// Text only for now: clap refuses `--format` together with `--org`.
+pub(crate) fn handle_github_org(path: &Path, org: &str, rules: &[String]) -> Result<()> {
+    let policy = ghc::Policy::load(path, &format!("{org}/*"))?;
+    let (gh, now) = (&ghc_source::GhGraphql, chrono::Utc::now());
+    let report = ghc::org::evaluate_org(gh, org, &policy, &github_rules(None, rules)?, now)?;
+    print!("{}", report.render_text());
+    if !report.ok() {
+        std::process::exit(1);
+    }
+    Ok(())
 }
 
 /// `pmat comply github --backfill`: read open issues and merged PRs over GraphQL and
