@@ -388,7 +388,8 @@ async fn work_add_writes_the_derived_fields_into_the_row() -> anyhow::Result<()>
 }
 
 #[tokio::test]
-async fn work_add_omits_acceptance_criteria_from_the_yaml_when_none_derived() -> anyhow::Result<()> {
+async fn work_add_omits_acceptance_criteria_from_the_yaml_when_none_derived() -> anyhow::Result<()>
+{
     let dir = tempfile::TempDir::new()?;
     let path = dir.path().join("docs/roadmaps/roadmap.yaml");
     std::fs::create_dir_all(path.parent().ok_or_else(|| anyhow::anyhow!("no parent"))?)?;
