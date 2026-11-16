@@ -449,6 +449,48 @@
         assert!(result.is_ok() || result.is_err());
     }
 
+    /// #1472: the dispatcher's Start path with `--with-spec --epic` must create
+    /// the spec file, mark the ticket an Epic and leave it InProgress.
+    #[tokio::test]
+    async fn test_work_start_with_spec() -> anyhow::Result<()> {
+        use crate::cli::commands::WorkCommands;
+        use crate::models::roadmap::{ItemStatus, ItemType, Roadmap, RoadmapItem};
+        use crate::services::roadmap_service::RoadmapService;
+
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("docs/roadmaps/roadmap.yaml");
+        std::fs::create_dir_all(dir.path().join("docs/roadmaps"))?;
+        let mut item = RoadmapItem::new("GH-123".to_string(), "spec ticket".to_string());
+        item.status = ItemStatus::Planned;
+        let service = RoadmapService::new(&path);
+        service.save(&Roadmap {
+            roadmap: vec![item],
+            ..Roadmap::default()
+        })?;
+
+        let command = WorkCommands::Start {
+            id: "GH-123".to_string(),
+            with_spec: true,
+            epic: true,
+            path: Some(dir.path().to_path_buf()),
+            create_github: false,
+            profile: None,
+            without: None,
+            iteration: 1,
+            implements: Vec::new(),
+            agent: Default::default(),
+            level: None,
+        };
+        CommandDispatcher::execute_work_command(&command).await?;
+
+        let spec = dir.path().join("docs/specifications/gh-123-spec.md");
+        assert!(spec.is_file(), "--with-spec must create {}", spec.display());
+        let loaded = service.load()?;
+        assert_eq!(loaded.roadmap[0].status, ItemStatus::InProgress);
+        assert_eq!(loaded.roadmap[0].item_type, ItemType::Epic);
+        Ok(())
+    }
+
     #[tokio::test]
     async fn test_work_sync_directions() {
         use crate::cli::commands::{SyncDirection, WorkCommands};
