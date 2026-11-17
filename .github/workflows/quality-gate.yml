@@ -329,15 +329,21 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+      - name: The check can fail (self-test)
+        run: bash scripts/release-check.sh --self-test
       - name: The declared version is tagged, released and published
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -o pipefail
+          set +e
           bash scripts/release-check.sh 2>&1 | tee release-check.out
+          rc=${PIPESTATUS[0]}
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit "$rc"
       - name: Open or refresh the issue
-        if: failure() && steps.check.outcome == 'failure'
+        # rc 1 = a real miss. rc 3 (registry read failed: not measured) or an empty rc (self-test failed) stay red without a "not published" issue.
+        if: failure() && steps.check.outcome == 'failure' && steps.check.outputs.rc == '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
