@@ -7,7 +7,8 @@
 #
 # Reads the version from Cargo.toml (never a literal). If it is the latest v* tag, exit 0.
 # Otherwise require, in this order, the tag, the GitHub release, and the crates.io version;
-# the first missing one exits 1 naming the version; a failed registry read (http code printed) exits 3 = not measured. Runs on master after merge, never as a
+# the first missing one exits 1 naming the version; a failed registry read (http code printed)
+# exits 3 = not measured. Runs on master after merge, never as a
 # required PR check (a PR is not a release).
 #
 #   bash scripts/release-check.sh                 # judge this checkout
@@ -28,36 +29,45 @@ check_version(){ # $1 version → 0 if fully released, 1 naming the first missin
 
 # Sparse-index path for a crate name: 1 -> 1/, 2 -> 2/, 3 -> 3/<c>/, 4+ -> <cc>/<cc>/.
 index_path(){
-  local n=$1
+  local n=${1,,}
   case ${#n} in
     1) echo "1/$n";; 2) echo "2/$n";; 3) echo "3/${n:0:1}/$n";; *) echo "${n:0:2}/${n:2:2}/$n";;
   esac
 }
 
-# Fetch the sparse-index file for $CRATE into $1; print the HTTP code (000 = no answer).
-# CRATES_INDEX_FIXTURE=<dir> replaces the network (self-test): <dir>/$CRATE is the body,
-# <dir>/$CRATE.status the code (default 200; absent body = 404).
+# Fetch the sparse-index file for $CRATE into $1; print "<http code> <curl exit status>"
+# (code 000 = no answer). CRATES_INDEX_FIXTURE=<dir> replaces the network (self-test):
+# <dir>/$CRATE is the body, <dir>/$CRATE.status the code (default 200; absent body = 404),
+# <dir>/$CRATE.curl the simulated curl exit status (default 0).
 index_fetch(){
+  local code crc=0
   if [ -n "${CRATES_INDEX_FIXTURE:-}" ]; then
-    local f="$CRATES_INDEX_FIXTURE/$CRATE" s="$CRATES_INDEX_FIXTURE/$CRATE.status"
-    if [ -f "$s" ]; then cat "$s"; return 0; fi
-    if [ -f "$f" ]; then cp "$f" "$1"; echo 200; else echo 404; fi
-    return 0
+    local f="$CRATES_INDEX_FIXTURE/$CRATE" s="$CRATES_INDEX_FIXTURE/$CRATE.status" c="$CRATES_INDEX_FIXTURE/$CRATE.curl"
+    [ -f "$c" ] && crc=$(cat "$c")
+    if [ -f "$s" ]; then code=$(cat "$s"); elif [ -f "$f" ]; then cp "$f" "$1"; code=200; else code=404; fi
+    echo "$code $crc"; return 0
   fi
-  curl -s --max-time 20 -o "$1" -w '%{http_code}' -H "User-Agent: release-check ($REPO)" \
-    "${CRATES_INDEX_URL:-https://index.crates.io}/$(index_path "$CRATE")" 2>/dev/null || true
+  code=$(curl -s --max-time 20 -o "$1" -w '%{http_code}' -H "User-Agent: release-check ($REPO)" \
+    "${CRATES_INDEX_URL:-https://index.crates.io}/$(index_path "$CRATE")" 2>/dev/null) || crc=$?
+  echo "${code:-000} $crc"
 }
 
-# The registry leg. Exit 0 published; 1 a real miss (index read 200, version absent or yanked);
-# 3 the read itself failed after retries: NOT MEASURED, never reported as "not published".
+# The registry leg. Exit 0 published; 1 a real miss (a complete index read: curl exit 0, http 200,
+# non-empty parsable body; version absent or yanked); 3 the read itself failed after retries
+# (curl error, non-200, empty or unparsable body): NOT MEASURED, never reported as "not published".
 crates_leg(){ # $1 version
-  local v=$1 try code="000" body verdict
+  local v=$1 try code="000" crc=0 body verdict why="" res
   body=$(mktemp)
   for try in 1 2 3; do
-    : > "$body"; code=$(index_fetch "$body")
-    if [ "$code" = "200" ] && verdict=$(jq -rs --arg v "$v" \
+    : > "$body"; res=$(index_fetch "$body"); code=${res% *}; crc=${res#* }
+    if [ "$crc" != 0 ]; then why="http $code, curl $crc"
+    elif [ "$code" != 200 ]; then why="http $code"
+    elif [ ! -s "$body" ]; then why="http 200, empty body"
+    elif ! verdict=$(jq -rs --arg v "$v" \
         'map(select(.vers == $v)) | if length == 0 then "absent" elif any(.[]; .yanked | not) then "ok" else "yanked" end' "$body" 2>/dev/null); then
-      rm -f "$body"
+      why="http 200, unparsable body"
+    else
+      rm -f "${body:?}"
       case $verdict in
         ok) return 0;;
         yanked) echo "FAIL: release-check: $v is yanked on crates.io (index http 200)"; return 1;;
@@ -66,10 +76,15 @@ crates_leg(){ # $1 version
     fi
     [ "$try" -lt 3 ] && sleep "${RELEASE_CHECK_RETRY_PAUSE:-5}"
   done
-  rm -f "$body"
-  echo "FAIL: release-check: could not read the crates.io index for $CRATE (http ${code:-000}): not measured"
+  rm -f "${body:?}"
+  echo "FAIL: release-check: could not read the crates.io index for $CRATE ($why): not measured"
   return 3
 }
+
+# The fixture hook is for --self-test only; a real run must never read it.
+if [ -n "${CRATES_INDEX_FIXTURE:-}" ] && [ "${1:-}" != "--self-test" ]; then
+  echo "FAIL: release-check: CRATES_INDEX_FIXTURE is set outside --self-test: not measured"; exit 3
+fi
 
 if [ "${1:-}" = "--self-test" ]; then
   # The control: a version that exists nowhere must fail at the tag leg, and — with a
@@ -99,9 +114,15 @@ if [ "${1:-}" = "--self-test" ]; then
   rm -f "$FX/fx.status"; printf 'not json\n' > "$FX/fx"
   rc=0; out=$(crates_leg 9.9.9 2>&1) || rc=$?
   { [ "$rc" = 3 ] && grep -q 'not measured' <<<"$out"; } || fail "self-test: unparsable index rc=$rc: $out"
+  : > "$FX/fx"; rc=0; out=$(crates_leg 9.9.9 2>&1) || rc=$?
+  { [ "$rc" = 3 ] && grep -q 'http 200, empty body): not measured' <<<"$out" && ! grep -q 'not on crates.io' <<<"$out"; } || fail "self-test: empty 200 body rc=$rc: $out"
+  printf '{"name":"fx","vers":"9.9.8","yanked":false}\n' > "$FX/fx"; echo 18 > "$FX/fx.curl"
+  rc=0; out=$(crates_leg 9.9.9 2>&1) || rc=$?
+  { [ "$rc" = 3 ] && grep -q 'http 200, curl 18): not measured' <<<"$out" && ! grep -q 'not on crates.io' <<<"$out"; } || fail "self-test: truncated transfer rc=$rc: $out"
+  rm -f "${FX:?}/fx.curl"
   rm -f "$FX/fx"; rc=0; out=$(crates_leg 9.9.9 2>&1) || rc=$?
   { [ "$rc" = 3 ] && grep -q 'http 404): not measured' <<<"$out"; } || fail "self-test: missing index file rc=$rc: $out"
-  echo "SELF-TEST PASSED: tag and release legs fired on a 9.9.9 fixture; registry leg: present ok, absent rc=1, yanked rc=1, refused/unparsable/404 read rc=3 (not measured)"
+  echo "SELF-TEST PASSED: tag and release legs fired on a 9.9.9 fixture; registry leg: present ok, absent rc=1, yanked rc=1, refused/unparsable/404/empty/truncated read rc=3 (not measured)"
   exit 0
 fi
 
