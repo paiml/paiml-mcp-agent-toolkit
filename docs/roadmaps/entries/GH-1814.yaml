@@ -1,0 +1,20 @@
+- id: GH-1814
+  github_issue: 1814
+  item_type: task
+  title: 'cargo deny red on master: RUSTSEC-2026-0544 libz-sys bump + RUSTSEC-2026-0543 chrono bounded ignore row'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-17T00:00:00+00:00
+  updated: 2026-11-17T00:00:00+00:00
+  spec: null
+  acceptance_criteria:
+  - cargo deny check exits 0 on master
+  - the chrono ignore row carries a review-by date and a bounding test goes red once the date has passed or chrono leaves Cargo.lock
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1645
