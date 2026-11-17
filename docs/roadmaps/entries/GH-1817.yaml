@@ -1,0 +1,18 @@
+- id: GH-1817
+  github_issue: 1817
+  item_type: task
+  title: 'chrono (RUSTSEC-2026-0543): decide migrate or accept, on or before 2026-12-17'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-17T00:00:00+00:00
+  updated: 2026-11-17T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1645
