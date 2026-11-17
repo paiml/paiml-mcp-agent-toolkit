@@ -1,7 +1,7 @@
 - id: GH-1814
   github_issue: 1814
   item_type: task
-  title: 'cargo deny red on master: RUSTSEC-2026-0544 libz-sys bump + RUSTSEC-2026-0543 chrono bounded ignore row'
+  title: 'cargo deny red on master: RUSTSEC-2026-0544 libz-sys bump + RUSTSEC-2026-0543 chrono (dated bounded row + bounding test)'
   status: inprogress
   priority: high
   assigned_to: null

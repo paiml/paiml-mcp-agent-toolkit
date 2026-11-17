@@ -1,0 +1,18 @@
+- id: GH-1818
+  github_issue: 1818
+  item_type: task
+  title: 'deny.toml: remove 6 ignore rows that match no crate; keep the 0543 row in the shared source'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-17T00:00:00+00:00
+  updated: 2026-11-17T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1645
