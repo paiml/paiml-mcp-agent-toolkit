@@ -785,10 +785,6 @@ path = "tests/init_workspace_t.rs"
 name = "falsification_version_identifies_the_binary"
 path = "tests/falsification_version_identifies_the_binary.rs"
 
-[[test]]
-name = "falsification_chrono_0543_ignore_is_bounded"
-path = "tests/falsification_chrono_0543_ignore_is_bounded.rs"
-
 # Examples for deterministic MCP agents course
 [[example]]
 name = "scaffold_agent_basics"

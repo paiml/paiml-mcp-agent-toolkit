@@ -3,16 +3,18 @@
 //! several dependencies, so it cannot be dropped in one change. `deny.toml` and
 //! `.cargo/audit.toml` carry ONE dated ignore for that id (#1814).
 //!
-//! The ignore is only honest while it is bounded; this test pins it:
+//! The ignore is only honest while it is bounded; these tests pin it:
 //!
 //! * PRESENT exactly while chrono is locked: the row must go when chrono leaves
 //!   `Cargo.lock`, and must exist while it is there.
-//! * EXPIRING: the row carries `review by YYYY-MM-DD`; once that date has
-//!   passed the test is red until a person re-reviews and moves the date.
-//! * IN SYNC: both files carry the id with the identical reason text, and the
-//!   chrono version named in the reason equals `Cargo.lock`.
+//! * EXPIRING: the row carries `added YYYY-MM-DD` and `review by YYYY-MM-DD`;
+//!   the review date must lie within 45 days of the added date (so a far-future
+//!   date cannot pass) and must not be in the past.
+//! * IN SYNC: both files carry the id with the identical reason text, and every
+//!   chrono version in `Cargo.lock` is named in the reason.
 //!
 //! Reads files only: no network, no advisory database, no cargo subprocess.
+//! Registered from `lib.rs` so the `cargo test --lib` job runs it.
 
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,14 +22,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const ID: &str = "RUSTSEC-2026-0543";
 const CRATE: &str = "chrono";
 const REVIEW_MARK: &str = "review by ";
+const ADDED_MARK: &str = "added ";
+const MAX_WINDOW_DAYS: i64 = 45;
 
 fn read(rel: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
 }
 
-/// Version of `CRATE` locked in the given `Cargo.lock` text, if any.
-fn locked_version(lock: &str) -> Option<String> {
+/// Every version of `CRATE` locked in the given `Cargo.lock` text.
+fn locked_versions(lock: &str) -> Vec<String> {
+    let mut out = Vec::new();
     for block in lock.split("[[package]]").skip(1) {
         let mut name = None;
         let mut version = None;
@@ -39,10 +44,10 @@ fn locked_version(lock: &str) -> Option<String> {
             }
         }
         if name.as_deref() == Some(CRATE) {
-            return version;
+            out.extend(version);
         }
     }
-    None
+    out
 }
 
 /// The reason text of the deny.toml row for `ID`, if the row exists.
@@ -76,9 +81,9 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     era * 146_097 + doe - 719_468
 }
 
-/// The `YYYY-MM-DD` after `review by ` in a reason, as days since the epoch.
-fn review_by_days(reason: &str) -> Option<i64> {
-    let date = reason.split(REVIEW_MARK).nth(1)?.get(..10)?;
+/// The `YYYY-MM-DD` right after `mark` in a reason, as days since the epoch.
+fn date_after(reason: &str, mark: &str) -> Option<i64> {
+    let date = reason.split(mark).nth(1)?.get(..10)?;
     let mut parts = date.split('-').map(|p| p.parse::<i64>());
     let (y, m, d) = (
         parts.next()?.ok()?,
@@ -102,34 +107,44 @@ fn today_days() -> i64 {
 /// Pure check so it can be exercised against doctored inputs and a forced date.
 /// `Ok(())` means the ignore is still bounded; `Err` names what is wrong.
 fn bounded(lock: &str, deny: &str, audit: &str, today: i64) -> Result<(), String> {
-    let locked = locked_version(lock);
-    let reason = deny_reason(deny);
-    match (&locked, &reason) {
-        (None, None) => return Ok(()),
-        (None, Some(_)) => {
-            return Err(format!(
+    let versions = locked_versions(lock);
+    let Some(reason) = deny_reason(deny) else {
+        return if versions.is_empty() {
+            Ok(())
+        } else {
+            Err(format!("{CRATE} is locked but deny.toml has no {ID} row"))
+        };
+    };
+    if versions.is_empty() {
+        return Err(format!(
             "{CRATE} is not in Cargo.lock: delete the {ID} rows (deny.toml and .cargo/audit.toml)"
-        ))
-        }
-        (Some(_), None) => return Err(format!("{CRATE} is locked but deny.toml has no {ID} row")),
-        _ => {}
+        ));
     }
-    let (version, reason) = (locked.unwrap(), reason.unwrap());
     if audit_reason(audit).as_deref() != Some(reason.as_str()) {
         return Err(format!(
             "{ID} in .cargo/audit.toml is missing or differs from deny.toml"
         ));
     }
-    if !reason.contains(&format!("{CRATE} {version}:")) {
-        return Err(format!("reason does not name the locked {CRATE} {version}"));
+    for v in &versions {
+        if !reason.contains(&format!("{CRATE} {v}")) {
+            return Err(format!("reason does not name the locked {CRATE} {v}"));
+        }
     }
-    match review_by_days(&reason) {
-        None => Err(format!("reason carries no valid `{REVIEW_MARK}YYYY-MM-DD` date")),
-        Some(due) if due < today => Err(format!(
+    let due = date_after(&reason, REVIEW_MARK)
+        .ok_or_else(|| format!("reason carries no valid `{REVIEW_MARK}YYYY-MM-DD` date"))?;
+    let added = date_after(&reason, ADDED_MARK)
+        .ok_or_else(|| format!("reason carries no valid `{ADDED_MARK}YYYY-MM-DD` date"))?;
+    if due > added + MAX_WINDOW_DAYS {
+        return Err(format!(
+            "review-by is more than {MAX_WINDOW_DAYS} days after the row was added"
+        ));
+    }
+    if due < today {
+        return Err(format!(
             "the {ID} row passed its review-by date: re-review it, or fix the root cause and delete it"
-        )),
-        Some(_) => Ok(()),
+        ));
     }
+    Ok(())
 }
 
 fn files() -> (String, String, String) {
@@ -152,8 +167,8 @@ fn the_ignore_row_is_bounded_today() {
 fn the_row_is_present_while_chrono_is_locked() {
     let (lock, deny, audit) = files();
     assert!(
-        locked_version(&lock).is_some(),
-        "{CRATE} left Cargo.lock: delete the row and this test"
+        !locked_versions(&lock).is_empty(),
+        "{CRATE} left Cargo.lock: delete the row and this module"
     );
     assert!(deny_reason(&deny).is_some(), "deny.toml lost the {ID} row");
     assert!(
@@ -166,7 +181,7 @@ fn the_row_is_present_while_chrono_is_locked() {
 fn the_check_is_red_once_the_review_by_date_has_passed() {
     let (lock, deny, audit) = files();
     let reason = deny_reason(&deny).expect("row present");
-    let due = review_by_days(&reason).expect("row carries a review-by date");
+    let due = date_after(&reason, REVIEW_MARK).expect("row carries a review-by date");
     assert!(
         bounded(&lock, &deny, &audit, due).is_ok(),
         "due day itself is still in bounds"
@@ -200,6 +215,16 @@ fn the_check_is_red_when_the_row_is_missing_or_the_files_drift() {
 }
 
 #[test]
+fn a_far_future_review_by_date_is_red() {
+    let (lock, deny, audit) = files();
+    let far = |s: &str| s.replace("review by 2026-12-17", "review by 2099-12-17");
+    assert!(
+        bounded(&lock, &far(&deny), &far(&audit), today_days()).is_err(),
+        "a 2099 review-by date must not pass"
+    );
+}
+
+#[test]
 fn a_row_that_outlives_chrono_is_red() {
     let (lock, deny, audit) = files();
     let gone = lock.replace("name = \"chrono\"", "name = \"not-chrono\"");
@@ -210,21 +235,25 @@ fn a_row_that_outlives_chrono_is_red() {
 }
 
 #[test]
-fn the_reason_version_must_match_cargo_lock() {
+fn every_locked_chrono_version_must_be_named_in_the_reason() {
     let (lock, deny, audit) = files();
-    let version = locked_version(&lock).expect("chrono locked");
+    let version = locked_versions(&lock).remove(0);
     let bumped = lock.replacen(
         &format!("version = \"{version}\""),
         "version = \"0.4.99\"",
         1,
     );
-    assert_eq!(
-        locked_version(&bumped).as_deref(),
-        Some("0.4.99"),
-        "doctoring hit chrono"
-    );
     assert!(
         bounded(&bumped, &deny, &audit, today_days()).is_err(),
         "stale version in the reason"
+    );
+    let second = format!("{lock}\n[[package]]\nname = \"chrono\"\nversion = \"0.3.0\"\n");
+    assert_eq!(
+        locked_versions(&second).len(),
+        locked_versions(&lock).len() + 1
+    );
+    assert!(
+        bounded(&second, &deny, &audit, today_days()).is_err(),
+        "a second chrono must be named too"
     );
 }
