@@ -334,10 +334,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -o pipefail
+          bash scripts/release-check.sh --self-test
+          set +e
           bash scripts/release-check.sh 2>&1 | tee release-check.out
+          rc=${PIPESTATUS[0]}
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit "$rc"
       - name: Open or refresh the issue
-        if: failure() && steps.check.outcome == 'failure'
+        # rc 3 = the registry read failed (not measured): the job stays red, but no "not published" issue.
+        if: failure() && steps.check.outcome == 'failure' && steps.check.outputs.rc != '3'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
