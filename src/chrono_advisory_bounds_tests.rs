@@ -27,7 +27,9 @@ const MAX_WINDOW_DAYS: i64 = 45;
 
 fn read(rel: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))
+        .expect("the files this check pins must be readable")
 }
 
 /// Every version of `CRATE` locked in the given `Cargo.lock` text.
@@ -158,9 +160,7 @@ fn files() -> (String, String, String) {
 #[test]
 fn the_ignore_row_is_bounded_today() {
     let (lock, deny, audit) = files();
-    if let Err(why) = bounded(&lock, &deny, &audit, today_days()) {
-        panic!("{why}");
-    }
+    assert_eq!(bounded(&lock, &deny, &audit, today_days()), Ok(()));
 }
 
 #[test]
