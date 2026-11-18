@@ -143,6 +143,81 @@ fn inv_mut_1_a_timeout_is_not_a_kill() {
     assert_eq!(v.fired(), vec!["INV-MUT-1"]);
 }
 
+// ── INV-MUT-2: a measured zero (GH-1840) ───────────────────────────────────
+
+const SRC_DIFF: &str = "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1 +1 @@\n-a\n+b\n";
+
+/// `listed_from` is the diff recorded beside the listing; `judged` the diff run.
+fn gate_with_diff(
+    listing: Option<&str>,
+    listed_from: Option<&str>,
+    judged: &str,
+) -> MutationGateVerdict {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let diff = dir.path().join("pr.diff");
+    std::fs::write(&diff, judged).expect("write diff");
+    for (name, body) in [
+        (MUTANTS_LISTING_FILE, listing),
+        (MUTANTS_LISTING_DIFF_FILE, listed_from),
+    ] {
+        if let Some(b) = body {
+            std::fs::write(dir.path().join(name), b).expect("write");
+        }
+    }
+    run_mutation_gate(dir.path(), Some(&diff))
+}
+
+#[test]
+fn inv_mut_2_an_empty_listing_of_this_diff_is_a_measured_pass() {
+    let v = gate_with_diff(Some("[]\n"), Some(SRC_DIFF), SRC_DIFF);
+    assert!(v.passed, "{:?}", v.findings);
+    assert!(v.summary.contains("0 mutants"), "{}", v.summary);
+}
+
+#[test]
+fn inv_mut_2_a_listing_not_taken_from_this_diff_proves_nothing() {
+    let other = "--- a/src/o.rs\n+++ b/src/o.rs\n@@ -1 +1 @@\n-a\n+b\n";
+    assert!(
+        !gate_with_diff(Some("[]"), Some(other), SRC_DIFF).passed,
+        "stale"
+    );
+    assert!(
+        !gate_with_diff(Some("[]"), None, SRC_DIFF).passed,
+        "unbound"
+    );
+    assert!(
+        !gate_with_diff(None, Some(SRC_DIFF), SRC_DIFF).passed,
+        "no listing"
+    );
+}
+
+#[test]
+fn inv_mut_2_a_nonempty_or_junk_listing_still_fails() {
+    for l in ["[{\"name\":\"x\"}]", "", "not json", "{}", "null"] {
+        let v = gate_with_diff(Some(l), Some(SRC_DIFF), SRC_DIFF);
+        assert!(!v.passed, "{l:?}");
+        assert_eq!(v.fired(), vec!["INV-MUT-2"]);
+    }
+}
+
+/// Edits that can empty the selection themselves never excuse an empty listing:
+/// skip attributes (also aliased), and mutants.toml touched by ---/+++, rename or copy.
+#[test]
+fn inv_mut_2_an_empty_listing_does_not_excuse_a_selection_edit() {
+    let edits = [
+        "+#[mutants::skip]\n".to_string(),
+        "+use mutants as m;\n+#[m::skip]\n".to_string(),
+        "--- a/.cargo/mutants.toml\n+++ b/.cargo/mutants.toml\n@@ -1 +1 @@\n-x\n+y\n".to_string(),
+        "similarity index 90%\nrename from old.toml\nrename to .cargo/mutants.toml\n".to_string(),
+        "similarity index 90%\ncopy from old.toml\ncopy to mutants.toml\n".to_string(),
+    ];
+    for e in edits {
+        let d = format!("{SRC_DIFF}{e}");
+        let v = gate_with_diff(Some("[]"), Some(&d), &d);
+        assert!(!v.passed, "{e}");
+    }
+}
+
 // ── INV-MUT-2 ──────────────────────────────────────────────────────────────
 
 /// The measured behaviour that makes this invariant necessary: cargo-mutants
