@@ -26,21 +26,7 @@ pub async fn handle_work_add(
         println!("linked #{} under epic #{}", triaged.child, triaged.epic);
     }
     let tags = work_add_triage::tags_with_kind(tags.as_deref(), triaged.kind);
-    let derived = work_add_triage::derive_from_body(
-        &work_add_triage::EpicLinks::issue(&links, triaged.child)?.body,
-    );
-    for (field, missing) in [
-        ("spec", derived.spec.is_none()),
-        ("acceptance_criteria", derived.acceptance.is_empty()),
-    ] {
-        if missing {
-            eprintln!(
-                "note: {field} not derived: issue #{} names none (#1414)",
-                triaged.child
-            );
-        }
-    }
-    add_ticket_row_derived(
+    add_ticket_row(
         title,
         description,
         triaged.priority,
@@ -52,7 +38,6 @@ pub async fn handle_work_add(
         github_issue,
         sequential_id,
         Some(triaged.epic),
-        derived,
     )
     .await
 }
@@ -110,39 +95,6 @@ pub async fn add_ticket_row(
     sequential_id: bool,
     epic: Option<u64>,
 ) -> Result<()> {
-    add_ticket_row_derived(
-        title,
-        description,
-        priority,
-        tags,
-        path,
-        create_github,
-        level,
-        explicit_id,
-        github_issue,
-        sequential_id,
-        epic,
-        work_add_triage::Derived::default(),
-    )
-    .await
-}
-
-/// [`add_ticket_row`] plus what the issue body stated (#1414): `spec:` and
-/// `acceptance_criteria:` come from it; `--description` is the fallback criterion.
-pub async fn add_ticket_row_derived(
-    title: String,
-    description: Option<String>,
-    priority: crate::cli::commands::WorkPriority,
-    tags: Option<String>,
-    path: Option<PathBuf>,
-    create_github: bool,
-    level: Option<String>,
-    explicit_id: Option<String>,
-    github_issue: Option<u64>,
-    sequential_id: bool,
-    epic: Option<u64>,
-    derived: work_add_triage::Derived,
-) -> Result<()> {
     let claimed = level
         .as_deref()
         .map(crate::cli::handlers::work_contract::parse_level_arg)
@@ -156,15 +108,10 @@ pub async fn add_ticket_row_derived(
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     let item_priority = priority.to_roadmap_priority();
     let item_title = title.clone();
-    let acceptance_criteria = if derived.acceptance.is_empty() {
-        description
-            .as_ref()
-            .map(|d| vec![d.clone()])
-            .unwrap_or_default()
-    } else {
-        derived.acceptance
-    };
-    let spec = derived.spec.map(PathBuf::from);
+    let acceptance_criteria = description
+        .as_ref()
+        .map(|d| vec![d.clone()])
+        .unwrap_or_default();
     let labels = ticket_labels(tags.as_deref(), claimed);
 
     // PMAT-673 (#1193, #1169): mint the id and write the item under ONE
@@ -184,7 +131,7 @@ pub async fn add_ticket_row_derived(
         assigned_to: None,
         created: now.clone(),
         updated: now,
-        spec,
+        spec: None,
         acceptance_criteria,
         phases: vec![],
         subtasks: vec![],
