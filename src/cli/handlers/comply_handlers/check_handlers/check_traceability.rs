@@ -78,7 +78,7 @@ fn pull_request_verdict(
     use crate::models::comply_config::CheckSeverity;
     use crate::services::commit_traceability as ct;
     let literal = "CB-2113: Commit Traceability";
-        let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { &merge_base };
+        let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { merge_base };
         if commits == 0 {
             ComplianceCheck {
                 name: literal.to_string(),
