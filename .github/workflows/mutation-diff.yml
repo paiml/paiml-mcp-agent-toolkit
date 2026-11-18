@@ -83,6 +83,14 @@ on:
   schedule:
     # 03:17 UTC, off the hour to avoid the top-of-hour scheduling queue.
     - cron: '0 2 * * *'
+  # Manual run of the same script (GH-1840): lets the --list path be exercised
+  # on demand without a PR trigger (LAB rule: never inside a PR job).
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'git ref to diff against'
+        default: 'origin/master'
+        required: false
 
 concurrency:
   group: mutation-diff-${{ github.event.pull_request.number || github.ref }}
@@ -103,7 +111,7 @@ jobs:
   # Re-arm: close the ticket. On a hosted runner because the clean-room
   # container image ships no `gh` and no `jq`.
   arm:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -126,10 +134,10 @@ jobs:
           fi
 
   mutation-diff:
-    # Nightly schedule only (infra#3828). Any other event is refused here as well as in `on:`.
+    # Nightly schedule or manual dispatch only (infra#3828). Any other event is refused here as well as in `on:`.
     # Skipped (not red) when `arm` found the 7-day stop.
     needs: arm
-    if: github.event_name == 'schedule' && needs.arm.outputs.run == 'true'
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && needs.arm.outputs.run == 'true'
     runs-on: [self-hosted, X64, Linux, clean-room]
     container:
       image: localhost:5000/sovereign-ci:stable

@@ -119,7 +119,7 @@ cmd_run() {
 
     # See the header: cargo-mutants does not clear this itself, and a stale
     # all-caught report is indistinguishable from a real one.
-    rm -rf mutants.out mutants.out.old mutants-listing.json
+    rm -rf mutants.out mutants.out.old mutants-listing.json mutants-listing.diff
 
     local rc=0
     set +e
@@ -161,9 +161,24 @@ cmd_run() {
     # (INFO "No mutants to filter", exit 0) — indistinguishable from a crash.
     # Prove the empty selection with --list; the gate honours it only when no
     # artifact exists and the listing is exactly `[]` (GH-1840).
+    # Measured on cargo-mutants 27.1.0 (gx10): for an empty selection `--list
+    # --json` exits 0, prints NOTHING on stdout (not `[]`) and logs "No mutants
+    # to filter" on stderr. `[]` is written only on that exact evidence; any
+    # other output is kept as is and the gate fails closed on it.
     if [ ! -f mutants.out/outcomes.json ]; then
+        local lerr lrc=0
+        lerr="$(mktemp)"
         cargo mutants --list --json --cargo-arg=--lib --in-diff "$diff" \
-            >mutants-listing.json 2>/dev/null || rm -f mutants-listing.json
+            >mutants-listing.json 2>"$lerr" || lrc=$?
+        if [ "$lrc" -ne 0 ]; then
+            rm -f mutants-listing.json
+        elif [ ! -s mutants-listing.json ] && grep -q 'No mutants to filter' "$lerr"; then
+            printf '[]\n' >mutants-listing.json
+        fi
+        rm -f "${lerr:?}"
+        # Bind the listing to the diff it was taken from; the gate refuses a
+        # listing whose recorded diff differs from the one it judges.
+        cp "$diff" mutants-listing.diff
     fi
 
     judge "$diff"

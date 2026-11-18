@@ -196,6 +196,7 @@ proptest-regressions/
 mutants.out/
 mutants.out.old/
 mutants-listing.json
+mutants-listing.diff
 mutants-out/
 mutation_results/
 mutation_test_results/

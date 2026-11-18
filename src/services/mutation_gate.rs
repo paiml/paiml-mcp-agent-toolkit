@@ -628,26 +628,37 @@ fn verdict(findings: Vec<GateFinding>, caught: u64, total: u64) -> MutationGateV
 #[must_use]
 pub fn run_mutation_gate(project_path: &Path, diff_path: Option<&Path>) -> MutationGateVerdict {
     let excludes = load_exclude_globs(project_path);
-    let scope = match diff_path {
-        None => DiffScope::Unknown,
-        Some(p) => match std::fs::read_to_string(p) {
-            Ok(text) => classify_diff(&text, &excludes),
-            // An unreadable diff is an unmeasurable scope: fail closed by
-            // treating it as unknown rather than as "nothing changed".
-            Err(_) => DiffScope::Unknown,
-        },
-    };
+    // An unreadable diff is an unmeasurable scope: fail closed by treating it
+    // as unknown rather than as "nothing changed".
+    let diff_text = diff_path.and_then(|p| std::fs::read_to_string(p).ok());
+    let scope = diff_text
+        .as_deref()
+        .map_or(DiffScope::Unknown, |t| classify_diff(t, &excludes));
     let dir = outcomes_dir_for(project_path);
     match read_outcomes_dir(&dir) {
         Ok(o) => evaluate_mutation_gate(Some(&o), &scope),
-        Err(_) => evaluate_without_artifact(project_path, &scope),
+        Err(_) => evaluate_without_artifact(project_path, &scope, diff_text.as_deref()),
     }
 }
 
 /// No artifact: fail closed unless `cargo mutants --list` proved the diff
 /// selects zero mutants, in which case zero were required and zero ran.
-fn evaluate_without_artifact(project_path: &Path, scope: &DiffScope) -> MutationGateVerdict {
-    if matches!(scope, DiffScope::MutableRustSource(_)) && listed_zero_mutants(project_path) {
+///
+/// The empty listing only counts when it was taken from THIS diff
+/// ([`MUTANTS_LISTING_DIFF_FILE`] equals it) and the diff does not itself edit
+/// what cargo-mutants selects with (`mutants::skip`, any `mutants.toml`): in
+/// that case `[]` can be the change's own doing, not a property of the code.
+fn evaluate_without_artifact(
+    project_path: &Path,
+    scope: &DiffScope,
+    diff_text: Option<&str>,
+) -> MutationGateVerdict {
+    let proven = diff_text
+        .is_some_and(|d| listing_taken_from(project_path, d) && !diff_edits_mutant_selection(d));
+    if matches!(scope, DiffScope::MutableRustSource(_))
+        && proven
+        && listed_zero_mutants(project_path)
+    {
         return MutationGateVerdict {
             passed: true,
             findings: Vec::new(),
@@ -662,6 +673,27 @@ fn evaluate_without_artifact(project_path: &Path, scope: &DiffScope) -> Mutation
 /// File (next to `mutants.out/`) the script writes from `cargo mutants --list
 /// --json --in-diff`. Only an exactly-empty JSON array counts as proof.
 pub const MUTANTS_LISTING_FILE: &str = "mutants-listing.json";
+
+/// Copy of the diff the listing was taken from, written by the script beside it.
+pub const MUTANTS_LISTING_DIFF_FILE: &str = "mutants-listing.diff";
+
+fn listing_taken_from(project_path: &Path, diff_text: &str) -> bool {
+    std::fs::read_to_string(project_path.join(MUTANTS_LISTING_DIFF_FILE))
+        .is_ok_and(|t| t == diff_text)
+}
+
+/// True when the diff adds or removes a `mutants::skip` attribute line, or
+/// touches any `mutants.toml` (`.cargo/mutants.toml` included): such a change
+/// can empty the selection by itself, so `[]` proves nothing about the code.
+fn diff_edits_mutant_selection(diff_text: &str) -> bool {
+    diff_text.lines().any(|l| {
+        if let Some(path) = l.strip_prefix("+++ ").or_else(|| l.strip_prefix("--- ")) {
+            let path = path.split('\t').next().unwrap_or(path).trim();
+            return path.rsplit('/').next() == Some("mutants.toml");
+        }
+        (l.starts_with('+') || l.starts_with('-')) && l.contains("mutants::skip")
+    })
+}
 
 fn listed_zero_mutants(project_path: &Path) -> bool {
     std::fs::read_to_string(project_path.join(MUTANTS_LISTING_FILE))

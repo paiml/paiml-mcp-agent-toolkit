@@ -146,17 +146,63 @@ fn inv_mut_1_a_timeout_is_not_a_kill() {
 // ── INV-MUT-2: a measured zero (GH-1840) ───────────────────────────────────
 
 fn gate_in(listing: Option<&str>, diff_file: &str) -> MutationGateVerdict {
+    let text = format!("--- a/{diff_file}\n+++ b/{diff_file}\n@@ -1 +1 @@\n-a\n+b\n");
+    gate_with_diff(listing, Some(&text), &text)
+}
+
+/// `listed_from` is the diff text recorded beside the listing (None: not
+/// written); `judged` is the diff the gate is run over.
+fn gate_with_diff(
+    listing: Option<&str>,
+    listed_from: Option<&str>,
+    judged: &str,
+) -> MutationGateVerdict {
     let dir = tempfile::tempdir().expect("tempdir");
     let diff = dir.path().join("pr.diff");
-    std::fs::write(
-        &diff,
-        format!("--- a/{diff_file}\n+++ b/{diff_file}\n@@ -1 +1 @@\n-a\n+b\n"),
-    )
-    .expect("write diff");
+    std::fs::write(&diff, judged).expect("write diff");
     if let Some(l) = listing {
         std::fs::write(dir.path().join(MUTANTS_LISTING_FILE), l).expect("write listing");
     }
+    if let Some(d) = listed_from {
+        std::fs::write(dir.path().join(MUTANTS_LISTING_DIFF_FILE), d).expect("write listing diff");
+    }
     run_mutation_gate(dir.path(), Some(&diff))
+}
+
+const SRC_DIFF: &str = "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1 +1 @@\n-a\n+b\n";
+
+/// A `[]` listing is only proof for the diff it was taken from.
+#[test]
+fn inv_mut_2_a_listing_not_taken_from_this_diff_proves_nothing() {
+    let other = "--- a/src/other.rs\n+++ b/src/other.rs\n@@ -1 +1 @@\n-a\n+b\n";
+    assert!(
+        !gate_with_diff(Some("[]"), Some(other), SRC_DIFF).passed,
+        "stale listing"
+    );
+    assert!(
+        !gate_with_diff(Some("[]"), None, SRC_DIFF).passed,
+        "unbound listing"
+    );
+}
+
+/// A change that adds `#[mutants::skip]` can empty the selection itself.
+#[test]
+fn inv_mut_2_an_empty_listing_does_not_excuse_a_mutants_skip_edit() {
+    let d = format!("{SRC_DIFF}+#[mutants::skip]\n");
+    let v = gate_with_diff(Some("[]"), Some(&d), &d);
+    assert!(!v.passed);
+    assert_eq!(v.fired(), vec!["INV-MUT-2"]);
+}
+
+/// Editing any cargo-mutants config can empty the selection itself.
+#[test]
+fn inv_mut_2_an_empty_listing_does_not_excuse_a_mutants_config_edit() {
+    for cfg in ["mutants.toml", ".cargo/mutants.toml"] {
+        let d =
+            format!("{SRC_DIFF}--- a/{cfg}\n+++ b/{cfg}\n@@ -1 +1 @@\n-x\n+exclude_re = [\".\"]\n");
+        let v = gate_with_diff(Some("[]"), Some(&d), &d);
+        assert!(!v.passed, "{cfg}");
+    }
 }
 
 /// A diff may touch a mutable file (a `mod` line in lib.rs) and still select no
