@@ -42,8 +42,8 @@ pub struct IssueFacts {
     pub open: bool,
     pub is_pull_request: bool,
     pub labels: Vec<String>,
-    /// The issue body (empty when GitHub sends none): #1414 derives the ticket's
-    /// `spec:` and `acceptance_criteria:` from it.
+    /// The issue body (empty when GitHub sends none): slice 2 (#1831) will derive
+    /// the ticket `spec:` and `acceptance_criteria:` from it.
     pub body: String,
 }
 
@@ -253,7 +253,7 @@ pub fn parse_issue(body: &str) -> Result<IssueFacts> {
     })
 }
 
-/// What `work add --github-issue` can read off the issue body (#1414).
+/// What `derive_from_body` reads off the issue body.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Derived {
     /// A spec row the body names, e.g. `ARB-APR-001 row 3`.
