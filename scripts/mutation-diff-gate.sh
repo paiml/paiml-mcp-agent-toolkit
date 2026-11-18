@@ -119,7 +119,7 @@ cmd_run() {
 
     # See the header: cargo-mutants does not clear this itself, and a stale
     # all-caught report is indistinguishable from a real one.
-    rm -rf mutants.out mutants.out.old
+    rm -rf mutants.out mutants.out.old mutants-listing.json
 
     local rc=0
     set +e
@@ -156,6 +156,15 @@ cmd_run() {
         0 | 2) : ;;
         *) die "cargo mutants exited $rc, so the run did not complete; see mutants.out/debug.log" ;;
     esac
+
+    # cargo-mutants writes no outcomes.json when the diff selects zero mutants
+    # (INFO "No mutants to filter", exit 0) — indistinguishable from a crash.
+    # Prove the empty selection with --list; the gate honours it only when no
+    # artifact exists and the listing is exactly `[]` (GH-1840).
+    if [ ! -f mutants.out/outcomes.json ]; then
+        cargo mutants --list --json --cargo-arg=--lib --in-diff "$diff" \
+            >mutants-listing.json 2>/dev/null || rm -f mutants-listing.json
+    fi
 
     judge "$diff"
 }

@@ -195,6 +195,7 @@ proptest-regressions/
 # Mutation testing output
 mutants.out/
 mutants.out.old/
+mutants-listing.json
 mutants-out/
 mutation_results/
 mutation_test_results/

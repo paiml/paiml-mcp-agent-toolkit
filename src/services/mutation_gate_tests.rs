@@ -143,6 +143,54 @@ fn inv_mut_1_a_timeout_is_not_a_kill() {
     assert_eq!(v.fired(), vec!["INV-MUT-1"]);
 }
 
+// ── INV-MUT-2: a measured zero (GH-1840) ───────────────────────────────────
+
+fn gate_in(listing: Option<&str>, diff_file: &str) -> MutationGateVerdict {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let diff = dir.path().join("pr.diff");
+    std::fs::write(
+        &diff,
+        format!("--- a/{diff_file}\n+++ b/{diff_file}\n@@ -1 +1 @@\n-a\n+b\n"),
+    )
+    .expect("write diff");
+    if let Some(l) = listing {
+        std::fs::write(dir.path().join(MUTANTS_LISTING_FILE), l).expect("write listing");
+    }
+    run_mutation_gate(dir.path(), Some(&diff))
+}
+
+/// A diff may touch a mutable file (a `mod` line in lib.rs) and still select no
+/// mutant: cargo-mutants prints "No mutants to filter", exits 0, writes no
+/// outcomes.json. `--list` proving the selection is empty is a measured zero.
+#[test]
+fn inv_mut_2_a_listed_empty_selection_is_a_measured_pass() {
+    let v = gate_in(Some("[]\n"), "src/lib.rs");
+    assert!(v.passed, "{:?}", v.findings);
+    assert!(v.summary.contains("0 mutants"), "{}", v.summary);
+}
+
+#[test]
+fn inv_mut_2_no_artifact_and_no_listing_still_fails() {
+    let v = gate_in(None, "src/lib.rs");
+    assert!(!v.passed);
+    assert_eq!(v.fired(), vec!["INV-MUT-2"]);
+}
+
+#[test]
+fn inv_mut_2_no_artifact_with_a_nonempty_listing_still_fails() {
+    let v = gate_in(Some("[{\"name\":\"x\"}]"), "src/lib.rs");
+    assert!(!v.passed, "mutants existed but nothing ran");
+    assert_eq!(v.fired(), vec!["INV-MUT-2"]);
+}
+
+#[test]
+fn inv_mut_2_an_unreadable_listing_still_fails() {
+    for junk in ["", "not json", "{}", "null"] {
+        let v = gate_in(Some(junk), "src/lib.rs");
+        assert!(!v.passed, "listing {junk:?} proves nothing");
+    }
+}
+
 // ── INV-MUT-2 ──────────────────────────────────────────────────────────────
 
 /// The measured behaviour that makes this invariant necessary: cargo-mutants
