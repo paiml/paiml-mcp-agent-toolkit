@@ -330,7 +330,6 @@ fn judge_commit(
     roadmap_map: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
     open_at_base: &std::collections::HashSet<String>,
 ) -> Vec<Finding> {
-    use crate::models::roadmap::ItemStatus;
     let finding = |violation| Finding {
         hash: hash.to_string(),
         subject: subject.to_string(),
@@ -347,23 +346,27 @@ fn judge_commit(
     ids.into_iter()
         .filter_map(|id| match roadmap_map.get(id) {
             None => Some(finding(Violation::UnknownTicket(id.to_string()))),
-            // Terminal states, spelled as the roadmap serialises them
-            // (`ItemStatus` is `rename_all = "lowercase"`).
-            Some(ItemStatus::Completed) if !open_at_base.contains(id) => {
-                Some(finding(Violation::TerminalTicket {
-                    id: id.to_string(),
-                    status: "completed".to_string(),
-                }))
-            }
-            Some(ItemStatus::Cancelled) if !open_at_base.contains(id) => {
-                Some(finding(Violation::TerminalTicket {
-                    id: id.to_string(),
-                    status: "cancelled".to_string(),
-                }))
-            }
-            Some(_) => None,
+            Some(status) => terminal_status(status)
+                .filter(|_| !open_at_base.contains(id))
+                .map(|status| {
+                    finding(Violation::TerminalTicket {
+                        id: id.to_string(),
+                        status: status.to_string(),
+                    })
+                }),
         })
         .collect()
+}
+
+/// A terminal status spelled as the roadmap serialises it (`ItemStatus` is
+/// `rename_all = "lowercase"`); `None` for an open one.
+fn terminal_status(status: &crate::models::roadmap::ItemStatus) -> Option<&'static str> {
+    use crate::models::roadmap::ItemStatus;
+    match status {
+        ItemStatus::Completed => Some("completed"),
+        ItemStatus::Cancelled => Some("cancelled"),
+        _ => None,
+    }
 }
 
 fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
