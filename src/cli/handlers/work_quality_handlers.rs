@@ -10,6 +10,67 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+use std::time::Duration;
+
+/// Default wall-clock budget for one quality-gate step (#1267).
+const GATE_STEP_BUDGET_SECS: u64 = 120;
+
+/// Per-step budget: `PMAT_WORK_GATE_TIMEOUT_SECS` seconds, `0` = unbounded,
+/// unset or unparsable = the default.
+fn parse_gate_budget(raw: Option<&str>) -> Option<Duration> {
+    match raw.and_then(|v| v.trim().parse::<u64>().ok()) {
+        Some(0) => None,
+        Some(n) => Some(Duration::from_secs(n)),
+        None => Some(Duration::from_secs(GATE_STEP_BUDGET_SECS)),
+    }
+}
+
+fn gate_budget() -> Option<Duration> {
+    parse_gate_budget(std::env::var("PMAT_WORK_GATE_TIMEOUT_SECS").ok().as_deref())
+}
+
+/// Run a child to completion within `budget`. `None` means it was still running
+/// at the deadline and was killed (our own child only): the step is NOT MEASURED.
+fn run_bounded_status(
+    cmd: &mut std::process::Command,
+    budget: Option<Duration>,
+) -> Result<Option<std::process::ExitStatus>> {
+    let mut child = cmd.spawn().context("Failed to spawn gate step")?;
+    let Some(budget) = budget else {
+        return Ok(Some(child.wait()?));
+    };
+    let deadline = std::time::Instant::now() + budget;
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(Some(status));
+        }
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(None);
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+/// Run one gate step. A timeout is reported as NOT MEASURED and does not fail the
+/// gate (the old behaviour hung past 2 min and left `--skip-quality` as the only
+/// way to close a ticket); it is never reported as a pass.
+fn gate_step(cmd: &mut std::process::Command, what: &str) -> Result<Option<bool>> {
+    match run_bounded_status(cmd, gate_budget())? {
+        Some(status) => Ok(Some(status.success())),
+        None => {
+            println!(
+                "      {}",
+                c::warn(&format!(
+                    "{what}: NOT MEASURED (exceeded budget; set PMAT_WORK_GATE_TIMEOUT_SECS, 0 = unbounded)"
+                ))
+            );
+            Ok(None)
+        }
+    }
+}
+
 /// Run git-aware tests for changed modules.
 /// Returns true if tests passed or were skipped.
 fn run_changed_module_tests(project_path: &PathBuf) -> Result<bool> {
@@ -39,19 +100,23 @@ fn run_changed_module_tests(project_path: &PathBuf) -> Result<bool> {
     let test_cmd = crate::services::git_test_filter::build_test_command(&modules)
         .unwrap_or_else(|| vec!["test".into(), "--lib".into(), "--quiet".into()]);
 
-    let status = Command::new("cargo")
-        .args(&test_cmd)
-        .arg("--quiet")
-        .current_dir(project_path)
-        .status()
-        .context("Failed to run cargo test")?;
-
-    if status.success() {
-        println!("      {}", c::pass("Tests passed"));
-        Ok(true)
-    } else {
-        println!("      {}", c::fail("Tests failed"));
-        Ok(false)
+    let outcome = gate_step(
+        Command::new("cargo")
+            .args(&test_cmd)
+            .arg("--quiet")
+            .current_dir(project_path),
+        "Tests",
+    )?;
+    match outcome {
+        Some(true) => {
+            println!("      {}", c::pass("Tests passed"));
+            Ok(true)
+        }
+        Some(false) => {
+            println!("      {}", c::fail("Tests failed"));
+            Ok(false)
+        }
+        None => Ok(true),
     }
 }
 
@@ -71,17 +136,18 @@ fn run_rust_project_checks(project_path: &PathBuf) -> Result<bool> {
     let examples_dir = project_path.join("examples");
     if examples_dir.exists() && examples_dir.is_dir() {
         println!("      {}", c::dim("Checking examples..."));
-        let status = Command::new("cargo")
-            .args(["test", "--examples", "--no-run"])
-            .current_dir(project_path)
-            .status()
-            .context("Failed to run cargo test --examples")?;
-
-        if status.success() {
-            println!("      {}", c::pass("Examples compile"));
-        } else {
-            println!("      {}", c::fail("Examples failed to compile"));
-            passed = false;
+        match gate_step(
+            Command::new("cargo")
+                .args(["test", "--examples", "--no-run"])
+                .current_dir(project_path),
+            "Examples",
+        )? {
+            Some(true) => println!("      {}", c::pass("Examples compile")),
+            Some(false) => {
+                println!("      {}", c::fail("Examples failed to compile"));
+                passed = false;
+            }
+            None => {}
         }
     }
 
@@ -171,18 +237,21 @@ fn run_clippy_check(project_path: &PathBuf) -> Result<bool> {
     use std::process::Command;
 
     println!("   {}", c::dim("Running clippy..."));
-    let status = Command::new("cargo")
-        .args(["clippy", "--lib", "--quiet", "--", "-D", "warnings"])
-        .current_dir(project_path)
-        .status()
-        .context("Failed to run cargo clippy")?;
-
-    if status.success() {
-        println!("      {}", c::pass("No clippy warnings"));
-        Ok(true)
-    } else {
-        println!("      {}", c::fail("Clippy warnings found"));
-        Ok(false)
+    match gate_step(
+        Command::new("cargo")
+            .args(["clippy", "--lib", "--quiet", "--", "-D", "warnings"])
+            .current_dir(project_path),
+        "Clippy",
+    )? {
+        Some(true) => {
+            println!("      {}", c::pass("No clippy warnings"));
+            Ok(true)
+        }
+        Some(false) => {
+            println!("      {}", c::fail("Clippy warnings found"));
+            Ok(false)
+        }
+        None => Ok(true),
     }
 }
 
@@ -558,6 +627,51 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_status_kills_a_child_that_outlives_its_budget() {
+        let mut cmd = std::process::Command::new("sleep");
+        cmd.arg("30");
+        let t = std::time::Instant::now();
+        let out = run_bounded_status(&mut cmd, Some(std::time::Duration::from_millis(200)))
+            .expect("spawn");
+        assert!(
+            out.is_none(),
+            "a timed-out gate step is NOT MEASURED, not a status"
+        );
+        assert!(t.elapsed().as_secs() < 10, "must return near the budget");
+    }
+
+    #[test]
+    fn bounded_status_returns_the_status_of_a_fast_child() {
+        let mut cmd = std::process::Command::new("true");
+        let st = run_bounded_status(&mut cmd, Some(std::time::Duration::from_secs(30)))
+            .expect("spawn")
+            .expect("finished");
+        assert!(st.success());
+        let mut cmd = std::process::Command::new("false");
+        let st = run_bounded_status(&mut cmd, None)
+            .expect("spawn")
+            .expect("finished");
+        assert!(!st.success());
+    }
+
+    #[test]
+    fn gate_budget_parses_default_override_and_unbounded() {
+        assert_eq!(
+            parse_gate_budget(None),
+            Some(std::time::Duration::from_secs(120))
+        );
+        assert_eq!(
+            parse_gate_budget(Some("45")),
+            Some(std::time::Duration::from_secs(45))
+        );
+        assert_eq!(parse_gate_budget(Some("0")), None);
+        assert_eq!(
+            parse_gate_budget(Some("junk")),
+            Some(std::time::Duration::from_secs(120))
+        );
+    }
 
     fn trend(values: &[f64]) -> (tempfile::TempDir, std::path::PathBuf) {
         let dir = tempfile::tempdir().expect("tempdir");
