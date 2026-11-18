@@ -105,8 +105,8 @@ pub struct Measurement {
     pub commits: usize,
     /// Of those, how many carry at least one `Pmat-Ticket:` trailer.
     pub trailered: usize,
-    /// Untrailered commits authored by a GitHub app account (GH-1356): counted
-    /// and named in the verdict, never judged.
+    /// Untrailered commits whose author email is on the exemption list
+    /// (GH-1356): counted, not judged. The email is self-asserted.
     pub bot_exempt: usize,
     pub findings: Vec<Finding>,
 }
@@ -276,16 +276,36 @@ fn count_trailered(log: &str) -> (usize, usize) {
     (commits, trailered)
 }
 
-/// GitHub mints `<id>+<app>[bot]@users.noreply.github.com` for app accounts
-/// only (GH-1356). The exemption is reported in the verdict, never silent.
+/// The exact author emails whose untrailered commits are exempt (GH-1356).
+/// Git does not verify an author email, so anyone who sets one of these is
+/// exempt too; nothing else is accepted, not even another `[bot]` address.
+const EXEMPT_BOT_EMAILS: &[&str] = &["49699333+dependabot[bot]@users.noreply.github.com"];
+
+/// Whether `email` is exactly one of `EXEMPT_BOT_EMAILS` (case-insensitive).
+/// The exemption count is named in the Pass message only.
 fn is_bot_email(email: &str) -> bool {
-    email
-        .trim()
-        .to_ascii_lowercase()
-        .ends_with("[bot]@users.noreply.github.com")
+    let email = email.trim();
+    EXEMPT_BOT_EMAILS
+        .iter()
+        .any(|e| e.eq_ignore_ascii_case(email))
 }
 
-/// One `git log` line → (hash, subject, ticket ids, authored by a bot).
+/// The exemption holds only for a commit with no trace of a ticket trailer or
+/// a co-author in its message: a malformed, misplaced or empty `Pmat-Ticket:`
+/// line, or a `Co-authored-by:` line, makes it an ordinary commit again.
+/// Whether an untrailered commit is exempt: listed author email, clean message.
+fn exempt_bot(project_path: &Path, bot: bool, hash: &str) -> bool {
+    bot && message_has_no_trace(project_path, hash)
+}
+
+fn message_has_no_trace(project_path: &Path, hash: &str) -> bool {
+    run_git(project_path, &["show", "-s", "--format=%B", hash]).is_ok_and(|m| {
+        let m = m.to_ascii_lowercase();
+        !m.contains("pmat-ticket") && !m.contains("co-authored-by")
+    })
+}
+
+/// One `git log` line → (hash, subject, ticket ids, author email on the exemption list).
 fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>, bool)> {
     let parts: Vec<&str> = line.split('\x1f').collect();
     if parts.len() < 2 {
@@ -391,10 +411,11 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         .load()
         .map_err(|e| format!("roadmap parse error: {}", e))?;
 
-    let mut roadmap_map = std::collections::HashMap::new();
-    for item in roadmap.roadmap {
-        roadmap_map.insert(item.id, item.status);
-    }
+    let roadmap_map: std::collections::HashMap<_, _> = roadmap
+        .roadmap
+        .into_iter()
+        .map(|item| (item.id, item.status))
+        .collect();
 
     let mut commits = 0;
     let mut trailered = 0;
@@ -410,7 +431,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
             let Some((hash, subject, ids, bot)) = parse_log_line(line) else {
                 continue;
             };
-            if ids.is_empty() && bot {
+            if ids.is_empty() && exempt_bot(project_path, bot, &hash) {
                 bot_exempt += 1;
             } else if ids.is_empty() {
                 findings.push(Finding {

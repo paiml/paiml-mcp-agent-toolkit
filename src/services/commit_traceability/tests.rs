@@ -104,18 +104,17 @@ fn control_a_trailered_feature_commit_measures_clean() {
 const BOT: &str = "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>";
 
 fn bot_commit(dir: &Path, author: &str) {
-    git(
-        dir,
-        &[
-            "commit",
-            "-q",
-            "--allow-empty",
-            "-m",
-            "deps: bump x",
-            "--author",
-            author,
-        ],
-    );
+    bot_commit_with(dir, author, &["deps: bump x"]);
+}
+
+/// One empty commit by `author`; each `msgs` entry is one paragraph.
+fn bot_commit_with(dir: &Path, author: &str, msgs: &[&str]) {
+    let mut args = vec!["commit", "-q", "--allow-empty"];
+    for m in msgs {
+        args.extend(["-m", m]);
+    }
+    args.extend(["--author", author]);
+    git(dir, &args);
 }
 
 #[test]
@@ -149,6 +148,54 @@ fn a_bot_lookalike_name_with_a_human_email_is_not_exempt() {
     bot_commit(dir.path(), "dependabot[bot] <mallory@example.invalid>");
     let m = measure_against(dir.path(), None).expect("measured");
     assert_eq!((m.bot_exempt, m.findings.len()), (0, 1), "{m:?}");
+}
+
+/// Every row here is refused: the exemption is the one exact identity, and only
+/// for a commit with no trace of a trailer or a co-author.
+#[test]
+fn the_exemption_refuses_every_row_but_the_exact_identity() {
+    let rows: &[(&str, &str, &[&str])] = &[
+        (
+            "another app",
+            "renovate[bot] <49699333+renovate[bot]@users.noreply.github.com>",
+            &["deps: bump x"],
+        ),
+        (
+            "other bot, no id",
+            "x[bot] <x[bot]@users.noreply.github.com>",
+            &["deps: bump x"],
+        ),
+        (
+            "same app, no id",
+            "dependabot[bot] <dependabot[bot]@users.noreply.github.com>",
+            &["deps: bump x"],
+        ),
+        (
+            "same app, other id",
+            "dependabot[bot] <1+dependabot[bot]@users.noreply.github.com>",
+            &["deps: bump x"],
+        ),
+        ("empty trailer", BOT, &["deps: bump x", "Pmat-Ticket:"]),
+        (
+            "trailer not in last paragraph",
+            BOT,
+            &["deps: bump x", "Pmat-Ticket: PMAT-001", "last paragraph"],
+        ),
+        (
+            "human co-author",
+            BOT,
+            &["deps: bump x", "Co-authored-by: Human <h@example.invalid>"],
+        ),
+    ];
+    for (name, author, msgs) in rows {
+        let dir = repo();
+        on_feature(dir.path());
+        bot_commit_with(dir.path(), author, msgs);
+        let m = measure_against(dir.path(), None).expect("measured");
+        assert_eq!(m.bot_exempt, 0, "{name}: {m:?}");
+        assert_eq!(m.findings.len(), 1, "{name}: {m:?}");
+        assert!(!m.clean(), "{name}");
+    }
 }
 
 // ── the §7 falsifier: a commit with no trailer ──────────────────────────────

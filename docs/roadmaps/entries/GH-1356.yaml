@@ -9,7 +9,7 @@
   updated: 2026-11-18T00:00:00+00:00
   spec: null
   acceptance_criteria:
-  - an untrailered commit authored by a GitHub bot account is counted and named, never judged
+  - an untrailered commit whose author email is on the exact exemption list is counted and named, not judged
   - human commits in the same range are still judged
   phases: []
   subtasks: []

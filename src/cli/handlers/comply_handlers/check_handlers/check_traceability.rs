@@ -99,7 +99,7 @@ fn pr_check(
             name: literal.to_string(),
             status: CheckStatus::Fail,
             severity: CheckSeverity::Error.into(),
-            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}", m.findings.len(), m.commits, mb7, base, joined, traceability_remedy(&m.findings)),
+            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}{}", m.findings.len(), m.commits, mb7, base, joined, traceability_remedy(&m.findings), exempt_note(m.bot_exempt)),
         }
     }
 }
@@ -129,7 +129,7 @@ fn pass_message(m: &crate::services::commit_traceability::Measurement, mb7: &str
     if m.bot_exempt == 0 {
         return format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item", m.commits, mb7, base);
     }
-    format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item; {} authored by a GitHub bot account (exempt)", m.trailered, m.commits, mb7, base, m.bot_exempt)
+    format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item; {} with an exempt-listed bot author email (exempt, unverified)", m.trailered, m.commits, mb7, base, m.bot_exempt)
 }
 
 /// What to do about the violations present — one clause per kind, so a trailer
@@ -162,4 +162,12 @@ fn traceability_remedy(findings: &[crate::services::commit_traceability::Finding
         clauses.push("work belongs to an open item: leave a ticket open in its own PR, and let the next ticket's PR mark it completed");
     }
     clauses.join("; ")
+}
+
+/// The Fail-message tail naming exempted bot commits, so they are never silent.
+fn exempt_note(bot_exempt: usize) -> String {
+    if bot_exempt == 0 {
+        return String::new();
+    }
+    format!("; {bot_exempt} commit(s) with an exempt-listed bot author email (exempt, unverified)")
 }

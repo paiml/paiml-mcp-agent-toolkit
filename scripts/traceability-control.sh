@@ -149,7 +149,7 @@ fgit commit -q --allow-empty -m "deps: bump x" --author "dependabot[bot] <496993
 run_gate
 [ "$RC" -eq 0 ] || fail_arm 6 "an untrailered bot-authored commit must exit 0"
 [ "$STATUS" = "Pass" ] || fail_arm 6 "CB-2113 must be Pass for a bot-only range"
-case "$MESSAGE" in *"1 authored by a GitHub bot account (exempt)"*) ;; *) fail_arm 6 "the message must name the exemption count";; esac
+case "$MESSAGE" in *"1 with an exempt-listed bot author email (exempt, unverified)"*) ;; *) fail_arm 6 "the message must name the exemption count";; esac
 echo "traceability-control: arm 6 GREEN — bot commit exempt, exemption named (exit 0)"
 fgit commit -q --allow-empty -m "feat: human, no trailer"
 bad=$(fgit rev-parse --short=7 HEAD)
