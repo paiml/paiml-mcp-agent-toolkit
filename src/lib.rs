@@ -676,3 +676,10 @@ mod dependency_policy_tests;
 // `cargo test --lib -- make_gate_tests`.
 #[cfg(all(test, feature = "standard-deps"))]
 mod make_gate_tests;
+
+// RUSTSEC-2026-0543 (chrono unmaintained): the one dated ignore row in deny.toml and
+// .cargo/audit.toml is bounded by these checks (#1814). A lib-test module, not a file under
+// `tests/`: the required CI job runs `cargo test --lib` and nothing else, so an integration
+// target would never run. `cargo test --lib -- chrono_advisory_bounds_tests`.
+#[cfg(test)]
+mod chrono_advisory_bounds_tests;

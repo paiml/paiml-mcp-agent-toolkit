@@ -1,0 +1,18 @@
+- id: GH-1820
+  github_issue: 1820
+  item_type: task
+  title: 'release-check: failed gh release view must read not-measured, not ''no GitHub release'''
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-17T00:00:00+00:00
+  updated: 2026-11-17T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1788
