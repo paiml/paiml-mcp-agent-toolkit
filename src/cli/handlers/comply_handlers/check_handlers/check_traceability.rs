@@ -62,7 +62,7 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                         since.unwrap_or_else(|| "the root commit".to_string())
                     ),
                 },
-                Range::PullRequest { base, merge_base } => pull_request_verdict(&m, &base, &merge_base),
+                Range::PullRequest { base, merge_base } => pull_request_verdict(m.commits, &m.findings, &base, &merge_base),
             }
         }
     }
@@ -70,7 +70,8 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
 
 /// The PullRequest-range verdict: nothing to judge, all traced, or the findings.
 fn pull_request_verdict(
-    m: &crate::services::commit_traceability::Measurement,
+    commits: usize,
+    findings: &[crate::services::commit_traceability::Finding],
     base: &str,
     merge_base: &str,
 ) -> ComplianceCheck {
@@ -78,23 +79,23 @@ fn pull_request_verdict(
     use crate::services::commit_traceability as ct;
     let literal = "CB-2113: Commit Traceability";
         let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { &merge_base };
-        if m.commits == 0 {
+        if commits == 0 {
             ComplianceCheck {
                 name: literal.to_string(),
                 status: CheckStatus::Pass,
                 severity: CheckSeverity::Info.into(),
                 message: format!("0 non-merge commit(s) in {}..HEAD (base {}): nothing to judge — measured, not skipped", mb7, base),
             }
-        } else if m.findings.is_empty() {
+        } else if findings.is_empty() {
             ComplianceCheck {
                 name: literal.to_string(),
                 status: CheckStatus::Pass,
                 severity: CheckSeverity::Info.into(),
-                message: format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item", m.commits, mb7, base),
+                message: format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item", commits, mb7, base),
             }
         } else {
             let mut msgs = vec![];
-            for f in m.findings.iter().take(8) {
+            for f in findings.iter().take(8) {
                 let hash7 = if f.hash.len() > 7 { &f.hash[..7] } else { &f.hash };
                 match &f.violation {
                     ct::Violation::NoTrailer => {
@@ -109,14 +110,14 @@ fn pull_request_verdict(
                 }
             }
             let mut joined = msgs.join("; ");
-            if m.findings.len() > 8 {
-                joined.push_str(&format!(" (+{} more)", m.findings.len() - 8));
+            if findings.len() > 8 {
+                joined.push_str(&format!(" (+{} more)", findings.len() - 8));
             }
             ComplianceCheck {
                 name: literal.to_string(),
                 status: CheckStatus::Fail,
                 severity: CheckSeverity::Error.into(),
-                message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}", m.findings.len(), m.commits, mb7, base, joined, traceability_remedy(&m.findings)),
+                message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}", findings.len(), commits, mb7, base, joined, traceability_remedy(findings)),
             }
         }
 }
