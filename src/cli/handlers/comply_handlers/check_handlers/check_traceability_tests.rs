@@ -232,4 +232,34 @@ mod tests_traceability {
             checks[0].message
         );
     }
+
+    /// GH-1356: a Fail message still names the exempted bot commits.
+    #[test]
+    fn a_fail_names_the_exempt_bot_commits() {
+        let dir = repo_with_roadmap();
+        git(dir.path(), &["switch", "-q", "-c", "feature"]);
+        git(
+            dir.path(),
+            &[
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                "deps: bump x",
+                "--author",
+                "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+            ],
+        );
+        git(dir.path(), &["commit", "-q", "--allow-empty", "-m", "human, no trailer"]);
+        let checks = build_traceability_checks(
+            dir.path(),
+            &crate::models::comply_config::ComplyConfig::default(),
+        );
+        assert_eq!(checks[0].status, CheckStatus::Fail);
+        assert!(
+            checks[0].message.contains("1 commit(s) with an exempt-listed bot author email"),
+            "{}",
+            checks[0].message
+        );
+    }
 }

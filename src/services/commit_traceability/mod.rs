@@ -282,7 +282,7 @@ fn count_trailered(log: &str) -> (usize, usize) {
 const EXEMPT_BOT_EMAILS: &[&str] = &["49699333+dependabot[bot]@users.noreply.github.com"];
 
 /// Whether `email` is exactly one of `EXEMPT_BOT_EMAILS` (case-insensitive).
-/// The exemption count is named in the Pass message only.
+/// The exemption count is named in the Pass message and in a Fail message's tail.
 fn is_bot_email(email: &str) -> bool {
     let email = email.trim();
     EXEMPT_BOT_EMAILS
@@ -290,10 +290,10 @@ fn is_bot_email(email: &str) -> bool {
         .any(|e| e.eq_ignore_ascii_case(email))
 }
 
+/// Whether an untrailered commit is exempt: listed author email, clean message.
 /// The exemption holds only for a commit with no trace of a ticket trailer or
 /// a co-author in its message: a malformed, misplaced or empty `Pmat-Ticket:`
 /// line, or a `Co-authored-by:` line, makes it an ordinary commit again.
-/// Whether an untrailered commit is exempt: listed author email, clean message.
 fn exempt_bot(project_path: &Path, bot: bool, hash: &str) -> bool {
     bot && message_has_no_trace(project_path, hash)
 }
@@ -306,20 +306,28 @@ fn message_has_no_trace(project_path: &Path, hash: &str) -> bool {
 }
 
 /// One `git log` line → (hash, subject, ticket ids, author email on the exemption list).
+///
+/// The line is `%ae \x1f %H \x1f trailers \x1f %s`: the author email is the
+/// FIRST field and the subject the LAST, taken as the remainder of a 4-way
+/// `splitn`, so a `\x1f` byte inside a subject can never reach the email slot.
 fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>, bool)> {
-    let parts: Vec<&str> = line.split('\x1f').collect();
-    if parts.len() < 2 {
-        return None;
-    }
-    let ids = parts
-        .get(2)
-        .map_or("", |t| t.trim())
+    let mut parts = line.splitn(4, '\x1f');
+    let email = parts.next()?;
+    let hash = parts.next()?;
+    let trailers = parts.next()?;
+    let subject = parts.next()?;
+    let ids = trailers
+        .trim()
         .split(',')
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
         .collect();
-    let bot = parts.get(3).is_some_and(|e| is_bot_email(e));
-    Some((parts[0].to_string(), parts[1].to_string(), ids, bot))
+    Some((
+        hash.to_string(),
+        subject.to_string(),
+        ids,
+        is_bot_email(email),
+    ))
 }
 
 /// The violation, if any, that one trailer id commits against the roadmap.
@@ -401,7 +409,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         &[
             "log",
             "--no-merges",
-            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)%x1f%ae",
+            "--format=%ae%x1f%H%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)%x1f%s",
             &format!("{merge_base}..HEAD"),
         ],
     )?;

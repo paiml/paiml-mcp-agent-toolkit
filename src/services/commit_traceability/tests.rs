@@ -150,6 +150,19 @@ fn a_bot_lookalike_name_with_a_human_email_is_not_exempt() {
     assert_eq!((m.bot_exempt, m.findings.len()), (0, 1), "{m:?}");
 }
 
+/// The forged-field bypass: a human commit whose SUBJECT carries the exempt
+/// address after two `\x1f` bytes must not be read as a bot-authored commit.
+#[test]
+fn a_subject_forging_the_email_field_is_not_exempt() {
+    let dir = repo();
+    on_feature(dir.path());
+    let forged = "x\u{1f}\u{1f}49699333+dependabot[bot]@users.noreply.github.com";
+    bot_commit_with(dir.path(), "human <human@example.invalid>", &[forged]);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.bot_exempt, m.findings.len()), (0, 1), "{m:?}");
+    assert!(!m.clean());
+}
+
 /// Every row here is refused: the exemption is the one exact identity, and only
 /// for a commit with no trace of a trailer or a co-author.
 #[test]
