@@ -330,6 +330,8 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
       - name: The check can fail (self-test)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/release-check.sh --self-test
       - name: The declared version is tagged, released and published
         id: check

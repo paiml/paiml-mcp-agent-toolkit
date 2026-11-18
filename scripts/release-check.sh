@@ -7,8 +7,8 @@
 #
 # Reads the version from Cargo.toml (never a literal). If it is the latest v* tag, exit 0.
 # Otherwise require, in this order, the tag, the GitHub release, and the crates.io version;
-# the first missing one exits 1 naming the version; a failed registry read (http code printed)
-# exits 3 = not measured. Runs on master after merge, never as a
+# the first missing one exits 1 naming the version; a failed read of the GitHub release or the
+# registry (reason printed) exits 3 = not measured, never "missing". Runs on master after merge, never as a
 # required PR check (a PR is not a release).
 #
 #   bash scripts/release-check.sh                 # judge this checkout
@@ -22,9 +22,48 @@ REPO="${REPO:-paiml/paiml-mcp-agent-toolkit}"
 check_version(){ # $1 version → 0 if fully released, 1 naming the first missing channel
   local v=$1
   git tag -l "v$v" | grep -q . || { echo "FAIL: release-check: Cargo.toml says $v but no tag v$v"; return 1; }
-  gh release view "v$v" --repo "$REPO" >/dev/null 2>&1 || { echo "FAIL: release-check: no GitHub release v$v"; return 1; }
+  gh_release_leg "v$v" || return $?
   crates_leg "$v" || return $?
   echo "release-check: $v is tagged, released and on crates.io"
+}
+
+# Fetch the GitHub release for tag $1 into $2; print the read's exit status. Output (stdout+stderr)
+# lands in $2. GH_RELEASE_FIXTURE=<dir> replaces the network (self-test): <dir>/out is the
+# output, <dir>/rc the simulated gh exit status (default 0).
+gh_fetch(){
+  local rc=0
+  if [ -n "${GH_RELEASE_FIXTURE:-}" ]; then
+    if [ -f "$GH_RELEASE_FIXTURE/out" ]; then cp "$GH_RELEASE_FIXTURE/out" "$2"; else : > "$2"; fi
+    [ -f "$GH_RELEASE_FIXTURE/rc" ] && rc=$(cat "$GH_RELEASE_FIXTURE/rc")
+    echo "$rc"; return 0
+  fi
+  gh release view "$1" --repo "$REPO" --json tagName --jq .tagName >"$2" 2>&1 || rc=$?
+  echo "$rc"
+}
+
+# The GitHub-release leg. Exit 0 present (a successful read that names the tag); 1 a real miss
+# (gh exited non-zero AND said "release not found", its answer for an HTTP 404 on the tag);
+# 3 anything else after retries (network error, 401/403, rate limit, empty or mismatched output):
+# NOT MEASURED, never reported as "no GitHub release".
+gh_release_leg(){ # $1 tag (v<version>)
+  local t=$1 try rc=0 out why="" txt
+  out=$(mktemp)
+  for try in 1 2 3; do
+    : > "$out"; rc=$(gh_fetch "$t" "$out")
+    txt=$(head -c 200 "$out" | tr '\n' ' ')
+    if [ "$rc" = 0 ]; then
+      if [ "$(tr -d '[:space:]' < "$out")" = "$t" ]; then rm -f "${out:?}"; return 0; fi
+      why="gh exit 0, unexpected output: ${txt:-empty}"
+    elif grep -qi 'release not found' "$out"; then
+      rm -f "${out:?}"; echo "FAIL: release-check: no GitHub release $t (gh: release not found)"; return 1
+    else
+      why="gh exit $rc: ${txt:-no output}"
+    fi
+    [ "$try" -lt 3 ] && sleep "${RELEASE_CHECK_RETRY_PAUSE:-5}"
+  done
+  rm -f "${out:?}"
+  echo "FAIL: release-check: could not read the GitHub release $t ($why): not measured"
+  return 3
 }
 
 # Sparse-index path for a crate name: 1 -> 1/, 2 -> 2/, 3 -> 3/<c>/, 4+ -> <cc>/<cc>/.
@@ -81,10 +120,12 @@ crates_leg(){ # $1 version
   return 3
 }
 
-# The fixture hook is for --self-test only; a real run must never read it.
-if [ -n "${CRATES_INDEX_FIXTURE:-}" ] && [ "${1:-}" != "--self-test" ]; then
-  echo "FAIL: release-check: CRATES_INDEX_FIXTURE is set outside --self-test: not measured"; exit 3
-fi
+# The fixture hooks are for --self-test only; a real run must never read them.
+for hook in CRATES_INDEX_FIXTURE GH_RELEASE_FIXTURE; do
+  if [ -n "${!hook:-}" ] && [ "${1:-}" != "--self-test" ]; then
+    echo "FAIL: release-check: $hook is set outside --self-test: not measured"; exit 3
+  fi
+done
 
 if [ "${1:-}" = "--self-test" ]; then
   # The control: a version that exists nowhere must fail at the tag leg, and — with a
@@ -97,8 +138,25 @@ if [ "${1:-}" = "--self-test" ]; then
   out=$(cd "$T" && check_version 9.9.9 2>&1 || true)
   grep -q 'no tag v9.9.9' <<<"$out" || fail "self-test: missing tag not reported: $out"
   git -C "$T" tag v9.9.9
-  out=$(cd "$T" && check_version 9.9.9 2>&1 || true)
-  grep -q 'no GitHub release v9.9.9' <<<"$out" || fail "self-test: missing release not reported: $out"
+  # GitHub-release leg against a fixture gh (no network): absent, refused / rate-limited / empty, present.
+  GX="$T/gh"; mkdir -p "$GX"; export GH_RELEASE_FIXTURE="$GX" RELEASE_CHECK_RETRY_PAUSE=0
+  echo 1 > "$GX/rc"; echo 'release not found' > "$GX/out"
+  rc=0; out=$(cd "$T" && check_version 9.9.9 2>&1) || rc=$?
+  { [ "$rc" = 1 ] && grep -q 'no GitHub release v9.9.9' <<<"$out"; } || fail "self-test: missing release rc=$rc: $out"
+  echo 1 > "$GX/rc"; echo 'HTTP 401: Bad credentials (https://api.github.com/repos/x/y/releases/tags/v9.9.9)' > "$GX/out"
+  rc=0; out=$(gh_release_leg v9.9.9 2>&1) || rc=$?
+  { [ "$rc" = 3 ] && grep -q 'HTTP 401.*not measured' <<<"$out" && ! grep -q 'no GitHub release' <<<"$out"; } || fail "self-test: unauthenticated gh rc=$rc: $out"
+  echo 1 > "$GX/rc"; echo 'HTTP 403: API rate limit exceeded for installation. (https://api.github.com/repos/x/y/releases/tags/v9.9.9)' > "$GX/out"
+  rc=0; out=$(gh_release_leg v9.9.9 2>&1) || rc=$?
+  { [ "$rc" = 3 ] && grep -q 'rate limit.*not measured' <<<"$out" && ! grep -q 'no GitHub release' <<<"$out"; } || fail "self-test: rate-limited gh rc=$rc: $out"
+  echo 1 > "$GX/rc"; : > "$GX/out"
+  rc=0; out=$(gh_release_leg v9.9.9 2>&1) || rc=$?
+  { [ "$rc" = 3 ] && grep -q 'not measured' <<<"$out" && ! grep -q 'no GitHub release' <<<"$out"; } || fail "self-test: empty failed read rc=$rc: $out"
+  echo 0 > "$GX/rc"; : > "$GX/out"
+  rc=0; out=$(gh_release_leg v9.9.9 2>&1) || rc=$?
+  { [ "$rc" = 3 ] && grep -q 'not measured' <<<"$out"; } || fail "self-test: empty successful read rc=$rc: $out"
+  echo 0 > "$GX/rc"; echo v9.9.9 > "$GX/out"
+  gh_release_leg v9.9.9 >/dev/null || fail "self-test: present release was not accepted"
   # Registry leg against a fixture index: present, absent, yanked, unreadable (no network).
   FX="$T/index"; mkdir -p "$FX"; export CRATES_INDEX_FIXTURE="$FX" RELEASE_CHECK_RETRY_PAUSE=0 CRATE=fx
   printf '{"name":"fx","vers":"9.9.8","yanked":false}\n{"name":"fx","vers":"9.9.9","yanked":false}\n' > "$FX/fx"
@@ -122,7 +180,7 @@ if [ "${1:-}" = "--self-test" ]; then
   rm -f "${FX:?}/fx.curl"
   rm -f "$FX/fx"; rc=0; out=$(crates_leg 9.9.9 2>&1) || rc=$?
   { [ "$rc" = 3 ] && grep -q 'http 404): not measured' <<<"$out"; } || fail "self-test: missing index file rc=$rc: $out"
-  echo "SELF-TEST PASSED: tag and release legs fired on a 9.9.9 fixture; registry leg: present ok, absent rc=1, yanked rc=1, refused/unparsable/404/empty/truncated read rc=3 (not measured)"
+  echo "SELF-TEST PASSED: tag leg fired on a 9.9.9 fixture; release leg: present ok, absent rc=1, refused/rate-limited/empty read rc=3 (not measured); registry leg: present ok, absent rc=1, yanked rc=1, refused/unparsable/404/empty/truncated read rc=3 (not measured)"
   exit 0
 fi
 
