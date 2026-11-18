@@ -305,8 +305,68 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
     })
 }
 
-fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
+/// Ids the roadmap at `rev` holds in a non-terminal status; empty when that
+/// roadmap cannot be read or parsed.
+fn open_ids_at(project_path: &Path, rev: &str) -> std::collections::HashSet<String> {
+    use crate::models::roadmap::{ItemStatus, Roadmap};
+    run_git(project_path, &["show", &format!("{rev}:{ROADMAP_PATH}")])
+        .ok()
+        .and_then(|text| serde_yaml_ng::from_str::<Roadmap>(&text).ok())
+        .map(|rm| {
+            rm.roadmap
+                .into_iter()
+                .filter(|i| !matches!(i.status, ItemStatus::Completed | ItemStatus::Cancelled))
+                .map(|i| i.id)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// The findings one commit earns: a missing trailer, or one per named id that
+/// is unknown or terminal. A terminal row that was open at the merge-base is
+/// this PR completing its own ticket (GH-1824), and is not a finding.
+fn judge_commit(
+    (hash, subject, trailer): (&str, &str, &str),
+    roadmap_map: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
+    open_at_base: &std::collections::HashSet<String>,
+) -> Vec<Finding> {
     use crate::models::roadmap::ItemStatus;
+    let finding = |violation| Finding {
+        hash: hash.to_string(),
+        subject: subject.to_string(),
+        violation,
+    };
+    let ids: Vec<&str> = trailer
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .collect();
+    if ids.is_empty() {
+        return vec![finding(Violation::NoTrailer)];
+    }
+    ids.into_iter()
+        .filter_map(|id| match roadmap_map.get(id) {
+            None => Some(finding(Violation::UnknownTicket(id.to_string()))),
+            // Terminal states, spelled as the roadmap serialises them
+            // (`ItemStatus` is `rename_all = "lowercase"`).
+            Some(ItemStatus::Completed) if !open_at_base.contains(id) => {
+                Some(finding(Violation::TerminalTicket {
+                    id: id.to_string(),
+                    status: "completed".to_string(),
+                }))
+            }
+            Some(ItemStatus::Cancelled) if !open_at_base.contains(id) => {
+                Some(finding(Violation::TerminalTicket {
+                    id: id.to_string(),
+                    status: "cancelled".to_string(),
+                }))
+            }
+            Some(_) => None,
+        })
+        .collect()
+}
+
+fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
     let merge_base = run_git(project_path, &["merge-base", &resolved_base, "HEAD"])?;
     let commits_out = run_git(
         project_path,
@@ -322,80 +382,31 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
     let roadmap = crate::services::roadmap_service::RoadmapService::new(rm_path)
         .load()
         .map_err(|e| format!("roadmap parse error: {}", e))?;
-
-    let mut roadmap_map = std::collections::HashMap::new();
-    for item in roadmap.roadmap {
-        roadmap_map.insert(item.id, item.status);
-    }
+    let roadmap_map: std::collections::HashMap<_, _> = roadmap
+        .roadmap
+        .into_iter()
+        .map(|item| (item.id, item.status))
+        .collect();
+    let open_at_base = open_ids_at(project_path, &merge_base);
 
     let mut commits = 0;
     let mut trailered = 0;
     let mut findings = vec![];
-
-    if !commits_out.is_empty() {
-        for line in commits_out.split('\n') {
-            if line.trim().is_empty() {
-                continue;
-            }
-            commits += 1;
-            let parts: Vec<&str> = line.split('\x1f').collect();
-            if parts.len() < 2 {
-                continue;
-            }
-            let hash = parts[0].to_string();
-            let subject = parts[1].to_string();
-            let tr = if parts.len() >= 3 {
-                parts[2].trim()
-            } else {
-                ""
-            };
-
-            let ids: Vec<&str> = tr
-                .split(',')
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty())
-                .collect();
-            if ids.is_empty() {
-                findings.push(Finding {
-                    hash: hash.clone(),
-                    subject: subject.clone(),
-                    violation: Violation::NoTrailer,
-                });
-            } else {
-                let mut commit_trailered = false;
-                for id in ids {
-                    commit_trailered = true;
-                    if let Some(status) = roadmap_map.get(id) {
-                        // Terminal states, spelled as the roadmap serialises
-                        // them (`ItemStatus` is `rename_all = "lowercase"`).
-                        let terminal = match status {
-                            ItemStatus::Completed => Some("completed"),
-                            ItemStatus::Cancelled => Some("cancelled"),
-                            _ => None,
-                        };
-                        if let Some(status) = terminal {
-                            findings.push(Finding {
-                                hash: hash.clone(),
-                                subject: subject.clone(),
-                                violation: Violation::TerminalTicket {
-                                    id: id.to_string(),
-                                    status: status.to_string(),
-                                },
-                            });
-                        }
-                    } else {
-                        findings.push(Finding {
-                            hash: hash.clone(),
-                            subject: subject.clone(),
-                            violation: Violation::UnknownTicket(id.to_string()),
-                        });
-                    }
-                }
-                if commit_trailered {
-                    trailered += 1;
-                }
-            }
+    for line in commits_out.lines().filter(|l| !l.trim().is_empty()) {
+        commits += 1;
+        let parts: Vec<&str> = line.split('\x1f').collect();
+        if parts.len() < 2 {
+            continue;
         }
+        let trailer = parts.get(2).map_or("", |t| t.trim());
+        if !trailer.split(',').all(|s| s.trim().is_empty()) {
+            trailered += 1;
+        }
+        findings.extend(judge_commit(
+            (parts[0], parts[1], trailer),
+            &roadmap_map,
+            &open_at_base,
+        ));
     }
 
     Ok(Measurement {

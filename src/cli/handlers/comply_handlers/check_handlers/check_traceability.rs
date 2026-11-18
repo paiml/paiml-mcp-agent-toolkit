@@ -62,83 +62,9 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                         since.unwrap_or_else(|| "the root commit".to_string())
                     ),
                 },
-                Range::PullRequest { base, merge_base } => {
-                    let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { &merge_base };
-                    if m.commits == 0 {
-                        ComplianceCheck {
-                            name: literal.to_string(),
-                            status: CheckStatus::Pass,
-                            severity: CheckSeverity::Info.into(),
-                            message: format!("0 non-merge commit(s) in {}..HEAD (base {}): nothing to judge — measured, not skipped", mb7, base),
-                        }
-                    } else if m.findings.is_empty() {
-                        ComplianceCheck {
-                            name: literal.to_string(),
-                            status: CheckStatus::Pass,
-                            severity: CheckSeverity::Info.into(),
-                            message: format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item", m.commits, mb7, base),
-                        }
-                    } else {
-                        let mut msgs = vec![];
-                        for f in m.findings.iter().take(8) {
-                            let hash7 = if f.hash.len() > 7 { &f.hash[..7] } else { &f.hash };
-                            match &f.violation {
-                                ct::Violation::NoTrailer => {
-                                    msgs.push(format!("{} {}: no Pmat-Ticket trailer", hash7, f.subject));
-                                },
-                                ct::Violation::UnknownTicket(id) => {
-                                    msgs.push(format!("{} {}: Pmat-Ticket {} is not in docs/roadmaps/roadmap.yaml", hash7, f.subject, id));
-                                },
-                                ct::Violation::TerminalTicket { id, status } => {
-                                    msgs.push(format!("{} {}: Pmat-Ticket {} is {} — work belongs to an open item", hash7, f.subject, id, status));
-                                },
-                            }
-                        }
-                        let mut joined = msgs.join("; ");
-                        if m.findings.len() > 8 {
-                            joined.push_str(&format!(" (+{} more)", m.findings.len() - 8));
-                        }
-                        ComplianceCheck {
-                            name: literal.to_string(),
-                            status: CheckStatus::Fail,
-                            severity: CheckSeverity::Error.into(),
-                            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}", m.findings.len(), m.commits, mb7, base, joined, traceability_remedy(&m.findings)),
-                        }
-                    }
-                }
+                Range::PullRequest { base, merge_base } => pull_request_verdict(&m, &base, &merge_base),
             }
         }
     }
 }
 
-/// What to do about the violations present — one clause per kind, so a trailer
-/// that is present is never told to add one (PMAT-727: #1252 read "add
-/// `Pmat-Ticket: <id>` as a git trailer" about a trailer naming a completed item).
-fn traceability_remedy(findings: &[crate::services::commit_traceability::Finding]) -> String {
-    let mut clauses: Vec<&str> = Vec::new();
-    if findings.iter().any(|f| {
-        matches!(
-            f.violation,
-            crate::services::commit_traceability::Violation::NoTrailer
-        )
-    }) {
-        clauses.push("add `Pmat-Ticket: <id>` to the message's LAST paragraph, beside Co-Authored-By: git reads trailers from the last paragraph only (git commit -m '<subject>' -m $'Pmat-Ticket: PMAT-NNN\\nCo-Authored-By: Name <email>')");
-    }
-    if findings.iter().any(|f| {
-        matches!(
-            f.violation,
-            crate::services::commit_traceability::Violation::UnknownTicket(_)
-        )
-    }) {
-        clauses.push("name an id that is in docs/roadmaps/roadmap.yaml");
-    }
-    if findings.iter().any(|f| {
-        matches!(
-            f.violation,
-            crate::services::commit_traceability::Violation::TerminalTicket { .. }
-        )
-    }) {
-        clauses.push("work belongs to an open item: leave a ticket open in its own PR, and let the next ticket's PR mark it completed");
-    }
-    clauses.join("; ")
-}

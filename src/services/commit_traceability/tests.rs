@@ -425,3 +425,65 @@ fn a_roadmap_that_was_committed_and_is_now_gone_is_not_an_absence() {
     std::fs::remove_file(dir2.path().join(ROADMAP_PATH)).expect("rm");
     assert_eq!(inputs(dir2.path()), Inputs::RoadmapDeleted);
 }
+
+// ── GH-1824: a PR may complete its own row ──────────────────────────────────
+
+/// Rewrite the roadmap row `id` to `completed` and commit it with `trailer`.
+fn complete_row(dir: &Path, id: &str, from: &str, trailer: &str) {
+    let rm = dir.join(ROADMAP_PATH);
+    let text = std::fs::read_to_string(&rm).expect("read roadmap");
+    let needle = format!(
+        "- id: {id}\n    title: {}\n    status: {from}",
+        match id {
+            "PMAT-001" => "planned work",
+            _ => "work under way",
+        }
+    );
+    assert!(text.contains(&needle), "fixture row {id} not found");
+    let flipped = text.replace(&needle, &needle.replace(from, "completed"));
+    std::fs::write(&rm, flipped).expect("write roadmap");
+    git(dir, &["add", "."]);
+    git(
+        dir,
+        &["commit", "-q", "-m", "chore: complete row", "-m", trailer],
+    );
+}
+
+#[test]
+fn a_ticket_completed_inside_the_range_is_not_a_finding() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit(dir.path(), "feat: work", Some("Pmat-Ticket: PMAT-001"));
+    complete_row(dir.path(), "PMAT-001", "planned", "Pmat-Ticket: PMAT-001");
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.commits, 2, "{m:?}");
+    assert!(
+        m.clean(),
+        "a PR that completes its own row must pass: {:?}",
+        m.findings
+    );
+}
+
+#[test]
+fn a_ticket_completed_before_the_base_is_still_a_finding_even_if_the_pr_touches_the_roadmap() {
+    let dir = repo();
+    on_feature(dir.path());
+    // PMAT-002 is `completed` at the base: naming it is still refused.
+    complete_row(
+        dir.path(),
+        "PMAT-003",
+        "inprogress",
+        "Pmat-Ticket: PMAT-003",
+    );
+    commit(dir.path(), "feat: late", Some("Pmat-Ticket: PMAT-002"));
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(
+        m.findings.iter().map(|f| &f.violation).collect::<Vec<_>>(),
+        vec![&Violation::TerminalTicket {
+            id: "PMAT-002".into(),
+            status: "completed".into()
+        }],
+        "{:?}",
+        m.findings
+    );
+}
