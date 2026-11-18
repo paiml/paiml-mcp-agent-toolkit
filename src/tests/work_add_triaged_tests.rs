@@ -30,6 +30,7 @@ fn facts(id: u64, open: bool, labels: &[&str]) -> IssueFacts {
         open,
         is_pull_request: false,
         labels: labels.iter().map(|l| l.to_string()).collect(),
+        body: String::new(),
     }
 }
 
@@ -311,4 +312,110 @@ fn work_add_triaged_priority_accepts_p0_to_p3() {
         );
     }
     assert!(WorkPriority::from_str("P4", false).is_err());
+}
+
+// ── #1414: spec and acceptance criteria come from the issue body ───────────
+
+use super::work_add_triage::{derive_from_body, Derived};
+
+const P0_BODY: &str = "Measured.\n\n## done_when\n\n- the receipt is committed\n- `decide` refuses `apr cell unreceipted`\n\n## Notes\nunrelated\n\nSpec row: ARB-APR-001 row 3.\n";
+
+#[test]
+fn work_add_derives_acceptance_and_spec_from_the_body() {
+    let d = derive_from_body(P0_BODY);
+    assert_eq!(d.spec.as_deref(), Some("ARB-APR-001 row 3"));
+    assert_eq!(
+        d.acceptance,
+        vec![
+            "the receipt is committed".to_string(),
+            "`decide` refuses `apr cell unreceipted`".to_string()
+        ]
+    );
+}
+
+#[test]
+fn work_add_derives_an_inline_done_when_key() {
+    let d = derive_from_body("done_when: the row is green\n");
+    assert_eq!(d.acceptance, vec!["the row is green".to_string()]);
+    assert_eq!(d.spec, None);
+}
+
+#[test]
+fn work_add_leaves_fields_empty_when_the_body_states_none() {
+    assert_eq!(
+        derive_from_body("just prose, no section"),
+        Derived::default()
+    );
+}
+
+#[tokio::test]
+async fn work_add_writes_the_derived_fields_into_the_row() -> anyhow::Result<()> {
+    let dir = tempfile::TempDir::new()?;
+    let path = dir.path().join("docs/roadmaps/roadmap.yaml");
+    std::fs::create_dir_all(path.parent().ok_or_else(|| anyhow::anyhow!("no parent"))?)?;
+    std::fs::write(
+        &path,
+        "roadmap_version: '1.0'\ngithub_enabled: false\ngithub_repo: null\nroadmap: []\n",
+    )?;
+    super::add_ticket_row_derived(
+        "t".to_string(),
+        None,
+        WorkPriority::Critical,
+        None,
+        Some(dir.path().to_path_buf()),
+        false,
+        None,
+        None,
+        Some(CHILD),
+        false,
+        None,
+        derive_from_body(P0_BODY),
+    )
+    .await?;
+    let rm: crate::models::roadmap::Roadmap =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&path)?)?;
+    let item = rm
+        .roadmap
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("no row"))?;
+    assert_eq!(
+        item.spec,
+        Some(std::path::PathBuf::from("ARB-APR-001 row 3"))
+    );
+    assert_eq!(item.acceptance_criteria.len(), 2);
+    assert_eq!(item.acceptance_criteria[0], "the receipt is committed");
+    Ok(())
+}
+
+#[tokio::test]
+async fn work_add_writes_an_empty_acceptance_criteria_line_when_none_derived() -> anyhow::Result<()>
+{
+    let dir = tempfile::TempDir::new()?;
+    let path = dir.path().join("docs/roadmaps/roadmap.yaml");
+    std::fs::create_dir_all(path.parent().ok_or_else(|| anyhow::anyhow!("no parent"))?)?;
+    std::fs::write(
+        &path,
+        "roadmap_version: '1.0'\ngithub_enabled: false\ngithub_repo: null\nroadmap: []\n",
+    )?;
+    super::add_ticket_row_derived(
+        "t".to_string(),
+        None,
+        WorkPriority::Critical,
+        None,
+        Some(dir.path().to_path_buf()),
+        false,
+        None,
+        None,
+        Some(CHILD),
+        false,
+        None,
+        derive_from_body("just prose, no section"),
+    )
+    .await?;
+    let text = std::fs::read_to_string(&path)?;
+    assert!(
+        text.lines().any(|l| l.trim() == "acceptance_criteria: []"),
+        "underived criteria are written as [] (existing rows round-trip): {text}"
+    );
+    Ok(())
 }
