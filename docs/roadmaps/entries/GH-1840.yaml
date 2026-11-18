@@ -2,7 +2,7 @@
   github_issue: 1840
   item_type: task
   title: 'Mutation gate: a diff that selects zero mutants fails INV-MUT-2 though zero were measured'
-  status: completed
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-11-18T00:00:00+00:00
