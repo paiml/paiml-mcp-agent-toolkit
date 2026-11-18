@@ -1,0 +1,18 @@
+- id: GH-1846
+  github_issue: 1846
+  item_type: task
+  title: 'mutation gate slice 2: workflow_dispatch base input, script, pinned cargo-mutants, empty-stdout test'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-18T00:00:00+00:00
+  updated: 2026-11-18T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1414
