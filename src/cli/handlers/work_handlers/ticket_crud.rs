@@ -26,13 +26,18 @@ pub async fn handle_work_add(
         println!("linked #{} under epic #{}", triaged.child, triaged.epic);
     }
     let tags = work_add_triage::tags_with_kind(tags.as_deref(), triaged.kind);
-    let derived = work_add_triage::derive_from_body(&work_add_triage::EpicLinks::issue(&links, triaged.child)?.body);
+    let derived = work_add_triage::derive_from_body(
+        &work_add_triage::EpicLinks::issue(&links, triaged.child)?.body,
+    );
     for (field, missing) in [
         ("spec", derived.spec.is_none()),
         ("acceptance_criteria", derived.acceptance.is_empty()),
     ] {
         if missing {
-            eprintln!("note: {field} not derived: issue #{} names none (#1414)", triaged.child);
+            eprintln!(
+                "note: {field} not derived: issue #{} names none (#1414)",
+                triaged.child
+            );
         }
     }
     add_ticket_row_derived(
@@ -106,8 +111,18 @@ pub async fn add_ticket_row(
     epic: Option<u64>,
 ) -> Result<()> {
     add_ticket_row_derived(
-        title, description, priority, tags, path, create_github, level, explicit_id,
-        github_issue, sequential_id, epic, work_add_triage::Derived::default(),
+        title,
+        description,
+        priority,
+        tags,
+        path,
+        create_github,
+        level,
+        explicit_id,
+        github_issue,
+        sequential_id,
+        epic,
+        work_add_triage::Derived::default(),
     )
     .await
 }
@@ -142,7 +157,10 @@ pub async fn add_ticket_row_derived(
     let item_priority = priority.to_roadmap_priority();
     let item_title = title.clone();
     let acceptance_criteria = if derived.acceptance.is_empty() {
-        description.as_ref().map(|d| vec![d.clone()]).unwrap_or_default()
+        description
+            .as_ref()
+            .map(|d| vec![d.clone()])
+            .unwrap_or_default()
     } else {
         derived.acceptance
     };
