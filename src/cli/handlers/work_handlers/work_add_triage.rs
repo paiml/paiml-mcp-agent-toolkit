@@ -271,28 +271,49 @@ fn heading_text(line: &str) -> String {
 
 /// Derive what the body states; a field it does not state stays empty.
 pub fn derive_from_body(body: &str) -> Derived {
-    let spec = regex::Regex::new(r"\b([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d{3,}) row (\d+)\b")
+    Derived {
+        spec: derive_spec(body),
+        acceptance: derive_acceptance(body),
+    }
+}
+
+/// The first `<ID>-NNN row N` the body names.
+fn derive_spec(body: &str) -> Option<String> {
+    regex::Regex::new(r"\b([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d{3,}) row (\d+)\b")
         .ok()
         .and_then(|re| {
             re.captures(body)
                 .map(|c| format!("{} row {}", &c[1], &c[2]))
-        });
+        })
+}
+
+/// Is this heading text a `done_when` / `Acceptance` opener?
+fn is_acceptance_head(head: &str) -> bool {
+    let lower = head.to_ascii_lowercase().replace(' ', "_");
+    lower.starts_with("done_when") || lower.starts_with("acceptance")
+}
+
+/// The criterion written on the opener line itself (`done_when: x`), if any.
+fn inline_criterion(head: &str) -> Option<String> {
+    let rest = head.split_once(':').map_or("", |(_, r)| r);
+    let rest = rest.trim().trim_matches(['*', '_', '`']).trim();
+    (!rest.is_empty()).then(|| rest.to_string())
+}
+
+/// A new heading, or a blank line after at least one criterion, ends the section.
+fn ends_section(line: &str, have_any: bool) -> bool {
+    line.trim_start().starts_with('#') || (line.trim().is_empty() && have_any)
+}
+
+fn derive_acceptance(body: &str) -> Vec<String> {
     let mut acceptance = Vec::new();
     let mut inside = false;
     for line in body.lines() {
         let head = heading_text(line);
-        let lower = head.to_ascii_lowercase().replace(' ', "_");
-        if lower.starts_with("done_when") || lower.starts_with("acceptance") {
+        if is_acceptance_head(&head) {
             inside = true;
-            let rest = head.split_once(':').map_or("", |(_, r)| r);
-            let rest = rest.trim().trim_matches(['*', '_', '`']).trim();
-            if !rest.is_empty() {
-                acceptance.push(rest.to_string());
-            }
-        } else if inside
-            && (line.trim_start().starts_with('#')
-                || (line.trim().is_empty() && !acceptance.is_empty()))
-        {
+            acceptance.extend(inline_criterion(&head));
+        } else if inside && ends_section(line, !acceptance.is_empty()) {
             break;
         } else if inside && !line.trim().is_empty() {
             acceptance.push(
@@ -303,5 +324,5 @@ pub fn derive_from_body(body: &str) -> Derived {
             );
         }
     }
-    Derived { spec, acceptance }
+    acceptance
 }
