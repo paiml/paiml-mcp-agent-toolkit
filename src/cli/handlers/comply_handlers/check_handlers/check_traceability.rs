@@ -116,7 +116,7 @@ fn pull_request_verdict(
         return traceability_check(CheckStatus::Pass, false, message);
     }
     if findings.is_empty() {
-        let message = format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item", commits, mb7, base);
+        let message = format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming a roadmap item that was open at the merge-base", commits, mb7, base);
         return traceability_check(CheckStatus::Pass, false, message);
     }
     let mut joined = findings
@@ -167,7 +167,7 @@ fn traceability_remedy(findings: &[crate::services::commit_traceability::Finding
             crate::services::commit_traceability::Violation::TerminalTicket { .. }
         )
     }) {
-        clauses.push("a ticket completed before the PR's base cannot be named; a PR may complete its own row in the same range");
+        clauses.push("a ticket that was not open at the PR's merge-base (completed or cancelled there, or its roadmap could not be read) cannot be named; a PR may complete its own row in the same range");
     }
     clauses.join("; ")
 }

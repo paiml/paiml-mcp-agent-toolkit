@@ -487,3 +487,64 @@ fn a_ticket_completed_before_the_base_is_still_a_finding_even_if_the_pr_touches_
         m.findings
     );
 }
+
+// ── GH-1824: the base set is the fragment-aware view, read at the merge-base ─
+
+/// Commit `entries/<id>.yaml` holding one row in `status`, with `trailer`.
+fn fragment(dir: &Path, id: &str, status: &str, trailer: &str) {
+    let path = dir.join(format!("docs/roadmaps/entries/{id}.yaml"));
+    std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    std::fs::write(
+        &path,
+        format!("  - id: {id}\n    title: fragment row\n    status: {status}\n"),
+    )
+    .expect("write fragment");
+    git(dir, &["add", "."]);
+    git(
+        dir,
+        &["commit", "-q", "-m", "chore: fragment", "-m", trailer],
+    );
+}
+
+fn terminal(id: &str, status: &str) -> Vec<Violation> {
+    vec![Violation::TerminalTicket {
+        id: id.into(),
+        status: status.into(),
+    }]
+}
+
+fn violations(m: &super::Measurement) -> Vec<Violation> {
+    m.findings.iter().map(|f| f.violation.clone()).collect()
+}
+
+#[test]
+fn a_row_a_fragment_completed_at_the_base_is_still_a_finding() {
+    let dir = repo();
+    // roadmap.yaml says `planned`; the fragment overrides it with `completed`.
+    fragment(dir.path(), "PMAT-001", "completed", "Pmat-Ticket: PMAT-001");
+    on_feature(dir.path());
+    commit(dir.path(), "feat: late", Some("Pmat-Ticket: PMAT-001"));
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(violations(&m), terminal("PMAT-001", "completed"), "{m:?}");
+}
+
+#[test]
+fn a_fragment_only_row_open_at_the_base_may_be_completed_by_the_pr() {
+    let dir = repo();
+    fragment(dir.path(), "PMAT-005", "planned", "Pmat-Ticket: PMAT-001");
+    on_feature(dir.path());
+    fragment(dir.path(), "PMAT-005", "completed", "Pmat-Ticket: PMAT-005");
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.commits, 1, "{m:?}");
+    assert!(m.clean(), "{:?}", m.findings);
+}
+
+#[test]
+fn a_fragment_only_row_completed_at_the_base_is_still_a_finding() {
+    let dir = repo();
+    fragment(dir.path(), "PMAT-006", "completed", "Pmat-Ticket: PMAT-001");
+    on_feature(dir.path());
+    commit(dir.path(), "feat: late", Some("Pmat-Ticket: PMAT-006"));
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(violations(&m), terminal("PMAT-006", "completed"), "{m:?}");
+}

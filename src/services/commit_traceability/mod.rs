@@ -30,6 +30,9 @@ mod tests;
 /// The roadmap the trailer ids are resolved against.
 pub const ROADMAP_PATH: &str = "docs/roadmaps/roadmap.yaml";
 
+/// The fragments laid over [`ROADMAP_PATH`] (one row per file).
+const ENTRIES_DIR: &str = "docs/roadmaps/entries/";
+
 /// The trailer key, exactly as `git interpret-trailers` spells it.
 pub const TRAILER_KEY: &str = "Pmat-Ticket";
 
@@ -147,6 +150,12 @@ pub fn inputs(project_path: &Path) -> Inputs {
 }
 
 fn run_git(project_path: &Path, args: &[&str]) -> Result<String, String> {
+    run_git_raw(project_path, args).map(|text| text.trim().to_string())
+}
+
+/// `git args` stdout exactly as printed (leading indentation and the final
+/// newline of a file kept).
+fn run_git_raw(project_path: &Path, args: &[&str]) -> Result<String, String> {
     let out = Command::new("git")
         .arg("-C")
         .arg(project_path)
@@ -161,7 +170,7 @@ fn run_git(project_path: &Path, args: &[&str]) -> Result<String, String> {
             String::from_utf8_lossy(&out.stderr)
         ));
     }
-    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
 /// Measure, resolving the base from [`BASE_REF_ENV`] when it is set and from
@@ -305,12 +314,32 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
     })
 }
 
-/// Ids the roadmap at `rev` holds in a non-terminal status; empty when that
-/// roadmap cannot be read or parsed.
+/// `git show rev:path`, byte for byte (a fragment's indent and final newline
+/// are part of what `aggregate` checks).
+fn show_at(project_path: &Path, rev: &str, path: &str) -> Option<String> {
+    run_git_raw(project_path, &["show", &format!("{rev}:{path}")]).ok()
+}
+
+/// The roadmap as `RoadmapService::load` reads it, but at `rev`: `roadmap.yaml`
+/// with every `entries/` fragment aggregated over it. `None` when the base
+/// roadmap or a fragment cannot be read, or the fragments do not aggregate.
+fn roadmap_view_at(project_path: &Path, rev: &str) -> Option<String> {
+    let base = show_at(project_path, rev, ROADMAP_PATH)?;
+    let listing = run_git(project_path, &["ls-tree", "--name-only", rev, ENTRIES_DIR]).ok()?;
+    let mut fragments = Vec::new();
+    for path in listing.lines().filter(|p| p.ends_with(".yaml")) {
+        let id = path.rsplit('/').next()?.trim_end_matches(".yaml");
+        fragments.push((id.to_string(), show_at(project_path, rev, path)?));
+    }
+    crate::services::roadmap_fragments::aggregate(&base, &fragments).ok()
+}
+
+/// Ids the roadmap view at `rev` (`roadmap.yaml` overlaid by `entries/`
+/// fragments) holds in a non-terminal status; empty when that view cannot be
+/// read or parsed.
 fn open_ids_at(project_path: &Path, rev: &str) -> std::collections::HashSet<String> {
     use crate::models::roadmap::{ItemStatus, Roadmap};
-    run_git(project_path, &["show", &format!("{rev}:{ROADMAP_PATH}")])
-        .ok()
+    roadmap_view_at(project_path, rev)
         .and_then(|text| serde_yaml_ng::from_str::<Roadmap>(&text).ok())
         .map(|rm| {
             rm.roadmap
@@ -323,8 +352,9 @@ fn open_ids_at(project_path: &Path, rev: &str) -> std::collections::HashSet<Stri
 }
 
 /// The findings one commit earns: a missing trailer, or one per named id that
-/// is unknown or terminal. A terminal row that was open at the merge-base is
-/// this PR completing its own ticket (GH-1824), and is not a finding.
+/// is unknown or terminal. A row that was open at the merge-base and is
+/// terminal (completed or cancelled) at HEAD was closed inside this range, and
+/// is not a finding (GH-1824).
 fn judge_commit(
     (hash, subject, trailer): (&str, &str, &str),
     roadmap_map: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
