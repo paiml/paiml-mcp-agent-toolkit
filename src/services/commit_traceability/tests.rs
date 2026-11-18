@@ -99,6 +99,58 @@ fn control_a_trailered_feature_commit_measures_clean() {
     assert!(m.clean());
 }
 
+// ── GH-1356: a GitHub app account cannot add a trailer ──────────────────────
+
+const BOT: &str = "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>";
+
+fn bot_commit(dir: &Path, author: &str) {
+    git(
+        dir,
+        &[
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "deps: bump x",
+            "--author",
+            author,
+        ],
+    );
+}
+
+#[test]
+fn an_untrailered_bot_commit_is_exempt_and_counted() {
+    let dir = repo();
+    on_feature(dir.path());
+    bot_commit(dir.path(), BOT);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.commits, m.trailered, m.bot_exempt), (1, 0, 1), "{m:?}");
+    assert!(m.findings.is_empty(), "{:?}", m.findings);
+    assert!(m.clean());
+}
+
+#[test]
+fn a_human_commit_beside_a_bot_commit_is_still_judged() {
+    let dir = repo();
+    on_feature(dir.path());
+    bot_commit(dir.path(), BOT);
+    let bad = commit(dir.path(), "human, no trailer", None);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.commits, m.bot_exempt), (2, 1), "{m:?}");
+    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
+    assert_eq!(m.findings[0].hash, bad);
+    assert!(!m.clean());
+}
+
+#[test]
+fn a_bot_lookalike_name_with_a_human_email_is_not_exempt() {
+    let dir = repo();
+    on_feature(dir.path());
+    bot_commit(dir.path(), "dependabot[bot] <mallory@example.invalid>");
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.bot_exempt, m.findings.len()), (0, 1), "{m:?}");
+}
+
 // ── the §7 falsifier: a commit with no trailer ──────────────────────────────
 
 #[test]

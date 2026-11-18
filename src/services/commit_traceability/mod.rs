@@ -105,6 +105,9 @@ pub struct Measurement {
     pub commits: usize,
     /// Of those, how many carry at least one `Pmat-Ticket:` trailer.
     pub trailered: usize,
+    /// Untrailered commits authored by a GitHub app account (GH-1356): counted
+    /// and named in the verdict, never judged.
+    pub bot_exempt: usize,
     pub findings: Vec<Finding>,
 }
 
@@ -273,6 +276,71 @@ fn count_trailered(log: &str) -> (usize, usize) {
     (commits, trailered)
 }
 
+/// GitHub mints `<id>+<app>[bot]@users.noreply.github.com` for app accounts
+/// only (GH-1356). The exemption is reported in the verdict, never silent.
+fn is_bot_email(email: &str) -> bool {
+    email
+        .trim()
+        .to_ascii_lowercase()
+        .ends_with("[bot]@users.noreply.github.com")
+}
+
+/// One `git log` line → (hash, subject, ticket ids, authored by a bot).
+fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>, bool)> {
+    let parts: Vec<&str> = line.split('\x1f').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let ids = parts
+        .get(2)
+        .map_or("", |t| t.trim())
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .collect();
+    let bot = parts.get(3).is_some_and(|e| is_bot_email(e));
+    Some((parts[0].to_string(), parts[1].to_string(), ids, bot))
+}
+
+/// The violation, if any, that one trailer id commits against the roadmap.
+fn judge_id(
+    roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
+    id: &str,
+) -> Option<Violation> {
+    use crate::models::roadmap::ItemStatus;
+    let Some(status) = roadmap.get(id) else {
+        return Some(Violation::UnknownTicket(id.to_string()));
+    };
+    // Terminal states, spelled as the roadmap serialises them (`ItemStatus` is
+    // `rename_all = "lowercase"`).
+    let terminal = match status {
+        ItemStatus::Completed => "completed",
+        ItemStatus::Cancelled => "cancelled",
+        _ => return None,
+    };
+    Some(Violation::TerminalTicket {
+        id: id.to_string(),
+        status: terminal.to_string(),
+    })
+}
+
+/// Judge every trailer id of one commit, appending a finding per violation.
+fn judge_ids(
+    roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
+    hash: &str,
+    subject: &str,
+    ids: &[&str],
+    findings: &mut Vec<Finding>,
+) {
+    findings.extend(ids.iter().filter_map(|id| {
+        judge_id(roadmap, id).map(|violation| Finding {
+            hash: hash.to_string(),
+            subject: subject.to_string(),
+            violation,
+        })
+    }));
+}
+
 fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
     let since = run_git(
         project_path,
@@ -301,19 +369,19 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
         range: Range::DefaultBranch { since },
         commits,
         trailered,
+        bot_exempt: 0,
         findings: vec![],
     })
 }
 
 fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
-    use crate::models::roadmap::ItemStatus;
     let merge_base = run_git(project_path, &["merge-base", &resolved_base, "HEAD"])?;
     let commits_out = run_git(
         project_path,
         &[
             "log",
             "--no-merges",
-            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)",
+            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)%x1f%ae",
             &format!("{merge_base}..HEAD"),
         ],
     )?;
@@ -330,6 +398,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
 
     let mut commits = 0;
     let mut trailered = 0;
+    let mut bot_exempt = 0;
     let mut findings = vec![];
 
     if !commits_out.is_empty() {
@@ -338,62 +407,20 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
                 continue;
             }
             commits += 1;
-            let parts: Vec<&str> = line.split('\x1f').collect();
-            if parts.len() < 2 {
+            let Some((hash, subject, ids, bot)) = parse_log_line(line) else {
                 continue;
-            }
-            let hash = parts[0].to_string();
-            let subject = parts[1].to_string();
-            let tr = if parts.len() >= 3 {
-                parts[2].trim()
-            } else {
-                ""
             };
-
-            let ids: Vec<&str> = tr
-                .split(',')
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty())
-                .collect();
-            if ids.is_empty() {
+            if ids.is_empty() && bot {
+                bot_exempt += 1;
+            } else if ids.is_empty() {
                 findings.push(Finding {
                     hash: hash.clone(),
                     subject: subject.clone(),
                     violation: Violation::NoTrailer,
                 });
             } else {
-                let mut commit_trailered = false;
-                for id in ids {
-                    commit_trailered = true;
-                    if let Some(status) = roadmap_map.get(id) {
-                        // Terminal states, spelled as the roadmap serialises
-                        // them (`ItemStatus` is `rename_all = "lowercase"`).
-                        let terminal = match status {
-                            ItemStatus::Completed => Some("completed"),
-                            ItemStatus::Cancelled => Some("cancelled"),
-                            _ => None,
-                        };
-                        if let Some(status) = terminal {
-                            findings.push(Finding {
-                                hash: hash.clone(),
-                                subject: subject.clone(),
-                                violation: Violation::TerminalTicket {
-                                    id: id.to_string(),
-                                    status: status.to_string(),
-                                },
-                            });
-                        }
-                    } else {
-                        findings.push(Finding {
-                            hash: hash.clone(),
-                            subject: subject.clone(),
-                            violation: Violation::UnknownTicket(id.to_string()),
-                        });
-                    }
-                }
-                if commit_trailered {
-                    trailered += 1;
-                }
+                judge_ids(&roadmap_map, &hash, &subject, &ids, &mut findings);
+                trailered += 1;
             }
         }
     }
@@ -405,6 +432,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         },
         commits,
         trailered,
+        bot_exempt,
         findings,
     })
 }

@@ -13,6 +13,8 @@
 #   arm 2  GREEN the same commit trailed `Pmat-Ticket: PMAT-001`     exit 0, Pass
 #   arm 3  RED   trailer naming PMAT-999, absent from the roadmap    exit 1, Fail, names PMAT-999
 #   arm 4  RED   trailer naming PMAT-002, a completed item           exit 1, Fail, names PMAT-002
+#   arm 6  GREEN bot-authored commit, no trailer (GH-1356)           exit 0, exemption named
+#   arm 7  RED   the same bot commit plus a human commit, no trailer exit 1, names the human commit
 #   arm 5  N/A   HEAD on master                                      exit 0, Pass, message says not_applicable
 #
 # Each arm asserts BOTH the process exit code and the CB-2113 entry in the JSON
@@ -140,4 +142,20 @@ run_gate
 case "$MESSAGE" in "not_applicable:"*) ;; *) fail_arm 5 "the message must start with not_applicable and name the reason";; esac
 echo "traceability-control: arm 5 N/A   — default branch reported not_applicable (exit 0)"
 
-echo "traceability-control: all 5 arms behaved — CB-2113 can fail, and can pass"
+# ── arm 6/7: GH-1356 — a GitHub app commit cannot carry a trailer ───────────
+fgit switch -q feature
+fgit reset -q --hard v0.1.0
+fgit commit -q --allow-empty -m "deps: bump x" --author "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 6 "an untrailered bot-authored commit must exit 0"
+[ "$STATUS" = "Pass" ] || fail_arm 6 "CB-2113 must be Pass for a bot-only range"
+case "$MESSAGE" in *"1 authored by a GitHub bot account (exempt)"*) ;; *) fail_arm 6 "the message must name the exemption count";; esac
+echo "traceability-control: arm 6 GREEN — bot commit exempt, exemption named (exit 0)"
+fgit commit -q --allow-empty -m "feat: human, no trailer"
+bad=$(fgit rev-parse --short=7 HEAD)
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 7 "a human untrailered commit beside a bot commit must exit 1"
+case "$MESSAGE" in *"$bad"*"no Pmat-Ticket"*) ;; *) fail_arm 7 "the message must name human commit $bad";; esac
+echo "traceability-control: arm 7 RED   — human commit $bad still refused beside a bot commit (exit 1)"
+
+echo "traceability-control: all 7 arms behaved — CB-2113 can fail, and can pass"

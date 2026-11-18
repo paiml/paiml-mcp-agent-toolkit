@@ -64,51 +64,72 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                 },
                 Range::PullRequest { base, merge_base } => {
                     let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { &merge_base };
-                    if m.commits == 0 {
-                        ComplianceCheck {
-                            name: literal.to_string(),
-                            status: CheckStatus::Pass,
-                            severity: CheckSeverity::Info.into(),
-                            message: format!("0 non-merge commit(s) in {}..HEAD (base {}): nothing to judge — measured, not skipped", mb7, base),
-                        }
-                    } else if m.findings.is_empty() {
-                        ComplianceCheck {
-                            name: literal.to_string(),
-                            status: CheckStatus::Pass,
-                            severity: CheckSeverity::Info.into(),
-                            message: format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item", m.commits, mb7, base),
-                        }
-                    } else {
-                        let mut msgs = vec![];
-                        for f in m.findings.iter().take(8) {
-                            let hash7 = if f.hash.len() > 7 { &f.hash[..7] } else { &f.hash };
-                            match &f.violation {
-                                ct::Violation::NoTrailer => {
-                                    msgs.push(format!("{} {}: no Pmat-Ticket trailer", hash7, f.subject));
-                                },
-                                ct::Violation::UnknownTicket(id) => {
-                                    msgs.push(format!("{} {}: Pmat-Ticket {} is not in docs/roadmaps/roadmap.yaml", hash7, f.subject, id));
-                                },
-                                ct::Violation::TerminalTicket { id, status } => {
-                                    msgs.push(format!("{} {}: Pmat-Ticket {} is {} — work belongs to an open item", hash7, f.subject, id, status));
-                                },
-                            }
-                        }
-                        let mut joined = msgs.join("; ");
-                        if m.findings.len() > 8 {
-                            joined.push_str(&format!(" (+{} more)", m.findings.len() - 8));
-                        }
-                        ComplianceCheck {
-                            name: literal.to_string(),
-                            status: CheckStatus::Fail,
-                            severity: CheckSeverity::Error.into(),
-                            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}", m.findings.len(), m.commits, mb7, base, joined, traceability_remedy(&m.findings)),
-                        }
-                    }
+                    pr_check(literal, &m, mb7, &base)
                 }
             }
         }
     }
+}
+
+/// The verdict for a judged pull-request range.
+fn pr_check(
+    literal: &str,
+    m: &crate::services::commit_traceability::Measurement,
+    mb7: &str,
+    base: &str,
+) -> ComplianceCheck {
+    use crate::models::comply_config::CheckSeverity;
+    if m.commits == 0 {
+        ComplianceCheck {
+            name: literal.to_string(),
+            status: CheckStatus::Pass,
+            severity: CheckSeverity::Info.into(),
+            message: format!("0 non-merge commit(s) in {}..HEAD (base {}): nothing to judge — measured, not skipped", mb7, base),
+        }
+    } else if m.findings.is_empty() {
+        ComplianceCheck {
+            name: literal.to_string(),
+            status: CheckStatus::Pass,
+            severity: CheckSeverity::Info.into(),
+            message: pass_message(m, mb7, base),
+        }
+    } else {
+        let joined = findings_text(&m.findings);
+        ComplianceCheck {
+            name: literal.to_string(),
+            status: CheckStatus::Fail,
+            severity: CheckSeverity::Error.into(),
+            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}", m.findings.len(), m.commits, mb7, base, joined, traceability_remedy(&m.findings)),
+        }
+    }
+}
+
+/// The first eight findings, one clause each, `; `-joined.
+fn findings_text(findings: &[crate::services::commit_traceability::Finding]) -> String {
+    use crate::services::commit_traceability::Violation;
+    let mut msgs = vec![];
+    for f in findings.iter().take(8) {
+        let hash7 = if f.hash.len() > 7 { &f.hash[..7] } else { &f.hash };
+        msgs.push(match &f.violation {
+            Violation::NoTrailer => format!("{} {}: no Pmat-Ticket trailer", hash7, f.subject),
+            Violation::UnknownTicket(id) => format!("{} {}: Pmat-Ticket {} is not in docs/roadmaps/roadmap.yaml", hash7, f.subject, id),
+            Violation::TerminalTicket { id, status } => format!("{} {}: Pmat-Ticket {} is {} — work belongs to an open item", hash7, f.subject, id, status),
+        });
+    }
+    let mut joined = msgs.join("; ");
+    if findings.len() > 8 {
+        joined.push_str(&format!(" (+{} more)", findings.len() - 8));
+    }
+    joined
+}
+
+/// The Pass message for a judged range with no findings; names the bot
+/// exemption count when there is one (GH-1356).
+fn pass_message(m: &crate::services::commit_traceability::Measurement, mb7: &str, base: &str) -> String {
+    if m.bot_exempt == 0 {
+        return format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item", m.commits, mb7, base);
+    }
+    format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item; {} authored by a GitHub bot account (exempt)", m.trailered, m.commits, mb7, base, m.bot_exempt)
 }
 
 /// What to do about the violations present — one clause per kind, so a trailer
