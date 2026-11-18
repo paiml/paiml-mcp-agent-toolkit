@@ -2,7 +2,7 @@
   github_issue: 1828
   item_type: task
   title: 'work add: derive_from_body helpers (slice 1 of GH-1807, re-cut)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-18T00:00:00+00:00

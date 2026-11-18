@@ -2,7 +2,7 @@
   github_issue: 1838
   item_type: task
   title: 'master CB-2115 red: four open issues (#1826, #1828, #1830, #1832) have no roadmap row'
-  status: completed
+  status: planned
   priority: high
   assigned_to: null
   created: 2026-11-18T00:00:00+00:00
