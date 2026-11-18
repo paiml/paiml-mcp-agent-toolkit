@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.46.0] - 2026-11-18
+
+### Added
+
+- **`pmat comply github --org` (#1783)**: lists and judges every repo of an org.
+
+### Fixed
+
+- **release-check**: an unreadable crates.io index (#1815) and a failed `gh release view`
+  (#1820) are reported as not measured, not as "not published" / "no GitHub release".
+- **work**: `work start` writes the ticket status last and gives probe children no stdin
+  (#1472); `work start`/`delegate` refuse at the open-PR cap (#1502); the receipt records
+  both levels and `work status` renders chain-of-thought steps (#1254, #1255).
+- **comply**: R1 does not count issues carrying an exempt label (#1784).
+- **hooks**: the documentation check guards `docs/roadmaps`, not the retired `docs/execution`
+  path (#1418).
+- **deps**: `libz-sys` bumped for RUSTSEC-2026-0544 and the chrono advisory
+  RUSTSEC-2026-0543 is bounded (#1816); weekly cargo train, 13 lock updates (#1810).
+- **docs**: cli-reference names the real binary `pmat` and the listed command `generate`
+  (#1781, #1787).
+
 ## [3.45.1] - 2026-11-15
 
 ### Fixed
