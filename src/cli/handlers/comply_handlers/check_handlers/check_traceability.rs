@@ -62,9 +62,9 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                         since.unwrap_or_else(|| "the root commit".to_string())
                     ),
                 },
-                Range::PullRequest { base, merge_base } => {
-                    let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { &merge_base };
-                    pr_check(literal, &m, mb7, &base)
+                Range::PullRequest { ref base, ref merge_base } => {
+                    let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { merge_base };
+                    pr_check(literal, &m, mb7, base)
                 }
             }
         }
