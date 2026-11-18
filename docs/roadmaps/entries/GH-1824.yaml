@@ -1,0 +1,18 @@
+- id: GH-1824
+  github_issue: 1824
+  item_type: task
+  title: 'Roadmap gates CB-2113/CB-2115 leave master red after every closing merge: a PR cannot complete its own row'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-18T00:00:00+00:00
+  updated: 2026-11-18T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1645
