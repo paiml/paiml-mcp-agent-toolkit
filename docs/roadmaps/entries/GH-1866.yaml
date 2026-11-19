@@ -1,7 +1,7 @@
 - id: GH-1866
   github_issue: 1866
   item_type: task
-  title: 'GH-1267 work-complete gate bound re-cut (v2): a timed-out gate step fails'
+  title: "GH-1267 work-complete gate bound re-cut (v2): a timed-out gate step fails"
   status: planned
   priority: medium
   assigned_to: null
@@ -12,7 +12,6 @@
   phases: []
   subtasks: []
   estimated_effort: null
-  labels:
-  - kind:code
+  labels: []
   notes: null
   epic: 1414

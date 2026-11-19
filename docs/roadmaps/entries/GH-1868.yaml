@@ -1,0 +1,17 @@
+- id: GH-1868
+  github_issue: 1868
+  item_type: task
+  title: "fix(roadmap): flip rows of 18 closed issues and add missing rows so master CB-2115 is green"
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-19T00:00:00+00:00
+  updated: 2026-11-19T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  epic: 1414
