@@ -99,6 +99,7 @@ ticket_guarded_by_failure() {  # $1 = workflow
   [ -n "$job" ] || return 1
   body="$(job_block "$1" "$job")"
   printf '%s\n' "$body" | grep -qE '^    if:[[:space:]]*(\$\{\{[[:space:]]*)?failure\(\)' || return 1
+  printf '%s\n' "$body" | grep -qE "^    if:.*github\.event_name == 'schedule'" || return 1
   printf '%s\n' "$body" | grep -qE '^    needs:.*mutation-diff' || return 1
   printf '%s\n' "$body" | grep -qF 'Owner: ' || return 1
   printf '%s\n' "$body" | grep -qF -- '--label lab-mutation' || return 1
@@ -136,7 +137,8 @@ if [ -z "${MUTATION_WF:-}" ]; then
   sed 's/^  schedule:$/  pull_request:\n  schedule:/' "$WF" | plant 6 triggers_nightly_only "a pull_request trigger"
   grep -vE '^  issues:[[:space:]]*write' "$WF" | plant 7 issues_write "no issues: write"
   sed 's/604800/86400000/' "$WF" | plant 8 seven_day_stop "no 7-day stop"
-  sed 's/^    if: failure()$/    if: always()/' "$WF" | plant 9 ticket_guarded_by_failure "ticket on always(), not failure()"
+  sed "s/^    if: failure() && .*\$/    if: always()/" "$WF" | plant 9 ticket_guarded_by_failure "ticket on always(), not failure()"
+  sed "s/ && github.event_name == 'schedule'\$//" "$WF" | plant 11 ticket_guarded_by_failure "ticket also opened by a manual dispatch"
   sed 's#^\( *\)run: scripts/mutation-diff-gate.sh run#\1continue-on-error: true\n\1run: scripts/mutation-diff-gate.sh run#' "$WF" \
     | plant 10 no_continue_on_error "continue-on-error on the verdict step"
 fi

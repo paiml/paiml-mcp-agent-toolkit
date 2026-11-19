@@ -2,7 +2,7 @@
   github_issue: 1853
   item_type: task
   title: 'master CB-2115 red: #1848 closed with a planned row, #1852 has no row'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-18T00:00:00+00:00

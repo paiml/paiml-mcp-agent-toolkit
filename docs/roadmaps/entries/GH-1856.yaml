@@ -2,7 +2,7 @@
   github_issue: 1856
   item_type: task
   title: "feat(work): fill spec and acceptance criteria from the issue body in work add (GH-1807 slice 2, re-cut v2)"
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-19T00:00:00+00:00

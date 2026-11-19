@@ -2,7 +2,7 @@
   github_issue: 1807
   item_type: task
   title: 'work add: derive spec and criteria from the issue body'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-16T00:00:00+00:00

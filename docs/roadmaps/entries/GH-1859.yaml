@@ -2,7 +2,7 @@
   github_issue: 1859
   item_type: task
   title: "chore(roadmap): row for #1856 so master CB-2115 is green"
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-19T00:00:00+00:00
