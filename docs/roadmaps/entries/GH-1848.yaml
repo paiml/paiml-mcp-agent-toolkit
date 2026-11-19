@@ -1,0 +1,18 @@
+- id: GH-1848
+  github_issue: 1848
+  item_type: task
+  title: 'roadmap: rows for open issues, v3 of GH-1838 (trailer in one paragraph)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-18T00:00:00+00:00
+  updated: 2026-11-18T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1414
