@@ -548,3 +548,13 @@ fn a_fragment_only_row_completed_at_the_base_is_still_a_finding() {
     let m = measure_against(dir.path(), None).expect("measured");
     assert_eq!(violations(&m), terminal("PMAT-006", "completed"), "{m:?}");
 }
+
+#[test]
+fn a_row_the_pr_adds_and_completes_is_still_a_finding() {
+    let dir = repo();
+    on_feature(dir.path());
+    // PMAT-007 does not exist at the merge-base; the PR adds it already completed.
+    fragment(dir.path(), "PMAT-007", "completed", "Pmat-Ticket: PMAT-007");
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(violations(&m), terminal("PMAT-007", "completed"), "{m:?}");
+}
