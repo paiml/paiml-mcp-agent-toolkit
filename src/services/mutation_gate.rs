@@ -633,9 +633,16 @@ pub fn run_mutation_gate(project_path: &Path, diff_path: Option<&Path>) -> Mutat
     let scope = diff_text
         .as_deref()
         .map_or(DiffScope::Unknown, |t| classify_diff(t, &excludes));
-    match read_outcomes_dir(&outcomes_dir_for(project_path)) {
+    let out_dir = outcomes_dir_for(project_path);
+    // Only an ABSENT outcomes.json can be a measured zero; unreadable or
+    // unparseable output is a broken run and stays INV-MUT-2.
+    let absent = matches!(
+        std::fs::metadata(out_dir.join("outcomes.json")),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound
+    );
+    match read_outcomes_dir(&out_dir) {
         Ok(o) => evaluate_mutation_gate(Some(&o), &scope),
-        Err(_) if measured_zero(project_path, &scope, diff_text.as_deref()) => {
+        Err(_) if absent && measured_zero(project_path, &scope, diff_text.as_deref()) => {
             MutationGateVerdict {
                 passed: true,
                 findings: Vec::new(),
@@ -648,11 +655,11 @@ pub fn run_mutation_gate(project_path: &Path, diff_path: Option<&Path>) -> Mutat
     }
 }
 
-/// Beside `mutants.out/`: `cargo mutants --list --json --in-diff` output. Only an
+/// In the project root (not moved by `$PMAT_MUTANTS_OUT`): `cargo mutants --list --json --in-diff` output. Only an
 /// exactly-empty JSON array counts as proof of zero selected mutants.
 pub const MUTANTS_LISTING_FILE: &str = "mutants-listing.json";
 
-/// Beside the listing: the diff it was taken from. The listing proves a zero
+/// In the project root: the diff the listing was taken from. The listing proves a zero
 /// only when this equals the diff being judged.
 pub const MUTANTS_LISTING_DIFF_FILE: &str = "mutants-listing.diff";
 
@@ -671,12 +678,17 @@ fn measured_zero(project_path: &Path, scope: &DiffScope, diff_text: Option<&str>
 }
 
 /// True when the diff can empty the selection by itself: it touches a
-/// `mutants.toml` (`+++`/`---` path, or `rename to`/`copy to` target), or adds or
-/// removes a `skip` attribute naming `mutants` (`mutants::skip`, or an alias
-/// such as `use mutants as m; #[m::skip]`).
+/// `mutants.toml` or either listing file (`+++`/`---` path, or `rename to`/`copy
+/// to` target), or adds or removes a `skip` attribute naming `mutants`
+/// (`mutants::skip`), or `::skip` after a `use mutants as` line that is itself
+/// added or removed earlier in this diff; an alias or import already in the file
+/// is not detected.
 fn diff_edits_mutant_selection(diff_text: &str) -> bool {
     let is_cfg = |p: &str| {
-        p.split('\t').next().unwrap_or(p).trim().rsplit('/').next() == Some("mutants.toml")
+        let name = p.split('\t').next().unwrap_or(p).trim().rsplit('/').next();
+        name == Some("mutants.toml")
+            || name == Some(MUTANTS_LISTING_FILE)
+            || name == Some(MUTANTS_LISTING_DIFF_FILE)
     };
     let mut aliased = false;
     diff_text.lines().any(|l| {

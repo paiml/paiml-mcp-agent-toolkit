@@ -218,6 +218,32 @@ fn inv_mut_2_an_empty_listing_does_not_excuse_a_selection_edit() {
     }
 }
 
+/// A corrupt outcomes.json is a broken run, not an absent one: it never yields
+/// a measured zero, even beside a bound `[]` listing.
+#[test]
+fn inv_mut_2_a_corrupt_outcomes_file_beside_an_empty_listing_fails() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let diff = dir.path().join("pr.diff");
+    std::fs::write(&diff, SRC_DIFF).expect("diff");
+    std::fs::write(dir.path().join(MUTANTS_LISTING_FILE), "[]").expect("l");
+    std::fs::write(dir.path().join(MUTANTS_LISTING_DIFF_FILE), SRC_DIFF).expect("d");
+    let out = dir.path().join("mutants.out");
+    std::fs::create_dir(&out).expect("dir");
+    std::fs::write(out.join("outcomes.json"), "{ junk").expect("o");
+    let v = run_mutation_gate(dir.path(), Some(&diff));
+    assert!(!v.passed, "corrupt outcomes must not read as zero");
+    assert_eq!(v.fired(), vec!["INV-MUT-2"]);
+}
+
+/// A PR that commits its own listing as evidence never gets a measured zero.
+#[test]
+fn inv_mut_2_a_diff_adding_the_listing_files_is_a_selection_edit() {
+    for f in [MUTANTS_LISTING_FILE, MUTANTS_LISTING_DIFF_FILE] {
+        let d = format!("{SRC_DIFF}--- /dev/null\n+++ b/{f}\n@@ -0,0 +1 @@\n+[]\n");
+        assert!(!gate_with_diff(Some("[]"), Some(&d), &d).passed, "{f}");
+    }
+}
+
 // ── INV-MUT-2 ──────────────────────────────────────────────────────────────
 
 /// The measured behaviour that makes this invariant necessary: cargo-mutants
