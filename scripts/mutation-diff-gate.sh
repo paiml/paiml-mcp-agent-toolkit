@@ -157,6 +157,10 @@ cmd_run() {
         *) die "cargo mutants exited $rc, so the run did not complete; see mutants.out/debug.log" ;;
     esac
 
+    # GH-1846: the listing the gate reads when cargo-mutants wrote no outcomes.json
+    # (zero mutants selected); empty stdout is recorded as `[]`, a measured zero.
+    "$root/scripts/mutation-listing.sh" "$diff" "$root"
+
     judge "$diff"
 }
 
