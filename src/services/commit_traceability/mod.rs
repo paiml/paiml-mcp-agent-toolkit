@@ -351,52 +351,71 @@ fn open_ids_at(project_path: &Path, rev: &str) -> std::collections::HashSet<Stri
         .unwrap_or_default()
 }
 
-/// The findings one commit earns: a missing trailer, or one per named id that
-/// is unknown or terminal. A row that was open at the merge-base and is
-/// terminal (completed or cancelled) at HEAD was closed inside this range, and
-/// is not a finding (GH-1824).
-fn judge_commit(
-    (hash, subject, trailer): (&str, &str, &str),
-    roadmap_map: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
-    open_at_base: &std::collections::HashSet<String>,
-) -> Vec<Finding> {
-    let finding = |violation| Finding {
-        hash: hash.to_string(),
-        subject: subject.to_string(),
-        violation,
+/// One `git log` line (`%H \x1f %s \x1f trailers`) → (hash, subject, ticket ids).
+/// `None` for a line with fewer than two fields, as before the extraction.
+fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>)> {
+    let parts: Vec<&str> = line.split('\x1f').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let tr = if parts.len() >= 3 {
+        parts[2].trim()
+    } else {
+        ""
     };
-    let ids: Vec<&str> = trailer
+    let ids = tr
         .split(',')
-        .map(str::trim)
+        .map(|s| s.trim())
         .filter(|s| !s.is_empty())
         .collect();
-    if ids.is_empty() {
-        return vec![finding(Violation::NoTrailer)];
-    }
-    ids.into_iter()
-        .filter_map(|id| match roadmap_map.get(id) {
-            None => Some(finding(Violation::UnknownTicket(id.to_string()))),
-            Some(status) => terminal_status(status)
-                .filter(|_| !open_at_base.contains(id))
-                .map(|status| {
-                    finding(Violation::TerminalTicket {
-                        id: id.to_string(),
-                        status: status.to_string(),
-                    })
-                }),
-        })
-        .collect()
+    Some((parts[0].to_string(), parts[1].to_string(), ids))
 }
 
-/// A terminal status spelled as the roadmap serialises it (`ItemStatus` is
-/// `rename_all = "lowercase"`); `None` for an open one.
-fn terminal_status(status: &crate::models::roadmap::ItemStatus) -> Option<&'static str> {
+/// The violation, if any, that one trailer id commits against the roadmap.
+///
+/// A row that was open at the merge-base and is terminal at HEAD was closed
+/// inside this range, and is not a finding (GH-1824).
+fn judge_id(
+    roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
+    open_at_base: &std::collections::HashSet<String>,
+    id: &str,
+) -> Option<Violation> {
     use crate::models::roadmap::ItemStatus;
-    match status {
-        ItemStatus::Completed => Some("completed"),
-        ItemStatus::Cancelled => Some("cancelled"),
-        _ => None,
+    let Some(status) = roadmap.get(id) else {
+        return Some(Violation::UnknownTicket(id.to_string()));
+    };
+    // Terminal states, spelled as the roadmap serialises them (`ItemStatus` is
+    // `rename_all = "lowercase"`).
+    let terminal = match status {
+        ItemStatus::Completed => "completed",
+        ItemStatus::Cancelled => "cancelled",
+        _ => return None,
+    };
+    if open_at_base.contains(id) {
+        return None;
     }
+    Some(Violation::TerminalTicket {
+        id: id.to_string(),
+        status: terminal.to_string(),
+    })
+}
+
+/// Judge every trailer id of one commit, appending a finding per violation.
+fn judge_ids(
+    roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
+    open_at_base: &std::collections::HashSet<String>,
+    hash: &str,
+    subject: &str,
+    ids: &[&str],
+    findings: &mut Vec<Finding>,
+) {
+    findings.extend(ids.iter().filter_map(|id| {
+        judge_id(roadmap, open_at_base, id).map(|violation| Finding {
+            hash: hash.to_string(),
+            subject: subject.to_string(),
+            violation,
+        })
+    }));
 }
 
 fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
@@ -425,21 +444,34 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
     let mut commits = 0;
     let mut trailered = 0;
     let mut findings = vec![];
-    for line in commits_out.lines().filter(|l| !l.trim().is_empty()) {
-        commits += 1;
-        let parts: Vec<&str> = line.split('\x1f').collect();
-        if parts.len() < 2 {
-            continue;
+
+    if !commits_out.is_empty() {
+        for line in commits_out.split('\n') {
+            if line.trim().is_empty() {
+                continue;
+            }
+            commits += 1;
+            let Some((hash, subject, ids)) = parse_log_line(line) else {
+                continue;
+            };
+            if ids.is_empty() {
+                findings.push(Finding {
+                    hash,
+                    subject,
+                    violation: Violation::NoTrailer,
+                });
+            } else {
+                judge_ids(
+                    &roadmap_map,
+                    &open_at_base,
+                    &hash,
+                    &subject,
+                    &ids,
+                    &mut findings,
+                );
+                trailered += 1;
+            }
         }
-        let trailer = parts.get(2).map_or("", |t| t.trim());
-        if !trailer.split(',').all(|s| s.trim().is_empty()) {
-            trailered += 1;
-        }
-        findings.extend(judge_commit(
-            (parts[0], parts[1], trailer),
-            &roadmap_map,
-            &open_at_base,
-        ));
     }
 
     Ok(Measurement {
