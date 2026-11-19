@@ -1,0 +1,18 @@
+- id: GH-1852
+  github_issue: 1852
+  item_type: task
+  title: 'fleet-bins: NIGHTLY-STALE on paiml/paiml-mcp-agent-toolkit'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-18T00:00:00+00:00
+  updated: 2026-11-18T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1414
