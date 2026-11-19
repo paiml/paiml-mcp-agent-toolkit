@@ -30,7 +30,7 @@ fn gate_budget() -> Option<Duration> {
 }
 
 /// Run a child to completion within `budget`. `None` means it was still running
-/// at the deadline and was killed (our own child only): the step is NOT MEASURED.
+/// at the deadline and was killed (our own child only); `gate_step_with` fails it.
 fn run_bounded_status(
     cmd: &mut std::process::Command,
     budget: Option<Duration>,
@@ -53,22 +53,29 @@ fn run_bounded_status(
     }
 }
 
-/// Run one gate step. A timeout is reported as NOT MEASURED and does not fail the
-/// gate (the old behaviour hung past 2 min and left `--skip-quality` as the only
-/// way to close a ticket); it is never reported as a pass.
-fn gate_step(cmd: &mut std::process::Command, what: &str) -> Result<Option<bool>> {
-    match run_bounded_status(cmd, gate_budget())? {
-        Some(status) => Ok(Some(status.success())),
+/// Run one gate step within `budget`. A step that overruns is killed and FAILS
+/// (a hang is a red gate, never a silent pass); returns whether the step passed.
+fn gate_step_with(
+    cmd: &mut std::process::Command,
+    what: &str,
+    budget: Option<Duration>,
+) -> Result<bool> {
+    match run_bounded_status(cmd, budget)? {
+        Some(status) => Ok(status.success()),
         None => {
             println!(
                 "      {}",
-                c::warn(&format!(
-                    "{what}: NOT MEASURED (exceeded budget; set PMAT_WORK_GATE_TIMEOUT_SECS, 0 = unbounded)"
+                c::fail(&format!(
+                    "{what}: FAILED - exceeded budget (PMAT_WORK_GATE_TIMEOUT_SECS, 0 = unbounded)"
                 ))
             );
-            Ok(None)
+            Ok(false)
         }
     }
+}
+
+fn gate_step(cmd: &mut std::process::Command, what: &str) -> Result<bool> {
+    gate_step_with(cmd, what, gate_budget())
 }
 
 /// Run git-aware tests for changed modules.
@@ -108,15 +115,14 @@ fn run_changed_module_tests(project_path: &PathBuf) -> Result<bool> {
         "Tests",
     )?;
     match outcome {
-        Some(true) => {
+        true => {
             println!("      {}", c::pass("Tests passed"));
             Ok(true)
         }
-        Some(false) => {
+        false => {
             println!("      {}", c::fail("Tests failed"));
             Ok(false)
         }
-        None => Ok(true),
     }
 }
 
@@ -142,12 +148,11 @@ fn run_rust_project_checks(project_path: &PathBuf) -> Result<bool> {
                 .current_dir(project_path),
             "Examples",
         )? {
-            Some(true) => println!("      {}", c::pass("Examples compile")),
-            Some(false) => {
+            true => println!("      {}", c::pass("Examples compile")),
+            false => {
                 println!("      {}", c::fail("Examples failed to compile"));
                 passed = false;
             }
-            None => {}
         }
     }
 
@@ -197,28 +202,34 @@ fn run_golden_trace_validation(project_path: &PathBuf) -> Result<bool> {
     }
 
     println!("   {}", c::dim("Golden traces detected..."));
-    match Command::new("renacer")
-        .args([
-            "validate",
-            "--baseline",
-            baseline_dir.to_str().unwrap_or("golden_traces/baseline"),
-            "--ignore-timing",
-            "--",
-            "./target/release/pmat",
-            "--help",
-        ])
-        .current_dir(project_path)
-        .status()
-    {
-        Ok(status) if status.success() => {
+    let mut cmd = Command::new("renacer");
+    cmd.args([
+        "validate",
+        "--baseline",
+        baseline_dir.to_str().unwrap_or("golden_traces/baseline"),
+        "--ignore-timing",
+        "--",
+        "./target/release/pmat",
+        "--help",
+    ])
+    .current_dir(project_path);
+    match run_bounded_status(&mut cmd, gate_budget()) {
+        Ok(None) => {
+            println!(
+                "      {}",
+                c::fail("Golden traces: FAILED - exceeded budget (PMAT_WORK_GATE_TIMEOUT_SECS, 0 = unbounded)")
+            );
+            Ok(false)
+        }
+        Ok(Some(status)) if status.success() => {
             println!("      {}", c::pass("Golden traces match"));
             Ok(true)
         }
-        Ok(status) if status.code() == Some(2) => {
+        Ok(Some(status)) if status.code() == Some(2) => {
             println!("      {}", c::skip("No golden baseline yet"));
             Ok(true)
         }
-        Ok(_) => {
+        Ok(Some(_)) => {
             println!("      {}", c::fail("Golden traces diverged"));
             Ok(false)
         }
@@ -243,15 +254,14 @@ fn run_clippy_check(project_path: &PathBuf) -> Result<bool> {
             .current_dir(project_path),
         "Clippy",
     )? {
-        Some(true) => {
+        true => {
             println!("      {}", c::pass("No clippy warnings"));
             Ok(true)
         }
-        Some(false) => {
+        false => {
             println!("      {}", c::fail("Clippy warnings found"));
             Ok(false)
         }
-        None => Ok(true),
     }
 }
 
@@ -629,6 +639,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn an_overrunning_gate_step_is_reported_failed() {
+        let mut cmd = std::process::Command::new("sleep");
+        cmd.arg("5");
+        let ok = gate_step_with(&mut cmd, "t", Some(Duration::from_millis(100))).unwrap();
+        assert!(!ok, "a step that exceeds its budget must fail, not pass");
+        let mut fast = std::process::Command::new("true");
+        assert!(gate_step_with(&mut fast, "t", Some(Duration::from_secs(5))).unwrap());
+    }
+
+    #[test]
     fn bounded_status_kills_a_child_that_outlives_its_budget() {
         let mut cmd = std::process::Command::new("sleep");
         cmd.arg("30");
@@ -637,7 +657,7 @@ mod tests {
             .expect("spawn");
         assert!(
             out.is_none(),
-            "a timed-out gate step is NOT MEASURED, not a status"
+            "a timed-out step yields no status (gate_step_with then fails it)"
         );
         assert!(t.elapsed().as_secs() < 10, "must return near the budget");
     }
