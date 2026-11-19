@@ -287,10 +287,22 @@ fn derive_spec(body: &str) -> Option<String> {
         })
 }
 
-/// Is this heading text a `done_when` / `Acceptance` opener?
-fn is_acceptance_head(head: &str) -> bool {
-    let lower = head.to_ascii_lowercase().replace(' ', "_");
-    lower.starts_with("done_when") || lower.starts_with("acceptance")
+/// Does this raw line open a criteria section? Only a markdown heading
+/// (`## Acceptance`) or a key (`done_when:`, `acceptance:`,
+/// `acceptance_criteria:`) does; prose that merely starts with the word does not.
+fn opens_section(line: &str) -> bool {
+    let norm = |t: &str| {
+        t.trim()
+            .trim_matches(['*', '_', '`', ' '])
+            .to_ascii_lowercase()
+            .replace(' ', "_")
+    };
+    let is_key = |k: &str| matches!(k, "done_when" | "acceptance" | "acceptance_criteria");
+    if line.trim_start().starts_with('#') {
+        let head = norm(&heading_text(line));
+        return head.starts_with("done_when") || head.starts_with("acceptance");
+    }
+    line.split_once(':').is_some_and(|(k, _)| is_key(&norm(k)))
 }
 
 /// The criterion written on the opener line itself (`done_when: x`), if any.
@@ -310,7 +322,7 @@ fn derive_acceptance(body: &str) -> Vec<String> {
     let mut inside = false;
     for line in body.lines() {
         let head = heading_text(line);
-        if is_acceptance_head(&head) {
+        if opens_section(line) {
             inside = true;
             acceptance.extend(inline_criterion(&head));
         } else if inside && ends_section(line, !acceptance.is_empty()) {
