@@ -144,7 +144,6 @@ fn inv_mut_1_a_timeout_is_not_a_kill() {
 }
 
 // ── INV-MUT-2: a measured zero (GH-1840) ───────────────────────────────────
-
 const SRC_DIFF: &str = "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1 +1 @@\n-a\n+b\n";
 
 fn gate_with_diff(
