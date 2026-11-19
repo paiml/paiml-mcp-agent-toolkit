@@ -188,33 +188,32 @@ pub fn load_exclude_globs(project_path: &Path) -> Vec<String> {
     let Ok(text) = std::fs::read_to_string(project_path.join("mutants.toml")) else {
         return default();
     };
-    let globs = scan_exclude_globs(&text);
+    let mut globs = Vec::new();
+    let mut in_block = false;
+    for line in text.lines() {
+        let t = line.trim();
+        if t.starts_with('#') {
+            continue;
+        }
+        if !in_block {
+            if t.starts_with("exclude_globs") && t.contains('[') {
+                // `exclude_globs = ["a", "b"]` may close on the same line
+                let inner = t.split_once('[').map_or("", |(_, r)| r);
+                push_quoted(inner, &mut globs);
+                in_block = !inner.contains(']');
+            }
+            continue;
+        }
+        push_quoted(t, &mut globs);
+        if t.contains(']') {
+            in_block = false;
+        }
+    }
     if globs.is_empty() {
         default()
     } else {
         globs
     }
-}
-
-/// The quoted strings of the `exclude_globs = [ ... ]` array, which may span lines.
-fn scan_exclude_globs(text: &str) -> Vec<String> {
-    let mut globs = Vec::new();
-    let mut in_block = false;
-    for t in text.lines().map(str::trim).filter(|t| !t.starts_with('#')) {
-        let body = if in_block {
-            t
-        } else if t.starts_with("exclude_globs") {
-            match t.split_once('[') {
-                Some((_, inner)) => inner,
-                None => continue,
-            }
-        } else {
-            continue;
-        };
-        push_quoted(body, &mut globs);
-        in_block = !body.contains(']');
-    }
-    globs
 }
 
 fn push_quoted(s: &str, out: &mut Vec<String>) {
@@ -628,14 +627,13 @@ fn verdict(findings: Vec<GateFinding>, caught: u64, total: u64) -> MutationGateV
 #[must_use]
 pub fn run_mutation_gate(project_path: &Path, diff_path: Option<&Path>) -> MutationGateVerdict {
     let excludes = load_exclude_globs(project_path);
-    // An unreadable diff is an unmeasurable scope: fail closed (unknown).
     let diff_text = diff_path.and_then(|p| std::fs::read_to_string(p).ok());
     let scope = diff_text
         .as_deref()
         .map_or(DiffScope::Unknown, |t| classify_diff(t, &excludes));
     let out_dir = outcomes_dir_for(project_path);
     // Only an ABSENT outcomes.json can be a measured zero; unreadable or
-    // unparseable output is a broken run and stays INV-MUT-2.
+    // unparseable output never takes that arm and is judged as no artifact.
     let absent = matches!(
         std::fs::metadata(out_dir.join("outcomes.json")),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound
@@ -655,17 +653,14 @@ pub fn run_mutation_gate(project_path: &Path, diff_path: Option<&Path>) -> Mutat
     }
 }
 
-/// In the project root (not moved by `$PMAT_MUTANTS_OUT`): `cargo mutants --list --json --in-diff` output. Only an
-/// exactly-empty JSON array counts as proof of zero selected mutants.
+/// Project root (not `$PMAT_MUTANTS_OUT`): `cargo mutants --list --json --in-diff` output; only `[]` proves zero.
 pub const MUTANTS_LISTING_FILE: &str = "mutants-listing.json";
 
-/// In the project root: the diff the listing was taken from. The listing proves a zero
-/// only when this equals the diff being judged.
+/// Project root: the diff the listing was taken from; it must equal the diff judged.
 pub const MUTANTS_LISTING_DIFF_FILE: &str = "mutants-listing.diff";
 
-/// No artifact is fine only when the diff touches mutable source, the listing
-/// was taken from this very diff, the diff does not itself edit what
-/// cargo-mutants selects with, and the listing is `[]`.
+/// No artifact is fine only when the diff touches mutable source, mutants-listing.diff
+/// equals this diff, the diff does not edit what cargo-mutants selects with, and the listing is `[]`.
 fn measured_zero(project_path: &Path, scope: &DiffScope, diff_text: Option<&str>) -> bool {
     let read = |f: &str| std::fs::read_to_string(project_path.join(f)).ok();
     matches!(scope, DiffScope::MutableRustSource(_))
@@ -678,30 +673,39 @@ fn measured_zero(project_path: &Path, scope: &DiffScope, diff_text: Option<&str>
 }
 
 /// True when the diff can empty the selection by itself: it touches a
-/// `mutants.toml` or either listing file (`+++`/`---` path, or `rename to`/`copy
-/// to` target), or adds or removes a `skip` attribute naming `mutants`
+/// `mutants.toml` or either listing file (`+++`/`---` path, `rename to`/`copy
+/// to` target, `diff --git` header or `Binary files` line), or adds or removes a `skip` attribute naming `mutants`
 /// (`mutants::skip`), or `::skip` after a `use mutants as` line that is itself
 /// added or removed earlier in this diff; an alias or import already in the file
 /// is not detected.
 fn diff_edits_mutant_selection(diff_text: &str) -> bool {
+    let mut aliased = false;
+    diff_text.lines().any(|l| {
+        if let Some(is_cfg) = path_line_names_selection_file(l) {
+            return is_cfg;
+        }
+        let changed = l.starts_with('+') || l.starts_with('-');
+        aliased |= changed && l.contains("use mutants as ");
+        changed && (l.contains("mutants::skip") || (aliased && l.contains("::skip")))
+    })
+}
+
+/// `Some(names a selection file)` when `l` is a path line of a diff, else `None`.
+fn path_line_names_selection_file(l: &str) -> Option<bool> {
     let is_cfg = |p: &str| {
         let name = p.split('\t').next().unwrap_or(p).trim().rsplit('/').next();
         name == Some("mutants.toml")
             || name == Some(MUTANTS_LISTING_FILE)
             || name == Some(MUTANTS_LISTING_DIFF_FILE)
     };
-    let mut aliased = false;
-    diff_text.lines().any(|l| {
-        let path = ["+++ ", "--- ", "rename to ", "copy to "]
-            .iter()
-            .find_map(|k| l.strip_prefix(k));
-        if let Some(p) = path {
-            return is_cfg(p);
-        }
-        let changed = l.starts_with('+') || l.starts_with('-');
-        aliased |= changed && l.contains("use mutants as ");
-        changed && (l.contains("mutants::skip") || (aliased && l.contains("::skip")))
-    })
+    // Git prints only these for a binary file: `diff --git a/<p> b/<p>`, `Binary files ... differ`.
+    if l.starts_with("diff --git ") || l.starts_with("Binary files ") {
+        return Some(l.split_whitespace().any(is_cfg));
+    }
+    ["+++ ", "--- ", "rename to ", "copy to "]
+        .iter()
+        .find_map(|k| l.strip_prefix(k))
+        .map(is_cfg)
 }
 
 /// Where the gate expects the diff, when the caller does not pass one:

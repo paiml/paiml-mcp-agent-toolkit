@@ -147,7 +147,6 @@ fn inv_mut_1_a_timeout_is_not_a_kill() {
 
 const SRC_DIFF: &str = "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1 +1 @@\n-a\n+b\n";
 
-/// `listed_from` is the diff recorded beside the listing; `judged` the diff run.
 fn gate_with_diff(
     listing: Option<&str>,
     listed_from: Option<&str>,
@@ -177,18 +176,9 @@ fn inv_mut_2_an_empty_listing_of_this_diff_is_a_measured_pass() {
 #[test]
 fn inv_mut_2_a_listing_not_taken_from_this_diff_proves_nothing() {
     let other = "--- a/src/o.rs\n+++ b/src/o.rs\n@@ -1 +1 @@\n-a\n+b\n";
-    assert!(
-        !gate_with_diff(Some("[]"), Some(other), SRC_DIFF).passed,
-        "stale"
-    );
-    assert!(
-        !gate_with_diff(Some("[]"), None, SRC_DIFF).passed,
-        "unbound"
-    );
-    assert!(
-        !gate_with_diff(None, Some(SRC_DIFF), SRC_DIFF).passed,
-        "no listing"
-    );
+    assert!(!gate_with_diff(Some("[]"), Some(other), SRC_DIFF).passed);
+    assert!(!gate_with_diff(Some("[]"), None, SRC_DIFF).passed);
+    assert!(!gate_with_diff(None, Some(SRC_DIFF), SRC_DIFF).passed);
 }
 
 #[test]
@@ -205,11 +195,11 @@ fn inv_mut_2_a_nonempty_or_junk_listing_still_fails() {
 #[test]
 fn inv_mut_2_an_empty_listing_does_not_excuse_a_selection_edit() {
     let edits = [
-        "+#[mutants::skip]\n".to_string(),
-        "+use mutants as m;\n+#[m::skip]\n".to_string(),
-        "--- a/.cargo/mutants.toml\n+++ b/.cargo/mutants.toml\n@@ -1 +1 @@\n-x\n+y\n".to_string(),
-        "similarity index 90%\nrename from old.toml\nrename to .cargo/mutants.toml\n".to_string(),
-        "similarity index 90%\ncopy from old.toml\ncopy to mutants.toml\n".to_string(),
+        "+#[mutants::skip]\n",
+        "+use mutants as m;\n+#[m::skip]\n",
+        "--- a/.cargo/mutants.toml\n+++ b/.cargo/mutants.toml\n@@ -1 +1 @@\n-x\n+y\n",
+        "similarity index 90%\nrename from old.toml\nrename to .cargo/mutants.toml\n",
+        "similarity index 90%\ncopy from old.toml\ncopy to mutants.toml\n",
     ];
     for e in edits {
         let d = format!("{SRC_DIFF}{e}");
@@ -224,23 +214,32 @@ fn inv_mut_2_an_empty_listing_does_not_excuse_a_selection_edit() {
 fn inv_mut_2_a_corrupt_outcomes_file_beside_an_empty_listing_fails() {
     let dir = tempfile::tempdir().expect("tempdir");
     let diff = dir.path().join("pr.diff");
-    std::fs::write(&diff, SRC_DIFF).expect("diff");
-    std::fs::write(dir.path().join(MUTANTS_LISTING_FILE), "[]").expect("l");
+    for (f, b) in [("pr.diff", SRC_DIFF), (MUTANTS_LISTING_FILE, "[]")] {
+        std::fs::write(dir.path().join(f), b).expect("w");
+    }
     std::fs::write(dir.path().join(MUTANTS_LISTING_DIFF_FILE), SRC_DIFF).expect("d");
-    let out = dir.path().join("mutants.out");
-    std::fs::create_dir(&out).expect("dir");
-    std::fs::write(out.join("outcomes.json"), "{ junk").expect("o");
+    std::fs::create_dir(dir.path().join("mutants.out")).expect("dir");
+    std::fs::write(dir.path().join("mutants.out/outcomes.json"), "{ junk").expect("o");
     let v = run_mutation_gate(dir.path(), Some(&diff));
     assert!(!v.passed, "corrupt outcomes must not read as zero");
     assert_eq!(v.fired(), vec!["INV-MUT-2"]);
 }
 
-/// A PR that commits its own listing as evidence never gets a measured zero.
+/// Listing files and mutants.toml named by a text or a binary diff are selection edits.
 #[test]
-fn inv_mut_2_a_diff_adding_the_listing_files_is_a_selection_edit() {
-    for f in [MUTANTS_LISTING_FILE, MUTANTS_LISTING_DIFF_FILE] {
-        let d = format!("{SRC_DIFF}--- /dev/null\n+++ b/{f}\n@@ -0,0 +1 @@\n+[]\n");
-        assert!(!gate_with_diff(Some("[]"), Some(&d), &d).passed, "{f}");
+fn inv_mut_2_a_diff_naming_a_selection_file_is_a_selection_edit() {
+    for f in [
+        MUTANTS_LISTING_FILE,
+        MUTANTS_LISTING_DIFF_FILE,
+        "mutants.toml",
+    ] {
+        for e in [
+            format!("--- /dev/null\n+++ b/{f}\n@@ -0,0 +1 @@\n+[]\n"),
+            format!("diff --git a/{f} b/{f}\nBinary files /dev/null and b/{f} differ\n"),
+        ] {
+            let d = format!("{SRC_DIFF}{e}");
+            assert!(!gate_with_diff(Some("[]"), Some(&d), &d).passed, "{e}");
+        }
     }
 }
 
