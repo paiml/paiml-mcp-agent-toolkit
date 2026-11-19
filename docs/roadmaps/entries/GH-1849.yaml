@@ -1,0 +1,18 @@
+- id: GH-1849
+  github_issue: 1849
+  item_type: task
+  title: 'SUPPLY-001: mutation gate core re-cut (zero-mutant diff is a measured zero)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-18T00:00:00+00:00
+  updated: 2026-11-18T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1414
