@@ -1,7 +1,7 @@
 - id: GH-1863
   github_issue: 1863
   item_type: task
-  title: 'Mutation gate slice 2 (re-cut of GH-1846): dispatch base input, listing script, cargo-mutants pin, empty-stdout test'
+  title: "Mutation gate slice 2 (re-cut of GH-1846): dispatch base input, listing script, cargo-mutants pin, empty-stdout test"
   status: planned
   priority: medium
   assigned_to: null
@@ -12,7 +12,6 @@
   phases: []
   subtasks: []
   estimated_effort: null
-  labels:
-  - kind:code
+  labels: []
   notes: null
   epic: 1414

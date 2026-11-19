@@ -7633,7 +7633,7 @@ roadmap:
   github_issue: 1472
   item_type: task
   title: pmat work start hangs on inherited stdin, moves the ticket to InProgress anyway, then refuses it (InProgress → InProgress), and never writes the lock state
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-10-16T12:10:41.902513022+00:00
@@ -7875,7 +7875,7 @@ roadmap:
   github_issue: 1502
   item_type: task
   title: 'pmat work start/delegate: refuse at the open-PR cap, drafts included (companion of aprender#5518)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00

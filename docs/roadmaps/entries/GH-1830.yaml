@@ -2,7 +2,7 @@
   github_issue: 1830
   item_type: task
   title: 'work add: wire derivation into ticket_crud (slice 2 of GH-1807, re-cut)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-18T00:00:00+00:00

@@ -42,9 +42,12 @@
 #   escapes it for longer than a day.
 #
 # infra#3828 (operator ruling 2026-11-10 16:50Z): mutation runs on the nightly
-# schedule only (GH-1846 re-adds a manual workflow_dispatch with a `base` input). The `mutation` label on a pull request and the manual dispatch
-# are gone; no PR, push, merge queue or train run executes it, and no required
-# check or gate depends on it. Text below that describes the label or a required
+# schedule only. GH-1846/GH-1863 re-add a manual `workflow_dispatch` with a
+# `base` input as a LAB-only exploratory run: it is off every PR, merge-queue and
+# release path, bypasses `arm`, and never opens the ticket or starts the 7-day
+# clock (the `ticket` job is schedule-only). The `mutation` label on a pull
+# request is gone; no PR, push, merge queue or train run executes the lane, and
+# no required check or gate depends on it. Text below that describes the label or a required
 # `mutation-diff` context is history.
 #
 # A timeout here is a failure, deliberately: "mutation could not finish
@@ -134,8 +137,9 @@ jobs:
           fi
 
   mutation-diff:
-    # Nightly schedule only (infra#3828). Any other event is refused here as well as in `on:`.
-    # Skipped (not red) when `arm` found the 7-day stop.
+    # Nightly schedule, or a manual workflow_dispatch (LAB-only, never on a PR path).
+    # Any other event is refused here as well as in `on:`.
+    # A schedule run is skipped (not red) when `arm` found the 7-day stop.
     # `arm` is skipped on a dispatch, which would skip this job too; `!cancelled()` lets it run.
     needs: arm
     if: ${{ !cancelled() && ((github.event_name == 'schedule' && needs.arm.outputs.run == 'true') || github.event_name == 'workflow_dispatch') }}
@@ -192,19 +196,31 @@ jobs:
 
       # Pinned (GH-1846): scripts/mutation-listing.sh relies on `--list --json --in-diff`
       # output; the gate's measured behaviour notes are for this version.
+      - name: Listing selftest (GH-1863)
+        run: bash scripts/mutation-listing-selftest.sh
+
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --version 27.0.0 --locked
 
       - name: Resolve the base to diff against
         id: base
+        # Inputs reach the script only through env, never template-expanded into it.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BASE_INPUT: ${{ github.event.inputs.base }}
         run: |
           set -euo pipefail
-          case "${{ github.event_name }}" in
+          case "$EVENT_NAME" in
             pull_request)
-              base="origin/${{ github.base_ref }}"
+              base="origin/$BASE_REF"
               ;;
             workflow_dispatch)
-              base="${{ github.event.inputs.base }}"
+              base="$BASE_INPUT"
+              if ! git rev-parse --verify --quiet "$base^{commit}" >/dev/null; then
+                echo "dispatch base is not a commit in this checkout; refusing to run"
+                exit 1
+              fi
               ;;
             *)
               # Nightly: everything that landed on master in the last 24 hours.
@@ -227,7 +243,9 @@ jobs:
         run: cargo build --example mutation_gate --locked
 
       - name: Mutation gate on the diff
-        run: scripts/mutation-diff-gate.sh run --base '${{ steps.base.outputs.base }}'
+        env:
+          BASE: ${{ steps.base.outputs.base }}
+        run: scripts/mutation-diff-gate.sh run --base "$BASE"
 
       - name: Upload mutation report
         # `always()` so the surviving mutants are readable on the run that
@@ -263,7 +281,8 @@ jobs:
   # failed, and the workflow's conclusion is red whatever this job does.
   ticket:
     needs: [arm, mutation-diff]
-    if: failure()
+    # Schedule only: a manual dispatch must not open the ticket that starts the 7-day stop.
+    if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

@@ -2,7 +2,7 @@
   github_issue: 1849
   item_type: task
   title: 'SUPPLY-001: mutation gate core re-cut (zero-mutant diff is a measured zero)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-18T00:00:00+00:00
