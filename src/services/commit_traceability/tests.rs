@@ -425,3 +425,136 @@ fn a_roadmap_that_was_committed_and_is_now_gone_is_not_an_absence() {
     std::fs::remove_file(dir2.path().join(ROADMAP_PATH)).expect("rm");
     assert_eq!(inputs(dir2.path()), Inputs::RoadmapDeleted);
 }
+
+// ── GH-1824: a PR may complete its own row ──────────────────────────────────
+
+/// Rewrite the roadmap row `id` to `completed` and commit it with `trailer`.
+fn complete_row(dir: &Path, id: &str, from: &str, trailer: &str) {
+    let rm = dir.join(ROADMAP_PATH);
+    let text = std::fs::read_to_string(&rm).expect("read roadmap");
+    let needle = format!(
+        "- id: {id}\n    title: {}\n    status: {from}",
+        match id {
+            "PMAT-001" => "planned work",
+            _ => "work under way",
+        }
+    );
+    assert!(text.contains(&needle), "fixture row {id} not found");
+    let flipped = text.replace(&needle, &needle.replace(from, "completed"));
+    std::fs::write(&rm, flipped).expect("write roadmap");
+    git(dir, &["add", "."]);
+    git(
+        dir,
+        &["commit", "-q", "-m", "chore: complete row", "-m", trailer],
+    );
+}
+
+#[test]
+fn a_ticket_completed_inside_the_range_is_not_a_finding() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit(dir.path(), "feat: work", Some("Pmat-Ticket: PMAT-001"));
+    complete_row(dir.path(), "PMAT-001", "planned", "Pmat-Ticket: PMAT-001");
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.commits, 2, "{m:?}");
+    assert!(
+        m.clean(),
+        "a PR that completes its own row must pass: {:?}",
+        m.findings
+    );
+}
+
+#[test]
+fn a_ticket_completed_before_the_base_is_still_a_finding_even_if_the_pr_touches_the_roadmap() {
+    let dir = repo();
+    on_feature(dir.path());
+    // PMAT-002 is `completed` at the base: naming it is still refused.
+    complete_row(
+        dir.path(),
+        "PMAT-003",
+        "inprogress",
+        "Pmat-Ticket: PMAT-003",
+    );
+    commit(dir.path(), "feat: late", Some("Pmat-Ticket: PMAT-002"));
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(
+        m.findings.iter().map(|f| &f.violation).collect::<Vec<_>>(),
+        vec![&Violation::TerminalTicket {
+            id: "PMAT-002".into(),
+            status: "completed".into()
+        }],
+        "{:?}",
+        m.findings
+    );
+}
+
+// ── GH-1824: the base set is the fragment-aware view, read at the merge-base ─
+
+/// Commit `entries/<id>.yaml` holding one row in `status`, with `trailer`.
+fn fragment(dir: &Path, id: &str, status: &str, trailer: &str) {
+    let path = dir.join(format!("docs/roadmaps/entries/{id}.yaml"));
+    std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    std::fs::write(
+        &path,
+        format!("  - id: {id}\n    title: fragment row\n    status: {status}\n"),
+    )
+    .expect("write fragment");
+    git(dir, &["add", "."]);
+    git(
+        dir,
+        &["commit", "-q", "-m", "chore: fragment", "-m", trailer],
+    );
+}
+
+fn terminal(id: &str, status: &str) -> Vec<Violation> {
+    vec![Violation::TerminalTicket {
+        id: id.into(),
+        status: status.into(),
+    }]
+}
+
+fn violations(m: &super::Measurement) -> Vec<Violation> {
+    m.findings.iter().map(|f| f.violation.clone()).collect()
+}
+
+#[test]
+fn a_row_a_fragment_completed_at_the_base_is_still_a_finding() {
+    let dir = repo();
+    // roadmap.yaml says `planned`; the fragment overrides it with `completed`.
+    fragment(dir.path(), "PMAT-001", "completed", "Pmat-Ticket: PMAT-001");
+    on_feature(dir.path());
+    commit(dir.path(), "feat: late", Some("Pmat-Ticket: PMAT-001"));
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(violations(&m), terminal("PMAT-001", "completed"), "{m:?}");
+}
+
+#[test]
+fn a_fragment_only_row_open_at_the_base_may_be_completed_by_the_pr() {
+    let dir = repo();
+    fragment(dir.path(), "PMAT-005", "planned", "Pmat-Ticket: PMAT-001");
+    on_feature(dir.path());
+    fragment(dir.path(), "PMAT-005", "completed", "Pmat-Ticket: PMAT-005");
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.commits, 1, "{m:?}");
+    assert!(m.clean(), "{:?}", m.findings);
+}
+
+#[test]
+fn a_fragment_only_row_completed_at_the_base_is_still_a_finding() {
+    let dir = repo();
+    fragment(dir.path(), "PMAT-006", "completed", "Pmat-Ticket: PMAT-001");
+    on_feature(dir.path());
+    commit(dir.path(), "feat: late", Some("Pmat-Ticket: PMAT-006"));
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(violations(&m), terminal("PMAT-006", "completed"), "{m:?}");
+}
+
+#[test]
+fn a_row_the_pr_adds_and_completes_is_still_a_finding() {
+    let dir = repo();
+    on_feature(dir.path());
+    // PMAT-007 does not exist at the merge-base; the PR adds it already completed.
+    fragment(dir.path(), "PMAT-007", "completed", "Pmat-Ticket: PMAT-007");
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(violations(&m), terminal("PMAT-007", "completed"), "{m:?}");
+}

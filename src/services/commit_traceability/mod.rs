@@ -30,6 +30,9 @@ mod tests;
 /// The roadmap the trailer ids are resolved against.
 pub const ROADMAP_PATH: &str = "docs/roadmaps/roadmap.yaml";
 
+/// The fragments laid over [`ROADMAP_PATH`] (one row per file).
+const ENTRIES_DIR: &str = "docs/roadmaps/entries/";
+
 /// The trailer key, exactly as `git interpret-trailers` spells it.
 pub const TRAILER_KEY: &str = "Pmat-Ticket";
 
@@ -147,6 +150,12 @@ pub fn inputs(project_path: &Path) -> Inputs {
 }
 
 fn run_git(project_path: &Path, args: &[&str]) -> Result<String, String> {
+    run_git_raw(project_path, args).map(|text| text.trim().to_string())
+}
+
+/// `git args` stdout exactly as printed (leading indentation and the final
+/// newline of a file kept).
+fn run_git_raw(project_path: &Path, args: &[&str]) -> Result<String, String> {
     let out = Command::new("git")
         .arg("-C")
         .arg(project_path)
@@ -161,7 +170,7 @@ fn run_git(project_path: &Path, args: &[&str]) -> Result<String, String> {
             String::from_utf8_lossy(&out.stderr)
         ));
     }
-    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
 /// Measure, resolving the base from [`BASE_REF_ENV`] when it is set and from
@@ -305,6 +314,43 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
     })
 }
 
+/// `git show rev:path`, byte for byte (a fragment's indent and final newline
+/// are part of what `aggregate` checks).
+fn show_at(project_path: &Path, rev: &str, path: &str) -> Option<String> {
+    run_git_raw(project_path, &["show", &format!("{rev}:{path}")]).ok()
+}
+
+/// The roadmap as `RoadmapService::load` reads it, but at `rev`: `roadmap.yaml`
+/// with every `entries/` fragment aggregated over it. `None` when the base
+/// roadmap or a fragment cannot be read, or the fragments do not aggregate.
+fn roadmap_view_at(project_path: &Path, rev: &str) -> Option<String> {
+    let base = show_at(project_path, rev, ROADMAP_PATH)?;
+    let listing = run_git(project_path, &["ls-tree", "--name-only", rev, ENTRIES_DIR]).ok()?;
+    let mut fragments = Vec::new();
+    for path in listing.lines().filter(|p| p.ends_with(".yaml")) {
+        let id = path.rsplit('/').next()?.trim_end_matches(".yaml");
+        fragments.push((id.to_string(), show_at(project_path, rev, path)?));
+    }
+    crate::services::roadmap_fragments::aggregate(&base, &fragments).ok()
+}
+
+/// Ids the roadmap view at `rev` (`roadmap.yaml` overlaid by `entries/`
+/// fragments) holds in a non-terminal status; empty when that view cannot be
+/// read or parsed.
+fn open_ids_at(project_path: &Path, rev: &str) -> std::collections::HashSet<String> {
+    use crate::models::roadmap::{ItemStatus, Roadmap};
+    roadmap_view_at(project_path, rev)
+        .and_then(|text| serde_yaml_ng::from_str::<Roadmap>(&text).ok())
+        .map(|rm| {
+            rm.roadmap
+                .into_iter()
+                .filter(|i| !matches!(i.status, ItemStatus::Completed | ItemStatus::Cancelled))
+                .map(|i| i.id)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 /// One `git log` line (`%H \x1f %s \x1f trailers`) → (hash, subject, ticket ids).
 /// `None` for a line with fewer than two fields, as before the extraction.
 fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>)> {
@@ -326,8 +372,12 @@ fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>)> {
 }
 
 /// The violation, if any, that one trailer id commits against the roadmap.
+///
+/// A row that was open at the merge-base and is terminal at HEAD was closed
+/// inside this range, and is not a finding (GH-1824).
 fn judge_id(
     roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
+    open_at_base: &std::collections::HashSet<String>,
     id: &str,
 ) -> Option<Violation> {
     use crate::models::roadmap::ItemStatus;
@@ -341,6 +391,9 @@ fn judge_id(
         ItemStatus::Cancelled => "cancelled",
         _ => return None,
     };
+    if open_at_base.contains(id) {
+        return None;
+    }
     Some(Violation::TerminalTicket {
         id: id.to_string(),
         status: terminal.to_string(),
@@ -350,13 +403,14 @@ fn judge_id(
 /// Judge every trailer id of one commit, appending a finding per violation.
 fn judge_ids(
     roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
+    open_at_base: &std::collections::HashSet<String>,
     hash: &str,
     subject: &str,
     ids: &[&str],
     findings: &mut Vec<Finding>,
 ) {
     findings.extend(ids.iter().filter_map(|id| {
-        judge_id(roadmap, id).map(|violation| Finding {
+        judge_id(roadmap, open_at_base, id).map(|violation| Finding {
             hash: hash.to_string(),
             subject: subject.to_string(),
             violation,
@@ -380,11 +434,12 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
     let roadmap = crate::services::roadmap_service::RoadmapService::new(rm_path)
         .load()
         .map_err(|e| format!("roadmap parse error: {}", e))?;
-
-    let mut roadmap_map = std::collections::HashMap::new();
-    for item in roadmap.roadmap {
-        roadmap_map.insert(item.id, item.status);
-    }
+    let roadmap_map: std::collections::HashMap<_, _> = roadmap
+        .roadmap
+        .into_iter()
+        .map(|item| (item.id, item.status))
+        .collect();
+    let open_at_base = open_ids_at(project_path, &merge_base);
 
     let mut commits = 0;
     let mut trailered = 0;
@@ -406,7 +461,14 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
                     violation: Violation::NoTrailer,
                 });
             } else {
-                judge_ids(&roadmap_map, &hash, &subject, &ids, &mut findings);
+                judge_ids(
+                    &roadmap_map,
+                    &open_at_base,
+                    &hash,
+                    &subject,
+                    &ids,
+                    &mut findings,
+                );
                 trailered += 1;
             }
         }

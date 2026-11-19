@@ -62,53 +62,82 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                         since.unwrap_or_else(|| "the root commit".to_string())
                     ),
                 },
-                Range::PullRequest { base, merge_base } => {
-                    let mb7 = if merge_base.len() > 7 { &merge_base[..7] } else { &merge_base };
-                    if m.commits == 0 {
-                        ComplianceCheck {
-                            name: literal.to_string(),
-                            status: CheckStatus::Pass,
-                            severity: CheckSeverity::Info.into(),
-                            message: format!("0 non-merge commit(s) in {}..HEAD (base {}): nothing to judge — measured, not skipped", mb7, base),
-                        }
-                    } else if m.findings.is_empty() {
-                        ComplianceCheck {
-                            name: literal.to_string(),
-                            status: CheckStatus::Pass,
-                            severity: CheckSeverity::Info.into(),
-                            message: format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming an open roadmap item", m.commits, mb7, base),
-                        }
-                    } else {
-                        let mut msgs = vec![];
-                        for f in m.findings.iter().take(8) {
-                            let hash7 = if f.hash.len() > 7 { &f.hash[..7] } else { &f.hash };
-                            match &f.violation {
-                                ct::Violation::NoTrailer => {
-                                    msgs.push(format!("{} {}: no Pmat-Ticket trailer", hash7, f.subject));
-                                },
-                                ct::Violation::UnknownTicket(id) => {
-                                    msgs.push(format!("{} {}: Pmat-Ticket {} is not in docs/roadmaps/roadmap.yaml", hash7, f.subject, id));
-                                },
-                                ct::Violation::TerminalTicket { id, status } => {
-                                    msgs.push(format!("{} {}: Pmat-Ticket {} is {} — work belongs to an open item", hash7, f.subject, id, status));
-                                },
-                            }
-                        }
-                        let mut joined = msgs.join("; ");
-                        if m.findings.len() > 8 {
-                            joined.push_str(&format!(" (+{} more)", m.findings.len() - 8));
-                        }
-                        ComplianceCheck {
-                            name: literal.to_string(),
-                            status: CheckStatus::Fail,
-                            severity: CheckSeverity::Error.into(),
-                            message: format!("{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}", m.findings.len(), m.commits, mb7, base, joined, traceability_remedy(&m.findings)),
-                        }
-                    }
-                }
+                Range::PullRequest { base, merge_base } => pull_request_verdict(m.commits, &m.findings, &base, &merge_base),
             }
         }
     }
+}
+
+/// One CB-2113 result under its fixed name.
+fn traceability_check(status: CheckStatus, error: bool, message: String) -> ComplianceCheck {
+    use crate::models::comply_config::CheckSeverity;
+    let severity = if error {
+        CheckSeverity::Error
+    } else {
+        CheckSeverity::Info
+    };
+    ComplianceCheck {
+        name: "CB-2113: Commit Traceability".to_string(),
+        status,
+        severity: severity.into(),
+        message,
+    }
+}
+
+/// One finding as the line a reader acts on.
+fn finding_line(f: &crate::services::commit_traceability::Finding) -> String {
+    use crate::services::commit_traceability::Violation;
+    let hash7 = f.hash.get(..7).unwrap_or(&f.hash);
+    let why = match &f.violation {
+        Violation::NoTrailer => "no Pmat-Ticket trailer".to_string(),
+        Violation::UnknownTicket(id) => {
+            format!("Pmat-Ticket {id} is not in docs/roadmaps/roadmap.yaml")
+        }
+        Violation::TerminalTicket { id, status } => {
+            format!("Pmat-Ticket {id} is {status} — work belongs to an open item")
+        }
+    };
+    format!("{} {}: {}", hash7, f.subject, why)
+}
+
+/// The PullRequest-range verdict: nothing to judge, all traced, or the findings.
+fn pull_request_verdict(
+    commits: usize,
+    findings: &[crate::services::commit_traceability::Finding],
+    base: &str,
+    merge_base: &str,
+) -> ComplianceCheck {
+    let mb7 = merge_base.get(..7).unwrap_or(merge_base);
+    if commits == 0 {
+        let message = format!(
+            "0 non-merge commit(s) in {}..HEAD (base {}): nothing to judge — measured, not skipped",
+            mb7, base
+        );
+        return traceability_check(CheckStatus::Pass, false, message);
+    }
+    if findings.is_empty() {
+        let message = format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming a roadmap row that is open at HEAD, or that was open at the merge-base", commits, mb7, base);
+        return traceability_check(CheckStatus::Pass, false, message);
+    }
+    let mut joined = findings
+        .iter()
+        .take(8)
+        .map(finding_line)
+        .collect::<Vec<_>>()
+        .join("; ");
+    if findings.len() > 8 {
+        joined.push_str(&format!(" (+{} more)", findings.len() - 8));
+    }
+    let message = format!(
+        "{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}",
+        findings.len(),
+        commits,
+        mb7,
+        base,
+        joined,
+        traceability_remedy(findings)
+    );
+    traceability_check(CheckStatus::Fail, true, message)
 }
 
 /// What to do about the violations present — one clause per kind, so a trailer
@@ -138,7 +167,7 @@ fn traceability_remedy(findings: &[crate::services::commit_traceability::Finding
             crate::services::commit_traceability::Violation::TerminalTicket { .. }
         )
     }) {
-        clauses.push("work belongs to an open item: leave a ticket open in its own PR, and let the next ticket's PR mark it completed");
+        clauses.push("a ticket completed or cancelled at HEAD can be named only if its row was open at the PR's merge-base (terminal there, absent there, or an unreadable base roadmap all count as not open); a PR may complete its own row in the same range");
     }
     clauses.join("; ")
 }

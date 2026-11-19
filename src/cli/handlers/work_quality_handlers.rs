@@ -642,10 +642,12 @@ mod tests {
     fn an_overrunning_gate_step_is_reported_failed() {
         let mut cmd = std::process::Command::new("sleep");
         cmd.arg("5");
-        let ok = gate_step_with(&mut cmd, "t", Some(Duration::from_millis(100))).unwrap();
+        let ok = gate_step_with(&mut cmd, "t", Some(Duration::from_millis(100)))
+            .expect("a spawnable step runs to a verdict");
         assert!(!ok, "a step that exceeds its budget must fail, not pass");
         let mut fast = std::process::Command::new("true");
-        assert!(gate_step_with(&mut fast, "t", Some(Duration::from_secs(5))).unwrap());
+        assert!(gate_step_with(&mut fast, "t", Some(Duration::from_secs(5)))
+            .expect("a fast step runs to a verdict"));
     }
 
     #[test]

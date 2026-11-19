@@ -429,9 +429,11 @@ fn a_fragment_status_supersedes_the_base_row_and_a_named_ticket_gets_no_auto_tra
     assert!(git(d, &["add", "docs/roadmaps/entries/PMAT-5.yaml"])
         .status
         .success());
+    // GH-1824: the staged fragment completes a row that was open at the merge-base,
+    // which CB-2113 accepts, so the hook does too.
     assert!(
-        hook_refuses(d, "fix: x\n\nPmat-Ticket: PMAT-5\n"),
-        "the fragment says completed; the base row must not win"
+        !hook_refuses(d, "fix: x\n\nPmat-Ticket: PMAT-5\n"),
+        "the PR completes a row that was open at the merge-base"
     );
     let f = d.join(".git").join("PMAT727_HOOK_MSG");
     std::fs::write(&f, "fix: x (#1234)\n").expect("write message");
@@ -465,5 +467,32 @@ fn the_complexity_gate_warns_unless_strict_and_the_doc_check_knows_roadmap_yaml(
     assert!(
         hook.contains(r#"[ -f "docs/roadmaps/roadmap.yaml" ]"#),
         "the documentation check must accept the roadmap pmat work writes"
+    );
+}
+
+/// GH-1824: CB-2113 accepts a row this PR completes when it was open at the
+/// merge-base, so the hook must too; a row absent at the base stays refused.
+#[test]
+fn the_hook_accepts_a_row_completed_in_the_pr_that_was_open_at_the_merge_base() {
+    let tmp = roadmap_repo(&[("PMAT-001", "planned")]);
+    let d = tmp.path();
+    let rm = d.join("docs/roadmaps/roadmap.yaml");
+    let text = std::fs::read_to_string(&rm).expect("read roadmap");
+    std::fs::write(&rm, text.replace("status: planned", "status: completed"))
+        .expect("write roadmap");
+    assert!(git(d, &["add", "."]).status.success());
+    let co = "Co-Authored-By: A <a@example.com>";
+    assert!(
+        !hook_refuses(d, &format!("chore: done\n\nPmat-Ticket: PMAT-001\n{co}\n")),
+        "a row open at the merge-base may be completed by the PR"
+    );
+    let frag = d.join("docs/roadmaps/entries/PMAT-007.yaml");
+    std::fs::create_dir_all(frag.parent().expect("parent")).expect("mkdir");
+    std::fs::write(&frag, "- id: PMAT-007\n  title: new\n  status: completed\n")
+        .expect("write fragment");
+    assert!(git(d, &["add", "."]).status.success());
+    assert!(
+        hook_refuses(d, &format!("chore: add\n\nPmat-Ticket: PMAT-007\n{co}\n")),
+        "a row absent at the merge-base is refused"
     );
 }

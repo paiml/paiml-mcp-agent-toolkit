@@ -176,15 +176,17 @@ mod tests_traceability {
     #[test]
     fn a_terminal_ticket_is_told_to_stay_open_not_to_add_a_trailer() {
         let dir = repo_with_roadmap();
-        git(dir.path(), &["switch", "-q", "-c", "feature"]);
+        // GH-1824: completed AT THE BASE (on master), so naming it is a finding.
         let rm = dir.path().join("docs/roadmaps/roadmap.yaml");
         let done = std::fs::read_to_string(&rm)
             .expect("read roadmap")
             .replace("status: planned", "status: completed");
         std::fs::write(&rm, done).expect("write roadmap");
+        git(dir.path(), &["commit", "-q", "-am", "chore: complete"]);
+        git(dir.path(), &["switch", "-q", "-c", "feature"]);
         git(
             dir.path(),
-            &["commit", "-q", "-am", "feat: done\n\nPmat-Ticket: PMAT-001"],
+            &["commit", "-q", "--allow-empty", "-m", "feat: done\n\nPmat-Ticket: PMAT-001"],
         );
         let checks = build_traceability_checks(
             dir.path(),

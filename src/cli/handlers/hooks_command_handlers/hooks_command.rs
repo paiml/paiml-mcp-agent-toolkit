@@ -546,7 +546,7 @@ const COMMIT_MSG_HOOK_TEMPLATE: &str = r##"#!/usr/bin/env bash
 # shares that paragraph with Co-Authored-By and any other trailer.
 # With docs/roadmaps/roadmap.yaml present this hook applies CB-2113's predicate,
 # the one CI runs: every id the trailer names must exist in the staged roadmap
-# and must not be completed or cancelled. Without a roadmap CB-2113 does not
+# and must not be completed or cancelled, unless the row was open at the merge-base. Without a roadmap CB-2113 does not
 # judge, and a ticket id or issue reference matching the pattern is accepted.
 # strict=__STRICT__: 1 = refuse (exit 1), 0 = warn and continue.
 # Bypass (emergency, audited by the comply check over the branch): git commit --no-verify
@@ -602,21 +602,46 @@ if [ -z "$tickets" ]; then
     refuse "no Pmat-Ticket trailer in the message's LAST paragraph — git reads trailers from the last paragraph only, and CB-2113 refuses this commit in CI." \
         "put it beside Co-Authored-By, in one paragraph:  git commit -m '<subject>' -m \$'Pmat-Ticket: PMAT-NNN\nCo-Authored-By: Name <email>'"
 fi
-while IFS= read -r id; do
-    [ -n "$id" ] || continue
-    status=$(printf '%s\n' "$roadmap" | awk -v id="$id" -v q="'" '
+status_of() {
+    printf '%s\n' "$1" | awk -v id="$2" -v q="'" '
         { line = $0; sub(/^[ \t]+/, "", line) }
         line == "- id: " id || line == "- id: " q id q || line == "- id: \"" id "\"" { f = 1; next }
         f && line ~ /^- id: / { exit }
-        f && line ~ /^status:/ { sub(/^status:[ \t]*/, "", line); print line; exit }')
+        f && line ~ /^status:/ { sub(/^status:[ \t]*/, "", line); print line; exit }'
+}
+# CB-2113 (GH-1824): a row completed or cancelled at HEAD may still be named when it was open
+# at the merge-base. Read the same view at the merge-base: roadmap.yaml under the entries/
+# fragments. No readable base means nothing is open there, so the row is refused.
+base_roadmap=""
+base_rev=""
+for ref in origin/HEAD origin/master origin/main master main; do
+    if git rev-parse -q --verify "$ref^{commit}" >/dev/null 2>&1; then
+        base_rev=$(git merge-base HEAD "$ref" 2>/dev/null) && [ -n "$base_rev" ] && break
+        base_rev=""
+    fi
+done
+if [ -n "$base_rev" ]; then
+    base_main=$(git show "$base_rev:$ROADMAP" 2>/dev/null)
+    if [ -n "$(printf '%s' "$base_main" | tr -d '[:space:]')" ]; then
+        base_frags=$(git ls-tree -r --name-only "$base_rev" -- docs/roadmaps/entries 2>/dev/null | grep -E '\.ya?ml$' | while IFS= read -r frag; do git show "$base_rev:$frag" 2>/dev/null; echo; done)
+        base_roadmap="$base_frags"$'\n'"$base_main"
+    fi
+fi
+while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    status=$(status_of "$roadmap" "$id")
     if [ -z "$status" ]; then
         refuse "Pmat-Ticket $id is not in $ROADMAP — CB-2113 refuses this commit in CI." \
             "name an item the roadmap has (pmat work add files one)"
     fi
     case "$status" in
         completed|cancelled)
-            refuse "Pmat-Ticket $id is $status — work belongs to an open item, and CB-2113 refuses this commit in CI." \
-                "leave a ticket open in its own PR; the next ticket's PR marks it completed" ;;
+            base_status=$(status_of "$base_roadmap" "$id")
+            case "$base_status" in
+                ""|completed|cancelled)
+                    refuse "Pmat-Ticket $id is $status — CB-2113 refuses this in CI unless the row was open at the PR's merge-base." \
+                        "name a row that is open, or complete a row that was open at the merge-base in the same PR" ;;
+            esac ;;
     esac
 done <<< "$tickets"
 exit 0
