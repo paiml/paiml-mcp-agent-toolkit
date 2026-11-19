@@ -52,7 +52,7 @@ ignore = [
     # migration (#1492) here plus aprender#5205. Same interim entry aprender main carries.
     # DELETE this line in the PR that lands #1492.
     { id = "RUSTSEC-2024-0449", reason = "unsafe-libyaml: unmaintained, no patched release; via serde_yaml_ng/serde_yaml. Delete when the serde-saphyr migration lands (#1492, aprender#5205)" },
-    { id = "RUSTSEC-2026-0543", reason = "chrono 0.4.45: unmaintained notice, no vulnerability, no fixed version (all versions affected); pmat uses chrono directly and also reaches it via aprender-compute 0.72.6 (aprender-core, aprender, aprender-graph), arrow, parquet, octocrab, pmcp and ruchy, so it cannot be dropped here; added 2026-11-17 (#1814 owns the chrono decision), removed when chrono leaves Cargo.lock; review by 2026-12-17" },
+    { id = "RUSTSEC-2026-0543", reason = "chrono 0.4.45: unmaintained notice, no vulnerability, no fixed version (all versions affected); pmat uses chrono directly and also reaches it via aprender-compute 0.72.6 (aprender-core, aprender, aprender-graph), arrow, parquet, octocrab, pmcp and ruchy, so it cannot be dropped here; added 2026-11-17; ACCEPT decided 2026-11-19 (#1817): migration is not feasible in one cap (direct use in ~260 files, plus arrow, parquet, octocrab, pmcp, ruchy, aprender-compute); removed when chrono leaves Cargo.lock; re-review by 2026-12-17 (#1817)" },
 ]
 
 [licenses]
