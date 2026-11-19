@@ -1,0 +1,18 @@
+- id: GH-1862
+  github_issue: 1862
+  item_type: task
+  title: "release: prepare pmat 3.46.0 (version bump, CHANGELOG) re-cut v2"
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-19T00:00:00+00:00
+  updated: 2026-11-19T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1414
