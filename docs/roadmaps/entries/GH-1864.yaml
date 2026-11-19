@@ -2,7 +2,7 @@
   github_issue: 1864
   item_type: task
   title: 'master red: unrun-tests ledger not re-rendered after #1851 (mutation gate tests)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-19T00:00:00+00:00

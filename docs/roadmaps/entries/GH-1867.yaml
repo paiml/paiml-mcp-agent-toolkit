@@ -2,7 +2,7 @@
   github_issue: 1867
   item_type: task
   title: "docs(release): docs/release-process.md is stale vs the real tag, clean-room, publish-from-tag path"
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-19T00:00:00+00:00
