@@ -2,7 +2,7 @@
   github_issue: 1818
   item_type: task
   title: 'deny.toml: remove 6 ignore rows that match no crate; keep the 0543 row in the shared source'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-17T00:00:00+00:00

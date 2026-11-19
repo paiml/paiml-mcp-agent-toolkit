@@ -2,7 +2,7 @@
   github_issue: 1855
   item_type: task
   title: "refactor(traceability): extract pr_mode helpers, no rule change (re-cut v2)"
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-19T00:00:00+00:00
