@@ -188,36 +188,33 @@ pub fn load_exclude_globs(project_path: &Path) -> Vec<String> {
     let Ok(text) = std::fs::read_to_string(project_path.join("mutants.toml")) else {
         return default();
     };
-    let mut globs = Vec::new();
-    let mut in_block = false;
-    for line in text.lines() {
-        let t = line.trim();
-        if t.starts_with('#') {
-            continue;
-        }
-        if !in_block {
-            if t.starts_with("exclude_globs") && t.contains('[') {
-                in_block = true;
-                // `exclude_globs = ["a", "b"]` on one line
-                if let Some(inner) = t.split_once('[').map(|(_, r)| r) {
-                    push_quoted(inner, &mut globs);
-                    if inner.contains(']') {
-                        in_block = false;
-                    }
-                }
-            }
-            continue;
-        }
-        push_quoted(t, &mut globs);
-        if t.contains(']') {
-            in_block = false;
-        }
-    }
+    let globs = scan_exclude_globs(&text);
     if globs.is_empty() {
         default()
     } else {
         globs
     }
+}
+
+/// The quoted strings of the `exclude_globs = [ ... ]` array, which may span lines.
+fn scan_exclude_globs(text: &str) -> Vec<String> {
+    let mut globs = Vec::new();
+    let mut in_block = false;
+    for t in text.lines().map(str::trim).filter(|t| !t.starts_with('#')) {
+        let body = if in_block {
+            t
+        } else if t.starts_with("exclude_globs") {
+            match t.split_once('[') {
+                Some((_, inner)) => inner,
+                None => continue,
+            }
+        } else {
+            continue;
+        };
+        push_quoted(body, &mut globs);
+        in_block = !body.contains(']');
+    }
+    globs
 }
 
 fn push_quoted(s: &str, out: &mut Vec<String>) {
@@ -631,20 +628,68 @@ fn verdict(findings: Vec<GateFinding>, caught: u64, total: u64) -> MutationGateV
 #[must_use]
 pub fn run_mutation_gate(project_path: &Path, diff_path: Option<&Path>) -> MutationGateVerdict {
     let excludes = load_exclude_globs(project_path);
-    let scope = match diff_path {
-        None => DiffScope::Unknown,
-        Some(p) => match std::fs::read_to_string(p) {
-            Ok(text) => classify_diff(&text, &excludes),
-            // An unreadable diff is an unmeasurable scope: fail closed by
-            // treating it as unknown rather than as "nothing changed".
-            Err(_) => DiffScope::Unknown,
-        },
-    };
-    let dir = outcomes_dir_for(project_path);
-    match read_outcomes_dir(&dir) {
+    // An unreadable diff is an unmeasurable scope: fail closed (unknown).
+    let diff_text = diff_path.and_then(|p| std::fs::read_to_string(p).ok());
+    let scope = diff_text
+        .as_deref()
+        .map_or(DiffScope::Unknown, |t| classify_diff(t, &excludes));
+    match read_outcomes_dir(&outcomes_dir_for(project_path)) {
         Ok(o) => evaluate_mutation_gate(Some(&o), &scope),
+        Err(_) if measured_zero(project_path, &scope, diff_text.as_deref()) => {
+            MutationGateVerdict {
+                passed: true,
+                findings: Vec::new(),
+                summary: "0 mutants selected in the changed code (cargo mutants --list is empty); \
+                      zero were required and zero ran"
+                    .into(),
+            }
+        }
         Err(_) => evaluate_mutation_gate(None, &scope),
     }
+}
+
+/// Beside `mutants.out/`: `cargo mutants --list --json --in-diff` output. Only an
+/// exactly-empty JSON array counts as proof of zero selected mutants.
+pub const MUTANTS_LISTING_FILE: &str = "mutants-listing.json";
+
+/// Beside the listing: the diff it was taken from. The listing proves a zero
+/// only when this equals the diff being judged.
+pub const MUTANTS_LISTING_DIFF_FILE: &str = "mutants-listing.diff";
+
+/// No artifact is fine only when the diff touches mutable source, the listing
+/// was taken from this very diff, the diff does not itself edit what
+/// cargo-mutants selects with, and the listing is `[]`.
+fn measured_zero(project_path: &Path, scope: &DiffScope, diff_text: Option<&str>) -> bool {
+    let read = |f: &str| std::fs::read_to_string(project_path.join(f)).ok();
+    matches!(scope, DiffScope::MutableRustSource(_))
+        && diff_text.is_some_and(|d| {
+            read(MUTANTS_LISTING_DIFF_FILE).as_deref() == Some(d) && !diff_edits_mutant_selection(d)
+        })
+        && read(MUTANTS_LISTING_FILE)
+            .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+            .is_some_and(|v| v.as_array().is_some_and(Vec::is_empty))
+}
+
+/// True when the diff can empty the selection by itself: it touches a
+/// `mutants.toml` (`+++`/`---` path, or `rename to`/`copy to` target), or adds or
+/// removes a `skip` attribute naming `mutants` (`mutants::skip`, or an alias
+/// such as `use mutants as m; #[m::skip]`).
+fn diff_edits_mutant_selection(diff_text: &str) -> bool {
+    let is_cfg = |p: &str| {
+        p.split('\t').next().unwrap_or(p).trim().rsplit('/').next() == Some("mutants.toml")
+    };
+    let mut aliased = false;
+    diff_text.lines().any(|l| {
+        let path = ["+++ ", "--- ", "rename to ", "copy to "]
+            .iter()
+            .find_map(|k| l.strip_prefix(k));
+        if let Some(p) = path {
+            return is_cfg(p);
+        }
+        let changed = l.starts_with('+') || l.starts_with('-');
+        aliased |= changed && l.contains("use mutants as ");
+        changed && (l.contains("mutants::skip") || (aliased && l.contains("::skip")))
+    })
 }
 
 /// Where the gate expects the diff, when the caller does not pass one:
