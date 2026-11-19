@@ -214,6 +214,10 @@ board-check: ## the board is cleared: every open PR/issue/ticket has an enacted 
 board-check-selftest: ## Offline self-test for scripts/board-check.sh (planted-gap + covered fixtures)
 	@bash scripts/board-check-selftest.sh
 
+.PHONY: mutation-listing-selftest
+mutation-listing-selftest: ## Offline self-test for scripts/mutation-listing.sh (empty stdout -> [], byte-equal diff copy)
+	@bash scripts/mutation-listing-selftest.sh
+
 .PHONY: mutation-lab-control
 mutation-lab-control: ## Offline: the nightly mutation lane is LAB (nightly-only, one ticket, one owner, 7-day stop); planted-defect arms
 	@bash scripts/mutation-lab-control.sh
