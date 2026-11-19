@@ -1,341 +1,124 @@
 # Release Process
 
-This document outlines the complete release process for pmat, ensuring quality and consistency across all release channels.
+How pmat reaches users. Source of truth: `.github/workflows/release.yml` (header
+comment), `scripts/publish-from-tag.sh`, `scripts/release-check.sh`, `CHANGELOG.md`.
+Last verified against v3.45.1.
 
-## Release Channels
+## Policy
 
-1. **GitHub Releases** - Pre-built binaries and source code
-2. **Crates.io** - Rust package registry
-3. **Docker Hub** - Container images (planned)
+- No workflow ever publishes the crate. The crates.io token never enters GitHub
+  secrets, and `--allow-dirty` is never used.
+- The crate is published from a detached worktree of the tag, on the release
+  workstation, with `make publish-from-tag`.
+- Nothing is tagged or published off a red clean-room gate.
 
-## Release Types
+## Channels
 
-- **Major Release** (X.0.0) - Breaking changes, major features
-- **Minor Release** (0.X.0) - New features, backward compatible
-- **Patch Release** (0.0.X) - Bug fixes, documentation updates
+1. **Git tag** `vX.Y.Z` on `master`.
+2. **GitHub release** `pmat X.Y.Z`, created by `release.yml` as a prerelease, with
+   binaries attached by `binary-release.yml`.
+3. **crates.io** `pmat`, published by `make publish-from-tag`.
 
-## Release Workflow
+## Steps
 
-### Step 1: Pre-Release Preparation
+### 1. Version bump PR
 
-```bash
-# 1. Ensure on master branch with latest changes
-git checkout master
-git pull origin master
+Branch off `master` (`master` is protected; no direct pushes). In one PR:
 
-# 2. Run comprehensive quality checks
-make lint
-make test-all
-make coverage
-pmat quality-gate --strict
+- `Cargo.toml` `[package] version`, and `Cargo.lock` to match.
+- `CHANGELOG.md`: move `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD`.
+- `docs/roadmaps/entries/GH-<n>.yaml` for the ticket (CB-2115 turns master red
+  without it).
+- The lock must honor `rust-version` in `Cargo.toml`. v3.45.0 failed here: a
+  lock needing rustc 1.95 did not build on 1.93.
 
-# 3. Check for SATD
-pmat analyze satd
+Merge it through the normal gates (`ci / gate`, `workspace-test`), squash.
 
-# 4. Verify complexity limits
-pmat analyze complexity --max-complexity 20
-```
+### 2. Pre-tag checks
 
-### Step 2: Version Update
+Before tagging, on the merged commit:
 
-```bash
-# Update version in server/Cargo.toml
-cd server
-cargo set-version 0.27.0  # Use appropriate version
+- `master` is green.
+- The last mutation (diff) nightly verdict is green. It is a release gate, not a
+  merge gate (BSE-06).
 
-# Update lock file
-cargo update -p pmat
-
-# Commit version change
-git add Cargo.toml Cargo.lock
-git commit -m "chore: Bump version to v0.27.0"
-```
-
-### Step 3: Update Documentation
-
-1. **RELEASE_NOTES.md**
-   ```markdown
-   ## v0.27.0 - 2025-07-03
-
-   ### Features
-   - Feature description
-
-   ### Bug Fixes
-   - Fix description
-
-   ### Documentation
-   - Documentation updates
-
-   ### Internal
-   - Internal improvements
-   ```
-
-2. **README.md**
-   - Update version badges if needed
-   - Update installation instructions
-   - Add new features to feature list
-
-3. **CHANGELOG.md** (if maintained)
-   - Add detailed change log
-
-### Step 4: Create Release Commit
+### 3. Tag
 
 ```bash
-# Stage all changes
-git add RELEASE_NOTES.md README.md docs/
-
-# Create release commit
-git commit -m "release: Prepare v0.27.0
-
-- Update release notes
-- Update documentation
-- Bump version in Cargo.toml
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-# Push to master
-git push origin master
+git checkout master && git pull --ff-only origin master
+git tag -a vX.Y.Z -m "pmat X.Y.Z"
+git push origin vX.Y.Z
 ```
 
-### Step 5: Create Git Tag
+The tag version must equal `Cargo.toml` (release.yml and `publish-from-tag.sh`
+both refuse a mismatch) and the tagged commit must be on `origin/master`.
+A published tag is never deleted, moved or re-cut. If a tag's release fails,
+fix forward with the next patch version (v3.45.0 was tagged, never published,
+and superseded by v3.45.1).
+
+### 4. release.yml (triggered by the tag)
+
+Runs on `[self-hosted, clean-room]`. Jobs, in order, each gating the next:
+
+1. `create-release`: parses the tag, checks tag == `Cargo.toml` version. Creates
+   nothing.
+2. `gate`: the fleet `unified-gate.yml` clean-room gate at the tagged sha.
+3. `verify`: `cargo package --locked` (the package builds from its own tarball).
+4. `prerelease`: only after 2 and 3 are green. `gh release create --prerelease
+   --verify-tag --generate-notes`, then dispatches `binary-release.yml` (builds
+   and attaches binaries) and `post-release.yml` (tag == `Cargo.toml`, MSRV
+   check). A release made with `GITHUB_TOKEN` raises no `release: published`
+   event, which is why the dispatch is explicit.
+
+A red `gate` or `verify` creates no release. Re-run against an existing tag with
+`workflow_dispatch` (input `tag`).
+
+### 5. Publish from the tag
+
+On the release workstation, after `release.yml` is green:
 
 ```bash
-# Create annotated tag
-git tag -a v0.27.0 -m "Release v0.27.0
-
-See RELEASE_NOTES.md for details"
-
-# Push tag
-git push origin v0.27.0
+make publish-from-tag TAG=vX.Y.Z DRY_RUN=1   # dry run: packages, publishes nothing
+make publish-from-tag TAG=vX.Y.Z             # real publish
 ```
 
-### Step 6: Build Release Artifacts
+The script refuses (exit 2) a malformed or missing tag, a tag not on
+`origin/master`, or a version mismatch, and exits 3 on a dirty worktree. It runs
+under `env -u CARGO_REGISTRY_TOKEN` and uses cargo's own credentials file.
+
+### 6. Promote to Latest
+
+The prerelease is promoted only after the crate is on crates.io:
 
 ```bash
-# Build for multiple platforms
-make release-build
-
-# This creates binaries in:
-# - target/release/pmat (local platform)
-# - target/x86_64-unknown-linux-gnu/release/pmat
-# - target/aarch64-unknown-linux-gnu/release/pmat
-# - target/x86_64-apple-darwin/release/pmat
-# - target/aarch64-apple-darwin/release/pmat
-# - target/x86_64-pc-windows-gnu/release/pmat
+gh release edit vX.Y.Z --prerelease=false --latest
 ```
 
-### Step 7: Publish to Crates.io
+### 7. Verify
 
 ```bash
-cd server
-
-# Dry run first
-cargo publish --dry-run
-
-# Publish (use --no-verify if build.rs modifies files)
-cargo publish --no-verify
-
-# Verify publication
-<!-- PMAT not yet published to crates.io: open https://crates.io/crates/pmat -->
+make release-check                       # version in Cargo.toml: tagged, released, on crates.io
+gh release list --limit 3                # vX.Y.Z must read "Latest", not "Pre-release"
+gh release view vX.Y.Z --json isPrerelease,isDraft   # both false
+cargo search pmat | head -1              # crates.io shows X.Y.Z
+cargo install pmat --locked --force && pmat --version
+make dogfood-published VERSION=X.Y.Z     # install from crates.io, run the release gate on it
 ```
 
-### Step 8: Create GitHub Release
+`release-check` exits 1 naming the first missing channel (tag, GitHub release,
+crates.io) and 3 when a read failed (not measured, never "missing"). The
+`nightly` pre-release in the list is the rolling nightly build, not a release.
 
-1. Go to [GitHub Releases](https://github.com/paiml/paiml-mcp-agent-toolkit/releases)
-2. Click "Draft a new release"
-3. Select the tag `v0.27.0`
-4. Title: `v0.27.0`
-5. Copy content from RELEASE_NOTES.md
-6. Upload pre-built binaries:
-   - `pmat-linux-x86_64.tar.gz`
-   - `pmat-linux-aarch64.tar.gz`
-   - `pmat-macos-x86_64.tar.gz`
-   - `pmat-macos-aarch64.tar.gz`
-   - `pmat-windows-x86_64.zip`
-7. Check "Set as the latest release"
-8. Publish release
+## Failure handling
 
-### Step 9: Post-Release Verification
+- **Gate or verify red:** no release exists. Fix on `master` through a PR, bump
+  the patch version, tag again with the new version.
+- **Published version is broken:** a bad version cannot be un-published. Fix
+  forward with a patch release. Yanking follows the standing operator rules
+  (`cargo yank --version X.Y.Z`), not this document.
+- **Binaries missing from the release:** `gh workflow run binary-release.yml -f
+  tag=vX.Y.Z`.
 
-```bash
-# 1. Test crates.io installation
-cargo install pmat --force
-pmat --version
+## Version naming
 
-# 2. Test binary downloads
-curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.27.0/pmat-linux-x86_64.tar.gz | tar xz
-./pmat --version
-
-# 3. Verify documentation
-open https://docs.rs/pmat
-
-# 4. Run smoke tests
-pmat context
-pmat analyze complexity
-pmat quality-gate
-```
-
-### Step 10: Announcements
-
-1. **Update README badges** - Ensure version badges show new version
-2. **Community announcements** - Post in relevant forums/channels
-3. **Update dependent projects** - Notify projects using pmat
-
-## Automated Release Process
-
-### GitHub Actions Workflow
-
-The project includes `.github/workflows/release.yml` for automation:
-
-```yaml
-name: Release
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  publish-crates-io:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Publish to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          cd server
-          cargo publish --no-verify
-
-  build-binaries:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-          - os: macos-latest
-            target: x86_64-apple-darwin
-          - os: macos-latest
-            target: aarch64-apple-darwin
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-    # ... build and upload steps
-```
-
-## Release Checklist
-
-### Pre-Release
-- [ ] All tests pass (`make test-all`)
-- [ ] Lints pass (`make lint`)
-- [ ] Quality gate passes (`pmat quality-gate --strict`)
-- [ ] No SATD present (`pmat analyze satd`)
-- [ ] Complexity within limits
-- [ ] Documentation updated
-- [ ] Version bumped in Cargo.toml
-- [ ] RELEASE_NOTES.md updated
-- [ ] Mutation (diff) nightly's last verdict is green — it is a release gate, not a merge gate (BSE-06): `gh run list --workflow mutation-diff.yml -L1 --json conclusion`
-
-### Release
-- [ ] Git tag created and pushed
-- [ ] Published to crates.io
-- [ ] GitHub release created
-- [ ] Binaries uploaded to release
-- [ ] Docs.rs build successful
-
-### Post-Release
-- [ ] Installation from crates.io works
-- [ ] Binary downloads work
-- [ ] Documentation accessible
-- [ ] Smoke tests pass
-- [ ] Announcements made
-
-## Emergency Procedures
-
-### Yanking a Release
-
-If a critical issue is found after release:
-
-```bash
-# Yank from crates.io
-cargo yank --version 0.27.0
-
-# Create patch release immediately
-# Follow normal release process for 0.27.1
-```
-
-### Hotfix Process
-
-1. Create hotfix branch from tag
-   ```bash
-   git checkout -b hotfix/v0.27.1 v0.27.0
-   ```
-
-2. Apply fix and test thoroughly
-
-3. Fast-track through release process
-
-4. Cherry-pick to master if applicable
-
-## Version Naming Convention
-
-- **Stable**: `0.27.0`
-- **Pre-release**: `0.27.0-alpha.1`, `0.27.0-beta.1`, `0.27.0-rc.1`
-- **Nightly**: `0.27.0-nightly.20250702`
-
-## Release Cadence
-
-- **Major**: As needed for breaking changes
-- **Minor**: Monthly for new features
-- **Patch**: As needed for bug fixes
-- **Security**: Immediate release for security fixes
-
-## Quality Gates
-
-Every release must pass:
-
-1. **Zero SATD** - No technical debt comments
-2. **Complexity Limits** - All functions < 20 cyclomatic complexity
-3. **Test Coverage** - Minimum 90% coverage
-4. **Clean Lints** - All clippy pedantic/nursery warnings resolved
-5. **Documentation** - All public APIs documented
-
-## Release Notes Template
-
-```markdown
-## vX.Y.Z - YYYY-MM-DD
-
-### 🎉 Features
-- Brief description of new feature (#PR)
-
-### 🐛 Bug Fixes
-- Brief description of fix (#PR)
-
-### 📚 Documentation
-- Documentation improvements (#PR)
-
-### 🔧 Internal
-- Internal improvements (#PR)
-
-### 🙏 Contributors
-- @username - contribution description
-
-**Full Changelog**: https://github.com/paiml/paiml-mcp-agent-toolkit/compare/vX.Y.Y...vX.Y.Z
-```
-
-## Rollback Procedure
-
-If issues are discovered post-release:
-
-1. **Assess Impact** - Determine severity and scope
-2. **Communicate** - Notify users of known issues
-3. **Yank if Critical** - Remove from crates.io if severe
-4. **Prepare Fix** - Fast-track patch release
-5. **Post-Mortem** - Document lessons learned
-
-Remember: Quality over speed. Never rush a release!
+`X.Y.Z` stable. Patch for fixes, minor for features, major for breaking changes.
