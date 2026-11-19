@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`pmat comply github --org` (#1783)**: lists and judges every repo of an org.
 - **work**: `work add` derives the spec and acceptance criteria from the issue body and notes any it cannot find (#1807, #1856).
+- **mutation-gate**: a `dispatch` base input, a listing script and a pinned `cargo-mutants` (#1873, GH-1863).
 
 ### Fixed
 
@@ -29,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   RUSTSEC-2026-0543 is bounded (#1816); weekly cargo train, 13 lock updates (#1810).
 - **docs**: cli-reference names the real binary `pmat` and the listed command `generate`
   (#1781, #1787).
+- **work**: a gate step that exceeds its budget FAILS, never passes (#1872, GH-1866).
+- **comply**: CB-2113 lets a PR complete its own roadmap row (#1837, GH-1824).
+- **deps**: the six advisory ignore rows that match no crate are dropped (#1834, GH-1818);
+  the chrono RUSTSEC-2026-0543 accept decision is recorded (#1876, GH-1817).
+- **master**: the unwrap ratchet and unrun-tests ledger regenerated after #1872 and #1837
+  (#1878, #1881).
 
 ## [3.45.1] - 2026-11-15
 
