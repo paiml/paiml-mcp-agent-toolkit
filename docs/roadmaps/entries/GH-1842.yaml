@@ -1,0 +1,18 @@
+- id: GH-1842
+  github_issue: 1842
+  item_type: task
+  title: 'refactor(traceability): extract pr_mode helpers, slice A of GH-1356 (no rule change)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-18T00:00:00+00:00
+  updated: 2026-11-18T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1645

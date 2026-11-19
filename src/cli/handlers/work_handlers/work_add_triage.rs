@@ -42,6 +42,9 @@ pub struct IssueFacts {
     pub open: bool,
     pub is_pull_request: bool,
     pub labels: Vec<String>,
+    /// The issue body (empty when GitHub sends none): slice 2 (#1831) will derive
+    /// the ticket `spec:` and `acceptance_criteria:` from it.
+    pub body: String,
 }
 
 /// The three GitHub calls the gate and the link need, so tests can stand in
@@ -246,5 +249,92 @@ pub fn parse_issue(body: &str) -> Result<IssueFacts> {
         open: state.eq_ignore_ascii_case("open"),
         is_pull_request: v.get("pull_request").is_some_and(|p| !p.is_null()),
         labels,
+        body: v["body"].as_str().unwrap_or_default().to_string(),
     })
+}
+
+/// What `derive_from_body` reads off the issue body.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Derived {
+    /// A spec row the body names, e.g. `ARB-APR-001 row 3`.
+    pub spec: Option<String>,
+    /// The lines under a `done_when` / `Acceptance` heading or key.
+    pub acceptance: Vec<String>,
+}
+
+fn heading_text(line: &str) -> String {
+    line.trim()
+        .trim_start_matches('#')
+        .trim_start_matches(['*', '_', '`', ' '])
+        .to_string()
+}
+
+/// Derive what the body states; a field it does not state stays empty.
+pub fn derive_from_body(body: &str) -> Derived {
+    Derived {
+        spec: derive_spec(body),
+        acceptance: derive_acceptance(body),
+    }
+}
+
+/// The first `<ID>-NNN row N` the body names.
+fn derive_spec(body: &str) -> Option<String> {
+    regex::Regex::new(r"\b([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d{3,}) row (\d+)\b")
+        .ok()
+        .and_then(|re| {
+            re.captures(body)
+                .map(|c| format!("{} row {}", &c[1], &c[2]))
+        })
+}
+
+/// Does this raw line open a criteria section? Only a markdown heading
+/// (`## Acceptance`) or a key (`done_when:`, `acceptance:`,
+/// `acceptance_criteria:`) does; prose that merely starts with the word does not.
+fn opens_section(line: &str) -> bool {
+    let norm = |t: &str| {
+        t.trim()
+            .trim_matches(['*', '_', '`', ' '])
+            .to_ascii_lowercase()
+            .replace(' ', "_")
+    };
+    let is_key = |k: &str| matches!(k, "done_when" | "acceptance" | "acceptance_criteria");
+    if line.trim_start().starts_with('#') {
+        let head = norm(&heading_text(line));
+        return head.starts_with("done_when") || head.starts_with("acceptance");
+    }
+    line.split_once(':').is_some_and(|(k, _)| is_key(&norm(k)))
+}
+
+/// The criterion written on the opener line itself (`done_when: x`), if any.
+fn inline_criterion(head: &str) -> Option<String> {
+    let rest = head.split_once(':').map_or("", |(_, r)| r);
+    let rest = rest.trim().trim_matches(['*', '_', '`']).trim();
+    (!rest.is_empty()).then(|| rest.to_string())
+}
+
+/// A new heading, or a blank line after at least one criterion, ends the section.
+fn ends_section(line: &str, have_any: bool) -> bool {
+    line.trim_start().starts_with('#') || (line.trim().is_empty() && have_any)
+}
+
+fn derive_acceptance(body: &str) -> Vec<String> {
+    let mut acceptance = Vec::new();
+    let mut inside = false;
+    for line in body.lines() {
+        let head = heading_text(line);
+        if opens_section(line) {
+            inside = true;
+            acceptance.extend(inline_criterion(&head));
+        } else if inside && ends_section(line, !acceptance.is_empty()) {
+            break;
+        } else if inside && !line.trim().is_empty() {
+            acceptance.push(
+                line.trim()
+                    .trim_start_matches(['-', '*', ' '])
+                    .trim()
+                    .to_string(),
+            );
+        }
+    }
+    acceptance
 }

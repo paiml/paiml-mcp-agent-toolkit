@@ -30,6 +30,7 @@ fn facts(id: u64, open: bool, labels: &[&str]) -> IssueFacts {
         open,
         is_pull_request: false,
         labels: labels.iter().map(|l| l.to_string()).collect(),
+        body: String::new(),
     }
 }
 
@@ -311,4 +312,167 @@ fn work_add_triaged_priority_accepts_p0_to_p3() {
         );
     }
     assert!(WorkPriority::from_str("P4", false).is_err());
+}
+
+// ── #1414: spec and acceptance criteria come from the issue body ───────────
+
+use super::work_add_triage::{derive_from_body, Derived};
+
+const P0_BODY: &str = "Measured.\n\n## done_when\n\n- the receipt is committed\n- `decide` refuses `apr cell unreceipted`\n\n## Notes\nunrelated\n\nSpec row: ARB-APR-001 row 3.\n";
+
+#[test]
+fn work_add_derives_acceptance_and_spec_from_the_body() {
+    let d = derive_from_body(P0_BODY);
+    assert_eq!(d.spec.as_deref(), Some("ARB-APR-001 row 3"));
+    assert_eq!(
+        d.acceptance,
+        vec![
+            "the receipt is committed".to_string(),
+            "`decide` refuses `apr cell unreceipted`".to_string()
+        ]
+    );
+}
+
+#[test]
+fn work_add_derives_an_inline_done_when_key() {
+    let d = derive_from_body("done_when: the row is green\n");
+    assert_eq!(d.acceptance, vec!["the row is green".to_string()]);
+    assert_eq!(d.spec, None);
+}
+
+#[test]
+fn work_add_leaves_fields_empty_when_the_body_states_none() {
+    assert_eq!(
+        derive_from_body("just prose, no section"),
+        Derived::default()
+    );
+}
+
+#[tokio::test]
+async fn work_add_writes_the_derived_fields_into_the_row() -> anyhow::Result<()> {
+    let dir = tempfile::TempDir::new()?;
+    let path = dir.path().join("docs/roadmaps/roadmap.yaml");
+    std::fs::create_dir_all(path.parent().ok_or_else(|| anyhow::anyhow!("no parent"))?)?;
+    std::fs::write(
+        &path,
+        "roadmap_version: '1.0'\ngithub_enabled: false\ngithub_repo: null\nroadmap: []\n",
+    )?;
+    super::add_ticket_row_derived(
+        "t".to_string(),
+        None,
+        WorkPriority::Critical,
+        None,
+        Some(dir.path().to_path_buf()),
+        false,
+        None,
+        None,
+        Some(CHILD),
+        false,
+        None,
+        derive_from_body(P0_BODY),
+    )
+    .await?;
+    let rm: crate::models::roadmap::Roadmap =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&path)?)?;
+    let item = rm
+        .roadmap
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("no row"))?;
+    assert_eq!(
+        item.spec,
+        Some(std::path::PathBuf::from("ARB-APR-001 row 3"))
+    );
+    assert_eq!(item.acceptance_criteria.len(), 2);
+    assert_eq!(item.acceptance_criteria[0], "the receipt is committed");
+    Ok(())
+}
+
+/// Write one row from `body` and `description`; return its criteria.
+async fn criteria_written(body: &str, description: Option<&str>) -> anyhow::Result<Vec<String>> {
+    let dir = tempfile::TempDir::new()?;
+    let path = dir.path().join("docs/roadmaps/roadmap.yaml");
+    std::fs::create_dir_all(path.parent().ok_or_else(|| anyhow::anyhow!("no parent"))?)?;
+    std::fs::write(
+        &path,
+        "roadmap_version: '1.0'\ngithub_enabled: false\ngithub_repo: null\nroadmap: []\n",
+    )?;
+    let d = description.map(str::to_string);
+    let p = Some(dir.path().to_path_buf());
+    let derived = derive_from_body(body);
+    super::add_ticket_row_derived(
+        "t".into(),
+        d,
+        WorkPriority::Critical,
+        None,
+        p,
+        false,
+        None,
+        None,
+        Some(CHILD),
+        false,
+        None,
+        derived,
+    )
+    .await?;
+    let rm: crate::models::roadmap::Roadmap =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&path)?)?;
+    Ok(rm
+        .roadmap
+        .into_iter()
+        .next()
+        .map(|i| i.acceptance_criteria)
+        .unwrap_or_default())
+}
+
+#[tokio::test]
+async fn work_add_prose_starting_with_acceptance_keeps_the_description() -> anyhow::Result<()> {
+    for body in [
+        "Acceptance tests run nightly.\nThe owner is the infra team.\nSee the runbook.\n",
+        "Acceptance criteria are tracked in #1414.\n\nNo list here.\n",
+        "done_whenever it ships.\nLater.\n",
+    ] {
+        assert_eq!(
+            derive_from_body(body).acceptance,
+            Vec::<String>::new(),
+            "{body}"
+        );
+        assert_eq!(
+            criteria_written(body, Some("d")).await?,
+            vec!["d".to_string()],
+            "{body}"
+        );
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn work_add_description_is_the_fallback_and_is_dropped_when_derived() -> anyhow::Result<()> {
+    assert_eq!(
+        criteria_written("prose", Some("d")).await?,
+        vec!["d".to_string()]
+    );
+    assert!(criteria_written("prose", None).await?.is_empty());
+    let got = criteria_written(P0_BODY, Some("d")).await?;
+    assert_eq!(got.len(), 2);
+    assert!(!got.contains(&"d".to_string()));
+    Ok(())
+}
+
+#[test]
+fn work_add_opens_a_section_only_on_a_heading_or_a_key() {
+    assert_eq!(
+        derive_from_body("Acceptance: a\n").acceptance,
+        vec!["a".to_string()]
+    );
+    assert_eq!(
+        derive_from_body("acceptance_criteria:\n- b\n").acceptance,
+        vec!["b".to_string()]
+    );
+    assert_eq!(
+        derive_from_body("## Acceptance criteria\n- c\n").acceptance,
+        vec!["c".to_string()]
+    );
+    assert!(derive_from_body("Acceptance tests run.\nx\n")
+        .acceptance
+        .is_empty());
 }
