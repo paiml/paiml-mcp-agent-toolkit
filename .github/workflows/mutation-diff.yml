@@ -42,7 +42,7 @@
 #   escapes it for longer than a day.
 #
 # infra#3828 (operator ruling 2026-11-10 16:50Z): mutation runs on the nightly
-# schedule only. The `mutation` label on a pull request and the manual dispatch
+# schedule only (GH-1846 re-adds a manual workflow_dispatch with a `base` input). The `mutation` label on a pull request and the manual dispatch
 # are gone; no PR, push, merge queue or train run executes it, and no required
 # check or gate depends on it. Text below that describes the label or a required
 # `mutation-diff` context is history.
@@ -83,6 +83,14 @@ on:
   schedule:
     # 03:17 UTC, off the hour to avoid the top-of-hour scheduling queue.
     - cron: '0 2 * * *'
+  # GH-1846: a manual run over an explicit range; `base` is any ref `git merge-base` accepts.
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'Ref to diff against (merge base with HEAD)'
+        required: true
+        default: 'origin/master'
+        type: string
 
 concurrency:
   group: mutation-diff-${{ github.event.pull_request.number || github.ref }}
@@ -128,8 +136,9 @@ jobs:
   mutation-diff:
     # Nightly schedule only (infra#3828). Any other event is refused here as well as in `on:`.
     # Skipped (not red) when `arm` found the 7-day stop.
+    # `arm` is skipped on a dispatch, which would skip this job too; `!cancelled()` lets it run.
     needs: arm
-    if: github.event_name == 'schedule' && needs.arm.outputs.run == 'true'
+    if: ${{ !cancelled() && ((github.event_name == 'schedule' && needs.arm.outputs.run == 'true') || github.event_name == 'workflow_dispatch') }}
     runs-on: [self-hosted, X64, Linux, clean-room]
     container:
       image: localhost:5000/sovereign-ci:stable
@@ -181,8 +190,10 @@ jobs:
       - name: Trust the checked-out workspace (container runs as root)
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      # Pinned (GH-1846): scripts/mutation-listing.sh relies on `--list --json --in-diff`
+      # output; the gate's measured behaviour notes are for this version.
       - name: Install cargo-mutants
-        run: cargo install cargo-mutants --locked
+        run: cargo install cargo-mutants --version 27.0.0 --locked
 
       - name: Resolve the base to diff against
         id: base
