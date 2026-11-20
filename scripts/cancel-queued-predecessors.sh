@@ -4,6 +4,9 @@
 # of the same workflow for the same PR whose head_sha is not the PR's LIVE head. The live head is
 # read from the API, not from the event payload, so a delayed older trigger can never cancel the
 # newest run, and the run for the live head is never cancelled.
+# FLEET RULE GH-1/GH-2: the rate limit is checked first (below 1000 remaining => not_measured, no
+# calls made); the PR head is read through GraphQL, the run lists/status re-reads (not in GraphQL)
+# and the force-cancel write go through REST.
 # Exit codes: 0 done, 1 a force-cancel failed, 2 usage, 3 not_measured (a read failed or was empty/invalid).
 # Usage: cancel-queued-predecessors.sh REPO PR_NUMBER HEAD_SHA WORKFLOW_FILE
 #        cancel-queued-predecessors.sh --self-test
@@ -11,10 +14,20 @@
 set -euo pipefail
 GH="${GH_BIN:-gh}"
 
-# Live head of the PR, hex-validated. Returns 3 (not_measured) on a failed or invalid read.
+# GH-1: skip (not_measured) when fewer than 1000 core or graphql calls remain, or the budget is unreadable.
+check_budget() {
+  local rem
+  rem=$("$GH" api rate_limit --jq '[.resources.core.remaining,.resources.graphql.remaining]|min') \
+    || { echo "not_measured: rate limit unreadable" >&2; return 3; }
+  case "$rem" in ''|*[!0-9]*) echo "not_measured: rate limit empty or invalid" >&2; return 3 ;; esac
+  if [ "$rem" -lt 1000 ]; then echo "not_measured: only $rem API calls remain (GH-1 floor 1000)" >&2; return 3; fi
+}
+
+# Live head of the PR via GraphQL (GH-2), hex-validated. Returns 3 (not_measured) on a failed or invalid read.
 read_live() {
   local l
-  l=$("$GH" api "repos/$1/pulls/$2" --jq .head.sha) || { echo "not_measured: live head of PR #$2 unreadable" >&2; return 3; }
+  l=$("$GH" api graphql -f query='query($o:String!,$n:String!,$p:Int!){repository(owner:$o,name:$n){pullRequest(number:$p){headRefOid}}}' \
+    -f o="${1%%/*}" -f n="${1#*/}" -F p="$2" --jq .data.repository.pullRequest.headRefOid) || { echo "not_measured: live head of PR #$2 unreadable" >&2; return 3; }
   case "$l" in ''|*[!0-9a-fA-F]*) echo "not_measured: live head of PR #$2 empty or invalid" >&2; return 3 ;; esac
   printf '%s\n' "$l"
 }
@@ -23,6 +36,7 @@ run() {
   [ "$#" -eq 4 ] || { echo "usage: $0 REPO PR_NUMBER HEAD_SHA WORKFLOW_FILE" >&2; return 2; }
   local repo=$1 pr=$2 sha=$3 wf=$4 id hs st live now raw ids out cur
   case "$pr" in ''|*[!0-9]*) echo "usage: PR_NUMBER must be digits" >&2; return 2 ;; esac
+  check_budget || return 3
   live=$(read_live "$repo" "$pr") || return 3
   for st in queued waiting pending; do
     raw=$("$GH" api --paginate "repos/$repo/actions/workflows/$wf/runs?event=pull_request&per_page=100&status=$st") \
@@ -40,6 +54,7 @@ run() {
       # The run may have started since it was listed: only a run still queued/waiting/pending is cancelled.
       cur=$("$GH" api "repos/$repo/actions/runs/$id" --jq .status) || { echo "not_measured: status of run $id unreadable" >&2; return 3; }
       case "$cur" in
+        ''|null) echo "not_measured: status of run $id empty or null" >&2; return 3 ;;
         queued|waiting|pending) ;;
         *) echo "skipping run $id: status is now '$cur', not queued"; continue ;;
       esac
@@ -70,19 +85,32 @@ if [ "$1" = api ] && [ "$2" = -X ]; then
   echo "$4" >>"$LOG"; exit 0
 fi
 shift
+if [ "$1" = rate_limit ]; then
+  case $SCEN in ratefail) echo "gh: HTTP 500" >&2; exit 1;; rateempty) exit 0;; ratelow) echo 999;; *) echo 4000;; esac
+  exit 0
+fi
 pag=0; if [ "$1" = --paginate ]; then pag=1; shift; fi
 url=$1
+case $url in */pulls/*) echo "gh: REST PR read forbidden (GH-2)" >&2; exit 9;; esac
+if [ "$url" = graphql ]; then url=repos/o/r/pulls/7; set -- "$url" "${@: -2:1}" "${@: -1}"; fi
 case $url in */pulls/7)
   [ "$SCEN" = pullsfail ] && { echo feed; echo "gh: API rate limit exceeded (HTTP 403)" >&2; exit 1; }
   n=$(cat "$LOG.cnt" 2>/dev/null || echo 0); echo $((n+1)) >"$LOG.cnt"
+  [ "$SCEN" = livefail2 ] && [ "$n" -ge 1 ] && { echo "gh: HTTP 403" >&2; exit 1; }
   h=feed
   case $SCEN in race) if [ "$n" = 0 ]; then h=aaaa; else h=bbbb; fi;; nonhex) h=null;; esac
   if [ "$2" = --jq ]; then
-    case $3 in .head.sha) echo "$h";; .base.sha) echo ba5e;; *) echo '{}';; esac
+    case $3 in .data.repository.pullRequest.headRefOid) echo "$h";; *) echo '{}';; esac
   else echo "{\"head\":{\"sha\":\"$h\"}}"; fi
   exit 0;; esac
 case $url in */actions/runs/*)
   id=${url##*/}
+  case $SCEN in
+    statusfail) echo "gh: HTTP 429" >&2; exit 1;;
+    statusempty) exit 0;;
+    statusnull) echo null; exit 0;;
+  esac
+  [ "$2" = --jq ] && [ "$3" = .status ] || { echo "{\"status\":\"in_progress\"}"; exit 0; }
   case $id in 77) [ "$SCEN" = flip ] && echo in_progress || echo queued;; 5) echo waiting;; 6) echo pending;; *) echo queued;; esac
   exit 0;; esac
 case $SCEN in empty) exit 0;; runsfail) echo "gh: HTTP 429" >&2; exit 1;; race) echo '{"workflow_runs":[{"id":101,"status":"queued","head_sha":"aaaa","pull_requests":[{"number":7}]},{"id":102,"status":"queued","head_sha":"bbbb","pull_requests":[{"number":7}]}]}'; exit 0;; bad) echo 'not json'; exit 0;; esac
@@ -95,6 +123,9 @@ case $url in
 esac
 if [ "$SCEN" = inprog ]; then
   echo '{"workflow_runs":[{"id":77,"status":"in_progress","head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0
+fi
+if [ "$SCEN" = mismatch ]; then
+  echo '{"workflow_runs":[{"id":88,"status":"completed","head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0
 fi
 if [ "$SCEN" = flip ]; then
   echo '{"workflow_runs":[{"id":77,"status":"queued","head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0
@@ -134,6 +165,14 @@ self_test() {
   expect push-lands-mid-run 0 "" aaaa race      # newest push (bbbb) lands after the first read: its run 102 is kept
   expect in-progress-listed 0 "5 6 " feed inprog        # a run listed as in_progress is never cancelled
   expect started-after-list 0 "5 6 " feed flip          # listed queued, in_progress by cancel time: kept
+  expect rate-below-floor 3 "" feed ratelow         # 999 remaining: no calls, not_measured (GH-1)
+  expect rate-unreadable 3 "" feed ratefail
+  expect rate-empty 3 "" feed rateempty
+  expect live-reread-fails 3 "" feed livefail2      # the per-cancel head re-read failing is not_measured, never fail-open
+  expect status-reread-fails 3 "" feed statusfail   # failed per-run status read: not_measured, no cancel
+  expect status-reread-empty 3 "" feed statusempty
+  expect status-reread-null 3 "" feed statusnull
+  expect status-mismatch-listed 0 "5 6 " feed mismatch  # a listed run whose status != the queried one is never cancelled
   rc=0; bash "$0" o/r 7 >/dev/null 2>&1 || rc=$?
   [ "$rc" = 2 ] || { echo "self-test FAIL [usage]: rc=$rc (want 2)"; fails=1; }
   [ "$fails" = 0 ] || exit 1
