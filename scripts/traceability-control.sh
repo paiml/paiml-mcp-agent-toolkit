@@ -139,7 +139,7 @@ echo "traceability-control: arm 4 RED   — PMAT-002 (completed) refused (exit 1
 sed -i '/id: PMAT-001/,/status:/ s/status: planned/status: completed/' "$repo/docs/roadmaps/roadmap.yaml"
 grep -q 'status: completed' "$repo/docs/roadmaps/roadmap.yaml" || { echo "traceability-control: arm 6 fixture edit did not apply" >&2; exit 2; }
 fgit add docs/roadmaps/roadmap.yaml
-fgit commit -q -m "feat: completes its own row" -m "Pmat-Ticket: PMAT-001"
+fgit commit -q --amend --allow-empty -m "feat: completes its own row" -m "Pmat-Ticket: PMAT-001"
 run_gate
 [ "$RC" -eq 0 ] || fail_arm 6 "a row completed inside the range must exit 0"
 [ "$STATUS" = "Pass" ] || fail_arm 6 "CB-2113 must be Pass for an in-range completion"
