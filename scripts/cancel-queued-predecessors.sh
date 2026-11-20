@@ -21,15 +21,15 @@ read_live() {
 
 run() {
   [ "$#" -eq 4 ] || { echo "usage: $0 REPO PR_NUMBER HEAD_SHA WORKFLOW_FILE" >&2; return 2; }
-  local repo=$1 pr=$2 sha=$3 wf=$4 id hs st live now raw ids out
+  local repo=$1 pr=$2 sha=$3 wf=$4 id hs st live now raw ids out cur
   case "$pr" in ''|*[!0-9]*) echo "usage: PR_NUMBER must be digits" >&2; return 2 ;; esac
   live=$(read_live "$repo" "$pr") || return 3
   for st in queued waiting pending; do
     raw=$("$GH" api --paginate "repos/$repo/actions/workflows/$wf/runs?event=pull_request&per_page=100&status=$st") \
       || { echo "not_measured: list of $st runs failed" >&2; return 3; }
-    ids=$(jq -rs --arg live "$live" --argjson pr "$pr" \
+    ids=$(jq -rs --arg live "$live" --arg st "$st" --argjson pr "$pr" \
       'if all(.[]; (.workflow_runs|type)=="array") and length>0
-       then [.[].workflow_runs[] | select(.head_sha != $live) | select(any(.pull_requests[]?; .number == $pr)) | "\(.id) \(.head_sha)"][] else error("invalid") end' \
+       then [.[].workflow_runs[] | select(.status == $st) | select(.head_sha != $live) | select(any(.pull_requests[]?; .number == $pr)) | "\(.id) \(.head_sha)"][] else error("invalid") end' \
       <<<"$raw") || { echo "not_measured: list of $st runs empty or invalid" >&2; return 3; }
     while read -r id hs; do
       [ -n "$id" ] || continue
@@ -37,6 +37,12 @@ run() {
       # cancel the run that belongs to it.
       now=$(read_live "$repo" "$pr") || return 3
       if [ "$hs" = "$now" ]; then echo "skipping run $id: it is the live head now"; continue; fi
+      # The run may have started since it was listed: only a run still queued/waiting/pending is cancelled.
+      cur=$("$GH" api "repos/$repo/actions/runs/$id" --jq .status) || { echo "not_measured: status of run $id unreadable" >&2; return 3; }
+      case "$cur" in
+        queued|waiting|pending) ;;
+        *) echo "skipping run $id: status is now '$cur', not queued"; continue ;;
+      esac
       echo "force-cancelling $st predecessor $id of PR #$pr (live head ${live:0:7}, trigger ${sha:0:7})"
       if ! out=$("$GH" api -X POST "repos/$repo/actions/runs/$id/force-cancel" 2>&1); then
         case "$out" in
@@ -52,7 +58,7 @@ TMPD=
 cleanup() { if [ -n "$TMPD" ]; then rm -rf "${TMPD:?}"; fi; }
 
 # Fake gh: pulls/7 -> live head NEW. Run lists are served from $SCEN by status; page 2 only with --paginate.
-# SCEN=normal|empty|fail500|bad|pullsfail|runsfail|nonhex|race
+# SCEN=normal|empty|fail500|bad|pullsfail|runsfail|nonhex|race|inprog|flip
 fake_gh() {
   cat >"$1/gh" <<'FAKE'
 #!/usr/bin/env bash
@@ -75,22 +81,33 @@ case $url in */pulls/7)
     case $3 in .head.sha) echo "$h";; .base.sha) echo ba5e;; *) echo '{}';; esac
   else echo "{\"head\":{\"sha\":\"$h\"}}"; fi
   exit 0;; esac
-case $SCEN in empty) exit 0;; runsfail) echo "gh: HTTP 429" >&2; exit 1;; race) echo '{"workflow_runs":[{"id":101,"head_sha":"aaaa","pull_requests":[{"number":7}]},{"id":102,"head_sha":"bbbb","pull_requests":[{"number":7}]}]}'; exit 0;; bad) echo 'not json'; exit 0;; esac
+case $url in */actions/runs/*)
+  id=${url##*/}
+  case $id in 77) [ "$SCEN" = flip ] && echo in_progress || echo queued;; 5) echo waiting;; 6) echo pending;; *) echo queued;; esac
+  exit 0;; esac
+case $SCEN in empty) exit 0;; runsfail) echo "gh: HTTP 429" >&2; exit 1;; race) echo '{"workflow_runs":[{"id":101,"status":"queued","head_sha":"aaaa","pull_requests":[{"number":7}]},{"id":102,"status":"queued","head_sha":"bbbb","pull_requests":[{"number":7}]}]}'; exit 0;; bad) echo 'not json'; exit 0;; esac
+base=repos/o/r/actions/workflows/ci.yml/runs?event=pull_request\&per_page=100\&status=
 case $url in
-  *status=queued*) ;;
-  *status=waiting*) echo '{"workflow_runs":[{"id":5,"head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0;;
-  *status=pending*) echo '{"workflow_runs":[{"id":6,"head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0;;
+  "${base}queued") ;;
+  "${base}waiting") echo '{"workflow_runs":[{"id":5,"status":"waiting","head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0;;
+  "${base}pending") echo '{"workflow_runs":[{"id":6,"status":"pending","head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0;;
   *) exit 9;;
 esac
+if [ "$SCEN" = inprog ]; then
+  echo '{"workflow_runs":[{"id":77,"status":"in_progress","head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0
+fi
+if [ "$SCEN" = flip ]; then
+  echo '{"workflow_runs":[{"id":77,"status":"queued","head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0
+fi
 if [ "$SCEN" = fail500 ]; then
-  echo '{"workflow_runs":[{"id":1409,"head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0
+  echo '{"workflow_runs":[{"id":1409,"status":"queued","head_sha":"dead","pull_requests":[{"number":7}]}]}'; exit 0
 fi
 echo '{"workflow_runs":[
- {"id":4,"head_sha":"dead","pull_requests":[{"number":7}]},
- {"id":1,"head_sha":"dead","pull_requests":[{"number":7}]},
- {"id":2,"head_sha":"feed","pull_requests":[{"number":7}]},
- {"id":3,"head_sha":"dead","pull_requests":[{"number":8}]}]}'
-[ "$pag" = 1 ] && echo '{"workflow_runs":[{"id":9,"head_sha":"dead","pull_requests":[{"number":7}]}]}'
+ {"id":4,"status":"queued","head_sha":"dead","pull_requests":[{"number":7}]},
+ {"id":1,"status":"queued","head_sha":"dead","pull_requests":[{"number":7}]},
+ {"id":2,"status":"queued","head_sha":"feed","pull_requests":[{"number":7}]},
+ {"id":3,"status":"queued","head_sha":"dead","pull_requests":[{"number":8}]}]}'
+[ "$pag" = 1 ] && echo '{"workflow_runs":[{"id":9,"status":"queued","head_sha":"dead","pull_requests":[{"number":7}]}]}'
 exit 0
 FAKE
   chmod +x "$1/gh"
@@ -115,6 +132,8 @@ self_test() {
   expect runs-read-fails 3 "" feed runsfail         # HTTP 429 on a run list is not_measured
   expect live-head-not-hex 3 "" feed nonhex         # `null` is not a sha
   expect push-lands-mid-run 0 "" aaaa race      # newest push (bbbb) lands after the first read: its run 102 is kept
+  expect in-progress-listed 0 "5 6 " feed inprog        # a run listed as in_progress is never cancelled
+  expect started-after-list 0 "5 6 " feed flip          # listed queued, in_progress by cancel time: kept
   rc=0; bash "$0" o/r 7 >/dev/null 2>&1 || rc=$?
   [ "$rc" = 2 ] || { echo "self-test FAIL [usage]: rc=$rc (want 2)"; fails=1; }
   [ "$fails" = 0 ] || exit 1
