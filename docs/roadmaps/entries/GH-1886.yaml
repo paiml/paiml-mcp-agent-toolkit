@@ -1,0 +1,17 @@
+- id: GH-1886
+  github_issue: 1886
+  item_type: task
+  title: 'chore(roadmap): add the GH-1318 row so #1885 passes CB-2113'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-20T00:00:00+00:00
+  updated: 2026-11-20T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  epic: 1414
