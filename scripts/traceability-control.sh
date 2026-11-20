@@ -13,6 +13,8 @@
 #   arm 2  GREEN the same commit trailed `Pmat-Ticket: PMAT-001`     exit 0, Pass
 #   arm 3  RED   trailer naming PMAT-999, absent from the roadmap    exit 1, Fail, names PMAT-999
 #   arm 4  RED   trailer naming PMAT-002, a completed item           exit 1, Fail, names PMAT-002
+#   arm 6  GREEN trailer naming PMAT-001, completed INSIDE the range exit 0, Pass (GH-1824)
+#   arm 7  RED   trailer naming PMAT-002, completed BEFORE the base   exit 1, Fail (arm 4 again, after arm 6)
 #   arm 5  N/A   HEAD on master                                      exit 0, Pass, message says not_applicable
 #
 # Each arm asserts BOTH the process exit code and the CB-2113 entry in the JSON
@@ -132,6 +134,28 @@ run_gate
 case "$MESSAGE" in *"PMAT-002"*"completed"*) ;; *) fail_arm 4 "the message must name PMAT-002 as completed";; esac
 echo "traceability-control: arm 4 RED   — PMAT-002 (completed) refused (exit 1)"
 
+# ── arm 6: GREEN — the row is completed INSIDE base..HEAD (GH-1824) ─────────
+# PMAT-001 is `planned` at the merge-base; this commit completes it and names it.
+sed -i '/id: PMAT-001/,/status:/ s/status: planned/status: completed/' "$repo/docs/roadmaps/roadmap.yaml"
+grep -q 'status: completed' "$repo/docs/roadmaps/roadmap.yaml" || { echo "traceability-control: arm 6 fixture edit did not apply" >&2; exit 2; }
+fgit add docs/roadmaps/roadmap.yaml
+fgit commit -q -m "feat: completes its own row" -m "Pmat-Ticket: PMAT-001"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 6 "a row completed inside the range must exit 0"
+[ "$STATUS" = "Pass" ] || fail_arm 6 "CB-2113 must be Pass for an in-range completion"
+echo "traceability-control: arm 6 GREEN — PMAT-001 completed in-range accepted (exit 0)"
+
+# ── arm 7: RED — a row completed BEFORE the base still fails ────────────────
+# PMAT-002 was already completed at the merge-base, so naming it is a finding
+# even though PMAT-001 is now (legitimately) completed in range.
+fgit commit -q --amend -m "feat: completes its own row" -m "$(printf 'Pmat-Ticket: PMAT-001\nPmat-Ticket: PMAT-002')"
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 7 "a row completed before the base must exit 1 even beside an in-range completion"
+[ "$STATUS" = "Fail" ] || fail_arm 7 "CB-2113 must be Fail"
+case "$MESSAGE" in *"PMAT-002"*"completed"*) ;; *) fail_arm 7 "the message must name PMAT-002 as completed";; esac
+case "$MESSAGE" in *"PMAT-001"*"completed"*) fail_arm 7 "PMAT-001 (in-range) must not be named as a finding";; esac
+echo "traceability-control: arm 7 RED   — PMAT-002 (completed before base) refused beside in-range PMAT-001 (exit 1)"
+
 # ── arm 5: not applicable — HEAD on the default branch ──────────────────────
 fgit switch -q master
 run_gate
@@ -140,4 +164,4 @@ run_gate
 case "$MESSAGE" in "not_applicable:"*) ;; *) fail_arm 5 "the message must start with not_applicable and name the reason";; esac
 echo "traceability-control: arm 5 N/A   — default branch reported not_applicable (exit 0)"
 
-echo "traceability-control: all 5 arms behaved — CB-2113 can fail, and can pass"
+echo "traceability-control: all 7 arms behaved — CB-2113 can fail, and can pass"
