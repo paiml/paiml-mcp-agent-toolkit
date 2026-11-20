@@ -1,0 +1,27 @@
+# GH-1318: `cancel-in-progress` leaves a QUEUED predecessor alive and the new CI run sits
+# pending behind it. On a push to a PR, force-cancel that PR's older queued CI runs. Runs on a
+# hosted runner so a saturated self-hosted pool cannot delay it. train/* and batch/* heads
+# are never cancelled (same exemption as ci.yml).
+name: Cancel queued predecessors
+on:
+  pull_request:
+    types: [synchronize]
+permissions:
+  actions: write
+  contents: read
+jobs:
+  cancel:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.head_ref, 'train/') && !startsWith(github.head_ref, 'batch/') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/cancel-queued-predecessors.sh
+          sparse-checkout-cone-mode: false
+      - name: self-test
+        run: bash scripts/cancel-queued-predecessors.sh --self-test
+      - name: force-cancel queued CI predecessors
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/cancel-queued-predecessors.sh "${{ github.repository }}" "${{ github.event.pull_request.number }}" "${{ github.event.pull_request.head.sha }}" ci.yml
