@@ -1,7 +1,8 @@
 # GH-1318: `cancel-in-progress` leaves a QUEUED predecessor alive and the new CI run sits
 # pending behind it. On a push to a PR, force-cancel that PR's older queued CI runs. Runs on a
 # hosted runner so a saturated self-hosted pool cannot delay it. train/* and batch/* heads
-# are never cancelled (same exemption as ci.yml).
+# are never cancelled (same exemption as ci.yml). The script reads the PR's LIVE head from the API,
+# so a delayed trigger for an older push never cancels the newest run.
 name: Cancel queued predecessors
 on:
   pull_request:
