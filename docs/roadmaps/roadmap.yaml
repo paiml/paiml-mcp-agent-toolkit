@@ -6453,11 +6453,11 @@ roadmap:
   github_issue: 1318
   item_type: bug
   title: 'cancel-in-progress leaves a QUEUED predecessor alive, and the new run sits pending with 0 jobs behind it — measured 3 times in one hour on #1316'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-11T10:45:00Z
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-21T00:00:00+00:00
   spec: docs/specifications/goal-mode.md
   acceptance_criteria:
   - a push to a PR whose previous CI run is still queued results in that run being cancelled without a human, and the new run acquiring jobs within a minute
