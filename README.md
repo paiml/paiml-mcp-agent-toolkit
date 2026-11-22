@@ -657,3 +657,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 <div align="center">
   <sub>Built with Extreme TDD | Part of <a href="https://github.com/paiml">PAIML</a></sub>
 </div>
+
+<!-- FUNNEL-001 footer: replace paiml-mcp-agent-toolkit with the repo name -->
+---
+📚 **Learn this hands-on:** [Pragmatic AI Labs courses on Coursera](https://www.coursera.org/partners/pragmatic-ai-labs?utm_source=github&utm_medium=readme&utm_campaign=funnel_2026q4&utm_content=paiml-mcp-agent-toolkit) · ✉ [Free newsletter](https://ds500.paiml.com/mailing?utm_source=github&utm_medium=readme&utm_campaign=funnel_2026q4&utm_content=paiml-mcp-agent-toolkit)
