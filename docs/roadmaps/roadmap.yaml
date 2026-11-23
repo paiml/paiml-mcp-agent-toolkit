@@ -8585,7 +8585,7 @@ roadmap:
   github_issue: 1906
   item_type: task
   title: 'release: publish pmat 3.46.0 to crates.io (30 merges since 3.45.1)'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-23T00:00:00Z
