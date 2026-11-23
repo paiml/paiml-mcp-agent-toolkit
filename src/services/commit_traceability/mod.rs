@@ -24,8 +24,13 @@
 use std::path::Path;
 use std::process::Command;
 
+mod git;
+mod judge;
 #[cfg(test)]
 mod tests;
+
+use git::{resolve_base, run_git, run_git_raw};
+use judge::judge_log;
 
 /// The roadmap the trailer ids are resolved against.
 pub const ROADMAP_PATH: &str = "docs/roadmaps/roadmap.yaml";
@@ -149,30 +154,6 @@ pub fn inputs(project_path: &Path) -> Inputs {
     Inputs::Ready
 }
 
-fn run_git(project_path: &Path, args: &[&str]) -> Result<String, String> {
-    run_git_raw(project_path, args).map(|text| text.trim().to_string())
-}
-
-/// `git args` stdout exactly as printed (leading indentation and the final
-/// newline of a file kept).
-fn run_git_raw(project_path: &Path, args: &[&str]) -> Result<String, String> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(project_path)
-        .args(args)
-        .env("LC_ALL", "C")
-        .output()
-        .map_err(|e| format!("git {:?} failed: {}", args, e))?;
-    if !out.status.success() {
-        return Err(format!(
-            "git {:?}: {}",
-            args.first().unwrap_or(&""),
-            String::from_utf8_lossy(&out.stderr)
-        ));
-    }
-    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
-}
-
 /// Measure, resolving the base from [`BASE_REF_ENV`] when it is set and from
 /// the default branch otherwise.
 ///
@@ -183,42 +164,6 @@ pub fn measure(project_path: &Path) -> Result<Measurement, String> {
         .ok()
         .filter(|s| !s.trim().is_empty());
     measure_against(project_path, env_base.as_deref())
-}
-
-/// Resolve the base ref: the named one (bare or `origin/`-prefixed), else the
-/// first discovered candidate.
-fn resolve_base(project_path: &Path, base: Option<&str>) -> Result<String, String> {
-    let rev_ok = |rev: &str| {
-        run_git(
-            project_path,
-            &["rev-parse", "--verify", "-q", &format!("{rev}^{{commit}}")],
-        )
-        .is_ok()
-    };
-    if let Some(b) = base {
-        if rev_ok(b) {
-            return Ok(b.to_string());
-        }
-        let prefixed = format!("origin/{b}");
-        if rev_ok(&prefixed) {
-            return Ok(prefixed);
-        }
-        return Err(format!("base {b} not found"));
-    }
-    let mut candidates = vec![];
-    if let Ok(sym_ref) = run_git(
-        project_path,
-        &["symbolic-ref", "-q", "refs/remotes/origin/HEAD"],
-    ) {
-        if let Some(stripped) = sym_ref.strip_prefix("refs/remotes/") {
-            candidates.push(stripped.to_string());
-        }
-    }
-    candidates.extend(["origin/master", "origin/main", "master", "main"].map(String::from));
-    candidates
-        .into_iter()
-        .find(|c| rev_ok(c))
-        .ok_or_else(|| "no base to measure against".to_string())
 }
 
 /// [`measure`] with the base branch named explicitly (`None` = discover it:
@@ -332,102 +277,6 @@ fn open_ids_at(project_path: &Path, rev: &str) -> std::collections::HashSet<Stri
                 .collect()
         })
         .unwrap_or_default()
-}
-
-/// One `git log` line (`%H \x1f %s \x1f trailers`) → (hash, subject, ticket ids).
-/// `None` for a line with fewer than two fields, as before the extraction.
-fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>)> {
-    let parts: Vec<&str> = line.split('\x1f').collect();
-    if parts.len() < 2 {
-        return None;
-    }
-    let tr = if parts.len() >= 3 {
-        parts[2].trim()
-    } else {
-        ""
-    };
-    let ids = tr
-        .split(',')
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .collect();
-    Some((parts[0].to_string(), parts[1].to_string(), ids))
-}
-
-/// The violation, if any, that one trailer id commits against the roadmap.
-///
-/// A row that was open at the merge-base and is terminal at HEAD was closed
-/// inside this range, and is not a finding (GH-1824).
-fn judge_id(
-    roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
-    open_at_base: &std::collections::HashSet<String>,
-    id: &str,
-) -> Option<Violation> {
-    use crate::models::roadmap::ItemStatus;
-    let Some(status) = roadmap.get(id) else {
-        return Some(Violation::UnknownTicket(id.to_string()));
-    };
-    // Terminal states, spelled as the roadmap serialises them (`ItemStatus` is
-    // `rename_all = "lowercase"`).
-    let terminal = match status {
-        ItemStatus::Completed => "completed",
-        ItemStatus::Cancelled => "cancelled",
-        _ => return None,
-    };
-    if open_at_base.contains(id) {
-        return None;
-    }
-    Some(Violation::TerminalTicket {
-        id: id.to_string(),
-        status: terminal.to_string(),
-    })
-}
-
-/// Judge every trailer id of one commit, appending a finding per violation.
-fn judge_ids(
-    roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
-    open_at_base: &std::collections::HashSet<String>,
-    hash: &str,
-    subject: &str,
-    ids: &[&str],
-    findings: &mut Vec<Finding>,
-) {
-    findings.extend(ids.iter().filter_map(|id| {
-        judge_id(roadmap, open_at_base, id).map(|violation| Finding {
-            hash: hash.to_string(),
-            subject: subject.to_string(),
-            violation,
-        })
-    }));
-}
-
-/// Judge every commit line of `git log`: count them, count the trailered ones,
-/// and collect the findings.
-fn judge_log(
-    log: &str,
-    roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
-    open_at_base: &std::collections::HashSet<String>,
-) -> (usize, usize, Vec<Finding>) {
-    let mut commits = 0;
-    let mut trailered = 0;
-    let mut findings = vec![];
-    for line in log.split('\n').filter(|l| !l.trim().is_empty()) {
-        commits += 1;
-        let Some((hash, subject, ids)) = parse_log_line(line) else {
-            continue;
-        };
-        if ids.is_empty() {
-            findings.push(Finding {
-                hash,
-                subject,
-                violation: Violation::NoTrailer,
-            });
-        } else {
-            judge_ids(roadmap, open_at_base, &hash, &subject, &ids, &mut findings);
-            trailered += 1;
-        }
-    }
-    (commits, trailered, findings)
 }
 
 fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
