@@ -2,11 +2,11 @@
   github_issue: 1846
   item_type: task
   title: 'Mutation gate slice 2: dispatch base input, listing script, cargo-mutants pin, empty-stdout test'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-18T00:00:00+00:00
-  updated: 2026-11-18T00:00:00+00:00
+  updated: 2026-11-23T00:00:00+00:00
   spec: null
   acceptance_criteria: []
   phases: []
