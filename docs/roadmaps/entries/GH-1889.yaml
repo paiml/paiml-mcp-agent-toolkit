@@ -2,11 +2,11 @@
   github_issue: 1889
   item_type: task
   title: Ignore entry for RUSTSEC-2026-0187 no longer matches anything (`lopdf` is already at 0.42.0)
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-21T00:00:00+00:00
-  updated: 2026-11-21T00:00:00+00:00
+  updated: 2026-11-23T00:00:00+00:00
   spec: null
   acceptance_criteria: []
   phases: []
