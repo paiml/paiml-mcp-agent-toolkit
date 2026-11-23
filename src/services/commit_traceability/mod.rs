@@ -185,63 +185,46 @@ pub fn measure(project_path: &Path) -> Result<Measurement, String> {
     measure_against(project_path, env_base.as_deref())
 }
 
+/// Resolve the base ref: the named one (bare or `origin/`-prefixed), else the
+/// first discovered candidate.
+fn resolve_base(project_path: &Path, base: Option<&str>) -> Result<String, String> {
+    let rev_ok = |rev: &str| {
+        run_git(
+            project_path,
+            &["rev-parse", "--verify", "-q", &format!("{rev}^{{commit}}")],
+        )
+        .is_ok()
+    };
+    if let Some(b) = base {
+        if rev_ok(b) {
+            return Ok(b.to_string());
+        }
+        let prefixed = format!("origin/{b}");
+        if rev_ok(&prefixed) {
+            return Ok(prefixed);
+        }
+        return Err(format!("base {b} not found"));
+    }
+    let mut candidates = vec![];
+    if let Ok(sym_ref) = run_git(
+        project_path,
+        &["symbolic-ref", "-q", "refs/remotes/origin/HEAD"],
+    ) {
+        if let Some(stripped) = sym_ref.strip_prefix("refs/remotes/") {
+            candidates.push(stripped.to_string());
+        }
+    }
+    candidates.extend(["origin/master", "origin/main", "master", "main"].map(String::from));
+    candidates
+        .into_iter()
+        .find(|c| rev_ok(c))
+        .ok_or_else(|| "no base to measure against".to_string())
+}
+
 /// [`measure`] with the base branch named explicitly (`None` = discover it:
 /// `origin/HEAD`, then `origin/master`, `origin/main`, `master`, `main`).
 pub fn measure_against(project_path: &Path, base: Option<&str>) -> Result<Measurement, String> {
-    let resolved_base = if let Some(b) = base {
-        if run_git(
-            project_path,
-            &["rev-parse", "--verify", "-q", &format!("{b}^{{commit}}")],
-        )
-        .is_ok()
-        {
-            b.to_string()
-        } else if run_git(
-            project_path,
-            &[
-                "rev-parse",
-                "--verify",
-                "-q",
-                &format!("origin/{b}^{{commit}}"),
-            ],
-        )
-        .is_ok()
-        {
-            format!("origin/{b}")
-        } else {
-            return Err(format!("base {b} not found"));
-        }
-    } else {
-        let mut candidates = vec![];
-        if let Ok(sym_ref) = run_git(
-            project_path,
-            &["symbolic-ref", "-q", "refs/remotes/origin/HEAD"],
-        ) {
-            if let Some(stripped) = sym_ref.strip_prefix("refs/remotes/") {
-                candidates.push(stripped.to_string());
-            }
-        }
-        candidates.extend_from_slice(&[
-            "origin/master".to_string(),
-            "origin/main".to_string(),
-            "master".to_string(),
-            "main".to_string(),
-        ]);
-
-        let mut found = None;
-        for c in candidates {
-            if run_git(
-                project_path,
-                &["rev-parse", "--verify", "-q", &format!("{c}^{{commit}}")],
-            )
-            .is_ok()
-            {
-                found = Some(c);
-                break;
-            }
-        }
-        found.ok_or_else(|| "no base to measure against".to_string())?
-    };
+    let resolved_base = resolve_base(project_path, base)?;
 
     let head_commit = run_git(project_path, &["rev-parse", "HEAD"])?;
     let base_commit = run_git(
