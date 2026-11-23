@@ -1,0 +1,18 @@
+- id: GH-1897
+  github_issue: 1897
+  item_type: task
+  title: "deps: aprender-zram-core 0.72 to 0.75, re-cut with traceability trailer"
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-11-23T00:00:00+00:00
+  updated: 2026-11-23T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1645
