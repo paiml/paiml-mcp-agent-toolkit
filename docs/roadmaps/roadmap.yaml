@@ -8567,7 +8567,7 @@ roadmap:
   github_issue: 1907
   item_type: task
   title: 'changelog: 3.46.0 section lacks the cookie RUSTSEC-2026-0594 fix (#1901) and #1898'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-23T00:00:00Z
