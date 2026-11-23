@@ -401,6 +401,35 @@ fn judge_ids(
     }));
 }
 
+/// Judge every commit line of `git log`: count them, count the trailered ones,
+/// and collect the findings.
+fn judge_log(
+    log: &str,
+    roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
+    open_at_base: &std::collections::HashSet<String>,
+) -> (usize, usize, Vec<Finding>) {
+    let mut commits = 0;
+    let mut trailered = 0;
+    let mut findings = vec![];
+    for line in log.split('\n').filter(|l| !l.trim().is_empty()) {
+        commits += 1;
+        let Some((hash, subject, ids)) = parse_log_line(line) else {
+            continue;
+        };
+        if ids.is_empty() {
+            findings.push(Finding {
+                hash,
+                subject,
+                violation: Violation::NoTrailer,
+            });
+        } else {
+            judge_ids(roadmap, open_at_base, &hash, &subject, &ids, &mut findings);
+            trailered += 1;
+        }
+    }
+    (commits, trailered, findings)
+}
+
 fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
     let merge_base = run_git(project_path, &["merge-base", &resolved_base, "HEAD"])?;
     let commits_out = run_git(
@@ -424,38 +453,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         .collect();
     let open_at_base = open_ids_at(project_path, &merge_base);
 
-    let mut commits = 0;
-    let mut trailered = 0;
-    let mut findings = vec![];
-
-    if !commits_out.is_empty() {
-        for line in commits_out.split('\n') {
-            if line.trim().is_empty() {
-                continue;
-            }
-            commits += 1;
-            let Some((hash, subject, ids)) = parse_log_line(line) else {
-                continue;
-            };
-            if ids.is_empty() {
-                findings.push(Finding {
-                    hash,
-                    subject,
-                    violation: Violation::NoTrailer,
-                });
-            } else {
-                judge_ids(
-                    &roadmap_map,
-                    &open_at_base,
-                    &hash,
-                    &subject,
-                    &ids,
-                    &mut findings,
-                );
-                trailered += 1;
-            }
-        }
-    }
+    let (commits, trailered, findings) = judge_log(&commits_out, &roadmap_map, &open_at_base);
 
     Ok(Measurement {
         range: Range::PullRequest {
