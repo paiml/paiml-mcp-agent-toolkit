@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **comply**: CB-2113 lets a PR complete its own roadmap row (#1837, GH-1824).
 - **deps**: the six advisory ignore rows that match no crate are dropped (#1834, GH-1818);
   the chrono RUSTSEC-2026-0543 accept decision is recorded (#1876, GH-1817).
+- **deps**: cookie bumped to 0.18.3 for RUSTSEC-2026-0594 (#1901); weekly cargo-weekly group, 9 lock updates (#1898).
 - **master**: the unwrap ratchet and unrun-tests ledger regenerated after #1872 and #1837
   (#1878, #1881).
 
