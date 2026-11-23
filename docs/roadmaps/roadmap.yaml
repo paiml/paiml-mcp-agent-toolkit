@@ -8567,7 +8567,7 @@ roadmap:
   github_issue: 1907
   item_type: task
   title: 3.46.0 changelog lacks the cookie RUSTSEC-2026-0594 fix (#1901) and the weekly lock group (#1898)
-  status: completed
+  status: planned
   priority: medium
   assigned_to: null
   created: 2026-11-23T00:00:00Z
