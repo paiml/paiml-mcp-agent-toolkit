@@ -1,0 +1,18 @@
+- id: GH-1894
+  github_issue: 1894
+  item_type: task
+  title: "url 2.5.8 (RUSTSEC-2026-0592) fails release-check on master: bump to 2.5.9"
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-11-23T00:00:00+00:00
+  updated: 2026-11-23T00:00:00+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1645
