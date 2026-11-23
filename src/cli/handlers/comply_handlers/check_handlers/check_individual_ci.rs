@@ -108,6 +108,96 @@ pub(crate) fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+fn onegate_has_push_trigger(doc: &serde_yaml_ng::Value) -> bool {
+    let Some(on) = doc.get("on").or_else(|| doc.get(serde_yaml_ng::Value::Bool(true))) else {
+        return false;
+    };
+    match on {
+        serde_yaml_ng::Value::String(s) => s == "push",
+        serde_yaml_ng::Value::Sequence(seq) => seq.iter().any(|v| v.as_str() == Some("push")),
+        serde_yaml_ng::Value::Mapping(_) => on.get("push").is_some(),
+        _ => false,
+    }
+}
+
+fn onegate_flagged_if(cond: &str) -> bool {
+    cond.contains("github.event_name")
+        || cond.contains("github.head_ref")
+        || cond
+            .split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+            .any(|tok| tok == "labels")
+}
+
+fn onegate_scan_workflow(file: &str, text: &str) -> Vec<String> {
+    let Ok(doc) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(text) else {
+        return Vec::new();
+    };
+    let Some(jobs) = onegate_has_push_trigger(&doc)
+        .then(|| doc.get("jobs").and_then(serde_yaml_ng::Value::as_mapping))
+        .flatten()
+    else {
+        return Vec::new();
+    };
+    jobs.iter()
+        .filter_map(|(id, body)| {
+            let job = id.as_str()?;
+            let cond = body.get("if").and_then(serde_yaml_ng::Value::as_str)?;
+            onegate_flagged_if(cond).then(|| format!("{file}:{job}"))
+        })
+        .collect()
+}
+
+/// ONEGATE (#1870): flag push-triggered workflows whose jobs skip pull_request
+/// via `if:` on `github.event_name`, `github.head_ref`, or `labels`.
+pub(crate) fn check_onegate(project_path: &Path) -> ComplianceCheck {
+    let verdict = |status, message: String, severity| ComplianceCheck {
+        name: "ONEGATE".into(),
+        status,
+        message,
+        severity,
+    };
+    let dir = project_path.join(".github").join("workflows");
+    if !dir.is_dir() {
+        return verdict(CheckStatus::Skip, "No .github/workflows/".into(), Severity::Info);
+    }
+    let mut files: Vec<_> = fs::read_dir(&dir)
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| matches!(p.extension().and_then(|e| e.to_str()), Some("yml" | "yaml")))
+        .collect();
+    files.sort();
+    if files.is_empty() {
+        return verdict(CheckStatus::Skip, "No .github/workflows/*.y{,a}ml files".into(), Severity::Info);
+    }
+    let mut hits = Vec::new();
+    for path in &files {
+        if let Ok(text) = fs::read_to_string(path) {
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            hits.extend(onegate_scan_workflow(&format!(".github/workflows/{name}"), &text));
+        }
+    }
+    if hits.is_empty() {
+        verdict(
+            CheckStatus::Pass,
+            format!("{} workflow(s) checked: PR job set matches push job set", files.len()),
+            Severity::Info,
+        )
+    } else {
+        verdict(
+            CheckStatus::Fail,
+            format!(
+                "{} push-workflow job(s) split PR vs master via event_name/head_ref/labels: {}",
+                hits.len(),
+                hits.join(", ")
+            ),
+            Severity::Error,
+        )
+    }
+}
+
 #[cfg(test)]
 mod check_individual_ci_tests {
     //! Covers check_individual_ci.rs CI/MSRV/Cargo.lock checks
@@ -222,5 +312,48 @@ mod check_individual_ci_tests {
         let check = check_ci_configured(tmp.path());
         // Empty workflows dir + no GitLab/Jenkins → warn.
         assert!(matches!(check.status, CheckStatus::Warn));
+    }
+
+    // ── check_onegate (#1870) ──
+
+    fn run_onegate_fixture(yaml: &str) -> ComplianceCheck {
+        let tmp = tempfile::tempdir().unwrap();
+        let wf = tmp.path().join(".github").join("workflows");
+        std::fs::create_dir_all(&wf).unwrap();
+        std::fs::write(wf.join("ci.yml"), yaml).unwrap();
+        check_onegate(tmp.path())
+    }
+
+    #[test]
+    fn test_onegate_fails_on_push_event_name_if() {
+        let wf = "on: [push, pull_request]\njobs:\n  heavy:\n    if: github.event_name != 'pull_request'\n    runs-on: ubuntu-latest\n";
+        let check = run_onegate_fixture(wf);
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
+        assert_eq!(check.severity, Severity::Error);
+        assert!(check.message.contains("ci.yml:heavy"), "{}", check.message);
+    }
+
+    #[test]
+    fn test_onegate_passes_without_if() {
+        let wf = "on: [push, pull_request]\njobs:\n  heavy:\n    runs-on: ubuntu-latest\n";
+        let check = run_onegate_fixture(wf);
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn test_onegate_passes_on_draft_not_true() {
+        let wf = "on: [push, pull_request]\njobs:\n  heavy:\n    if: github.event.pull_request.draft != true\n    runs-on: ubuntu-latest\n";
+        let check = run_onegate_fixture(wf);
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn test_onegate_flags_head_ref_and_labels_and_ignores_pr_only() {
+        let head_ref = "on:\n  push:\n    branches: [master]\njobs:\n  a:\n    if: startsWith(github.head_ref, 'train/')\n    runs-on: ubuntu-latest\n";
+        assert_eq!(run_onegate_fixture(head_ref).status, CheckStatus::Fail);
+        let labels = "on: push\njobs:\n  b:\n    if: contains(github.event.pull_request.labels.*.name, 'full-ci')\n    runs-on: ubuntu-latest\n";
+        assert_eq!(run_onegate_fixture(labels).status, CheckStatus::Fail);
+        let pr_only = "on: pull_request\njobs:\n  c:\n    if: startsWith(github.head_ref, 'train/')\n    runs-on: ubuntu-latest\n";
+        assert_eq!(run_onegate_fixture(pr_only).status, CheckStatus::Pass);
     }
 }

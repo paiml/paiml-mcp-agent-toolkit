@@ -2,11 +2,11 @@
   github_issue: 1870
   item_type: task
   title: 'comply: add a pmat comply check (ONEGATE) that fails when a job in a push-triggered workflow is skipped on pull_request by an if: on event_name/head_ref/labels (PR set != master set)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-19T00:00:00+00:00
-  updated: 2026-11-19T00:00:00+00:00
+  updated: 2026-11-23T00:00:00+00:00
   spec: null
   acceptance_criteria: []
   phases: []

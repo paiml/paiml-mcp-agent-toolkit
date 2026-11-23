@@ -35,6 +35,7 @@ fn build_foundation_checks(
         check_ci_configured(project_path),
         check_paiml_deps_workspace(project_path),
         check_sovereign_stack_patterns(project_path),
+        check_onegate(project_path),
         filter_check_by_config(check_file_health(project_path), "cb-040", comply_config),
         filter_check_by_config(
             check_muda_waste_score(project_path),
