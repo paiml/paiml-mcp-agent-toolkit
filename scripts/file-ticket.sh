@@ -21,14 +21,19 @@ title=""
 body=""
 labels=(triaged)
 
-die() { echo "file-ticket: $*" >&2; exit "${2:-2}"; }
+die() { echo "file-ticket: $1" >&2; exit "${2:-2}"; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --parent) parent="${2:?--parent needs a value}"; shift 2 ;;
     --title) title="${2:?--title needs a value}"; shift 2 ;;
     --body) body="${2:?--body needs a value}"; shift 2 ;;
-    --body-file) body="$(cat "${2:?--body-file needs a value}")"; shift 2 ;;
+    --body-file)
+      bf="${2:?--body-file needs a value}"
+      case "${bf}" in
+        /* | *..*) die "refusing: --body-file must be a relative path without '..'" ;;
+      esac
+      body="$(cat "${bf}")"; shift 2 ;;
     --label) labels+=("${2:?--label needs a value}"); shift 2 ;;
     --repo) repo="${2:?--repo needs a value}"; shift 2 ;;
     *) die "unknown argument: $1" ;;
@@ -50,11 +55,13 @@ for l in "${labels[@]}"; do args+=(-f "labels[]=${l}"); done
 created="$("${gh_bin}" "${args[@]}")" || die "create failed" 1
 number="$(printf '%s' "${created}" | jq -r '.number // empty')"
 id="$(printf '%s' "${created}" | jq -r '.id // empty')"
-[ -n "${number}" ] && [ -n "${id}" ] || die "create returned no issue object: ${created}" 1
+if [ -z "${number}" ] || [ -z "${id}" ]; then
+  die "create returned no issue object: ${created}" 1
+fi
 
 "${gh_bin}" api -X POST "repos/${repo}/issues/${parent}/sub_issues" -F "sub_issue_id=${id}" >/dev/null \
   || die "#${number} created but NOT linked to #${parent}; link it by hand" 1
-"${gh_bin}" api "repos/${repo}/issues/${parent}/sub_issues" | jq -e --argjson n "${number}" 'any(.[]; .number == $n)' >/dev/null \
+"${gh_bin}" api --paginate "repos/${repo}/issues/${parent}/sub_issues" --jq '.[].number' | grep -qx "${number}" \
   || die "#${number} link to #${parent} did not read back" 1
 
 echo "filed #${number} under #${parent} (milestone ${milestone}, labels: ${labels[*]})"

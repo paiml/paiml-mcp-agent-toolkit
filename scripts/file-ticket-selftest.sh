@@ -22,7 +22,7 @@ echo "$*" >>"${STUB_LOG}"
 case "$*" in
   *"-X POST"*sub_issues*) [ "${STUB_LINK_FAIL:-0}" = 1 ] && exit 1; echo '{"number":900}' ;;
   *"-X POST"*) echo '{"id":424242,"number":901}' ;;
-  *issues/700/sub_issues*) echo '[{"number":901}]' ;;
+  *issues/700/sub_issues*) echo 901 ;;
   *issues/700*) echo "{\"number\":700,\"milestone\":${STUB_MILESTONE}}" ;;
   *) echo '{}' ;;
 esac
