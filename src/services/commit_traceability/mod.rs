@@ -185,63 +185,46 @@ pub fn measure(project_path: &Path) -> Result<Measurement, String> {
     measure_against(project_path, env_base.as_deref())
 }
 
+/// Resolve the base ref: the named one (bare or `origin/`-prefixed), else the
+/// first discovered candidate.
+fn resolve_base(project_path: &Path, base: Option<&str>) -> Result<String, String> {
+    let rev_ok = |rev: &str| {
+        run_git(
+            project_path,
+            &["rev-parse", "--verify", "-q", &format!("{rev}^{{commit}}")],
+        )
+        .is_ok()
+    };
+    if let Some(b) = base {
+        if rev_ok(b) {
+            return Ok(b.to_string());
+        }
+        let prefixed = format!("origin/{b}");
+        if rev_ok(&prefixed) {
+            return Ok(prefixed);
+        }
+        return Err(format!("base {b} not found"));
+    }
+    let mut candidates = vec![];
+    if let Ok(sym_ref) = run_git(
+        project_path,
+        &["symbolic-ref", "-q", "refs/remotes/origin/HEAD"],
+    ) {
+        if let Some(stripped) = sym_ref.strip_prefix("refs/remotes/") {
+            candidates.push(stripped.to_string());
+        }
+    }
+    candidates.extend(["origin/master", "origin/main", "master", "main"].map(String::from));
+    candidates
+        .into_iter()
+        .find(|c| rev_ok(c))
+        .ok_or_else(|| "no base to measure against".to_string())
+}
+
 /// [`measure`] with the base branch named explicitly (`None` = discover it:
 /// `origin/HEAD`, then `origin/master`, `origin/main`, `master`, `main`).
 pub fn measure_against(project_path: &Path, base: Option<&str>) -> Result<Measurement, String> {
-    let resolved_base = if let Some(b) = base {
-        if run_git(
-            project_path,
-            &["rev-parse", "--verify", "-q", &format!("{b}^{{commit}}")],
-        )
-        .is_ok()
-        {
-            b.to_string()
-        } else if run_git(
-            project_path,
-            &[
-                "rev-parse",
-                "--verify",
-                "-q",
-                &format!("origin/{b}^{{commit}}"),
-            ],
-        )
-        .is_ok()
-        {
-            format!("origin/{b}")
-        } else {
-            return Err(format!("base {b} not found"));
-        }
-    } else {
-        let mut candidates = vec![];
-        if let Ok(sym_ref) = run_git(
-            project_path,
-            &["symbolic-ref", "-q", "refs/remotes/origin/HEAD"],
-        ) {
-            if let Some(stripped) = sym_ref.strip_prefix("refs/remotes/") {
-                candidates.push(stripped.to_string());
-            }
-        }
-        candidates.extend_from_slice(&[
-            "origin/master".to_string(),
-            "origin/main".to_string(),
-            "master".to_string(),
-            "main".to_string(),
-        ]);
-
-        let mut found = None;
-        for c in candidates {
-            if run_git(
-                project_path,
-                &["rev-parse", "--verify", "-q", &format!("{c}^{{commit}}")],
-            )
-            .is_ok()
-            {
-                found = Some(c);
-                break;
-            }
-        }
-        found.ok_or_else(|| "no base to measure against".to_string())?
-    };
+    let resolved_base = resolve_base(project_path, base)?;
 
     let head_commit = run_git(project_path, &["rev-parse", "HEAD"])?;
     let base_commit = run_git(
@@ -418,6 +401,35 @@ fn judge_ids(
     }));
 }
 
+/// Judge every commit line of `git log`: count them, count the trailered ones,
+/// and collect the findings.
+fn judge_log(
+    log: &str,
+    roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
+    open_at_base: &std::collections::HashSet<String>,
+) -> (usize, usize, Vec<Finding>) {
+    let mut commits = 0;
+    let mut trailered = 0;
+    let mut findings = vec![];
+    for line in log.split('\n').filter(|l| !l.trim().is_empty()) {
+        commits += 1;
+        let Some((hash, subject, ids)) = parse_log_line(line) else {
+            continue;
+        };
+        if ids.is_empty() {
+            findings.push(Finding {
+                hash,
+                subject,
+                violation: Violation::NoTrailer,
+            });
+        } else {
+            judge_ids(roadmap, open_at_base, &hash, &subject, &ids, &mut findings);
+            trailered += 1;
+        }
+    }
+    (commits, trailered, findings)
+}
+
 fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, String> {
     let merge_base = run_git(project_path, &["merge-base", &resolved_base, "HEAD"])?;
     let commits_out = run_git(
@@ -441,38 +453,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         .collect();
     let open_at_base = open_ids_at(project_path, &merge_base);
 
-    let mut commits = 0;
-    let mut trailered = 0;
-    let mut findings = vec![];
-
-    if !commits_out.is_empty() {
-        for line in commits_out.split('\n') {
-            if line.trim().is_empty() {
-                continue;
-            }
-            commits += 1;
-            let Some((hash, subject, ids)) = parse_log_line(line) else {
-                continue;
-            };
-            if ids.is_empty() {
-                findings.push(Finding {
-                    hash,
-                    subject,
-                    violation: Violation::NoTrailer,
-                });
-            } else {
-                judge_ids(
-                    &roadmap_map,
-                    &open_at_base,
-                    &hash,
-                    &subject,
-                    &ids,
-                    &mut findings,
-                );
-                trailered += 1;
-            }
-        }
-    }
+    let (commits, trailered, findings) = judge_log(&commits_out, &roadmap_map, &open_at_base);
 
     Ok(Measurement {
         range: Range::PullRequest {
