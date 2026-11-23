@@ -499,9 +499,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-zram-core"
-version = "0.72.6"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34e712394864304f7f123b3b48c9473abcd85cf8dbd9bd9362f92b1f3305c861"
+checksum = "3179dfb3a22cfcee6a90744c7ddfe23ed413b076c6aa5b008bfc1f946085d9d4"
 dependencies = [
  "thiserror 2.0.21",
 ]
