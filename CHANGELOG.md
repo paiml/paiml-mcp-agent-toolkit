@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.47.0] - 2026-11-24
+
+### Changed
+
+- **commit_traceability**: git and judge helpers split out of `mod.rs`, and `resolve_base` extracted (#1916, #1918, GH-1559).
+
+### Fixed
+
+- **docs**: the 3.46.0 changelog names #1901 and #1898, the roadmap row round-trips (#1911).
+- **roadmap**: rows for GH-1832, GH-1840, GH-1889, GH-1894, GH-1900, GH-1906 and GH-1907 flipped to completed (#1902, #1905, #1913, #1914, #1915).
+
 ## [3.46.0] - 2026-11-19
 
 ### Added
