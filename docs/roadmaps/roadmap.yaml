@@ -8618,24 +8618,6 @@ roadmap:
   labels:
   - kind:fix
   notes: null
-- id: GH-1919
-  github_issue: 1919
-  item_type: task
-  title: 'fix(ci): orphan-files-ledger drifted after #1918 split'
-  status: inprogress
-  priority: high
-  assigned_to: null
-  created: 2026-11-24T00:00:00Z
-  updated: 2026-11-25T00:00:00Z
-  spec: null
-  acceptance_criteria:
-  - tracked by its GitHub issue until its PR merges
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels:
-  - kind:fix
-  notes: null
 - id: GH-1922
   github_issue: 1922
   item_type: task
