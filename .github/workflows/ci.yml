@@ -198,18 +198,27 @@ jobs:
       - name: control — a new unreachable file with no row must be refused (exit 1)
         shell: bash
         run: |
+          # The step shell is `bash -e`: read the exit code with `|| rc=$?`, or the refusal
+          # this control is waiting for ends the step before it can be judged.
           set -uo pipefail
-          echo '// control fixture: no target reaches this file' > src/zz_orphan_files_ledger_control.rs
-          git add src/zz_orphan_files_ledger_control.rs
-          ./target/debug/pmat analyze reachability --check-ledger >/dev/null 2>&1
-          rc=$?
-          git rm -q -f --cached src/zz_orphan_files_ledger_control.rs
-          rm -f src/zz_orphan_files_ledger_control.rs
-          if [ "$rc" -eq 0 ]; then
-            echo "::error::pmat analyze reachability --check-ledger exited 0 with an unledgered orphan in the tree — this gate cannot fail"
+          plant=src/zz_orphan_files_ledger_control.rs
+          echo "// control fixture: no target reaches this file" > "$plant"
+          git add "$plant"
+          rc=0
+          out="$(./target/debug/pmat analyze reachability --check-ledger 2>&1)" || rc=$?
+          git rm -q -f --cached "$plant"
+          rm -f "${plant:?}"
+          if [ "$rc" -ne 1 ]; then
+            printf "%s\n" "$out" | tail -n 20
+            echo "::error::control: --check-ledger exited $rc with an unledgered orphan planted (want 1) — this gate cannot fail, or cannot run"
             exit 1
           fi
-          echo "control: an unledgered orphan is refused (exit $rc)"
+          if ! printf "%s\n" "$out" | grep -qF "NEWLY UNREACHABLE  $plant"; then
+            printf "%s\n" "$out" | tail -n 20
+            echo "::error::control: --check-ledger exited 1 but did not name $plant as NEWLY UNREACHABLE — it failed for another reason"
+            exit 1
+          fi
+          echo "control: the planted unledgered orphan is refused by name (exit 1)"
       - name: the committed orphan-files ledger matches the tree (PR and push)
         run: ./target/debug/pmat analyze reachability --check-ledger
 
