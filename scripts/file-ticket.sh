@@ -19,9 +19,15 @@ repo="paiml/paiml-mcp-agent-toolkit"
 parent=""
 title=""
 body=""
-labels=(triaged)
+body_file=""
+labels="triaged"
 
 die() { echo "file-ticket: $1" >&2; exit "${2:-2}"; }
+
+gh_api() { "${gh_bin}" "$@"; }
+parent_issue() { gh_api api "repos/$1/issues/$2"; }
+create_issue() { gh_api api -X POST "repos/$1/issues" --input -; }
+sub_issues() { gh_api api --paginate "repos/$1/issues/$2/sub_issues" --jq ".[].number"; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -31,41 +37,45 @@ while [ $# -gt 0 ]; do
     --parent) parent="${2:-}"; shift 2 ;;
     --title) title="${2:-}"; shift 2 ;;
     --body) body="${2:-}"; shift 2 ;;
-    --body-file)
-      bf="${2:-}"
-      case "${bf}" in
-        /* | *..*) die "refusing: --body-file must be a relative path without '..'" ;;
-      esac
-      body="$(cat "${bf}")" || die "cannot read --body-file ${bf}"; shift 2 ;;
-    --label) labels+=("${2:-}"); shift 2 ;;
+    --body-file) body_file="${2:-}"; shift 2 ;;
+    --label) labels="${labels},${2:-}"; shift 2 ;;
     --repo) repo="${2:-}"; shift 2 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
 
+if [ -n "${body_file}" ]; then
+  case "${body_file}" in
+    /* | *..*) die "refusing: --body-file must be a relative path with no dot-dot segment" ;;
+  esac
+  [ -r "${body_file}" ] || die "cannot open --body-file ${body_file}"
+  IFS= read -r -d '' body < "${body_file}" || :
+fi
+
 case "${parent}" in
   "" ) die "refusing: a ticket needs a parent (--parent N, a master or epic)" ;;
-  *[!0-9]*) die "refusing: --parent must be an issue number, got '${parent}'" ;;
+  *[!0-9]*) die "refusing: --parent must be an issue number, got ${parent}" ;;
 esac
 [ -n "${title}" ] || die "refusing: --title is required"
 
-milestone="$("${gh_bin}" api "repos/${repo}/issues/${parent}" | jq -r '.milestone.number // empty')" \
-  || die "could not read parent #${parent}" 1
-[ -n "${milestone}" ] || die "refusing: parent #${parent} has no milestone; set it first"
+parent_json="$(parent_issue "${repo}" "${parent}")" || die "could not fetch parent ${parent}" 1
+milestone="$(printf '%s' "${parent_json}" | jq -r ".milestone.number // empty")"
+[ -n "${milestone}" ] || die "refusing: parent ${parent} has no milestone; set it first"
 
-args=(api -X POST "repos/${repo}/issues" -f "title=${title}" -f "body=${body}" -F "milestone=${milestone}")
-for l in "${labels[@]}"; do args+=(-f "labels[]=${l}"); done
-created="$("${gh_bin}" "${args[@]}")" || die "create failed" 1
-number="$(printf '%s' "${created}" | jq -r '.number // empty')"
-id="$(printf '%s' "${created}" | jq -r '.id // empty')"
+payload="$(jq -cn --arg t "${title}" --arg b "${body}" --argjson m "${milestone}" --arg l "${labels}" \
+  '{title: $t, body: $b, milestone: $m, labels: ($l | split(",") | map(select(length > 0)))}')" \
+  || die "could not build the issue payload" 1
+created="$(printf '%s' "${payload}" | create_issue "${repo}")" || die "create failed" 1
+number="$(printf '%s' "${created}" | jq -r ".number // empty")"
+id="$(printf '%s' "${created}" | jq -r ".id // empty")"
 if [ -z "${number}" ] || [ -z "${id}" ]; then
   die "create returned no issue object: ${created}" 1
 fi
 
-"${gh_bin}" api -X POST "repos/${repo}/issues/${parent}/sub_issues" -F "sub_issue_id=${id}" >/dev/null \
-  || die "#${number} created but NOT linked to #${parent}; link it by hand" 1
-subs="$("${gh_bin}" api --paginate "repos/${repo}/issues/${parent}/sub_issues" --jq '.[].number')" \
-  || die "#${number} created but sub-issue read-back of #${parent} failed" 1
-printf '%s\n' "${subs}" | grep -qx "${number}" || die "#${number} link to #${parent} did not read back" 1
+gh_api api -X POST "repos/${repo}/issues/${parent}/sub_issues" -F "sub_issue_id=${id}" >/dev/null \
+  || die "issue ${number} created but NOT linked to ${parent}; link it by hand" 1
+subs="$(sub_issues "${repo}" "${parent}")" \
+  || die "issue ${number} created but sub-issue list fetch for ${parent} failed" 1
+printf '%s\n' "${subs}" | grep -qx "${number}" || die "issue ${number} link to ${parent} is missing from the sub-issue list" 1
 
-echo "filed #${number} under #${parent} (milestone ${milestone}, labels: ${labels[*]})"
+echo "filed issue ${number} under ${parent} (milestone ${milestone}, labels: ${labels})"
