@@ -106,7 +106,7 @@ jobs:
     # Roll-up only (reads results, no checkout): the gate-light pool, hosted for fork PRs.
     runs-on: ${{ (startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","gate-light"]') }}
     timeout-minutes: 15
-    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, traceability, tdg-ratchet]
+    needs: [ci, windows-check, reusable-pin-drift, roadmap-validate, orphan-files-ledger, traceability, tdg-ratchet]
     if: ${{ always() && github.event.pull_request.draft != true }}
     steps:
       - name: Check required jobs
@@ -118,6 +118,7 @@ jobs:
                    "windows-check:${{ needs.windows-check.result }}" \
                    "reusable-pin-drift:${{ needs.reusable-pin-drift.result }}" \
                    "roadmap-validate:${{ needs.roadmap-validate.result }}" \
+                   "orphan-files-ledger:${{ needs.orphan-files-ledger.result }}" \
                    "traceability:${{ needs.traceability.result }}" \
                    "tdg-ratchet:${{ needs.tdg-ratchet.result }}"; do
             name=${j%%:*}
@@ -168,6 +169,49 @@ jobs:
           path: target/debug/pmat
           if-no-files-found: error
           retention-days: 1
+
+  # The orphan-files ledger, checked where a merge is decided.
+  #
+  # feature-matrix.yml's `reachability-ledger` leg is HEAVY (a release build of
+  # pmat, 643 s on run 45285072342) and so is skipped on an ordinary PR. The
+  # check itself takes 0.4 s. A PR that adds an unreachable `.rs` file was
+  # therefore green, merged, and turned master red on the push run: the ledger
+  # was re-rendered back to green in #1719, #1724, #1809 and #1920. This job
+  # runs the same subcommand on the debug binary build-pmat already made for
+  # this push, on every PR. In `gate`'s `needs` AND its result loop.
+  orphan-files-ledger:
+    if: ${{ github.event.pull_request.draft != true }}
+    name: orphan-files ledger is current
+    needs: build-pmat
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: fetch the pmat built once for this push (build-pmat)
+        uses: actions/download-artifact@v4
+        with:
+          name: pmat-bin
+          path: target/debug
+      - run: chmod +x target/debug/pmat
+      # CONTROL FIRST, as roadmap-validate does: a tracked file no target
+      # reaches, with no row, must be refused, or this job's green means nothing.
+      - name: control — a new unreachable file with no row must be refused (exit 1)
+        shell: bash
+        run: |
+          set -uo pipefail
+          echo '// control fixture: no target reaches this file' > src/zz_orphan_files_ledger_control.rs
+          git add src/zz_orphan_files_ledger_control.rs
+          ./target/debug/pmat analyze reachability --check-ledger >/dev/null 2>&1
+          rc=$?
+          git rm -q -f --cached src/zz_orphan_files_ledger_control.rs
+          rm -f src/zz_orphan_files_ledger_control.rs
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::pmat analyze reachability --check-ledger exited 0 with an unledgered orphan in the tree — this gate cannot fail"
+            exit 1
+          fi
+          echo "control: an unledgered orphan is refused (exit $rc)"
+      - name: the committed orphan-files ledger matches the tree (PR and push)
+        run: ./target/debug/pmat analyze reachability --check-ledger
 
   roadmap-validate:
     if: ${{ github.event.pull_request.draft != true }}

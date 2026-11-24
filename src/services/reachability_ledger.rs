@@ -239,12 +239,15 @@ pub fn render(project_root: &Path, report: &Report, committed: &[Row]) -> String
     rows.sort_by(|a, b| a.path.cmp(&b.path));
 
     let mut s = String::from(HEADER);
+    // Only numbers the rows below determine. This line used to open with the
+    // tree totals (tracked files, reachable files, target roots), so the
+    // byte-compared ledger went stale on EVERY added or removed `.rs` file,
+    // reachable ones included. Master was re-rendered back to green four times
+    // (#1719, #1724, #1809, #1920); the diff of #1920 was this one line. A
+    // ledger of unreachable files changes when the set of unreachable files
+    // changes, and for no other reason.
     s.push_str(&format!(
-        "\n{} tracked `.rs` files: {} reachable from {} target root(s), {} orphaned \
-         ({} lines, {} `#[test]` fns), {} quarantined ({} lines, {} `#[test]` fns).\n",
-        report.reachable + report.orphans.len() + report.quarantined.len(),
-        report.reachable,
-        report.roots,
+        "\n{} orphaned ({} lines, {} `#[test]` fns), {} quarantined ({} lines, {} `#[test]` fns).\n",
         report.orphans.len(),
         report.orphan_lines(),
         report.orphan_tests(),
@@ -489,6 +492,27 @@ mod tests {
         assert_eq!((rows[2].tests, rows[2].lines), (4, 40));
         assert!(malformed_rows_in(&text).is_empty());
         assert!(text.contains("2 orphaned (7 lines, 1 `#[test]` fns)"));
+    }
+
+    /// Adding a reachable file or a target root changes no row, so it must not
+    /// change one byte of the ledger. When the summary line carried the tree
+    /// totals, every such PR left master red until someone re-rendered.
+    #[test]
+    fn a_reachable_file_or_a_new_root_does_not_change_the_ledger() {
+        let report = |reachable, roots| Report {
+            reachable,
+            orphans: vec![orphan("src/a.rs", 0, 5)],
+            quarantined: vec![orphan("src/q.rs", 4, 40)],
+            roots,
+            unresolved: vec![],
+        };
+        let before = render(Path::new("/nonexistent"), &report(3, 1), &[]);
+        let after = render(Path::new("/nonexistent"), &report(5, 2), &[]);
+        assert_eq!(before, after);
+        // The unreachable set still moves it.
+        let mut grown = report(3, 1);
+        grown.orphans.push(orphan("src/b.rs", 1, 2));
+        assert_ne!(before, render(Path::new("/nonexistent"), &grown, &[]));
     }
 
     #[test]
