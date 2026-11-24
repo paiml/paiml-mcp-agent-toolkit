@@ -8566,7 +8566,7 @@ roadmap:
 - id: GH-1907
   github_issue: 1907
   item_type: task
-  title: 3.46.0 changelog lacks the cookie RUSTSEC-2026-0594 fix (#1901) and the weekly lock group (#1898)
+  title: 'changelog: 3.46.0 section lacks the cookie RUSTSEC-2026-0594 fix (#1901) and #1898'
   status: completed
   priority: medium
   assigned_to: null
@@ -8581,4 +8581,21 @@ roadmap:
   labels:
   - kind:docs
   notes: null
-  release: 3.46.0
+- id: GH-1906
+  github_issue: 1906
+  item_type: task
+  title: 'release: publish pmat 3.46.0 to crates.io (30 merges since 3.45.1)'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-11-23T00:00:00Z
+  updated: 2026-11-23T00:00:00Z
+  spec: null
+  acceptance_criteria:
+  - pmat 3.46.0 is published to crates.io after a green clean-room on the tagged commit
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:release
+  notes: null
