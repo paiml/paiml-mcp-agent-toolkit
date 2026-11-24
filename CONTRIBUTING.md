@@ -286,6 +286,13 @@ Include:
 - Alternatives considered
 - Impact on existing functionality
 
+### Filing Tickets (cap: 50 open)
+
+1. Before filing, look for an open group, master or train ticket that covers the work. If one does, add a checklist line there and do not open a new ticket.
+2. A new ticket is filed complete: a parent (sub-issue of a master or epic), the parent's milestone, and the `triaged` label, in the same step as creation. Use `scripts/file-ticket.sh --parent N --title T --body B`; it refuses when no parent is given or the parent has no milestone.
+3. The cap is 50 open. At 50, a new ticket is filed only by folding or closing another.
+4. Review follow-ups, CI reds and flake reports go into the existing master as a checklist line, unless a PR will close them on their own.
+
 ## Performance Considerations
 
 - Profile changes with `cargo-flamegraph`
