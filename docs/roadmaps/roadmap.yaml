@@ -8599,3 +8599,22 @@ roadmap:
   labels:
   - kind:release
   notes: null
+- id: GH-1928
+  github_issue: 1928
+  item_type: task
+  title: 'fix(ci): clear main andon - regenerate orphan-files ledger after #1918'
+  status: in_progress
+  priority: high
+  assigned_to: null
+  created: 2026-11-24T00:00:00Z
+  updated: 2026-11-24T00:00:00Z
+  spec: null
+  acceptance_criteria:
+  - docs/status/orphan-files-ledger.md matches the tree (pmat analyze reachability --check-ledger reports current)
+  - master CI ci / coverage and feature-gate go green after this merges
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:fix
+  notes: null
