@@ -2,7 +2,7 @@
   github_issue: 1894
   item_type: task
   title: "url 2.5.8 (RUSTSEC-2026-0592) fails release-check on master: bump to 2.5.9"
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-23T00:00:00+00:00
