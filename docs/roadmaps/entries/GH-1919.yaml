@@ -2,7 +2,7 @@
   github_issue: 1919
   item_type: task
   title: 'fix(ci): orphan-files-ledger drifted after #1918 split'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-24T09:34:45.026014739+00:00
