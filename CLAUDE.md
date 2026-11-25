@@ -342,6 +342,15 @@ own hooks; it does not install or wire up bashrs). Bug reports: https://github.c
 
 ---
 
+## Ticket Triage at Filing (GH #1808)
+
+- **Before filing, look for the group ticket.** If an open group, master or train ticket covers the work, add a checklist line there and do not open a new ticket.
+- **A new ticket is filed complete:** a parent (sub-issue of a master or epic), the parent's milestone, and the `triaged` label, in the same step as creation.
+- **The cap is 50 open tickets.** At 50, a new ticket is filed only by folding or closing another.
+- **Review follow-ups, CI reds and flake reports** go into the existing master as a checklist line, unless a PR will close them on their own.
+
+---
+
 ## Test Coverage
 
 Tests marked `#[ignore]` do not run in `cargo test` and therefore do not appear in coverage.
