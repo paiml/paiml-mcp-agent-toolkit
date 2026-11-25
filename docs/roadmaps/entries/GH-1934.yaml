@@ -1,0 +1,18 @@
+- id: GH-1934
+  github_issue: 1934
+  item_type: task
+  title: 'fix(roadmap): CB-2115 drift on master - drop closed GH-1928/GH-1932 rows, add GH-1931'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-11-25T00:00:00Z
+  updated: 2026-11-25T00:00:00Z
+  spec: null
+  acceptance_criteria:
+  - tracked by its GitHub issue until its PR merges
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:fix
+  notes: null

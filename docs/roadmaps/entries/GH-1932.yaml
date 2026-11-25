@@ -2,7 +2,7 @@
   github_issue: 1932
   item_type: task
   title: 'release: pmat 3.47.0 version bump (replaces PR 1921)'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-25T00:00:00Z
