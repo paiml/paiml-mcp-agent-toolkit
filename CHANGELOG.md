@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **commit_traceability**: git and judge helpers split out of `mod.rs`, and `resolve_base` extracted (#1916, #1918, GH-1559).
+- **orphan-files ledger (GH-1919)**: the ledger moves only with the orphan set, and `--check-ledger` runs on every PR (#1920).
 
 ### Fixed
 
