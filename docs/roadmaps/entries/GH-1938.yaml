@@ -2,7 +2,7 @@
   github_issue: 1938
   item_type: task
   title: 'docs: trim CLAUDE.md (loaded every turn), move history to docs/agent-rules-history.md'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-25T00:00:00Z
