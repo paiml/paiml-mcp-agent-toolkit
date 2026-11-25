@@ -210,7 +210,7 @@ comments after code are not counted.
 """
 
 [metric.orphan_files]
-baseline = 407
+baseline = 406
 unit = "count"
 band = 0
 includes_test_files = true
@@ -220,7 +220,7 @@ command = '''pmat analyze reachability -f json | jq -er .orphan_count'''
 description = """
 Tracked .rs files that no compilation unit reaches — no `mod`, `#[path]` or
 `include!` from any target root `cargo metadata` declares — as `pmat analyze
-reachability` reports them. 407 files, 126,933 lines and 6,292 `#[test]` fns at
+reachability` reports them. 406 files, 126,902 lines and 6,290 `#[test]` fns at
 the baseline commit, growing since 3.34.0 while nothing was required to look.
 Measured IN-PROCESS by the named analyzer, not by spawning `pmat` from $PATH:
 `command` is the shell reproduction and must print the same number

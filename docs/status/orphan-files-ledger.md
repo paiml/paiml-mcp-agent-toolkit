@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-407 orphaned (126920 lines, 6294 `#[test]` fns), 75 quarantined (34146 lines, 1920 `#[test]` fns).
+406 orphaned (126902 lines, 6292 `#[test]` fns), 75 quarantined (34146 lines, 1920 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -123,7 +123,7 @@ same change; do not edit counts by hand.
 | `src/demo/templates/html_scripts.rs` | pending-#1017 | 0 | 432 |
 | `src/demo/templates/html_styles.rs` | pending-#1017 | 0 | 477 |
 | `src/demo/tests.rs` | pending-#1017 | 9 | 134 |
-| `src/graph/tests/builder_tests.rs` | pending-#1017 | 2 | 18 |
+| `src/graph/tests/builder_tests.rs` | deleted-empty-placeholder | 2 | 18 |
 | `src/graph/tests/community_tests.rs` | pending-#1017 | 6 | 154 |
 | `src/graph/tests/deterministic.rs` | pending-#1017 | 0 | 8 |
 | `src/graph/tests/pagerank_tests.rs` | pending-#1017 | 9 | 266 |
