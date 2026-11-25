@@ -118,8 +118,61 @@ fn work_add_triaged_refuses_without_priority() {
     let msg = refusal(&t, None, Some(CHILD), &gh);
     assert!(msg.contains("--priority P0|P1|P2|P3"), "{msg}");
     assert!(
-        gh.calls.borrow().is_empty(),
-        "no GitHub read before the local checks"
+        msg.contains("no P0|P1|P2|P3 label"),
+        "the refusal names the label fallback: {msg}"
+    );
+}
+
+/// FLOW-03 / #1414: with no `--priority`, the issue's P-label carries it.
+/// Falsifier: a P0-labelled issue with a `done_when` section yields the
+/// contract's P0 level (`critical`) and a non-empty acceptance list.
+#[test]
+fn work_add_triaged_priority_is_carried_from_the_issue_label() {
+    let body = "Measured on the host.\n\n## done_when\n\n- the receipt is committed\n- decide refuses when it is missing\n";
+    let mut gh = FakeGithub::new();
+    gh.issues.insert(
+        CHILD,
+        IssueFacts {
+            body: body.to_string(),
+            ..facts(9_020, true, &["P0", "triaged"])
+        },
+    );
+    let t = WorkAddTriage {
+        priority: None,
+        ..full()
+    };
+    let triaged =
+        gate(&t, None, Some(CHILD), &gh).expect("a P0-labelled issue carries its priority");
+    assert_eq!(triaged.priority, WorkPriority::Critical);
+    assert!(!derive_from_body(body).acceptance.is_empty());
+}
+
+/// An explicit `--priority` wins, and the issue's label is not read for it.
+#[test]
+fn work_add_triaged_explicit_priority_is_not_overridden_by_the_label() {
+    let mut gh = FakeGithub::new();
+    gh.issues.insert(CHILD, facts(9_020, true, &["P0"]));
+    let t = gate(&full(), None, Some(CHILD), &gh).expect("gate");
+    assert_eq!(t.priority, WorkPriority::High);
+    assert!(
+        !gh.calls.borrow().iter().any(|c| c == "issue 20"),
+        "no label read when --priority is given"
+    );
+}
+
+/// Two different P-labels are refused rather than guessed at.
+#[test]
+fn work_add_triaged_conflicting_priority_labels_are_refused() {
+    let mut gh = FakeGithub::new();
+    gh.issues.insert(CHILD, facts(9_020, true, &["P0", "P2"]));
+    let t = WorkAddTriage {
+        priority: None,
+        ..full()
+    };
+    let err = gate(&t, None, Some(CHILD), &gh).expect_err("two P-labels must be refused");
+    assert!(
+        format!("{err:#}").contains("two different P-labels"),
+        "{err:#}"
     );
 }
 

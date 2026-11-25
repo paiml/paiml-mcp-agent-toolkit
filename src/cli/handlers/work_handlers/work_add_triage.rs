@@ -98,8 +98,9 @@ pub fn gate(
     github_issue: Option<u64>,
     links: &dyn EpicLinks,
 ) -> Result<Triaged> {
-    let Some(priority) = triage.priority else {
-        bail!("refused: a ticket needs a priority — pass --priority P0|P1|P2|P3 (FLOW-03, #1440)");
+    let priority = match triage.priority {
+        Some(p) => p,
+        None => priority_from_label(github_issue, links)?,
     };
     let kind = resolve_kind(triage.kind, tags)?;
     let Some(epic) = triage.epic else {
@@ -120,6 +121,39 @@ pub fn gate(
         priority,
         kind,
     })
+}
+
+/// The priority an issue's `P0`..`P3` label carries (FLOW-03, #1414), read
+/// only when `--priority` is absent. The contract maps `P0` to `critical`
+/// (`WorkPriority::Critical`). Two different P-labels are refused, not guessed.
+fn priority_from_label(github_issue: Option<u64>, links: &dyn EpicLinks) -> Result<WorkPriority> {
+    const NEED: &str = "refused: a ticket needs a priority — pass --priority P0|P1|P2|P3";
+    let Some(child) = github_issue else {
+        bail!("{NEED} (FLOW-03, #1440)");
+    };
+    let facts = links.issue(child)?;
+    let mut found: Option<WorkPriority> = None;
+    for label in &facts.labels {
+        let Some(p) = p_label(label) else {
+            continue;
+        };
+        if found.is_some_and(|f| f != p) {
+            bail!("refused: #{child} has two different P-labels — pass --priority P0|P1|P2|P3");
+        }
+        found = Some(p);
+    }
+    found.with_context(|| format!("{NEED}, or label #{child} P0|P1|P2|P3 (no P0|P1|P2|P3 label on #{child}) (FLOW-03, #1440)"))
+}
+
+/// `P0`..`P3` (any case) as the priority the contract names for it.
+fn p_label(label: &str) -> Option<WorkPriority> {
+    match label.trim().to_ascii_uppercase().as_str() {
+        "P0" => Some(WorkPriority::Critical),
+        "P1" => Some(WorkPriority::High),
+        "P2" => Some(WorkPriority::Medium),
+        "P3" => Some(WorkPriority::Low),
+        _ => None,
+    }
 }
 
 fn check_epic(epic: u64, facts: &IssueFacts) -> Result<()> {

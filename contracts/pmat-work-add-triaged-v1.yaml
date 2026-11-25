@@ -21,11 +21,13 @@ metadata:
   status: draft
 equations:
   refuse_untriaged:
-    formula: "add(t) = refuse if priority(t) = none or kind(t) = none or epic(t) = none or issue(t) = none or not (open(epic) and labelled(epic, 'epic'))"
+    formula: "add(t) = refuse if priority(t) = none (no --priority and no P-label on issue(t)) or kind(t) = none or epic(t) = none or issue(t) = none or not (open(epic) and labelled(epic, 'epic'))"
     domain: "pmat work add"
     codomain: "Result<(), Refusal>"
     invariants:
-      - "no --priority: refused, roadmap and fragments byte-identical, no GitHub call"
+      - "no --priority and the issue carries one P0..P3 label: priority = that label (P0 -> critical, P1 -> high, P2 -> medium, P3 -> low); the label is read only when --priority is absent"
+      - "no --priority and no P0..P3 label (or no --github-issue): refused, roadmap and fragments byte-identical, no write to GitHub"
+      - "no --priority and two different P0..P3 labels: refused, nothing written"
       - "no --kind and no kind:<x> tag: refused; --kind and a kind tag that disagree: refused"
       - "no --epic: refused; --epic naming a closed issue, a pull request, or an issue without the `epic` label: refused, nothing linked"
       - "--epic without --github-issue: refused (there is no issue to link)"
