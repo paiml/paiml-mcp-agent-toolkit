@@ -1,0 +1,18 @@
+- id: GH-1937
+  github_issue: 1937
+  item_type: task
+  title: 'quality-gate --file reports files_examined: 0 and checks_run: [] although the checks run (3.46.0)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-11-25T00:00:00Z
+  updated: 2026-11-25T00:00:00Z
+  spec: null
+  acceptance_criteria:
+  - tracked by its GitHub issue until its PR merges
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:fix
+  notes: null
