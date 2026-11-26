@@ -201,3 +201,116 @@ mod tests {
         assert_eq!(summary.recorded[0].argv, vec!["hello".to_string()]);
     }
 }
+
+/// Outcome of replaying recorded cases against an implementation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReplayReport {
+    pub matched: usize,
+    pub total: usize,
+    pub first_diff: Option<String>,
+}
+
+impl ReplayReport {
+    /// `matched N/M` as printed by `pmat parity replay`.
+    pub fn line(&self) -> String {
+        format!("matched {}/{}", self.matched, self.total)
+    }
+}
+
+/// First differing byte of one stream, as a human-readable line.
+fn diff_stream(name: &str, want: &str, got: &str) -> Option<String> {
+    if want == got {
+        return None;
+    }
+    let at = want
+        .bytes()
+        .zip(got.bytes())
+        .position(|(a, b)| a != b)
+        .unwrap_or_else(|| want.len().min(got.len()));
+    Some(format!(
+        "{name} differs at byte {at}: recorded {:?}, got {:?}",
+        want.as_bytes().get(at),
+        got.as_bytes().get(at)
+    ))
+}
+
+/// Replay recorded cases against an implementation and compare every stream.
+pub fn replay(
+    bin: &str,
+    base: &[String],
+    cases: &[Case],
+    env: &BTreeMap<String, String>,
+) -> io::Result<ReplayReport> {
+    let mut report = ReplayReport {
+        matched: 0,
+        total: cases.len(),
+        first_diff: None,
+    };
+    for case in cases {
+        let spec = CaseSpec {
+            argv: case.argv.clone(),
+            stdin: case.stdin.clone(),
+        };
+        let got = run_once(bin, base, &spec, env)?;
+        let diffs = [
+            diff_stream("stdout", &case.stdout, &got.stdout),
+            diff_stream("stderr", &case.stderr, &got.stderr),
+            (case.exit_code != got.exit_code).then(|| {
+                format!(
+                    "exit code differs: recorded {:?}, got {:?}",
+                    case.exit_code, got.exit_code
+                )
+            }),
+            (case.files != got.files).then(|| "files written differ".to_string()),
+        ];
+        match diffs.into_iter().flatten().next() {
+            None => report.matched += 1,
+            Some(d) => {
+                if report.first_diff.is_none() {
+                    report.first_diff = Some(format!("argv {:?}: {d}", case.argv));
+                }
+            }
+        }
+    }
+    Ok(report)
+}
+
+#[cfg(test)]
+mod replay_tests {
+    use super::*;
+
+    fn recorded(script: &str) -> Vec<Case> {
+        let base = vec!["-c".to_string(), script.to_string()];
+        let spec = CaseSpec {
+            argv: vec![],
+            stdin: String::new(),
+        };
+        match record_case("/bin/sh", &base, &spec, &BTreeMap::new()).expect("sh must run") {
+            Verdict::Recorded(c) => vec![c],
+            Verdict::Flaky => panic!("fixture must be stable"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn parity_replay_identical_implementation_matches_all() {
+        let cases = recorded("echo hi");
+        let base = vec!["-c".to_string(), "echo hi".to_string()];
+        let report = replay("/bin/sh", &base, &cases, &BTreeMap::new()).expect("sh must run");
+        assert_eq!(report.line(), "matched 1/1");
+        assert!(report.first_diff.is_none());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn parity_replay_one_trailing_newline_fails() {
+        let cases = recorded("printf 'x\\n'");
+        let base = vec!["-c".to_string(), "printf x".to_string()];
+        let report = replay("/bin/sh", &base, &cases, &BTreeMap::new()).expect("sh must run");
+        assert_eq!(report.line(), "matched 0/1");
+        let diff = report
+            .first_diff
+            .expect("a one-byte difference must be reported");
+        assert!(diff.contains("stdout differs at byte 1"), "{diff}");
+    }
+}
