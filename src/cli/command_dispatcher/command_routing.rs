@@ -27,6 +27,9 @@ impl CommandDispatcher {
                     .await
             }
             Commands::Scaffold { command } => Self::execute_scaffold_command(command, server).await,
+            Commands::Parity { command } => {
+                crate::cli::handlers::parity_handlers::handle_parity(command)
+            }
             Commands::List {
                 toolchain,
                 category,

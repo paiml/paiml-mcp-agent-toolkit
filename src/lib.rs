@@ -131,6 +131,10 @@ pub mod ast; // Unified AST module for all language parsing
 pub mod cli;
 pub mod cli_exit;
 
+/// Parity recording of an original program's behaviour (GH-1947).
+#[cfg(feature = "standard-deps")]
+pub mod parity;
+
 /// Sovereign `pmat update` + daily check (pmat#1425).
 pub mod self_update;
 
