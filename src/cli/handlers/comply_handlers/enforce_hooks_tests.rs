@@ -180,3 +180,104 @@ async fn enforce_keeps_a_dangling_commit_msg_symlink() {
     assert!(meta.file_type().is_symlink(), "the user's link stays");
     assert!(!d.join("elsewhere/commit-msg").exists());
 }
+
+/// `git` in `dir` with an identity, running that repository's hooks.
+fn git(dir: &Path, args: &[&str]) -> bool {
+    run(
+        Command::new("git")
+            .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
+            .args([
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "core.hooksPath=.git/hooks",
+            ])
+            .args(args),
+        dir,
+    )
+}
+
+fn commit(dir: &Path, message: &str) -> bool {
+    git(dir, &["commit", "-q", "--allow-empty", "-m", message])
+}
+
+/// `main` and `feat`, each one commit past their base, `feat` checked out under
+/// the enforced hooks. The pre-commit hook is removed: it asks a live `pmat` for
+/// an active ticket and is not under test.
+async fn diverged_repo() -> tempfile::TempDir {
+    let tmp = roadmap_repo();
+    let d = tmp.path();
+    assert!(git(d, &["symbolic-ref", "HEAD", "refs/heads/main"]));
+    assert!(commit(d, "base"));
+    assert!(git(d, &["checkout", "-q", "-b", "feat"]));
+    assert!(commit(d, "feature"));
+    assert!(git(d, &["checkout", "-q", "main"]));
+    assert!(commit(d, "mainline"));
+    assert!(git(d, &["checkout", "-q", "feat"]));
+    enforce(d, false).await;
+    std::fs::remove_file(d.join(".git/hooks/pre-commit")).expect("pre-commit");
+    tmp
+}
+
+#[tokio::test]
+async fn the_enforced_hook_passes_the_merges_cb2113_does_not_judge() {
+    let tmp = diverged_repo().await;
+    let d = tmp.path();
+    assert!(!commit(d, "no trailer"), "a normal commit is still judged");
+    assert!(git(d, &["merge", "--no-edit", "main"]), "git merge");
+    assert!(git(d, &["reset", "-q", "--hard", "HEAD^1"]));
+    assert!(git(d, &["merge", "--no-commit", "main"]));
+    assert!(
+        git(d, &["commit", "--no-edit"]),
+        "git commit ending a merge"
+    );
+    assert!(git(d, &["checkout", "-q", "-b", "topic"]));
+    assert!(commit(d, "topic\n\nPmat-Ticket: PMAT-1"));
+    assert!(git(d, &["checkout", "-q", "feat"]));
+    assert!(
+        git(d, &["merge", "--no-ff", "--no-edit", "topic"]),
+        "a --no-ff merge of a branch that could fast-forward"
+    );
+}
+
+#[tokio::test]
+async fn a_merge_head_that_adds_no_parent_does_not_exempt_a_commit() {
+    let tmp = diverged_repo().await;
+    let d = tmp.path();
+    assert!(git(d, &["checkout", "-q", "-b", "ahead"]));
+    assert!(commit(d, "ahead\n\nPmat-Ticket: PMAT-1"));
+    assert!(git(d, &["checkout", "-q", "feat"]));
+    // git drops a parent that is an ancestor or descendant of the other
+    for rev in ["HEAD~1", "HEAD", "ahead"] {
+        let oid = Command::new("git")
+            .args(["rev-parse", rev])
+            .current_dir(d)
+            .output()
+            .expect("rev-parse");
+        std::fs::write(d.join(".git/MERGE_HEAD"), oid.stdout).expect("MERGE_HEAD");
+        assert!(!commit(d, "no trailer"), "MERGE_HEAD={rev}");
+    }
+    for junk in ["", "not-an-object\n"] {
+        std::fs::write(d.join(".git/MERGE_HEAD"), junk).expect("MERGE_HEAD");
+        assert!(
+            !commit_msg_accepts(d, "no trailer\n"),
+            "MERGE_HEAD={junk:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_forged_no_ff_state_naming_no_other_commit_is_refused() {
+    let tmp = diverged_repo().await;
+    let d = tmp.path();
+    let head = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(d)
+        .output()
+        .expect("rev-parse");
+    std::fs::write(d.join(".git/MERGE_MODE"), "no-ff").expect("MERGE_MODE");
+    for forged in [head.stdout.as_slice(), b"not-an-object\n"] {
+        std::fs::write(d.join(".git/MERGE_HEAD"), forged).expect("MERGE_HEAD");
+        assert!(!commit_msg_accepts(d, "no trailer\n"));
+    }
+}
