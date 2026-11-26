@@ -412,6 +412,19 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-2120: Derived Artifacts Fresh — a pre-push check, run by naming it in
+    // `--checks`. Declared Warning so that no `comply check` leg in CI is
+    // required to reach it; a repository opts in with `.pmat-derived.toml`.
+    checks.insert(
+        "cb-2120".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Warning,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     // CB-2104: Numeric Claims — numbers the repository writes down about
     // itself and then contradicts. Declared **Warning**, and that is not an
     // oversight: this rule is advisory by contract and must never fail a
