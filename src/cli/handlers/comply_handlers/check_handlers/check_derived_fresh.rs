@@ -132,8 +132,13 @@ fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
     let committed = committed_bytes(root, path)?;
     let export = head_export(root, path).map_err(|e| format!("{path}: {e}"))?;
     let artifact = export.cwd.join(path);
+    // A link cannot be fingerprinted for a rewrite within one clock tick (no std
+    // API sets a link's own mtime), so a symlink artifact is refused outright.
+    if stamp(&artifact).is_some_and(|s| s.symlink) {
+        return Err(format!("{path}: is a symlink in HEAD; a derived artifact must be a regular file"));
+    }
     let before = (read_artifact(&artifact), stamp(&artifact));
-    let generated = run_generator(&export.cwd, a, &export.scratch)
+    let generated = run_generator(&export.cwd, a, &export.tmp, &export.scratch)
         .map_err(|e| format!("{path}: generator {e}"))?;
     if (read_artifact(&artifact), stamp(&artifact)) != before {
         return Err(format!(
@@ -156,11 +161,20 @@ fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
 /// The bytes of a file, or of a symlink's target, as the export holds them.
 fn read_artifact(p: &Path) -> Option<Vec<u8>> {
     match std::fs::symlink_metadata(p) {
-        Ok(m) if m.file_type().is_symlink() => std::fs::read_link(p)
-            .ok()
-            .map(|t| t.to_string_lossy().into_owned().into_bytes()),
+        Ok(m) if m.file_type().is_symlink() => std::fs::read_link(p).ok().map(|t| link_bytes(&t)),
         _ => std::fs::read(p).ok(),
     }
+}
+
+#[cfg(unix)]
+fn link_bytes(target: &Path) -> Vec<u8> {
+    use std::os::unix::ffi::OsStrExt;
+    target.as_os_str().as_bytes().to_vec()
+}
+
+#[cfg(not(unix))]
+fn link_bytes(target: &Path) -> Vec<u8> {
+    target.to_string_lossy().into_owned().into_bytes()
 }
 
 /// What a generator can change about an artifact without changing its bytes:
@@ -240,8 +254,11 @@ fn committed_bytes(root: &Path, path: &str) -> Result<Vec<u8>, String> {
 /// what the generator reads. `cwd` is `root`'s place inside the export.
 struct HeadExport {
     _dir: tempfile::TempDir,
-    /// The export's own directory: the generator's TMPDIR and git's ceiling.
+    /// The export's own directory: git's ceiling for the generator.
     scratch: std::path::PathBuf,
+    /// The generator's TMPDIR: strictly below `scratch`, so `git -C "$TMPDIR"`
+    /// stays under the ceiling and cannot climb into the enclosing repository.
+    tmp: std::path::PathBuf,
     cwd: std::path::PathBuf,
 }
 
@@ -261,18 +278,27 @@ fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
         .map_err(|e| format!("could not make export dir: {e}"))?;
     let tree = dir.path().join("tree");
     std::fs::create_dir(&tree).map_err(|e| format!("could not make export dir: {e}"))?;
-    let prefix = String::from_utf8_lossy(&git_bytes(root, &["rev-parse", "--show-prefix"])?)
-        .trim_end_matches('\n')
-        .to_string();
+    let mut prefix_bytes = git_bytes(root, &["rev-parse", "--show-prefix"])?;
+    while prefix_bytes.last() == Some(&b'\n') {
+        prefix_bytes.pop();
+    }
+    let prefix = path_from_bytes(&prefix_bytes)?;
     let listing = git_bytes(root, &["ls-tree", "-r", "-z", "--full-tree", "HEAD"])?;
     let entries = parse_ls_tree(&listing)?;
     // The artifact is pinned to the epoch so any write by the generator shows.
-    let pin = std::path::PathBuf::from(&prefix).join(artifact);
+    let pin = prefix.join(artifact);
     write_blobs(root, &entries, &tree, &pin)?;
     let cwd = tree.join(&prefix);
     std::fs::create_dir_all(&cwd).map_err(|e| format!("could not make export dir: {e}"))?;
     let scratch = dir.path().to_path_buf();
-    Ok(HeadExport { _dir: dir, scratch, cwd })
+    // GIT_CEILING_DIRECTORIES is colon-separated: a colon would split it and
+    // unbound the ceiling. Fail closed rather than judge outside the export.
+    if scratch.to_string_lossy().contains(':') {
+        return Err("the temp directory path contains ':'; set TMPDIR to a path without one".into());
+    }
+    let tmp = scratch.join("tmp");
+    std::fs::create_dir(&tmp).map_err(|e| format!("could not make export tmp: {e}"))?;
+    Ok(HeadExport { _dir: dir, scratch, tmp, cwd })
 }
 
 struct TreeEntry {
@@ -391,8 +417,8 @@ fn write_entry(dest: &Path, mode: &str, content: &[u8], pin: bool) -> std::io::R
     #[cfg(unix)]
     {
         if mode == "120000" {
-            let target = String::from_utf8_lossy(content).into_owned();
-            return std::os::unix::fs::symlink(target, dest);
+            use std::os::unix::ffi::OsStrExt;
+            return std::os::unix::fs::symlink(std::ffi::OsStr::from_bytes(content), dest);
         }
     }
     let mut file = std::fs::File::create(dest)?;
@@ -413,7 +439,12 @@ fn write_entry(dest: &Path, mode: &str, content: &[u8], pin: bool) -> std::io::R
 
 /// Run the generator at the root and return its stdout. Output goes to files, so
 /// a large output cannot block the child while the timeout loop waits on it.
-fn run_generator(root: &Path, a: &DerivedArtifact, scratch: &Path) -> Result<Vec<u8>, String> {
+fn run_generator(
+    root: &Path,
+    a: &DerivedArtifact,
+    tmp: &Path,
+    scratch: &Path,
+) -> Result<Vec<u8>, String> {
     use std::io::{Read, Seek};
     let io = |e: std::io::Error| format!("output could not be captured: {e}");
     let mut stdout = tempfile::tempfile().map_err(io)?;
@@ -430,7 +461,7 @@ fn run_generator(root: &Path, a: &DerivedArtifact, scratch: &Path) -> Result<Vec
     // A relative or in-repo TMPDIR would resolve against the child's cwd, and git
     // would find the enclosing repository: the export directory bounds both.
     command
-        .env("TMPDIR", scratch)
+        .env("TMPDIR", tmp)
         .env("GIT_CEILING_DIRECTORIES", scratch);
     #[cfg(unix)]
     {
@@ -451,10 +482,15 @@ fn run_generator(root: &Path, a: &DerivedArtifact, scratch: &Path) -> Result<Vec
         if started.elapsed() > limit {
             // The child leads its own process group: kill the generator's
             // subprocesses too, so none outlives the timeout.
+            // POSIX `kill -s KILL -- -PGID` signals the group; the child leads it
+            // (process_group above). Output is silenced: a child that just exited
+            // makes the group gone, which is not an error here.
             #[cfg(unix)]
             {
                 let _ = std::process::Command::new("kill")
-                    .args(["-KILL", "--", &format!("-{}", child.id())])
+                    .args(["-s", "KILL", "--", &format!("-{}", child.id())])
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
                     .status();
             }
             let _ = child.kill();

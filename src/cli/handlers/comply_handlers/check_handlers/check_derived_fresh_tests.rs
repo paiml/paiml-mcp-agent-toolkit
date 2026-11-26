@@ -216,7 +216,7 @@ mod derived_fresh_tests {
     /// A link replaced by a new link to the same target is still a rewrite.
     #[cfg(unix)]
     #[test]
-    fn a_replaced_symlink_artifact_is_a_rewrite() {
+    fn a_symlink_artifact_fails_closed_and_never_runs_the_generator() {
         let decl = "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"sh\", \"-c\", \"ln -sfn src.txt out.txt && printf src.txt\"]\n";
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::write(dir.path().join("src.txt"), "src.txt").expect("src");
@@ -227,7 +227,18 @@ mod derived_fresh_tests {
         git(dir.path(), &["commit", "-qm", "base"]);
         let check = check_derived_fresh(dir.path(), &selected());
         assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
-        assert!(check.message.contains("rewrote"), "{}", check.message);
+        assert!(check.message.contains("is a symlink"), "{}", check.message);
+    }
+
+    /// The generator's TMPDIR is below the git ceiling, not the ceiling itself,
+    /// so `git -C "$TMPDIR"` cannot climb into the enclosing repository.
+    #[cfg(unix)]
+    #[test]
+    fn the_generator_tmpdir_is_strictly_below_the_git_ceiling() {
+        let decl = "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"sh\", \"-c\", \"test \\\"$TMPDIR\\\" != \\\"$GIT_CEILING_DIRECTORIES\\\" && printf ok\"]\n";
+        let dir = repo("ok", "ok", decl);
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
     }
 
     /// A non-UTF-8 path elsewhere in HEAD is not the artifact's problem.
