@@ -59,27 +59,42 @@ pub enum Refusal {
 
 impl fmt::Display for Refusal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "refused: {}", self.reason())
+    }
+}
+
+impl Refusal {
+    /// The refusal's sentence, without the `refused: ` prefix.
+    fn reason(&self) -> String {
         match self {
             Self::StaleHead { signed, pr_head } => {
-                write!(f, "refused: head {signed} is not the PR head {pr_head}")
+                format!("head {signed} is not the PR head {pr_head}")
             }
-            Self::QuorumNotThreeOfThree(p) => write!(f, "refused: {p} is not 3/3 quorum"),
-            Self::FewerThanTwoModels(p) => {
-                write!(f, "refused: {p} has fewer than 2 distinct models")
-            }
-            Self::SeatWithoutIdentity(p) => {
-                write!(f, "refused: seat receipt without identity in {p}")
-            }
-            Self::CodingWorkerSeat(p) => write!(f, "refused: coding worker seated in {p}"),
             Self::AuthorModel { patch_id, model } => {
-                write!(
-                    f,
-                    "refused: lane model {model} is the author model in {patch_id}"
-                )
+                format!("lane model {model} is the author model in {patch_id}")
             }
-            Self::ControlMissed(p) => write!(f, "refused: a lane missed the control in {p}"),
-            Self::RerunAsPass(p) => write!(f, "refused: red then green with no diff in {p}"),
-            Self::NotGreen(p) => write!(f, "refused: a lane is not green in {p}"),
+            other => other.receipt_reason(),
+        }
+    }
+
+    /// The sentence for the refusals that name one commit's receipt.
+    fn receipt_reason(&self) -> String {
+        match self {
+            Self::QuorumNotThreeOfThree(p) => format!("{p} is not 3/3 quorum"),
+            Self::FewerThanTwoModels(p) => format!("{p} has fewer than 2 distinct models"),
+            Self::SeatWithoutIdentity(p) => format!("seat receipt without identity in {p}"),
+            Self::NotGreen(p) => format!("a lane is not green in {p}"),
+            other => other.lane_reason(),
+        }
+    }
+
+    /// The sentence for the refusals that name one lane's receipt.
+    fn lane_reason(&self) -> String {
+        match self {
+            Self::CodingWorkerSeat(p) => format!("coding worker seated in {p}"),
+            Self::ControlMissed(p) => format!("a lane missed the control in {p}"),
+            Self::RerunAsPass(p) => format!("red then green with no diff in {p}"),
+            other => format!("{other:?}"),
         }
     }
 }
@@ -124,22 +139,35 @@ fn is_seat(lane: &Lane) -> bool {
     lane.name.starts_with("seat:")
 }
 
-/// Judge one lane: seat identity, author model, control, reruns, final verdict.
-fn check_lane(lane: &Lane, p: &str, author_models: &[String]) -> Result<(), Refusal> {
-    if is_seat(lane) {
-        if lane.identity.as_deref().is_none_or(str::is_empty) {
-            return Err(Refusal::SeatWithoutIdentity(p.into()));
-        }
-        if lane.coding_worker {
-            return Err(Refusal::CodingWorkerSeat(p.into()));
-        }
+/// A seat lane needs an identity and must not be a coding worker.
+fn check_seat(lane: &Lane, p: &str) -> Result<(), Refusal> {
+    if !is_seat(lane) {
+        return Ok(());
     }
+    if lane.identity.as_deref().is_none_or(str::is_empty) {
+        return Err(Refusal::SeatWithoutIdentity(p.into()));
+    }
+    if lane.coding_worker {
+        return Err(Refusal::CodingWorkerSeat(p.into()));
+    }
+    Ok(())
+}
+
+/// A lane may not run on a model that authored the commit.
+fn check_author(lane: &Lane, p: &str, author_models: &[String]) -> Result<(), Refusal> {
     if author_models.iter().any(|a| a == &lane.model) {
         return Err(Refusal::AuthorModel {
             patch_id: p.into(),
             model: lane.model.clone(),
         });
     }
+    Ok(())
+}
+
+/// Judge one lane: seat identity, author model, control, reruns, final verdict.
+fn check_lane(lane: &Lane, p: &str, author_models: &[String]) -> Result<(), Refusal> {
+    check_seat(lane, p)?;
+    check_author(lane, p, author_models)?;
     if !lane.control_caught {
         return Err(Refusal::ControlMissed(p.into()));
     }
@@ -397,6 +425,15 @@ mod tests {
         assert_eq!(sign["receipt_sha256"]["p1"], hex_sha256(&receipt));
         assert_eq!(sign["patch_ids"], json!(["p1"]));
         assert!(!dir.join("sign.json.tmp").exists());
+    }
+
+    #[test]
+    fn lane_reason_falls_back_to_debug_for_head_refusals() {
+        let r = Refusal::StaleHead {
+            signed: "a".into(),
+            pr_head: "b".into(),
+        };
+        assert!(r.lane_reason().starts_with("StaleHead"));
     }
 
     #[test]
