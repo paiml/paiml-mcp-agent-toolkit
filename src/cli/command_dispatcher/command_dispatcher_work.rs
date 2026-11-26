@@ -283,13 +283,41 @@ impl CommandDispatcher {
                 .await
             }
             WorkCommands::Score {
+                issue: Some(issue),
+                repo,
+                json,
+                path,
+                ..
+            } => work_handlers::handle_ticket_score(*issue, repo.clone(), *json, path.clone()),
+            WorkCommands::Findings {
+                repo,
+                json,
+                pass_mark,
+                stale_ticket_days,
+                duplicate_threshold,
+                ticket_cap,
+                path,
+            } => work_handlers::handle_ticket_findings(
+                repo.clone(),
+                *json,
+                crate::services::ticket_quality::findings::Settings {
+                    pass_mark: *pass_mark,
+                    stale_ticket_days: *stale_ticket_days,
+                    duplicate_threshold: *duplicate_threshold,
+                    ticket_cap: *ticket_cap,
+                    ..Default::default()
+                },
+                path.clone(),
+            ),
+            WorkCommands::Score {
                 id,
                 min_score,
                 path,
                 format,
+                ..
             } => {
                 work_handlers::handle_work_score(
-                    id.clone(),
+                    id.clone().unwrap_or_default(),
                     *min_score,
                     path.clone(),
                     format.clone(),

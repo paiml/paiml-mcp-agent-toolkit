@@ -30,6 +30,8 @@ fn facts(id: u64, open: bool, labels: &[&str]) -> IssueFacts {
         open,
         is_pull_request: false,
         labels: labels.iter().map(|l| l.to_string()).collect(),
+        title: String::new(),
+        has_milestone: false,
         body: String::new(),
     }
 }
