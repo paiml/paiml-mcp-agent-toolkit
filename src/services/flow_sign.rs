@@ -344,19 +344,21 @@ mod tests {
     }
 
     #[test]
-    fn seat_needs_identity_and_no_coding_worker() {
+    fn seat_needs_identity_and_no_coding_worker() -> Result<()> {
         let mut c = green_commit();
         c.lanes.push(lane("seat:storage", "sonnet"));
         assert!(matches!(
             check(&c, &authors(), "h1", "h1"),
             Err(Refusal::SeatWithoutIdentity(_))
         ));
-        c.lanes.last_mut().unwrap().identity = Some("infra-9".into());
-        c.lanes.last_mut().unwrap().coding_worker = true;
+        let seat = c.lanes.last_mut().context("commit has no seat lane")?;
+        seat.identity = Some("infra-9".into());
+        seat.coding_worker = true;
         assert!(matches!(
             check(&c, &authors(), "h1", "h1"),
             Err(Refusal::CodingWorkerSeat(_))
         ));
+        Ok(())
     }
 
     #[test]
@@ -414,17 +416,20 @@ mod tests {
     }
 
     #[test]
-    fn sign_writes_receipts_then_sign_json() {
-        let root = tempfile::tempdir().unwrap();
+    fn sign_writes_receipts_then_sign_json() -> Result<()> {
+        let root = tempfile::tempdir().context("create temp dir")?;
         let commits = vec![green_commit()];
-        let out = sign_pr(&req(root.path(), "h1", &authors()), &commits).unwrap();
+        let out = sign_pr(&req(root.path(), "h1", &authors()), &commits)
+            .context("sign_pr should succeed for a green commit")?;
         let dir = root.path().join("paiml/x/7");
         assert_eq!(out, dir.join("sign.json"));
-        let receipt = std::fs::read(dir.join("p1.json")).unwrap();
-        let sign: Value = serde_json::from_slice(&std::fs::read(&out).unwrap()).unwrap();
+        let receipt = std::fs::read(dir.join("p1.json")).context("read p1.json receipt")?;
+        let sign_bytes = std::fs::read(&out).context("read sign.json")?;
+        let sign: Value = serde_json::from_slice(&sign_bytes).context("parse sign.json")?;
         assert_eq!(sign["receipt_sha256"]["p1"], hex_sha256(&receipt));
         assert_eq!(sign["patch_ids"], json!(["p1"]));
         assert!(!dir.join("sign.json.tmp").exists());
+        Ok(())
     }
 
     #[test]
@@ -437,10 +442,11 @@ mod tests {
     }
 
     #[test]
-    fn refusal_writes_nothing() {
-        let root = tempfile::tempdir().unwrap();
+    fn refusal_writes_nothing() -> Result<()> {
+        let root = tempfile::tempdir().context("create temp dir")?;
         let commits = vec![green_commit()];
         assert!(sign_pr(&req(root.path(), "h2", &authors()), &commits).is_err());
         assert!(!root.path().join("paiml/x/7").exists());
+        Ok(())
     }
 }
