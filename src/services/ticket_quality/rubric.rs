@@ -147,18 +147,15 @@ impl NormalizedScore for TicketScore {
 impl fmt::Display for TicketScore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let verdict = if self.passed { "PASS" } else { "NEEDS REWRITE" };
-        writeln!(
-            f,
-            "ticket score: {}/100 (pass mark {}) {verdict}",
-            self.total, self.pass_mark
-        )?;
+        let (total, mark) = (self.total, self.pass_mark);
+        let mut out = format!("ticket score: {total}/100 (pass mark {mark}) {verdict}\n");
         for i in &self.items {
-            writeln!(f, "  {:>2}/{:<2} {}", i.points, i.max, i.item)?;
+            out.push_str(&format!("  {:>2}/{:<2} {}\n", i.points, i.max, i.item));
         }
         for m in &self.missing {
-            writeln!(f, "  missing: {m}")?;
+            out.push_str(&format!("  missing: {m}\n"));
         }
-        Ok(())
+        f.write_str(&out)
     }
 }
 
