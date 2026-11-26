@@ -70,7 +70,7 @@ fn ticket_quality_source_a_malformed_ticket_is_an_error_never_skipped() {
 fn ticket_quality_source_reads_one_ticket_for_the_rubric() {
     let reply = ok(
         json!({"issue":{"title":"Add x","body":"b","milestone":{"title":"m"},
-        "parent":{"number":1,"state":"OPEN"},"labels":{"nodes":[{"name":"kind:code"}]}}}),
+        "parent":{"number":1,"state":"OPEN"},"labels":{"totalCount":1,"nodes":[{"name":"kind:code"}]}}}),
     );
     let g = Fake::new(vec![rate(5000), reply]);
     let t = fetch_ticket(&g, "o/r", 12).unwrap();
@@ -115,10 +115,12 @@ fn ticket_quality_source_gone_is_absent_at_head_and_present_in_history() {
     );
     assert!(seen[1].contains("defaultBranchRef{target{... on Commit{p0:history(first:1,path:\"src/gone.rs\"){nodes{oid}} p1:history(first:1,path:\"src/new.rs\")"), "{}", seen[1]);
 
-    let none = Fake::new(vec![]);
-    let (gone, _) = gone_paths(&none, "o/r", &[rec(5, "Add x")]).unwrap_or_default();
+    let mut kept = rec(5, "Add x");
+    kept.body = "src/kept.rs".to_string();
+    let none = Fake::new(vec![ok(json!({"p0":{"__typename":"Blob"}}))]);
+    let (gone, _) = gone_paths(&none, "o/r", &[kept]).unwrap();
     assert!(
-        gone.is_empty(),
+        gone.is_empty() && none.seen.borrow().len() == 1,
         "a ticket whose files exist asks one question and gets none gone"
     );
 }
@@ -171,4 +173,52 @@ fn ticket_quality_source_caps_the_paths_it_asks_about_and_says_so() {
         )]
     );
     assert_eq!(g.seen.borrow().len(), MAX_PATHS / PATHS_PER_QUERY);
+}
+
+#[test]
+fn ticket_quality_source_a_path_the_reply_does_not_answer_is_not_gone() {
+    let mut t = rec(5, "Add x");
+    t.body = "src/gone.rs".to_string();
+    let err = gone_paths(&Fake::new(vec![ok(json!({}))]), "o/r", &[t]).unwrap_err();
+    assert!(
+        err.to_string().contains("no answer for src/gone.rs"),
+        "{err}"
+    );
+}
+
+#[test]
+fn ticket_quality_source_a_cut_off_list_is_an_error_never_a_short_list() {
+    let broken = |field: &str, size: Value| {
+        let mut n = node(5);
+        n[field]["totalCount"] = size;
+        parse_ticket(&n).unwrap_err().to_string()
+    };
+    for field in ["labels", "closedByPullRequestsReferences"] {
+        let err = broken(field, json!(101));
+        assert!(err.contains("1 of 101") && err.contains(field), "{err}");
+        let err = broken(field, json!(null));
+        assert!(
+            err.contains("no totalCount") && err.contains(field),
+            "{err}"
+        );
+    }
+
+    let cut = ok(
+        json!({"issue":{"title":"Add x","body":"b","milestone":null,"parent":null,
+        "labels":{"totalCount":101,"nodes":[{"name":"kind:code"}]}}}),
+    );
+    let g = Fake::new(vec![rate(5000), cut]);
+    let err = fetch_ticket(&g, "o/r", 12).unwrap_err().to_string();
+    assert!(err.contains("1 of 101") && err.contains("labels"), "{err}");
+    let asked = g.seen.borrow()[1].clone();
+    assert!(asked.contains("labels(first:100){totalCount "), "{asked}");
+
+    let g = Fake::new(vec![rate(5000), page(1, vec![node(5)])]);
+    fetch_tickets(&g, "o/r").unwrap();
+    let asked = g.seen.borrow()[1].clone();
+    assert!(asked.contains("labels(first:100){totalCount "), "{asked}");
+    assert!(
+        asked.contains("includeClosedPrs:true){totalCount "),
+        "{asked}"
+    );
 }

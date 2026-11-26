@@ -22,6 +22,17 @@ fn to_json<T: serde::Serialize>(value: &T) -> String {
     text
 }
 
+/// Run `run` on the repository, or say which read failed.
+pub fn with_repo(
+    repo: anyhow::Result<String>,
+    run: &dyn Fn(&str) -> (String, i32),
+) -> (String, i32) {
+    match repo {
+        Ok(repo) => run(&repo),
+        Err(e) => not_measured("repository", &e),
+    }
+}
+
 /// `pmat work score --issue N`: 0 at the pass mark or over, 1 under it, 2 on a read fault.
 pub fn run_score(
     g: &dyn Graphql,

@@ -584,16 +584,16 @@ pub enum WorkCommands {
         #[arg(long, requires = "issue")]
         json: bool,
 
-        /// Minimum score threshold (0.0-1.0, default: 0.0)
-        #[arg(long, default_value = "0.0")]
+        /// Minimum score threshold (0.0-1.0, default: 0.0); work contracts only
+        #[arg(long, default_value = "0.0", conflicts_with = "issue")]
         min_score: f64,
 
         /// Project path (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
 
-        /// Output format (text, json, or sarif)
-        #[arg(short, long, default_value = "text")]
+        /// Output format (text, json, or sarif); work contracts only (--issue takes --json)
+        #[arg(short, long, default_value = "text", conflicts_with = "issue")]
         format: String,
     },
 

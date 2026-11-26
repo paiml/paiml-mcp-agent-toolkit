@@ -8,6 +8,8 @@ pub mod run;
 pub mod source;
 
 #[cfg(test)]
+mod cli_tests;
+#[cfg(test)]
 mod findings_tests;
 #[cfg(test)]
 mod rubric_tests;

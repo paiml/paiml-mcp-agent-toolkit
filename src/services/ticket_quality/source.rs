@@ -20,8 +20,8 @@ const TICKETS_QUERY: &str = "query($owner:String!,$name:String!,$after:String){\
 repository(owner:$owner,name:$name){issues(states:OPEN,first:100,after:$after){\
 totalCount pageInfo{hasNextPage endCursor} \
 nodes{number title body updatedAt milestone{title} parent{number state} \
-subIssues{totalCount} subIssuesSummary{completed} labels(first:30){nodes{name}} \
-closedByPullRequestsReferences(first:20,includeClosedPrs:true){nodes{number state}}}}}}";
+subIssues{totalCount} subIssuesSummary{completed} labels(first:100){totalCount nodes{name}} \
+closedByPullRequestsReferences(first:100,includeClosedPrs:true){totalCount nodes{number state}}}}}}";
 
 fn split_repo(repo: &str) -> Result<(&str, &str)> {
     repo.split_once('/')
@@ -38,6 +38,25 @@ fn pr_state(s: &str) -> Result<PrState> {
     })
 }
 
+/// Every node of the connection `field` of issue `n`: a list GitHub cut off, or one
+/// whose size was not read, is an error, never a shorter list.
+fn whole<'a>(node: &'a Value, field: &str, n: u64) -> Result<&'a [Value]> {
+    let list = &node[field];
+    let nodes = list["nodes"]
+        .as_array()
+        .with_context(|| format!("issue #{n}: no {field}"))?;
+    let total = list["totalCount"]
+        .as_u64()
+        .with_context(|| format!("issue #{n}: no totalCount on {field}"))?;
+    if total > nodes.len() as u64 {
+        bail!(
+            "issue #{n}: read {} of {total} {field}; not measured",
+            nodes.len()
+        );
+    }
+    Ok(nodes)
+}
+
 /// One ticket from an issue node of [`TICKETS_QUERY`].
 pub fn parse_ticket(node: &Value) -> Result<TicketRec> {
     let rec = parse_issue(node)?;
@@ -45,9 +64,8 @@ pub fn parse_ticket(node: &Value) -> Result<TicketRec> {
     let updated = node["updatedAt"]
         .as_str()
         .with_context(|| format!("issue #{n}: no updatedAt"))?;
-    let prs = node["closedByPullRequestsReferences"]["nodes"]
-        .as_array()
-        .with_context(|| format!("issue #{n}: no closedByPullRequestsReferences"))?;
+    whole(node, "labels", n)?;
+    let prs = whole(node, "closedByPullRequestsReferences", n)?;
     let mut linked_prs = Vec::new();
     for p in prs {
         let number = p["number"].as_u64().context("linked PR has no number")?;
@@ -89,20 +107,24 @@ pub fn fetch_ticket(g: &dyn Graphql, repo: &str, number: u64) -> Result<Ticket> 
     let query = format!(
         "query($owner:String!,$name:String!){{repository(owner:$owner,name:$name){{\
 issue(number:{number}){{title body milestone{{title}} parent{{number state}} \
-labels(first:30){{nodes{{name}}}}}}}}}}"
+labels(first:100){{totalCount nodes{{name}}}}}}}}}}"
     );
     let v = g.query(&query, &[("owner", owner), ("name", name)])?;
     let node = &v["data"]["repository"]["issue"];
     let title = node["title"]
         .as_str()
         .with_context(|| format!("{repo}#{number}: no such issue in the reply; not measured"))?;
-    let labels = node["labels"]["nodes"].as_array();
+    // A null connection is an issue without labels; anything else must be whole.
+    let labels: &[Value] = if node["labels"].is_null() {
+        &[]
+    } else {
+        whole(node, "labels", number)?
+    };
     Ok(Ticket {
         title: title.to_string(),
         body: node["body"].as_str().unwrap_or_default().to_string(),
         labels: labels
-            .into_iter()
-            .flatten()
+            .iter()
             .filter_map(|l| l["name"].as_str().map(str::to_string))
             .collect(),
         parent_open: node["parent"]["state"].as_str() == Some("OPEN"),
@@ -152,7 +174,11 @@ fn absent(g: &dyn Graphql, owner: &str, name: &str, paths: &[&String]) -> Result
             bail!("{owner}/{name}: no repository in the path reply; not measured");
         }
         for (i, p) in chunk.iter().enumerate() {
-            if repo[format!("p{i}")].is_null() {
+            // `null` is GitHub saying the file is absent; no key is no answer.
+            let answer = repo
+                .get(format!("p{i}"))
+                .with_context(|| format!("{owner}/{name}: no answer for {p}; not measured"))?;
+            if answer.is_null() {
                 out.push((*p).clone());
             }
         }

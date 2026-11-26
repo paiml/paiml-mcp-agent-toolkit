@@ -99,8 +99,8 @@ pub(super) fn node(number: u64) -> Value {
     json!({"number":number,"title":format!("Add thing {number}"),"body":"see src/a.rs and src/b.rs",
            "updatedAt":"2026-11-26T10:00:00Z","milestone":{"title":"m1"},
            "parent":{"number":1,"state":"OPEN"},"subIssues":{"totalCount":0},
-           "subIssuesSummary":{"completed":0},"labels":{"nodes":[{"name":"kind:code"}]},
-           "closedByPullRequestsReferences":{"nodes":[{"number":7,"state":"MERGED"}]}})
+           "subIssuesSummary":{"completed":0},"labels":{"totalCount":1,"nodes":[{"name":"kind:code"}]},
+           "closedByPullRequestsReferences":{"totalCount":1,"nodes":[{"number":7,"state":"MERGED"}]}})
 }
 
 pub(super) fn page(total: u64, nodes: Vec<Value>) -> Result<Value, String> {

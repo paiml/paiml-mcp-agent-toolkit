@@ -351,8 +351,9 @@ pub fn handle_ticket_score(
 ) -> Result<()> {
     use crate::services::github_comply::source::GhGraphql;
     use crate::services::ticket_quality::{rubric::PASS_MARK, run};
-    let repo = ticket_repo(repo, path)?;
-    finish_ticket_run(run::run_score(&GhGraphql, &repo, issue, PASS_MARK, json))
+    finish_ticket_run(run::with_repo(ticket_repo(repo, path), &|repo| {
+        run::run_score(&GhGraphql, repo, issue, PASS_MARK, json)
+    }))
 }
 
 /// `pmat work findings` (FLOW-OWNER-001 §4): one paged read, no writes.
@@ -364,12 +365,7 @@ pub fn handle_ticket_findings(
 ) -> Result<()> {
     use crate::services::github_comply::source::GhGraphql;
     use crate::services::ticket_quality::run;
-    let repo = ticket_repo(repo, path)?;
-    finish_ticket_run(run::run_findings(
-        &GhGraphql,
-        &repo,
-        &settings,
-        json,
-        chrono::Utc::now(),
-    ))
+    finish_ticket_run(run::with_repo(ticket_repo(repo, path), &|repo| {
+        run::run_findings(&GhGraphql, repo, &settings, json, chrono::Utc::now())
+    }))
 }

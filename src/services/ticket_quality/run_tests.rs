@@ -9,7 +9,7 @@ fn issue(body: &str) -> Result<Value, String> {
     Ok(
         json!({"data":{"repository":{"issue":{"title":"Add x","body":body,
         "milestone":{"title":"m"},"parent":{"number":1,"state":"OPEN"},
-        "labels":{"nodes":[{"name":"kind:code"}]}}}}}),
+        "labels":{"totalCount":1,"nodes":[{"name":"kind:code"}]}}}}}),
     )
 }
 
@@ -100,4 +100,21 @@ fn ticket_quality_run_findings_is_not_measured_when_a_read_fails() {
         assert_eq!(code, EXIT_NOT_MEASURED);
         assert!(text.starts_with("not_measured: o/r:"), "{text}");
     }
+}
+
+#[test]
+fn ticket_quality_run_an_unnamed_repository_is_not_measured() {
+    let ran = std::cell::Cell::new(false);
+    let (text, code) = with_repo(Err(anyhow::anyhow!("no origin remote")), &|_| {
+        ran.set(true);
+        (String::new(), 0)
+    });
+    assert_eq!((code, ran.get()), (EXIT_NOT_MEASURED, false), "{text}");
+    assert!(
+        text.starts_with("not_measured: repository:") && text.contains("no origin remote"),
+        "{text}"
+    );
+
+    let named = with_repo(Ok("o/r".to_string()), &|repo| (repo.to_string(), 1));
+    assert_eq!(named, ("o/r".to_string(), 1));
 }
