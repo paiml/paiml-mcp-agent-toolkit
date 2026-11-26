@@ -14,6 +14,7 @@ include!("misc_commands_comply.rs");
 
 // Spec, Debug, QualityGates, and Maintain command types
 include!("misc_commands_spec_debug.rs");
+include!("misc_commands_spec_parity.rs");
 
 // TDG, Storage, Diagnostic, and Baseline command types
 include!("misc_commands_tdg_storage.rs");

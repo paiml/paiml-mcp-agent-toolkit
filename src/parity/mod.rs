@@ -12,14 +12,14 @@ use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// One case to record: the arguments appended to the base command, and stdin.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CaseSpec {
     pub argv: Vec<String>,
     pub stdin: String,
 }
 
 /// One observed run of the original, with the files it left under its sandbox.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Case {
     pub argv: Vec<String>,
     pub stdin: String,
@@ -316,7 +316,7 @@ mod replay_tests {
 }
 
 /// Committed record of what the corpus must still contain.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub struct Manifest {
     pub count: usize,
     pub hashes: std::collections::BTreeSet<String>,
@@ -365,10 +365,11 @@ pub fn gate(cases: &[Case], source: &str, committed: &Manifest) -> Vec<Violation
     const MIN_LITERAL: usize = 24;
     let mut out = Vec::new();
     for case in cases {
-        if case.stdout.len() >= MIN_LITERAL && source.contains(case.stdout.as_str()) {
+        let literal = case.stdout.trim_end();
+        if literal.len() >= MIN_LITERAL && source.contains(literal) {
             out.push(Violation::LiteralInSource {
                 argv: case.argv.clone(),
-                len: case.stdout.len(),
+                len: literal.len(),
             });
         }
     }
