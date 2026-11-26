@@ -130,11 +130,12 @@ pub(crate) fn check_derived_fresh(project_path: &Path, selected: &[String]) -> C
 fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
     let path = &a.path;
     let committed = committed_bytes(root, path)?;
-    let export = head_export(root).map_err(|e| format!("{path}: {e}"))?;
+    let export = head_export(root, path).map_err(|e| format!("{path}: {e}"))?;
     let artifact = export.cwd.join(path);
-    let before = (read_artifact(&artifact), modified(&artifact));
-    let generated = run_generator(&export.cwd, a).map_err(|e| format!("{path}: generator {e}"))?;
-    if (read_artifact(&artifact), modified(&artifact)) != before {
+    let before = (read_artifact(&artifact), stamp(&artifact));
+    let generated = run_generator(&export.cwd, a, &export.scratch)
+        .map_err(|e| format!("{path}: generator {e}"))?;
+    if (read_artifact(&artifact), stamp(&artifact)) != before {
         return Err(format!(
             "{path}: the generator rewrote the artifact; it must print to stdout"
         ));
@@ -162,8 +163,30 @@ fn read_artifact(p: &Path) -> Option<Vec<u8>> {
     }
 }
 
-fn modified(p: &Path) -> Option<std::time::SystemTime> {
-    std::fs::metadata(p).and_then(|m| m.modified()).ok()
+/// What a generator can change about an artifact without changing its bytes:
+/// the link itself, size, mtime, and on Unix the inode and ctime. Taken without
+/// following symlinks, so a replaced link is a change, not its target's.
+#[derive(PartialEq)]
+struct Stamp {
+    symlink: bool,
+    len: u64,
+    mtime: Option<std::time::SystemTime>,
+    #[cfg(unix)]
+    inode: (u64, u64, i64, i64),
+}
+
+fn stamp(p: &Path) -> Option<Stamp> {
+    let m = std::fs::symlink_metadata(p).ok()?;
+    Some(Stamp {
+        symlink: m.file_type().is_symlink(),
+        len: m.len(),
+        mtime: m.modified().ok(),
+        #[cfg(unix)]
+        inode: {
+            use std::os::unix::fs::MetadataExt;
+            (m.dev(), m.ino(), m.ctime(), m.ctime_nsec())
+        },
+    })
 }
 
 /// A git command for `root` that ignores repository overrides from the caller's
@@ -217,10 +240,12 @@ fn committed_bytes(root: &Path, path: &str) -> Result<Vec<u8>, String> {
 /// what the generator reads. `cwd` is `root`'s place inside the export.
 struct HeadExport {
     _dir: tempfile::TempDir,
+    /// The export's own directory: the generator's TMPDIR and git's ceiling.
+    scratch: std::path::PathBuf,
     cwd: std::path::PathBuf,
 }
 
-fn head_export(root: &Path) -> Result<HeadExport, String> {
+fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
     // A relative TMPDIR would resolve against `root` in git and inside the repo.
     let base = std::env::temp_dir();
     let base = if base.is_absolute() {
@@ -241,32 +266,37 @@ fn head_export(root: &Path) -> Result<HeadExport, String> {
         .to_string();
     let listing = git_bytes(root, &["ls-tree", "-r", "-z", "--full-tree", "HEAD"])?;
     let entries = parse_ls_tree(&listing)?;
-    write_blobs(root, &entries, &tree)?;
+    // The artifact is pinned to the epoch so any write by the generator shows.
+    let pin = std::path::PathBuf::from(&prefix).join(artifact);
+    write_blobs(root, &entries, &tree, &pin)?;
     let cwd = tree.join(&prefix);
     std::fs::create_dir_all(&cwd).map_err(|e| format!("could not make export dir: {e}"))?;
-    Ok(HeadExport { _dir: dir, cwd })
+    let scratch = dir.path().to_path_buf();
+    Ok(HeadExport { _dir: dir, scratch, cwd })
 }
 
 struct TreeEntry {
     mode: String,
-    path: String,
+    path: std::path::PathBuf,
     oid: String,
 }
 
-/// The blobs of `git ls-tree -r -z`. Submodule commits are not exported.
+/// The blobs of `git ls-tree -r -z`. Submodule commits are not exported. Paths
+/// are kept as bytes on Unix: a non-UTF-8 name elsewhere in HEAD is not an error.
 fn parse_ls_tree(listing: &[u8]) -> Result<Vec<TreeEntry>, String> {
     let mut entries = Vec::new();
     for record in listing.split(|&b| b == 0).filter(|r| !r.is_empty()) {
-        let text = std::str::from_utf8(record)
-            .map_err(|e| format!("a path in HEAD is not UTF-8: {e}"))?;
-        let (meta, path) = text
-            .split_once('\t')
+        let tab = record
+            .iter()
+            .position(|&b| b == b'\t')
             .ok_or_else(|| "malformed ls-tree record".to_string())?;
+        let meta = std::str::from_utf8(&record[..tab])
+            .map_err(|e| format!("malformed ls-tree record: {e}"))?;
         let mut fields = meta.split(' ');
         if let (Some(mode), Some("blob"), Some(oid)) = (fields.next(), fields.next(), fields.next()) {
             entries.push(TreeEntry {
                 mode: mode.to_string(),
-                path: path.to_string(),
+                path: path_from_bytes(&record[tab + 1..])?,
                 oid: oid.to_string(),
             });
         }
@@ -274,8 +304,26 @@ fn parse_ls_tree(listing: &[u8]) -> Result<Vec<TreeEntry>, String> {
     Ok(entries)
 }
 
+#[cfg(unix)]
+fn path_from_bytes(bytes: &[u8]) -> Result<std::path::PathBuf, String> {
+    use std::os::unix::ffi::OsStrExt;
+    Ok(std::path::PathBuf::from(std::ffi::OsStr::from_bytes(bytes)))
+}
+
+#[cfg(not(unix))]
+fn path_from_bytes(bytes: &[u8]) -> Result<std::path::PathBuf, String> {
+    std::str::from_utf8(bytes)
+        .map(std::path::PathBuf::from)
+        .map_err(|e| format!("a path in HEAD is not UTF-8: {e}"))
+}
+
 /// Stream every blob through one `git cat-file --batch`, writing each to `tree`.
-fn write_blobs(root: &Path, entries: &[TreeEntry], tree: &Path) -> Result<(), String> {
+fn write_blobs(
+    root: &Path,
+    entries: &[TreeEntry],
+    tree: &Path,
+    pin: &Path,
+) -> Result<(), String> {
     use std::io::Write;
     let mut child = git_at(root)
         .args(["cat-file", "--batch"])
@@ -294,7 +342,7 @@ fn write_blobs(root: &Path, entries: &[TreeEntry], tree: &Path) -> Result<(), St
         }
     });
     let mut reader = std::io::BufReader::new(stdout);
-    let result = read_blobs(&mut reader, entries, tree);
+    let result = read_blobs(&mut reader, entries, tree, pin);
     // On an early error git may still be writing: kill it so the feeder unblocks.
     let _ = child.kill();
     let _ = child.wait();
@@ -306,6 +354,7 @@ fn read_blobs(
     reader: &mut impl std::io::BufRead,
     entries: &[TreeEntry],
     tree: &Path,
+    pin: &Path,
 ) -> Result<(), String> {
     let io = |e: std::io::Error| format!("could not write export: {e}");
     for entry in entries {
@@ -315,7 +364,12 @@ fn read_blobs(
             [_, "blob", size] => size
                 .parse::<usize>()
                 .map_err(|e| format!("bad cat-file header: {e}"))?,
-            _ => return Err(format!("{}: not a blob in the object store", entry.path)),
+            _ => {
+                return Err(format!(
+                    "{}: not a blob in the object store",
+                    entry.path.display()
+                ))
+            }
         };
         let mut content = vec![0u8; size];
         reader.read_exact(&mut content).map_err(io)?;
@@ -325,14 +379,15 @@ fn read_blobs(
         if let Some(parent) = dest.parent() {
             std::fs::create_dir_all(parent).map_err(io)?;
         }
-        write_entry(&dest, &entry.mode, &content).map_err(io)?;
+        write_entry(&dest, &entry.mode, &content, entry.path == pin).map_err(io)?;
     }
     Ok(())
 }
 
-/// Write one blob. The mtime is pinned to the epoch so that any later write by
-/// a generator is visible as a change, even inside one timestamp tick.
-fn write_entry(dest: &Path, mode: &str, content: &[u8]) -> std::io::Result<()> {
+/// Write one blob. The artifact (`pin`) is given the epoch mtime, so a
+/// generator's write to it is visible as a change. Other files keep their
+/// normal mtimes: some generators reject pre-1980 timestamps.
+fn write_entry(dest: &Path, mode: &str, content: &[u8], pin: bool) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         if mode == "120000" {
@@ -342,7 +397,9 @@ fn write_entry(dest: &Path, mode: &str, content: &[u8]) -> std::io::Result<()> {
     }
     let mut file = std::fs::File::create(dest)?;
     std::io::Write::write_all(&mut file, content)?;
-    file.set_modified(std::time::SystemTime::UNIX_EPOCH)?;
+    if pin {
+        file.set_modified(std::time::SystemTime::UNIX_EPOCH)?;
+    }
     #[cfg(unix)]
     {
         if mode == "100755" {
@@ -356,7 +413,7 @@ fn write_entry(dest: &Path, mode: &str, content: &[u8]) -> std::io::Result<()> {
 
 /// Run the generator at the root and return its stdout. Output goes to files, so
 /// a large output cannot block the child while the timeout loop waits on it.
-fn run_generator(root: &Path, a: &DerivedArtifact) -> Result<Vec<u8>, String> {
+fn run_generator(root: &Path, a: &DerivedArtifact, scratch: &Path) -> Result<Vec<u8>, String> {
     use std::io::{Read, Seek};
     let io = |e: std::io::Error| format!("output could not be captured: {e}");
     let mut stdout = tempfile::tempfile().map_err(io)?;
@@ -370,6 +427,16 @@ fn run_generator(root: &Path, a: &DerivedArtifact) -> Result<Vec<u8>, String> {
         .stdout(stdout.try_clone().map_err(io)?)
         .stderr(stderr.try_clone().map_err(io)?);
     scrub_git_env(&mut command);
+    // A relative or in-repo TMPDIR would resolve against the child's cwd, and git
+    // would find the enclosing repository: the export directory bounds both.
+    command
+        .env("TMPDIR", scratch)
+        .env("GIT_CEILING_DIRECTORIES", scratch);
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
     let mut child = command
         .spawn()
         .map_err(|e| format!("could not start `{program}`: {e}"))?;
@@ -382,6 +449,14 @@ fn run_generator(root: &Path, a: &DerivedArtifact) -> Result<Vec<u8>, String> {
             break status;
         }
         if started.elapsed() > limit {
+            // The child leads its own process group: kill the generator's
+            // subprocesses too, so none outlives the timeout.
+            #[cfg(unix)]
+            {
+                let _ = std::process::Command::new("kill")
+                    .args(["-KILL", "--", &format!("-{}", child.id())])
+                    .status();
+            }
             let _ = child.kill();
             let _ = child.wait();
             return Err(format!("timed out after {}s", limit.as_secs()));

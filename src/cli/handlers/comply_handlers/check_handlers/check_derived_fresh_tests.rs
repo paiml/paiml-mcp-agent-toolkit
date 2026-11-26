@@ -213,6 +213,37 @@ mod derived_fresh_tests {
         assert!(check.message.contains("stale"), "{}", check.message);
     }
 
+    /// A link replaced by a new link to the same target is still a rewrite.
+    #[cfg(unix)]
+    #[test]
+    fn a_replaced_symlink_artifact_is_a_rewrite() {
+        let decl = "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"sh\", \"-c\", \"ln -sfn src.txt out.txt && printf src.txt\"]\n";
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("src.txt"), "src.txt").expect("src");
+        std::os::unix::fs::symlink("src.txt", dir.path().join("out.txt")).expect("link");
+        std::fs::write(dir.path().join(DERIVED_FILE), decl).expect("decl");
+        git(dir.path(), &["init", "-q"]);
+        git(dir.path(), &["add", "-A"]);
+        git(dir.path(), &["commit", "-qm", "base"]);
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
+        assert!(check.message.contains("rewrote"), "{}", check.message);
+    }
+
+    /// A non-UTF-8 path elsewhere in HEAD is not the artifact's problem.
+    #[cfg(unix)]
+    #[test]
+    fn a_non_utf8_path_elsewhere_in_head_does_not_fail_the_check() {
+        use std::os::unix::ffi::OsStrExt;
+        let dir = repo("a\n", "a\n", CAT);
+        let odd = std::ffi::OsStr::from_bytes(b"odd-\xff.bin");
+        std::fs::write(dir.path().join(odd), "x").expect("odd");
+        git(dir.path(), &["add", "-A"]);
+        git(dir.path(), &["commit", "-qm", "odd"]);
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
     /// A same-bytes rewrite is still a rewrite: the generator must print.
     #[test]
     fn a_generator_that_rewrites_the_same_bytes_fails() {
