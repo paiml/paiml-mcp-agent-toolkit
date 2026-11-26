@@ -105,6 +105,11 @@ async fn work_init_does_not_downgrade_the_enforced_commit_msg_hook() {
 
 /// The pre-push hook run against a stand-in `pmat` whose CB-2113 verdict is `rc`.
 fn pre_push_passes(dir: &Path, rc: i32) -> bool {
+    pre_push_passes_with(dir, rc, "")
+}
+
+/// The same, with `refs` as the lines git writes on the hook's stdin.
+fn pre_push_passes_with(dir: &Path, rc: i32, refs: &str) -> bool {
     use std::os::unix::fs::PermissionsExt;
     let bin = dir.join("stub-bin");
     std::fs::create_dir_all(&bin).expect("bin");
@@ -120,10 +125,13 @@ fn pre_push_passes(dir: &Path, rc: i32) -> bool {
         bin.display(),
         std::env::var("PATH").unwrap_or_default()
     );
+    let stdin = dir.join("refs");
+    std::fs::write(&stdin, refs).expect("refs");
     run(
         Command::new("sh")
             .arg(".git/hooks/pre-push")
-            .env("PATH", path),
+            .env("PATH", path)
+            .stdin(std::fs::File::open(&stdin).expect("stdin")),
         dir,
     )
 }
@@ -141,4 +149,34 @@ async fn enforce_pre_push_refuses_a_push_cb2113_refuses() {
         pre_push_passes(d, 0),
         "a CB-2113 pass must not stop the push"
     );
+}
+
+#[tokio::test]
+async fn enforce_pre_push_lets_a_delete_only_push_through() {
+    let tmp = roadmap_repo();
+    let d = tmp.path();
+    enforce(d, false).await;
+    let (zero, oid) = ("0".repeat(40), "0a".repeat(20));
+    let delete = format!("(delete) {zero} refs/heads/old {oid}\n");
+    assert!(
+        pre_push_passes_with(d, 1, &delete),
+        "a delete sends no commit to judge"
+    );
+    let mixed = format!("{delete}refs/heads/new {oid} refs/heads/new {zero}\n");
+    assert!(
+        !pre_push_passes_with(d, 1, &mixed),
+        "one pushed commit is enough to judge"
+    );
+}
+
+#[tokio::test]
+async fn enforce_keeps_a_dangling_commit_msg_symlink() {
+    let tmp = roadmap_repo();
+    let d = tmp.path();
+    let link = d.join(".git/hooks/commit-msg");
+    std::os::unix::fs::symlink(d.join("elsewhere/commit-msg"), &link).expect("symlink");
+    enforce(d, false).await;
+    let meta = std::fs::symlink_metadata(&link).expect("link");
+    assert!(meta.file_type().is_symlink(), "the user's link stays");
+    assert!(!d.join("elsewhere/commit-msg").exists());
 }

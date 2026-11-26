@@ -42,8 +42,9 @@ fn make_hook_executable(_path: &Path) -> Result<()> {
 /// alone. Returns whether pmat's hook is in place.
 fn install_enforced_commit_msg_hook(project_path: &Path, hooks_dir: &Path) -> Result<bool> {
     let hook_path = hooks_dir.join("commit-msg");
-    if hook_path.exists() {
-        let bytes = fs::read(&hook_path)?;
+    // A dangling symlink is the user's too: writing would go through it.
+    if hook_path.symlink_metadata().is_ok() {
+        let bytes = fs::read(&hook_path).unwrap_or_default();
         let existing = String::from_utf8_lossy(&bytes);
         let ours = ["auto-managed by PMAT", "PMAT Workflow Commit Message Hook"];
         if !ours.iter().any(|marker| existing.contains(marker)) {

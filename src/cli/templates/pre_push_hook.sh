@@ -4,6 +4,10 @@
 
 set -e
 
+# git writes one line per pushed ref on stdin; read it before anything else can.
+PUSH_REFS=""
+if [ ! -t 0 ]; then PUSH_REFS=$(cat); fi
+
 echo "Running ComputeBrick compliance checks..."
 
 # Check ComputeBrick compliance via pmat comply
@@ -21,13 +25,18 @@ if echo "$COMPLY_OUTPUT" | grep -q "ComputeBrick Compliance.*critical"; then
     exit 1
 fi
 
-# CB-2113 commit traceability: the judge CI runs, before the push.
-echo "Running CB-2113 commit traceability..."
-if ! pmat comply check --checks CB-2113 </dev/null; then
-    echo ""
-    echo "CB-2113 failed: CI will refuse these commits (see above)."
-    echo "Each commit needs a 'Pmat-Ticket: <id>' trailer in its last paragraph."
-    exit 1
+# CB-2113 commit traceability: the judge CI runs, before the push. A push that
+# only deletes refs (all-zero local oid) sends no commit to judge.
+if [ -n "$PUSH_REFS" ] && ! printf '%s\n' "$PUSH_REFS" | grep -qv '^[^ ]* 00* '; then
+    echo "Delete-only push: no commit for CB-2113 to judge."
+else
+    echo "Running CB-2113 commit traceability..."
+    if ! pmat comply check --checks CB-2113 </dev/null; then
+        echo ""
+        echo "CB-2113 failed: CI will refuse these commits (see above)."
+        echo "Each commit needs a 'Pmat-Ticket: <id>' trailer in its last paragraph."
+        exit 1
+    fi
 fi
 
 # Check probar GUI coverage if available (PROBAR-SPEC-009)
