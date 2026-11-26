@@ -158,7 +158,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn parity_record_stable_case_keeps_stdout_stderr_exit_stdin_and_files() {
+    fn parity_record_stable_case_keeps_stdout_stderr_exit_stdin_and_files() -> io::Result<()> {
         let spec = CaseSpec {
             argv: vec![],
             stdin: "abc".to_string(),
@@ -167,15 +167,16 @@ mod tests {
             "-c".to_string(),
             "cat; echo err >&2; echo x > out.txt; exit 3".to_string(),
         ];
-        let verdict = record_case("/bin/sh", &base, &spec, &BTreeMap::new()).expect("sh must run");
+        let verdict = record_case("/bin/sh", &base, &spec, &BTreeMap::new())?;
         let Verdict::Recorded(case) = verdict else {
-            panic!("a stable fixture must be recorded");
+            return Err(io::Error::other("a stable fixture must be recorded"));
         };
         assert_eq!(case.stdout, "abc");
         assert_eq!(case.stderr, "err\n");
         assert_eq!(case.exit_code, Some(3));
         assert_eq!(case.files.get("out.txt").map(String::as_str), Some("x\n"));
         assert_eq!(case.stdin, "abc");
+        Ok(())
     }
 
     #[cfg(unix)]
@@ -279,39 +280,41 @@ pub fn replay(
 mod replay_tests {
     use super::*;
 
-    fn recorded(script: &str) -> Vec<Case> {
+    fn recorded(script: &str) -> io::Result<Vec<Case>> {
         let base = vec!["-c".to_string(), script.to_string()];
         let spec = CaseSpec {
             argv: vec![],
             stdin: String::new(),
         };
-        match record_case("/bin/sh", &base, &spec, &BTreeMap::new()).expect("sh must run") {
-            Verdict::Recorded(c) => vec![c],
-            Verdict::Flaky => panic!("fixture must be stable"),
+        match record_case("/bin/sh", &base, &spec, &BTreeMap::new())? {
+            Verdict::Recorded(c) => Ok(vec![c]),
+            Verdict::Flaky => Err(io::Error::other("fixture must be stable")),
         }
     }
 
     #[cfg(unix)]
     #[test]
-    fn parity_replay_identical_implementation_matches_all() {
-        let cases = recorded("echo hi");
+    fn parity_replay_identical_implementation_matches_all() -> io::Result<()> {
+        let cases = recorded("echo hi")?;
         let base = vec!["-c".to_string(), "echo hi".to_string()];
-        let report = replay("/bin/sh", &base, &cases, &BTreeMap::new()).expect("sh must run");
+        let report = replay("/bin/sh", &base, &cases, &BTreeMap::new())?;
         assert_eq!(report.line(), "matched 1/1");
         assert!(report.first_diff.is_none());
+        Ok(())
     }
 
     #[cfg(unix)]
     #[test]
-    fn parity_replay_one_trailing_newline_fails() {
-        let cases = recorded("printf 'x\\n'");
+    fn parity_replay_one_trailing_newline_fails() -> io::Result<()> {
+        let cases = recorded("printf 'x\\n'")?;
         let base = vec!["-c".to_string(), "printf x".to_string()];
-        let report = replay("/bin/sh", &base, &cases, &BTreeMap::new()).expect("sh must run");
+        let report = replay("/bin/sh", &base, &cases, &BTreeMap::new())?;
         assert_eq!(report.line(), "matched 0/1");
         let diff = report
             .first_diff
             .expect("a one-byte difference must be reported");
         assert!(diff.contains("stdout differs at byte 1"), "{diff}");
+        Ok(())
     }
 }
 
