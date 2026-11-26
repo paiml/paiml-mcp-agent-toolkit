@@ -1,0 +1,15 @@
+# FLOW-010 F2 (PMAT-3151, GH-1616): gate on push to master via the fleet reusable workflow in paiml/infra.
+# Red on master andons with the line `[main-gate] <repo> <sha> RED <run-url>`. Concurrency belongs to this caller.
+name: Main Gate
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '17 3 * * *'
+concurrency: { group: 'main-gate-${{ github.ref }}', cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  main-gate:
+    uses: paiml/infra/.github/workflows/main-gate.yml@47c76b857de07c7b9755cebc8bcbe2b25467a496
+    with: { runs-on: '["self-hosted","gate-light"]' }
