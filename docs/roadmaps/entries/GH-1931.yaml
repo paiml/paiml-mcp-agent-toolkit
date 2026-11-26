@@ -1,0 +1,18 @@
+- id: GH-1931
+  github_issue: 1931
+  item_type: task
+  title: 'release: pmat 3.47.0 (master)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-11-25T00:00:00Z
+  updated: 2026-11-25T00:00:00Z
+  spec: null
+  acceptance_criteria:
+  - tracked by its GitHub issue until its PR merges
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:fix
+  notes: null
