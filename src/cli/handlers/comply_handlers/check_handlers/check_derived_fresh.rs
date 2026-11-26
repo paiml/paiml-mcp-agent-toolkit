@@ -72,16 +72,23 @@ fn parse_derived_decl(raw: &str) -> Result<Vec<DerivedArtifact>, String> {
 }
 
 /// The declared artifacts, or the row that ends the check: Skip when there is no
-/// declaration, Fail when it cannot be read.
+/// declaration, Fail when it cannot be read. The declaration is read from HEAD,
+/// like every other input the verdict depends on.
 fn load_derived_decl(project_path: &Path) -> Result<Vec<DerivedArtifact>, ComplianceCheck> {
     let unreadable = |e: String| derived_row(CheckStatus::Fail, format!("{DERIVED_FILE}: {e}"));
-    match std::fs::read_to_string(project_path.join(DERIVED_FILE)) {
-        Ok(raw) => parse_derived_decl(&raw).map_err(unreadable),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(derived_row(
+    match head_blob(project_path, DERIVED_FILE) {
+        Ok(Some(raw)) => match String::from_utf8(raw) {
+            Ok(text) => parse_derived_decl(&text).map_err(unreadable),
+            Err(e) => Err(unreadable(e.to_string())),
+        },
+        Ok(None) if project_path.join(DERIVED_FILE).exists() => {
+            Err(unreadable("not in HEAD; commit the declaration".to_string()))
+        }
+        Ok(None) => Err(derived_row(
             CheckStatus::Skip,
             format!("no {DERIVED_FILE} — no derived artifact is declared"),
         )),
-        Err(e) => Err(unreadable(e.to_string())),
+        Err(e) => Err(unreadable(e)),
     }
 }
 
@@ -124,11 +131,10 @@ fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
     let path = &a.path;
     let committed = committed_bytes(root, path)?;
     let export = head_export(root).map_err(|e| format!("{path}: {e}"))?;
-    let tree = export.path().join("tree");
-    let tree = tree.as_path();
-    let before = std::fs::read(tree.join(path)).ok();
-    let generated = run_generator(tree, a).map_err(|e| format!("{path}: generator {e}"))?;
-    if std::fs::read(tree.join(path)).ok() != before {
+    let artifact = export.cwd.join(path);
+    let before = (read_artifact(&artifact), modified(&artifact));
+    let generated = run_generator(&export.cwd, a).map_err(|e| format!("{path}: generator {e}"))?;
+    if (read_artifact(&artifact), modified(&artifact)) != before {
         return Err(format!(
             "{path}: the generator rewrote the artifact; it must print to stdout"
         ));
@@ -136,7 +142,7 @@ fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
     if generated == committed {
         return Ok(());
     }
-    if std::fs::read(root.join(path)).ok().as_deref() == Some(generated.as_slice()) {
+    if read_artifact(&root.join(path)).as_deref() == Some(generated.as_slice()) {
         return Err(format!("{path}: regenerated but not committed"));
     }
     Err(format!(
@@ -146,44 +152,206 @@ fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
     ))
 }
 
-/// A throwaway checkout of HEAD's tree, built from a private index so the
-/// repository's own index and working tree are never touched.
-fn head_export(root: &Path) -> Result<tempfile::TempDir, String> {
-    let dir = tempfile::tempdir().map_err(|e| format!("could not make export dir: {e}"))?;
-    let index = dir.path().join("index");
-    let tree = dir.path().join("tree");
-    let prefix = format!("{}/", tree.display());
-    let git = |args: &[&str]| -> Result<(), String> {
-        let out = std::process::Command::new("git")
-            .arg("-C")
-            .arg(root)
-            .env("GIT_INDEX_FILE", &index)
-            .args(args)
-            .output()
-            .map_err(|e| format!("could not run git: {e}"))?;
-        if out.status.success() {
-            Ok(())
-        } else {
-            Err(format!("git {} failed: {}", args[0], String::from_utf8_lossy(&out.stderr).trim()))
-        }
-    };
-    git(&["read-tree", "HEAD"])?;
-    git(&["checkout-index", "-a", "-f", &format!("--prefix={prefix}")])?;
-    Ok(dir)
+/// The bytes of a file, or of a symlink's target, as the export holds them.
+fn read_artifact(p: &Path) -> Option<Vec<u8>> {
+    match std::fs::symlink_metadata(p) {
+        Ok(m) if m.file_type().is_symlink() => std::fs::read_link(p)
+            .ok()
+            .map(|t| t.to_string_lossy().into_owned().into_bytes()),
+        _ => std::fs::read(p).ok(),
+    }
+}
+
+fn modified(p: &Path) -> Option<std::time::SystemTime> {
+    std::fs::metadata(p).and_then(|m| m.modified()).ok()
+}
+
+/// A git command for `root` that ignores repository overrides from the caller's
+/// environment: a hook sets `GIT_DIR` and `GIT_INDEX_FILE` for its own repository.
+fn git_at(root: &Path) -> std::process::Command {
+    let mut cmd = std::process::Command::new("git");
+    cmd.arg("-C").arg(root);
+    scrub_git_env(&mut cmd);
+    cmd
+}
+
+fn scrub_git_env(cmd: &mut std::process::Command) {
+    for var in ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_COMMON_DIR"] {
+        cmd.env_remove(var);
+    }
+}
+
+fn git_bytes(root: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
+    let out = git_at(root)
+        .args(args)
+        .output()
+        .map_err(|e| format!("could not run git: {e}"))?;
+    if out.status.success() {
+        Ok(out.stdout)
+    } else {
+        Err(format!(
+            "git {} failed: {}",
+            args[0],
+            String::from_utf8_lossy(&out.stderr).trim()
+        ))
+    }
+}
+
+/// The bytes HEAD holds at `rel` (relative to `root`), or `None` when HEAD has
+/// no such file. Git's own blob bytes: no attribute or eol filter applies.
+fn head_blob(root: &Path, rel: &str) -> Result<Option<Vec<u8>>, String> {
+    let out = git_at(root)
+        .args(["cat-file", "blob", &format!("HEAD:./{rel}")])
+        .output()
+        .map_err(|e| format!("{rel}: could not run git: {e}"))?;
+    Ok(out.status.success().then_some(out.stdout))
 }
 
 /// The bytes HEAD holds for `path`: what a push would send.
 fn committed_bytes(root: &Path, path: &str) -> Result<Vec<u8>, String> {
-    let out = std::process::Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["cat-file", "blob", &format!("HEAD:./{path}")])
-        .output()
-        .map_err(|e| format!("{path}: could not run git: {e}"))?;
-    if !out.status.success() {
-        return Err(format!("{path}: not in HEAD; commit the derived file"));
+    head_blob(root, path)?.ok_or_else(|| format!("{path}: not in HEAD; commit the derived file"))
+}
+
+/// A throwaway export of the whole of HEAD. Every blob is written from the object
+/// store, so no `.gitattributes`, eol, smudge or working-tree file can change
+/// what the generator reads. `cwd` is `root`'s place inside the export.
+struct HeadExport {
+    _dir: tempfile::TempDir,
+    cwd: std::path::PathBuf,
+}
+
+fn head_export(root: &Path) -> Result<HeadExport, String> {
+    // A relative TMPDIR would resolve against `root` in git and inside the repo.
+    let base = std::env::temp_dir();
+    let base = if base.is_absolute() {
+        base
+    } else {
+        std::env::current_dir()
+            .map_err(|e| format!("could not make export dir: {e}"))?
+            .join(base)
+    };
+    let dir = tempfile::Builder::new()
+        .prefix("cb2120-")
+        .tempdir_in(&base)
+        .map_err(|e| format!("could not make export dir: {e}"))?;
+    let tree = dir.path().join("tree");
+    std::fs::create_dir(&tree).map_err(|e| format!("could not make export dir: {e}"))?;
+    let prefix = String::from_utf8_lossy(&git_bytes(root, &["rev-parse", "--show-prefix"])?)
+        .trim_end_matches('\n')
+        .to_string();
+    let listing = git_bytes(root, &["ls-tree", "-r", "-z", "--full-tree", "HEAD"])?;
+    let entries = parse_ls_tree(&listing)?;
+    write_blobs(root, &entries, &tree)?;
+    let cwd = tree.join(&prefix);
+    std::fs::create_dir_all(&cwd).map_err(|e| format!("could not make export dir: {e}"))?;
+    Ok(HeadExport { _dir: dir, cwd })
+}
+
+struct TreeEntry {
+    mode: String,
+    path: String,
+    oid: String,
+}
+
+/// The blobs of `git ls-tree -r -z`. Submodule commits are not exported.
+fn parse_ls_tree(listing: &[u8]) -> Result<Vec<TreeEntry>, String> {
+    let mut entries = Vec::new();
+    for record in listing.split(|&b| b == 0).filter(|r| !r.is_empty()) {
+        let text = std::str::from_utf8(record)
+            .map_err(|e| format!("a path in HEAD is not UTF-8: {e}"))?;
+        let (meta, path) = text
+            .split_once('\t')
+            .ok_or_else(|| "malformed ls-tree record".to_string())?;
+        let mut fields = meta.split(' ');
+        if let (Some(mode), Some("blob"), Some(oid)) = (fields.next(), fields.next(), fields.next()) {
+            entries.push(TreeEntry {
+                mode: mode.to_string(),
+                path: path.to_string(),
+                oid: oid.to_string(),
+            });
+        }
     }
-    Ok(out.stdout)
+    Ok(entries)
+}
+
+/// Stream every blob through one `git cat-file --batch`, writing each to `tree`.
+fn write_blobs(root: &Path, entries: &[TreeEntry], tree: &Path) -> Result<(), String> {
+    use std::io::Write;
+    let mut child = git_at(root)
+        .args(["cat-file", "--batch"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("could not run git: {e}"))?;
+    let mut stdin = child.stdin.take().ok_or("no stdin for git cat-file")?;
+    let stdout = child.stdout.take().ok_or("no stdout from git cat-file")?;
+    let oids: Vec<String> = entries.iter().map(|e| e.oid.clone()).collect();
+    let feeder = std::thread::spawn(move || {
+        for oid in oids {
+            if writeln!(stdin, "{oid}").is_err() {
+                break;
+            }
+        }
+    });
+    let mut reader = std::io::BufReader::new(stdout);
+    let result = read_blobs(&mut reader, entries, tree);
+    // On an early error git may still be writing: kill it so the feeder unblocks.
+    let _ = child.kill();
+    let _ = child.wait();
+    let _ = feeder.join();
+    result
+}
+
+fn read_blobs(
+    reader: &mut impl std::io::BufRead,
+    entries: &[TreeEntry],
+    tree: &Path,
+) -> Result<(), String> {
+    let io = |e: std::io::Error| format!("could not write export: {e}");
+    for entry in entries {
+        let mut header = String::new();
+        reader.read_line(&mut header).map_err(io)?;
+        let size = match header.split_whitespace().collect::<Vec<_>>().as_slice() {
+            [_, "blob", size] => size
+                .parse::<usize>()
+                .map_err(|e| format!("bad cat-file header: {e}"))?,
+            _ => return Err(format!("{}: not a blob in the object store", entry.path)),
+        };
+        let mut content = vec![0u8; size];
+        reader.read_exact(&mut content).map_err(io)?;
+        let mut newline = [0u8; 1];
+        reader.read_exact(&mut newline).map_err(io)?;
+        let dest = tree.join(&entry.path);
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent).map_err(io)?;
+        }
+        write_entry(&dest, &entry.mode, &content).map_err(io)?;
+    }
+    Ok(())
+}
+
+/// Write one blob. The mtime is pinned to the epoch so that any later write by
+/// a generator is visible as a change, even inside one timestamp tick.
+fn write_entry(dest: &Path, mode: &str, content: &[u8]) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        if mode == "120000" {
+            let target = String::from_utf8_lossy(content).into_owned();
+            return std::os::unix::fs::symlink(target, dest);
+        }
+    }
+    let mut file = std::fs::File::create(dest)?;
+    std::io::Write::write_all(&mut file, content)?;
+    file.set_modified(std::time::SystemTime::UNIX_EPOCH)?;
+    #[cfg(unix)]
+    {
+        if mode == "100755" {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(dest, std::fs::Permissions::from_mode(0o755))?;
+        }
+    }
+    let _ = mode;
+    Ok(())
 }
 
 /// Run the generator at the root and return its stdout. Output goes to files, so
@@ -194,12 +362,15 @@ fn run_generator(root: &Path, a: &DerivedArtifact) -> Result<Vec<u8>, String> {
     let mut stdout = tempfile::tempfile().map_err(io)?;
     let mut stderr = tempfile::tempfile().map_err(io)?;
     let (program, args) = a.generate.split_first().ok_or("is empty")?;
-    let mut child = std::process::Command::new(program)
+    let mut command = std::process::Command::new(program);
+    command
         .args(args)
         .current_dir(root)
         .stdin(std::process::Stdio::null())
         .stdout(stdout.try_clone().map_err(io)?)
-        .stderr(stderr.try_clone().map_err(io)?)
+        .stderr(stderr.try_clone().map_err(io)?);
+    scrub_git_env(&mut command);
+    let mut child = command
         .spawn()
         .map_err(|e| format!("could not start `{program}`: {e}"))?;
     let limit = std::time::Duration::from_secs(

@@ -63,14 +63,33 @@ mod derived_fresh_tests {
         assert!(check.message.contains("not committed"), "{}", check.message);
     }
 
+    /// The generator touches a sentinel outside the repository and the export,
+    /// so the test sees whether it ran wherever it ran.
+    fn touch_decl(sentinel: &Path) -> String {
+        format!(
+            "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"touch\", \"{}\"]\n",
+            sentinel.display()
+        )
+    }
+
     #[test]
     fn generators_do_not_run_unless_the_rule_is_selected() {
-        let decl = "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"touch\", \"ran\"]\n";
-        let dir = repo("a\n", "a\n", decl);
+        let marks = tempfile::tempdir().expect("tempdir");
+        let sentinel = marks.path().join("ran");
+        let dir = repo("a\n", "a\n", &touch_decl(&sentinel));
         let check = check_derived_fresh(dir.path(), &[]);
         assert_eq!(check.status, CheckStatus::Skip, "{}", check.message);
         assert!(check.message.contains("--checks CB-2120"), "{}", check.message);
-        assert!(!dir.path().join("ran").exists(), "a generator ran unasked");
+        assert!(!sentinel.exists(), "a generator ran unasked");
+    }
+
+    #[test]
+    fn a_selected_generator_runs() {
+        let marks = tempfile::tempdir().expect("tempdir");
+        let sentinel = marks.path().join("ran");
+        let dir = repo("a\n", "a\n", &touch_decl(&sentinel));
+        let _ = check_derived_fresh(dir.path(), &selected());
+        assert!(sentinel.exists(), "the selected generator did not run");
     }
 
     #[test]
@@ -114,7 +133,9 @@ mod derived_fresh_tests {
     fn an_uncommitted_artifact_or_a_rewriting_generator_fails() {
         let missing = "[[artifact]]\npath = \"new.txt\"\ngenerate = [\"cat\", \"src.txt\"]\n";
         let dir = repo("a\n", "a\n", missing);
+        std::fs::write(dir.path().join("new.txt"), "a\n").expect("uncommitted");
         let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
         assert!(check.message.contains("not in HEAD"), "{}", check.message);
 
         let rewrite = "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"cp\", \"src.txt\", \"out.txt\"]\n";
@@ -143,5 +164,62 @@ mod derived_fresh_tests {
         let check = check_derived_fresh(dir.path(), &selected());
         assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
         assert!(check.message.contains("stale"), "{}", check.message);
+    }
+
+    /// The declaration is judged at HEAD too: deleting or breaking the working
+    /// copy of `.pmat-derived.toml` must not turn a stale HEAD into a Skip or a
+    /// parse failure.
+    #[test]
+    fn an_uncommitted_declaration_edit_does_not_change_the_verdict() {
+        let dir = repo("a\nb\n", "a\nc\n", CAT);
+        std::fs::remove_file(dir.path().join(DERIVED_FILE)).expect("delete");
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
+        std::fs::write(dir.path().join(DERIVED_FILE), "garbage").expect("break");
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert!(check.message.contains("stale"), "{}", check.message);
+    }
+
+    /// Uncommitted `.gitattributes` must not change the exported bytes: the
+    /// verdict is the committed bytes, not a filtered checkout.
+    #[test]
+    fn an_uncommitted_attribute_does_not_make_a_consistent_head_stale() {
+        let dir = repo("a\nb\n", "a\nb\n", CAT);
+        std::fs::write(dir.path().join(".gitattributes"), "*.txt text eol=crlf\n").expect("attr");
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    /// A project below the repository root: its paths are relative to itself,
+    /// and the export still holds the whole of HEAD.
+    #[test]
+    fn a_project_below_the_repository_root_is_judged_at_its_own_root() {
+        let top = tempfile::tempdir().expect("tempdir");
+        let sub = top.path().join("sub");
+        std::fs::create_dir(&sub).expect("sub");
+        std::fs::write(top.path().join("root.txt"), "root\n").expect("root");
+        std::fs::write(sub.join("src.txt"), "a\nb\n").expect("src");
+        std::fs::write(sub.join("out.txt"), "a\nb\n").expect("out");
+        std::fs::write(sub.join(DERIVED_FILE), CAT).expect("decl");
+        git(top.path(), &["init", "-q"]);
+        git(top.path(), &["add", "-A"]);
+        git(top.path(), &["commit", "-qm", "base"]);
+        let check = check_derived_fresh(&sub, &selected());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+        std::fs::write(sub.join("out.txt"), "a\nc\n").expect("stale");
+        git(top.path(), &["commit", "-qam", "stale"]);
+        let check = check_derived_fresh(&sub, &selected());
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
+        assert!(check.message.contains("stale"), "{}", check.message);
+    }
+
+    /// A same-bytes rewrite is still a rewrite: the generator must print.
+    #[test]
+    fn a_generator_that_rewrites_the_same_bytes_fails() {
+        let decl = "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"cp\", \"src.txt\", \"out.txt\"]\n";
+        let dir = repo("a\n", "a\n", decl);
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
+        assert!(check.message.contains("rewrote"), "{}", check.message);
     }
 }
