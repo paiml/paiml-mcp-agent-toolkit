@@ -115,13 +115,20 @@ pub(crate) fn check_derived_fresh(project_path: &Path, selected: &[String]) -> C
     }
 }
 
-/// `Ok` when the committed file is what the generator prints.
+/// `Ok` when the committed file is what the generator prints from HEAD.
+///
+/// The verdict is about HEAD, the bytes a push sends. The generator therefore
+/// runs in an export of HEAD, never in the working tree, so uncommitted edits to
+/// its inputs cannot make a consistent HEAD look stale, nor a stale HEAD look fresh.
 fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
     let path = &a.path;
     let committed = committed_bytes(root, path)?;
-    let before = std::fs::read(root.join(path)).ok();
-    let generated = run_generator(root, a).map_err(|e| format!("{path}: generator {e}"))?;
-    if std::fs::read(root.join(path)).ok() != before {
+    let export = head_export(root).map_err(|e| format!("{path}: {e}"))?;
+    let tree = export.path().join("tree");
+    let tree = tree.as_path();
+    let before = std::fs::read(tree.join(path)).ok();
+    let generated = run_generator(tree, a).map_err(|e| format!("{path}: generator {e}"))?;
+    if std::fs::read(tree.join(path)).ok() != before {
         return Err(format!(
             "{path}: the generator rewrote the artifact; it must print to stdout"
         ));
@@ -129,7 +136,7 @@ fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
     if generated == committed {
         return Ok(());
     }
-    if before.as_deref() == Some(generated.as_slice()) {
+    if std::fs::read(root.join(path)).ok().as_deref() == Some(generated.as_slice()) {
         return Err(format!("{path}: regenerated but not committed"));
     }
     Err(format!(
@@ -137,6 +144,32 @@ fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
         first_differing_line(&committed, &generated),
         a.generate.join(" ")
     ))
+}
+
+/// A throwaway checkout of HEAD's tree, built from a private index so the
+/// repository's own index and working tree are never touched.
+fn head_export(root: &Path) -> Result<tempfile::TempDir, String> {
+    let dir = tempfile::tempdir().map_err(|e| format!("could not make export dir: {e}"))?;
+    let index = dir.path().join("index");
+    let tree = dir.path().join("tree");
+    let prefix = format!("{}/", tree.display());
+    let git = |args: &[&str]| -> Result<(), String> {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .env("GIT_INDEX_FILE", &index)
+            .args(args)
+            .output()
+            .map_err(|e| format!("could not run git: {e}"))?;
+        if out.status.success() {
+            Ok(())
+        } else {
+            Err(format!("git {} failed: {}", args[0], String::from_utf8_lossy(&out.stderr).trim()))
+        }
+    };
+    git(&["read-tree", "HEAD"])?;
+    git(&["checkout-index", "-a", "-f", &format!("--prefix={prefix}")])?;
+    Ok(dir)
 }
 
 /// The bytes HEAD holds for `path`: what a push would send.

@@ -413,8 +413,10 @@ fn default_checks() -> HashMap<String, CheckConfig> {
     );
 
     // CB-2120: Derived Artifacts Fresh — a pre-push check, run by naming it in
-    // `--checks`. Declared Warning so that no `comply check` leg in CI is
-    // required to reach it; a repository opts in with `.pmat-derived.toml`.
+    // `--checks`; a repository opts in with `.pmat-derived.toml`. Severity
+    // Warning does NOT make a stale artifact pass: a run that names CB-2120 and
+    // finds one exits 1 (`is_compliant` counts any Fail). It is Warning because
+    // no CI leg names CB-2120, so no CI run reaches it.
     checks.insert(
         "cb-2120".to_string(),
         CheckConfig {

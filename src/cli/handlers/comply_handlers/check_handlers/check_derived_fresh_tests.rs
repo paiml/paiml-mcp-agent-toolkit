@@ -123,4 +123,25 @@ mod derived_fresh_tests {
         assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
         assert!(check.message.contains("rewrote"), "{}", check.message);
     }
+
+    /// REFUTE 1 (GH-1641, 21:25Z): the verdict is about HEAD. An uncommitted edit
+    /// to the generator's input must not make a consistent HEAD report stale.
+    #[test]
+    fn an_uncommitted_input_edit_does_not_fail_a_consistent_head() {
+        let dir = repo("a\nb\n", "a\nb\n", CAT);
+        std::fs::write(dir.path().join("src.txt"), "a\nc\n").expect("edit");
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    /// REFUTE 1: a stale HEAD must not pass just because the uncommitted input
+    /// now regenerates to the stale HEAD bytes.
+    #[test]
+    fn a_stale_head_is_not_hidden_by_a_matching_uncommitted_input() {
+        let dir = repo("a\nb\n", "a\nc\n", CAT);
+        std::fs::write(dir.path().join("src.txt"), "a\nc\n").expect("edit");
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
+        assert!(check.message.contains("stale"), "{}", check.message);
+    }
 }
