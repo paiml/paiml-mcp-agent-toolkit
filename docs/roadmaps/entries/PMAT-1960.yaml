@@ -1,0 +1,24 @@
+- id: PMAT-1960
+  github_issue: 1960
+  item_type: task
+  title: 'feat(work): score ticket text 0-100 and list ticket findings (work score --issue, work findings)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-26T16:14:27Z
+  updated: 2026-11-26T16:14:27Z
+  spec: null
+  acceptance_criteria:
+  - '[ ] `pmat work score --issue N [--repo OWNER/NAME] [--json]` prints the score, the points per rubric item and the missing items; exit 0 at 70 or more, 1 under 70, 2 on a read fault'
+  - '[ ] `pmat work findings --repo OWNER/NAME --json` reports findings Q1, V1-V4 and P1-P4 and writes nothing'
+  - '[ ] `pmat work add` refuses a ticket scoring under 70 and names the missing items'
+  - '[ ] `cargo llvm-cov` shows 100% line coverage on every new file'
+  - '[ ] `pv validate contracts/ticket-quality-rubric-v1.yaml` passes: weights sum to 100, monotone, deterministic'
+  - '[ ] removing one rubric item turns `cargo test --lib ticket_quality` red'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1642

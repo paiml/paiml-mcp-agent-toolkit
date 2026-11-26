@@ -1,0 +1,90 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-11-26"
+  author: PAIML Engineering
+  references:
+    - "issue 1960 — pmat work score --issue and pmat work findings: a fixed rubric for ticket quality"
+    - "paiml/infra docs/specifications/FLOW-OWNER-001-ticket-and-pr-ownership.md (sections 3, 4 and 9)"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    A ticket's quality is one number out of 100, the sum of seven fixed items.
+    Each item is a yes/no question about the ticket's own text and links, so the
+    same ticket always gets the same score and a ticket that gains an item never
+    loses points. 70 passes. `pmat work score --issue N` prints the score and the
+    missing items and exits 0 at or above the mark, 1 below it, 2 when the ticket
+    could not be read. `pmat work add` refuses a ticket under the mark before it
+    links or writes anything. `pmat work findings` reads a repository's open
+    tickets and reports which fail; it writes nothing.
+  contract: ticket-quality-rubric
+  status: draft
+equations:
+  weights_sum_to_100:
+    formula: "sum(points(i) for i in ITEMS) = 25 + 20 + 15 + 15 + 10 + 10 + 5 = 100, |ITEMS| = 7"
+    domain: "the seven rubric items"
+    codomain: "u32"
+    invariants:
+      - "there are exactly seven items and their points sum to 100"
+      - "score(t) = sum of points(i) over the items t passes, for every one of the 128 subsets"
+      - "a ticket passing every item scores 100; a ticket passing none scores 0"
+    preconditions: []
+  monotone:
+    formula: "passed(a) subset-of passed(b) => score(a) <= score(b)"
+    domain: "pairs of tickets"
+    codomain: bool
+    invariants:
+      - "gaining an item never lowers the score"
+      - "no item's points are negative and no item depends on another"
+    preconditions: []
+  deterministic:
+    formula: "score(t) = score(t) on every call; score reads only title, body, labels, parent state and milestone"
+    domain: "tickets"
+    codomain: bool
+    invariants:
+      - "no clock, no network and no random source is read by score"
+      - "the same ticket scored twice gives the same total, items and missing list"
+    preconditions: []
+  pass_mark:
+    formula: "passed(t) <=> score(t) >= 70; exit = 0 if passed, 1 if not, 2 if not measured"
+    domain: "pmat work score --issue, pmat work add"
+    codomain: "exit code"
+    invariants:
+      - "the mark is inclusive: 70 passes, 69 does not"
+      - "a failed read exits 2 and prints not_measured; it is never reported as a low score"
+      - "work add refuses a ticket under the mark before the sub-issue link and before the row"
+      - "work findings makes no write to GitHub"
+    preconditions: []
+falsification:
+  - condition: "the item points do not sum to 100, or there are not seven items"
+    severity: P0
+    action: reject_push
+  - condition: "a ticket that gains a rubric item scores lower"
+    severity: P0
+    action: reject_push
+  - condition: "the same ticket scores differently on two calls"
+    severity: P0
+    action: reject_push
+  - condition: "work add files a ticket scoring under 70, or a failed read is reported as a score"
+    severity: P1
+    action: reject_push
+falsification_tests:
+  - id: weights_sum_to_100
+    rule: "ticket_quality_weights_sum_to_100_over_seven_items and ticket_quality_score_is_the_sum_of_the_passed_items_for_every_subset (src/services/ticket_quality/rubric_tests.rs)"
+    prediction: "planted: drop Item::Title from Item::ALL, or change a weight, and both tests go red; restored, both are green"
+    if_fails: "a score out of 100 no longer means what the pass mark assumes"
+    test: "cargo test --lib ticket_quality_weights_sum_to_100"
+  - id: monotone
+    rule: "ticket_quality_passing_one_more_item_never_lowers_the_score (src/services/ticket_quality/rubric_tests.rs)"
+    prediction: "for every pair of subsets a, b of the seven items with a inside b, score(a) <= score(b)"
+    if_fails: "improving a ticket could push it under the mark"
+    test: "cargo test --lib ticket_quality_passing_one_more_item"
+  - id: deterministic
+    rule: "ticket_quality_same_input_gives_the_same_score (src/services/ticket_quality/rubric_tests.rs)"
+    prediction: "every subset ticket scored twice gives equal TicketScore values"
+    if_fails: "the loop would label and unlabel the same ticket on alternate runs"
+    test: "cargo test --lib ticket_quality_same_input"
+  - id: pass_mark
+    rule: "ticket_quality_run_score_exits_0_at_the_mark_1_under_it_and_2_unread, ticket_quality_run_findings_reads_once_and_writes_nothing (src/services/ticket_quality/run_tests.rs); arm 16 of scripts/work-add-triaged-audit.sh"
+    prediction: "a 100-point ticket exits 0, a 30-point ticket exits 1, an unreadable one exits 2; arm 16 is refused with the roadmap byte-identical and no POST"
+    if_fails: "a weak ticket is filed, or an outage reads as a wave of weak tickets"
+    test: "cargo test --lib ticket_quality_run && PMAT=<binary> bash scripts/work-add-triaged-audit.sh"
