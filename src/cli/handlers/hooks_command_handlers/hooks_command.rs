@@ -556,6 +556,20 @@ MSG_FILE="$1"
 # reaches the default branch. Refused whatever the ticket checks below say.
 __PMAT_CLOSING_KEYWORD_LINT__
 pmat_closing_keyword_commit_msg_lint "$MSG_FILE" || exit 1
+# CB-2113 judges non-merge commits only. Pass when the commit being made will
+# have two or more parents: git takes the extra ones from MERGE_HEAD, and drops
+# any that another parent already contains unless the merge was --no-ff.
+merge_head=$(git rev-parse --git-path MERGE_HEAD)
+if [ -s "$merge_head" ]; then
+    heads=$(cat "$merge_head")
+    mode=$(cat "$(git rev-parse --git-path MERGE_MODE)" 2>/dev/null)
+    if [ "$mode" = "no-ff" ]; then
+        parents=$(git rev-list --no-walk HEAD $heads 2>/dev/null | grep -c .)
+    else
+        parents=$(git merge-base --independent HEAD $heads 2>/dev/null | grep -c .)
+    fi
+    [ "$parents" -ge 2 ] && exit 0
+fi
 PATTERN='__PATTERN__'
 STRICT=__STRICT__
 ROADMAP=docs/roadmaps/roadmap.yaml
