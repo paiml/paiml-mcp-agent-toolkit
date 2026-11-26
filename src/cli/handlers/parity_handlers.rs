@@ -28,74 +28,80 @@ fn write_jsonl<T: serde::Serialize>(path: &Path, rows: &[T]) -> Result<()> {
 }
 
 /// Dispatch one `pmat parity` subcommand. Any mismatch or gate violation is an error.
+/// Dispatch one `pmat parity` subcommand. Any mismatch or gate violation is an error.
 pub fn handle_parity(command: ParityCommands) -> Result<()> {
     match command {
         ParityCommands::Record {
             cases,
             corpus,
             command,
-        } => {
-            let (bin, base) = split_command(&command)?;
-            let specs: Vec<CaseSpec> = read_jsonl(&cases)?;
-            let summary = parity::record_all(bin, base, &specs, &BTreeMap::new())?;
-            write_jsonl(&corpus, &summary.recorded)?;
-            let manifest = Manifest {
-                count: summary.recorded.len(),
-                hashes: summary.recorded.iter().map(parity::case_hash).collect(),
-            };
-            let manifest_path = corpus.with_extension("manifest.json");
-            std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
-            println!(
-                "recorded {} flaky {} (manifest {})",
-                summary.recorded.len(),
-                summary.flaky,
-                manifest_path.display()
-            );
-            Ok(())
-        }
-        ParityCommands::Replay { corpus, command } => {
-            let (bin, base) = split_command(&command)?;
-            let cases: Vec<Case> = read_jsonl(&corpus)?;
-            let report = parity::replay(bin, base, &cases, &BTreeMap::new())?;
-            println!("{}", report.line());
-            if let Some(diff) = &report.first_diff {
-                println!("first difference: {diff}");
-            }
-            if report.matched != report.total {
-                bail!(
-                    "{} of {} cases differ",
-                    report.total - report.matched,
-                    report.total
-                );
-            }
-            Ok(())
-        }
+        } => record(&cases, &corpus, &command),
+        ParityCommands::Replay { corpus, command } => replay(&corpus, &command),
         ParityCommands::Gate {
             corpus,
             manifest,
             source,
-        } => {
-            let cases: Vec<Case> = read_jsonl(&corpus)?;
-            let committed: Manifest = serde_json::from_str(
-                &std::fs::read_to_string(&manifest)
-                    .with_context(|| format!("reading {}", manifest.display()))?,
-            )?;
-            let text = std::fs::read_to_string(&source)
-                .with_context(|| format!("reading {}", source.display()))?;
-            let violations = parity::gate(&cases, &text, &committed);
-            for v in &violations {
-                println!("{}", describe(v));
-            }
-            if violations.is_empty() {
-                println!("gate: pass ({} cases)", cases.len());
-                Ok(())
-            } else {
-                bail!("gate: {} violation(s)", violations.len())
-            }
-        }
+        } => gate(&corpus, &manifest, &source),
     }
 }
 
+fn record(cases: &Path, corpus: &Path, command: &[String]) -> Result<()> {
+    let (bin, base) = split_command(command)?;
+    let specs: Vec<CaseSpec> = read_jsonl(cases)?;
+    let summary = parity::record_all(bin, base, &specs, &BTreeMap::new())?;
+    write_jsonl(corpus, &summary.recorded)?;
+    let manifest = Manifest {
+        count: summary.recorded.len(),
+        hashes: summary.recorded.iter().map(parity::case_hash).collect(),
+    };
+    let manifest_path = corpus.with_extension("manifest.json");
+    std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
+    println!(
+        "recorded {} flaky {} (manifest {})",
+        summary.recorded.len(),
+        summary.flaky,
+        manifest_path.display()
+    );
+    Ok(())
+}
+
+fn replay(corpus: &Path, command: &[String]) -> Result<()> {
+    let (bin, base) = split_command(command)?;
+    let cases: Vec<Case> = read_jsonl(corpus)?;
+    let report = parity::replay(bin, base, &cases, &BTreeMap::new())?;
+    println!("{}", report.line());
+    if let Some(diff) = &report.first_diff {
+        println!("first difference: {diff}");
+    }
+    if report.matched != report.total {
+        bail!(
+            "{} of {} cases differ",
+            report.total - report.matched,
+            report.total
+        );
+    }
+    Ok(())
+}
+
+fn gate(corpus: &Path, manifest: &Path, source: &Path) -> Result<()> {
+    let cases: Vec<Case> = read_jsonl(corpus)?;
+    let committed: Manifest = serde_json::from_str(
+        &std::fs::read_to_string(manifest)
+            .with_context(|| format!("reading {}", manifest.display()))?,
+    )?;
+    let text = std::fs::read_to_string(source)
+        .with_context(|| format!("reading {}", source.display()))?;
+    let violations = parity::gate(&cases, &text, &committed);
+    for v in &violations {
+        println!("{}", describe(v));
+    }
+    if violations.is_empty() {
+        println!("gate: pass ({} cases)", cases.len());
+        Ok(())
+    } else {
+        bail!("gate: {} violation(s)", violations.len())
+    }
+}
 fn split_command(command: &[String]) -> Result<(&str, &[String])> {
     match command.split_first() {
         Some((bin, base)) => Ok((bin.as_str(), base)),
