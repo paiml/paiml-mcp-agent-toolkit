@@ -86,7 +86,41 @@ async fn run_single_file_checks(
         )
         .await?;
     }
+    record_single_file_scope(results, checks_to_run);
     Ok(())
+}
+
+/// Records what a single-file run examined and ran (GH-1937).
+///
+/// `files_examined` and `checks_run` used to keep their defaults (`0`, `[]`)
+/// while the checks ran, so a run that read one file claimed it read none.
+/// `checks_run` names only checks that executed: `All` expands to the four a
+/// single file can answer, and skipped project-wide checks are omitted.
+fn record_single_file_scope(results: &mut QualityGateResults, checks: &[QualityCheckType]) {
+    let mut ran: Vec<String> = Vec::new();
+    for check in checks {
+        let expanded: Vec<QualityCheckType> = match check {
+            QualityCheckType::All => vec![
+                QualityCheckType::Complexity,
+                QualityCheckType::DeadCode,
+                QualityCheckType::Satd,
+                QualityCheckType::Security,
+            ],
+            QualityCheckType::Complexity
+            | QualityCheckType::DeadCode
+            | QualityCheckType::Satd
+            | QualityCheckType::Security => vec![check.clone()],
+            _ => Vec::new(),
+        };
+        for c in expanded {
+            let name = format!("{c:?}");
+            if !ran.contains(&name) {
+                ran.push(name);
+            }
+        }
+    }
+    results.files_examined = 1;
+    results.checks_run = ran;
 }
 
 /// Extract Method: Execute a specific single file check
