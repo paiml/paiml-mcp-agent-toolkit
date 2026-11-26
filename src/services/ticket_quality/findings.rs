@@ -191,6 +191,7 @@ pub fn evaluate(ev: Evidence<'_>, s: &Settings) -> FindingsReport {
     sorted.sort_by_key(|t| t.rec.number);
     let recs: Vec<IssueRec> = sorted.iter().map(|t| t.rec.clone()).collect();
     let mut findings = Vec::new();
+    let mut unjudged = Vec::new();
     for (k, t) in sorted.iter().enumerate() {
         findings.extend(q1(t, s));
         findings.extend(v1(t));
@@ -198,9 +199,13 @@ pub fn evaluate(ev: Evidence<'_>, s: &Settings) -> FindingsReport {
         findings.extend(v3(t, ev.gone_paths));
         findings.extend(v4(t, ev.now, s));
         findings.extend(p1(t, &sorted));
-        findings.extend(p3(t, s));
+        match p3(t, s) {
+            Ok(found) => findings.extend(found),
+            Err(note) => unjudged.push(note),
+        }
     }
     let (p2s, mut not_measured) = p2(ev.repo, ev.now, &recs);
+    not_measured.extend(unjudged);
     findings.extend(p2s);
     findings.extend(p4(ev.open_total.max(ev.tickets.len()), s));
     findings.sort_by_key(|f| (order_of(f.id), f.issue));
@@ -383,10 +388,21 @@ fn p2(repo: &str, now: DateTime<Utc>, recs: &[IssueRec]) -> (Vec<Finding>, Vec<S
     (found, report.not_measured)
 }
 
-/// P3: a master with more open children than one train carries. A finding only.
-fn p3(t: &TicketRec, s: &Settings) -> Option<Finding> {
-    let open = t.rec.sub_issues.saturating_sub(t.rec.sub_issues_closed?);
-    (open > s.max_open_children).then(|| {
+/// P3: a master with more open children than one train carries. A finding only. The
+/// error is what could not be judged: no closed count on a ticket that could be over.
+fn p3(t: &TicketRec, s: &Settings) -> Result<Option<Finding>, String> {
+    let total = t.rec.sub_issues;
+    if total <= s.max_open_children {
+        return Ok(None);
+    }
+    let closed = t.rec.sub_issues_closed.ok_or_else(|| {
+        format!(
+            "P3: #{} has {total} sub-issues but the read gave no closed count",
+            t.rec.number
+        )
+    })?;
+    let open = total.saturating_sub(closed);
+    Ok((open > s.max_open_children).then(|| {
         finding(
             "P3",
             t.rec.number,
@@ -396,7 +412,7 @@ fn p3(t: &TicketRec, s: &Settings) -> Option<Finding> {
                 s.max_open_children
             ),
         )
-    })
+    }))
 }
 
 /// P4: the repository's open count is over its cap. A finding only in v1.

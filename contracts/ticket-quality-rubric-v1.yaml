@@ -54,6 +54,7 @@ equations:
       - "a failed read exits 2 and prints not_measured; it is never reported as a low score"
       - "work add refuses a ticket under the mark before the sub-issue link and before the row"
       - "work findings makes no write to GitHub"
+      - "work findings exits 0 when the repository was read, even when single checks could not be judged; it lists those in not_measured, and a reader that needs every check must read that list"
     preconditions: []
 falsification:
   - condition: "the item points do not sum to 100, or there are not seven items"

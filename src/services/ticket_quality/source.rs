@@ -57,6 +57,19 @@ fn whole<'a>(node: &'a Value, field: &str, n: u64) -> Result<&'a [Value]> {
     Ok(nodes)
 }
 
+/// The names on the whole label list of issue `n`; an entry without one is an error.
+fn label_names(node: &Value, n: u64) -> Result<Vec<String>> {
+    whole(node, "labels", n)?
+        .iter()
+        .map(|l| {
+            l["name"]
+                .as_str()
+                .map(str::to_string)
+                .with_context(|| format!("issue #{n}: a label with no name; not measured"))
+        })
+        .collect()
+}
+
 /// One ticket from an issue node of [`TICKETS_QUERY`].
 pub fn parse_ticket(node: &Value) -> Result<TicketRec> {
     let rec = parse_issue(node)?;
@@ -64,7 +77,7 @@ pub fn parse_ticket(node: &Value) -> Result<TicketRec> {
     let updated = node["updatedAt"]
         .as_str()
         .with_context(|| format!("issue #{n}: no updatedAt"))?;
-    whole(node, "labels", n)?;
+    label_names(node, n)?;
     let prs = whole(node, "closedByPullRequestsReferences", n)?;
     let mut linked_prs = Vec::new();
     for p in prs {
@@ -115,17 +128,14 @@ labels(first:100){{totalCount nodes{{name}}}}}}}}}}"
         .as_str()
         .with_context(|| format!("{repo}#{number}: no such issue in the reply; not measured"))?;
     // A null connection is an issue without labels; anything else must be whole.
-    let labels: &[Value] = match node.get("labels") {
-        Some(Value::Null) => &[],
-        _ => whole(node, "labels", number)?,
+    let labels = match node.get("labels") {
+        Some(Value::Null) => Vec::new(),
+        _ => label_names(node, number)?,
     };
     Ok(Ticket {
         title: title.to_string(),
         body: node["body"].as_str().unwrap_or_default().to_string(),
-        labels: labels
-            .iter()
-            .filter_map(|l| l["name"].as_str().map(str::to_string))
-            .collect(),
+        labels,
         parent_open: node["parent"]["state"].as_str() == Some("OPEN"),
         has_milestone: node["milestone"]["title"].is_string(),
     })

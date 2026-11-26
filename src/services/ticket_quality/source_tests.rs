@@ -27,17 +27,21 @@ fn ticket_quality_source_reads_every_open_ticket_in_one_paged_read() {
 fn ticket_quality_source_refuses_a_bad_repo_a_low_budget_and_a_broken_page() {
     let why = |r: anyhow::Result<(usize, Vec<TicketRec>)>| r.unwrap_err().to_string();
     assert!(why(fetch_tickets(&Fake::new(vec![]), "nope")).contains("owner/name"));
-    assert!(fetch_ticket(&Fake::new(vec![]), "o/r/x", 1).is_err());
-    assert!(gone_paths(&Fake::new(vec![]), "/r", &[]).is_err());
+    let err = fetch_ticket(&Fake::new(vec![]), "o/r/x", 1).unwrap_err();
+    assert!(err.to_string().contains("owner/name"), "{err}");
+    let err = gone_paths(&Fake::new(vec![]), "/r", &[]).unwrap_err();
+    assert!(err.to_string().contains("owner/name"), "{err}");
     assert!(why(fetch_tickets(&Fake::new(vec![rate(10)]), "o/r")).contains("budget is 10"));
     let broken = Fake::new(vec![rate(5000), Err("boom".into())]);
     assert!(why(fetch_tickets(&broken, "o/r")).contains("boom"));
     let no_total = Ok(json!({"data":{"repository":{"issues":{
         "pageInfo":{"hasNextPage":false},"nodes":[]}}}}));
-    assert!(fetch_tickets(&Fake::new(vec![rate(5000), no_total]), "o/r").is_err());
+    let err = why(fetch_tickets(&Fake::new(vec![rate(5000), no_total]), "o/r"));
+    assert!(err.contains("issues.totalCount missing"), "{err}");
     let no_nodes = Ok(json!({"data":{"repository":{"issues":{
         "totalCount":0,"pageInfo":{"hasNextPage":false}}}}}));
-    assert!(fetch_tickets(&Fake::new(vec![rate(5000), no_nodes]), "o/r").is_err());
+    let err = why(fetch_tickets(&Fake::new(vec![rate(5000), no_nodes]), "o/r"));
+    assert!(err.contains("issues has no nodes"), "{err}");
 }
 
 #[test]
@@ -92,7 +96,9 @@ fn ticket_quality_source_reads_one_ticket_for_the_rubric() {
     let none = Fake::new(vec![rate(5000), ok(json!({"issue":null}))]);
     let err = fetch_ticket(&none, "o/r", 12).unwrap_err().to_string();
     assert!(err.contains("o/r#12: no such issue"), "{err}");
-    assert!(fetch_ticket(&Fake::new(vec![rate(5000)]), "o/r", 12).is_err());
+    let down = Fake::new(vec![rate(5000), Err("boom".into())]);
+    let err = fetch_ticket(&down, "o/r", 12).unwrap_err();
+    assert!(err.to_string().contains("boom"), "{err}");
     let poor = fetch_ticket(&Fake::new(vec![rate(1)]), "o/r", 12).unwrap_err();
     assert!(poor.to_string().contains("budget is 1 "), "{poor}");
 }
@@ -133,21 +139,38 @@ fn ticket_quality_source_path_reads_that_fail_are_errors() {
     let mut t = rec(5, "Add x");
     t.body = "src/gone.rs".to_string();
     let tickets = [t];
-    assert!(gone_paths(&Fake::new(vec![Err("boom".into())]), "o/r", &tickets).is_err());
-    assert!(gone_paths(&Fake::new(vec![ok(json!(null))]), "o/r", &tickets).is_err());
+    let why = |replies| {
+        gone_paths(&Fake::new(replies), "o/r", &tickets)
+            .unwrap_err()
+            .to_string()
+    };
     let absent = || ok(json!({"p0":null}));
-    assert!(gone_paths(
-        &Fake::new(vec![absent(), Err("boom".into())]),
-        "o/r",
-        &tickets
-    )
-    .is_err());
     let no_history = ok(json!({"defaultBranchRef":null}));
-    let err = gone_paths(&Fake::new(vec![absent(), no_history]), "o/r", &tickets).unwrap_err();
-    assert!(
-        err.to_string().contains("no history for src/gone.rs"),
-        "{err}"
-    );
+    for (replies, want) in [
+        (vec![Err("boom".into())], "boom"),
+        (vec![ok(json!(null))], "no repository in the path reply"),
+        (vec![absent(), Err("boom".into())], "boom"),
+        (vec![absent(), no_history], "no history for src/gone.rs"),
+    ] {
+        let err = why(replies);
+        assert!(err.contains(want), "{want}: {err}");
+    }
+}
+
+#[test]
+fn ticket_quality_source_a_label_without_a_name_is_not_measured() {
+    for nodes in [json!([null]), json!([{"name":null}])] {
+        let mut n = node(5);
+        n["labels"]["nodes"] = nodes.clone();
+        let err = parse_ticket(&n).unwrap_err().to_string();
+        assert!(err.contains("#5: a label with no name"), "{err}");
+
+        let reply = ok(json!({"issue":{"title":"Add x","body":"b","milestone":null,
+            "parent":null,"labels":{"totalCount":1,"nodes":nodes}}}));
+        let g = Fake::new(vec![rate(5000), reply]);
+        let err = fetch_ticket(&g, "o/r", 12).unwrap_err().to_string();
+        assert!(err.contains("#12: a label with no name"), "{err}");
+    }
 }
 
 #[test]

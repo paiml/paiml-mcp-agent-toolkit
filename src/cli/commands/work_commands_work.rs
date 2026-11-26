@@ -610,8 +610,8 @@ pub enum WorkCommands {
         #[arg(long)]
         json: bool,
 
-        /// Score under which a ticket needs a rewrite (Q1)
-        #[arg(long, default_value_t = 70)]
+        /// Score (0-100) under which a ticket needs a rewrite (Q1)
+        #[arg(long, default_value_t = 70, value_parser = clap::value_parser!(u32).range(0..=100))]
         pass_mark: u32,
 
         /// Days without activity after which a ticket needs revalidation (V4)

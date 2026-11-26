@@ -8,7 +8,8 @@ use chrono::{DateTime, TimeZone, Utc};
 use serde_json::{json, Value};
 use std::cell::RefCell;
 
-/// A GitHub that pops one canned reply per query and records the queries.
+/// A GitHub that pops one canned reply per query and records the queries. A query
+/// with no reply left panics, so a test cannot pass on the fake's own refusal.
 pub(super) struct Fake {
     replies: RefCell<Vec<Result<Value, String>>>,
     pub(super) seen: RefCell<Vec<String>>,
@@ -27,7 +28,7 @@ impl Graphql for Fake {
     fn query(&self, query: &str, _vars: &[(&str, &str)]) -> anyhow::Result<Value> {
         self.seen.borrow_mut().push(query.to_string());
         let next = self.replies.borrow_mut().pop();
-        next.unwrap_or_else(|| Err("unexpected query".to_string()))
+        next.expect("unexpected query")
             .map_err(|e| anyhow::anyhow!(e))
     }
 }

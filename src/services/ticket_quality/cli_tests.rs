@@ -45,6 +45,8 @@ fn ticket_quality_cli_findings_refuses_numbers_that_would_panic_or_hide_findings
         "--duplicate-threshold=1",
         "--stale-ticket-days=0",
         "--stale-ticket-days=36500",
+        "--pass-mark=0",
+        "--pass-mark=100",
     ] {
         assert_eq!(work_parses(&["findings", ok]), Ok(()), "{ok}");
     }
@@ -55,6 +57,7 @@ fn ticket_quality_cli_findings_refuses_numbers_that_would_panic_or_hide_findings
         "--duplicate-threshold=x",
         "--stale-ticket-days=-1",
         "--stale-ticket-days=999999999999999",
+        "--pass-mark=101",
     ] {
         let err = work_parses(&["findings", bad]).unwrap_err();
         assert!(err.contains("invalid value"), "{bad}: {err}");

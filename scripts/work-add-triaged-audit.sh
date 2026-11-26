@@ -78,12 +78,14 @@ RM="$R/docs/roadmaps/roadmap.yaml"
 add() { (cd "$R" && "$PMAT" work add "$@" --path "$R") > "$T/out" 2>&1; }
 row() { awk -v id="$1" '$0 ~ "^- id: "id"$"{p=1;print;next} p && /^- id:/{p=0} p' "$RM"; }
 
-# Refusals: each names what is missing, leaves the roadmap byte-identical, and posts nothing.
+# Refusals: each names what is missing, leaves the roadmap and every entries/ fragment
+# byte-identical, and posts nothing.
+ledger() { find "$R/docs/roadmaps" -type f -exec sha256sum {} + | sort; }
 refused() { # <arm> <expected text> <add args...>
   local name=$1 want=$2; shift 2
-  local before; before=$(sha256sum "$RM"); local p0; p0=$(posts)
+  local before; before=$(ledger); local p0; p0=$(posts)
   add "$@"; local rc=$?
-  [ "$rc" != 0 ] && grep -qF -- "$want" "$T/out" && [ "$(sha256sum "$RM")" = "$before" ] && [ "$(posts)" = "$p0" ]
+  [ "$rc" != 0 ] && grep -qF -- "$want" "$T/out" && [ "$(ledger)" = "$before" ] && [ "$(posts)" = "$p0" ]
   arm "$name (exit $rc)" $?
 }
 refused "1  the pre-FLOW-03 add (no epic, no priority, no kind) is refused" "--priority P0|P1|P2|P3" "t1" --github-issue 20

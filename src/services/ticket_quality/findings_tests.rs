@@ -223,6 +223,28 @@ fn ticket_quality_findings_p3_counts_open_children_over_eight() {
 }
 
 #[test]
+fn ticket_quality_findings_p3_without_a_closed_count_is_not_measured_over_the_limit() {
+    let unread = |n: u64, subs: u64| {
+        let mut t = rec(n, &format!("Train number {n}"));
+        t.rec.sub_issues = subs;
+        t.rec.sub_issues_closed = None;
+        t
+    };
+    let r = run(&[unread(2, 9), unread(3, 8)]);
+    assert_eq!(r.counts["P3"], 0);
+    let notes: Vec<&String> = r
+        .not_measured
+        .iter()
+        .filter(|m| m.starts_with("P3:"))
+        .collect();
+    assert_eq!(
+        notes,
+        ["P3: #2 has 9 sub-issues but the read gave no closed count"],
+        "8 children cannot be over the limit, so only #2 is unjudged"
+    );
+}
+
+#[test]
 fn ticket_quality_findings_p4_fires_over_the_cap_on_githubs_count() {
     let s = Settings {
         ticket_cap: 2,
