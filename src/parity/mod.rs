@@ -314,3 +314,149 @@ mod replay_tests {
         assert!(diff.contains("stdout differs at byte 1"), "{diff}");
     }
 }
+
+/// Committed record of what the corpus must still contain.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Manifest {
+    pub count: usize,
+    pub hashes: std::collections::BTreeSet<String>,
+}
+
+/// One reason the gate refuses: the cheat guard, not a behaviour mismatch.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Violation {
+    LiteralInSource { argv: Vec<String>, len: usize },
+    MissingOrEdited { hash: String },
+    CountDropped { committed: usize, now: usize },
+}
+
+/// Stable FNV-1a over a case's observable fields; unlike `DefaultHasher` it does
+/// not change between Rust releases, so a committed manifest keeps meaning.
+pub fn case_hash(case: &Case) -> String {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut feed = |bytes: &[u8]| {
+        for b in bytes {
+            h ^= u64::from(*b);
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        }
+        h ^= 0xff;
+        h = h.wrapping_mul(0x0100_0000_01b3);
+    };
+    for a in &case.argv {
+        feed(a.as_bytes());
+    }
+    feed(case.stdin.as_bytes());
+    feed(case.stdout.as_bytes());
+    feed(case.stderr.as_bytes());
+    feed(
+        case.exit_code
+            .map_or(String::new(), |c| c.to_string())
+            .as_bytes(),
+    );
+    for (k, v) in &case.files {
+        feed(k.as_bytes());
+        feed(v.as_bytes());
+    }
+    format!("{h:016x}")
+}
+
+/// Check the corpus against the implementation source and the committed manifest.
+pub fn gate(cases: &[Case], source: &str, committed: &Manifest) -> Vec<Violation> {
+    const MIN_LITERAL: usize = 24;
+    let mut out = Vec::new();
+    for case in cases {
+        if case.stdout.len() >= MIN_LITERAL && source.contains(case.stdout.as_str()) {
+            out.push(Violation::LiteralInSource {
+                argv: case.argv.clone(),
+                len: case.stdout.len(),
+            });
+        }
+    }
+    let now: std::collections::BTreeSet<String> = cases.iter().map(case_hash).collect();
+    for hash in &committed.hashes {
+        if !now.contains(hash) {
+            out.push(Violation::MissingOrEdited { hash: hash.clone() });
+        }
+    }
+    if cases.len() < committed.count {
+        out.push(Violation::CountDropped {
+            committed: committed.count,
+            now: cases.len(),
+        });
+    }
+    out
+}
+
+#[cfg(test)]
+mod gate_tests {
+    use super::*;
+
+    fn case(stdout: &str) -> Case {
+        Case {
+            argv: vec!["a".to_string()],
+            stdin: String::new(),
+            stdout: stdout.to_string(),
+            stderr: String::new(),
+            exit_code: Some(0),
+            files: BTreeMap::new(),
+        }
+    }
+
+    fn manifest_of(cases: &[Case]) -> Manifest {
+        Manifest {
+            count: cases.len(),
+            hashes: cases.iter().map(case_hash).collect(),
+        }
+    }
+
+    #[test]
+    fn parity_gate_clean_corpus_passes() {
+        let cases = vec![case("short")];
+        let v = gate(&cases, "fn main() {}", &manifest_of(&cases));
+        assert!(v.is_empty(), "{v:?}");
+    }
+
+    #[test]
+    fn parity_gate_cheat_literal_in_source_fails() {
+        let lit = "this literal is at least twenty-four bytes";
+        let cases = vec![case(lit)];
+        let source = format!("fn out() -> &'static str {{ \"{lit}\" }}");
+        let v = gate(&cases, &source, &manifest_of(&cases));
+        assert!(
+            v.iter()
+                .any(|x| matches!(x, Violation::LiteralInSource { .. })),
+            "{v:?}"
+        );
+    }
+
+    #[test]
+    fn parity_gate_cheat_edited_case_fails() {
+        let committed_cases = vec![case("original output")];
+        let manifest = manifest_of(&committed_cases);
+        let edited = vec![case("edited output")];
+        let v = gate(&edited, "", &manifest);
+        assert!(
+            v.iter()
+                .any(|x| matches!(x, Violation::MissingOrEdited { .. })),
+            "{v:?}"
+        );
+    }
+
+    #[test]
+    fn parity_gate_cheat_dropped_case_fails() {
+        let all = vec![case("one"), case("two")];
+        let manifest = manifest_of(&all);
+        let dropped = vec![case("one")];
+        let v = gate(&dropped, "", &manifest);
+        assert!(
+            v.iter().any(|x| matches!(
+                x,
+                Violation::CountDropped {
+                    committed: 2,
+                    now: 1
+                }
+            )),
+            "{v:?}"
+        );
+    }
+}
