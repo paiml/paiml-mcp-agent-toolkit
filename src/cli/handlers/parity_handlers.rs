@@ -28,7 +28,6 @@ fn write_jsonl<T: serde::Serialize>(path: &Path, rows: &[T]) -> Result<()> {
 }
 
 /// Dispatch one `pmat parity` subcommand. Any mismatch or gate violation is an error.
-/// Dispatch one `pmat parity` subcommand. Any mismatch or gate violation is an error.
 pub fn handle_parity(command: ParityCommands) -> Result<()> {
     match command {
         ParityCommands::Record {
@@ -89,8 +88,8 @@ fn gate(corpus: &Path, manifest: &Path, source: &Path) -> Result<()> {
         &std::fs::read_to_string(manifest)
             .with_context(|| format!("reading {}", manifest.display()))?,
     )?;
-    let text = std::fs::read_to_string(source)
-        .with_context(|| format!("reading {}", source.display()))?;
+    let text =
+        std::fs::read_to_string(source).with_context(|| format!("reading {}", source.display()))?;
     let violations = parity::gate(&cases, &text, &committed);
     for v in &violations {
         println!("{}", describe(v));
