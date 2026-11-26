@@ -30,7 +30,12 @@ jobs:
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0 # main
     with:
       repo: ${{ github.event.repository.name }}
-      heavy_on: train
+      # #1767: heavy_on: train skipped `test` and `coverage` on every ordinary PR head, and the
+      # reusable gate reports a skipped heavy leg as NOT MEASURED, so `ci / gate` went green with
+      # zero tests run (PRs #1750-#1752 merged that way). 'always' runs test and coverage on every
+      # PR, and a skipped test is then red (heavy_owed=1). The train-only path is retired here:
+      # trains are no longer needed to reach the tests, so nothing can merge untested by design.
+      heavy_on: always
       # PMAT-1313 — nextest is OFF here, and the measurement that turned it off is
       # the point of this comment. Do not re-enable it without re-reading this.
       #
