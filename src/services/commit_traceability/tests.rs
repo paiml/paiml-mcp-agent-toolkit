@@ -5,7 +5,7 @@
 //! of ours. The control comes first: without a fixture that PASSES, every red
 //! below could be an engine that always fails.
 
-use super::{inputs, measure_against, Inputs, Range, Violation, ROADMAP_PATH};
+use super::{inputs, is_bot_email, measure_against, Inputs, Range, Violation, ROADMAP_PATH};
 use std::path::Path;
 use std::process::Command;
 use tempfile::TempDir;
@@ -557,4 +557,121 @@ fn a_row_the_pr_adds_and_completes_is_still_a_finding() {
     fragment(dir.path(), "PMAT-007", "completed", "Pmat-Ticket: PMAT-007");
     let m = measure_against(dir.path(), None).expect("measured");
     assert_eq!(violations(&m), terminal("PMAT-007", "completed"), "{m:?}");
+}
+
+// ── GH-1356: bot-authored commits are exempt, and the exemption is named ───
+
+/// An empty commit authored (and committed) as `email`, with no trailer.
+fn commit_as(dir: &Path, subject: &str, email: &str) {
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args([
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            subject,
+        ])
+        .env("LC_ALL", "C")
+        .env("GIT_AUTHOR_NAME", "bot")
+        .env("GIT_AUTHOR_EMAIL", email)
+        .env("GIT_COMMITTER_NAME", "bot")
+        .env("GIT_COMMITTER_EMAIL", email)
+        .output()
+        .expect("git runs");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+const DEPENDABOT: &str = "49699333+dependabot[bot]@users.noreply.github.com";
+
+#[test]
+fn bot_email_recognises_github_app_accounts_only() {
+    assert!(is_bot_email(DEPENDABOT));
+    assert!(is_bot_email("dependabot[bot]@users.noreply.github.com"));
+    assert!(is_bot_email("  DEPENDABOT[BOT]@users.noreply.github.com "));
+    assert!(!is_bot_email("cb2113@example.invalid"));
+    assert!(!is_bot_email("dependabot[bot]@example.com"));
+    assert!(!is_bot_email("someone@users.noreply.github.com"));
+}
+
+#[test]
+fn a_bot_authored_untrailered_commit_is_exempt_and_counted() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(dir.path(), "deps(deps): Bump pollster", DEPENDABOT);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.commits, m.trailered, m.bot_exempt), (1, 0, 1), "{m:?}");
+    assert!(m.findings.is_empty(), "{:?}", m.findings);
+    assert!(m.clean());
+}
+
+#[test]
+fn a_human_untrailered_commit_beside_a_bot_commit_is_still_a_finding() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(dir.path(), "deps(deps): Bump pollster", DEPENDABOT);
+    let human = commit(dir.path(), "feat: human, no trailer", None);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.commits, m.bot_exempt), (2, 1), "{m:?}");
+    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
+    assert_eq!(m.findings[0].hash, human);
+    assert_eq!(m.findings[0].violation, Violation::NoTrailer);
+}
+
+#[test]
+fn a_human_using_a_bot_name_is_not_exempt() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(
+        dir.path(),
+        "feat: impersonating",
+        "dependabot[bot]@example.invalid",
+    );
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.bot_exempt, 0, "{m:?}");
+    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
+}
+
+#[test]
+fn a_bot_commit_that_names_an_unknown_ticket_is_still_judged() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(dir.path(), "deps(deps): Bump x", DEPENDABOT);
+    // Amend the bot commit with a trailer naming an id the roadmap lacks: a
+    // bot commit that carries a trailer is judged like any other.
+    Command::new("git")
+        .arg("-C")
+        .arg(dir.path())
+        .args([
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-q",
+            "--amend",
+            "--allow-empty",
+            "-m",
+            "deps(deps): Bump x",
+            "-m",
+            "Pmat-Ticket: PMAT-999",
+        ])
+        .env("GIT_AUTHOR_NAME", "bot")
+        .env("GIT_AUTHOR_EMAIL", DEPENDABOT)
+        .env("GIT_COMMITTER_NAME", "bot")
+        .env("GIT_COMMITTER_EMAIL", DEPENDABOT)
+        .output()
+        .expect("git runs");
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.bot_exempt, 0, "{m:?}");
+    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
+    assert_eq!(
+        m.findings[0].violation,
+        Violation::UnknownTicket("PMAT-999".into())
+    );
 }

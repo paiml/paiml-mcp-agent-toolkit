@@ -70,14 +70,16 @@ pub(super) fn judge_ids(
 }
 
 /// Judge every commit line of `git log`: count them, count the trailered ones,
-/// and collect the findings.
+/// count the untrailered bot-authored ones (exempt, GH-1356), and collect the
+/// findings.
 pub(super) fn judge_log(
     log: &str,
     roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
     open_at_base: &std::collections::HashSet<String>,
-) -> (usize, usize, Vec<Finding>) {
+) -> (usize, usize, usize, Vec<Finding>) {
     let mut commits = 0;
     let mut trailered = 0;
+    let mut bot_exempt = 0;
     let mut findings = vec![];
     for line in log.split('\n').filter(|l| !l.trim().is_empty()) {
         commits += 1;
@@ -85,6 +87,10 @@ pub(super) fn judge_log(
             continue;
         };
         if ids.is_empty() {
+            if line.split('\x1f').nth(3).is_some_and(is_bot_email) {
+                bot_exempt += 1;
+                continue;
+            }
             findings.push(Finding {
                 hash,
                 subject,
@@ -95,5 +101,5 @@ pub(super) fn judge_log(
             trailered += 1;
         }
     }
-    (commits, trailered, findings)
+    (commits, trailered, bot_exempt, findings)
 }

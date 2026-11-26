@@ -62,7 +62,7 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                         since.unwrap_or_else(|| "the root commit".to_string())
                     ),
                 },
-                Range::PullRequest { base, merge_base } => pull_request_verdict(m.commits, &m.findings, &base, &merge_base),
+                Range::PullRequest { base, merge_base } => pull_request_verdict(m.commits, m.bot_exempt, &m.findings, &base, &merge_base),
             }
         }
     }
@@ -103,11 +103,19 @@ fn finding_line(f: &crate::services::commit_traceability::Finding) -> String {
 /// The PullRequest-range verdict: nothing to judge, all traced, or the findings.
 fn pull_request_verdict(
     commits: usize,
+    bot_exempt: usize,
     findings: &[crate::services::commit_traceability::Finding],
     base: &str,
     merge_base: &str,
 ) -> ComplianceCheck {
     let mb7 = merge_base.get(..7).unwrap_or(merge_base);
+    // Bot-authored commits are exempt (a bot cannot add a trailer), and the
+    // exemption is named in the verdict, never applied silently (GH-1356).
+    let exempt_note = if bot_exempt > 0 {
+        format!("; {bot_exempt} commit(s) authored by a GitHub App bot are exempt from the trailer requirement")
+    } else {
+        String::new()
+    };
     if commits == 0 {
         let message = format!(
             "0 non-merge commit(s) in {}..HEAD (base {}): nothing to judge — measured, not skipped",
@@ -116,7 +124,7 @@ fn pull_request_verdict(
         return traceability_check(CheckStatus::Pass, false, message);
     }
     if findings.is_empty() {
-        let message = format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming a roadmap row that is open at HEAD, or that was open at the merge-base", commits, mb7, base);
+        let message = format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming a roadmap row that is open at HEAD, or that was open at the merge-base{}", commits, mb7, base, exempt_note);
         return traceability_check(CheckStatus::Pass, false, message);
     }
     let mut joined = findings
@@ -129,13 +137,14 @@ fn pull_request_verdict(
         joined.push_str(&format!(" (+{} more)", findings.len() - 8));
     }
     let message = format!(
-        "{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}",
+        "{} of {} non-merge commit(s) in {}..HEAD (base {}) break traceability: {} — {}{}",
         findings.len(),
         commits,
         mb7,
         base,
         joined,
-        traceability_remedy(findings)
+        traceability_remedy(findings),
+        exempt_note
     );
     traceability_check(CheckStatus::Fail, true, message)
 }

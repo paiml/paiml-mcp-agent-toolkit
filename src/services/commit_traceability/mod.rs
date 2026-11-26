@@ -113,6 +113,10 @@ pub struct Measurement {
     pub commits: usize,
     /// Of those, how many carry at least one `Pmat-Ticket:` trailer.
     pub trailered: usize,
+    /// Of the untrailered ones, how many were authored by a GitHub App bot
+    /// (dependabot and friends) and so are exempt from the trailer requirement.
+    /// Reported in the verdict, never applied silently.
+    pub bot_exempt: usize,
     pub findings: Vec<Finding>,
 }
 
@@ -191,6 +195,15 @@ pub fn measure_against(project_path: &Path, base: Option<&str>) -> Result<Measur
     }
 }
 
+/// Whether an author email belongs to a GitHub App bot account. GitHub mints
+/// `[bot]@users.noreply.github.com` for app accounts only, in the plain form
+/// and the `<id>+<app>[bot]@…` form. A bot cannot add a trailer, so a bot
+/// commit is exempt from the trailer requirement (CB-2113, GH-1356).
+pub(crate) fn is_bot_email(email: &str) -> bool {
+    let e = email.trim().to_ascii_lowercase();
+    e.ends_with("[bot]@users.noreply.github.com")
+}
+
 /// `(commits, trailered)` over `git log` lines of `\x1f`-separated hash,
 /// subject and trailer values: every non-blank line is a commit, and it is
 /// trailered when its third field names at least one non-empty ticket id.
@@ -238,6 +251,7 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
         range: Range::DefaultBranch { since },
         commits,
         trailered,
+        bot_exempt: 0,
         findings: vec![],
     })
 }
@@ -286,7 +300,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         &[
             "log",
             "--no-merges",
-            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)",
+            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)%x1f%ae",
             &format!("{merge_base}..HEAD"),
         ],
     )?;
@@ -302,7 +316,8 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         .collect();
     let open_at_base = open_ids_at(project_path, &merge_base);
 
-    let (commits, trailered, findings) = judge_log(&commits_out, &roadmap_map, &open_at_base);
+    let (commits, trailered, bot_exempt, findings) =
+        judge_log(&commits_out, &roadmap_map, &open_at_base);
 
     Ok(Measurement {
         range: Range::PullRequest {
@@ -311,6 +326,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         },
         commits,
         trailered,
+        bot_exempt,
         findings,
     })
 }
