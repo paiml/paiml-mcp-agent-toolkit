@@ -1,0 +1,19 @@
+- id: GH-1923
+  github_issue: 1923
+  item_type: task
+  title: 'fix(ci): clear main andon (coverage, orphan ledger, feature-gate)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-11-24T00:00:00Z
+  updated: 2026-11-26T18:05:28.524044821+00:00
+  spec: null
+  acceptance_criteria:
+  - tracked by its GitHub issue until its PR merges
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:fix
+  notes: null
+  release: 3.45.1
