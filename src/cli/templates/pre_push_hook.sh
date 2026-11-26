@@ -21,6 +21,15 @@ if echo "$COMPLY_OUTPUT" | grep -q "ComputeBrick Compliance.*critical"; then
     exit 1
 fi
 
+# CB-2113 commit traceability: the judge CI runs, before the push.
+echo "Running CB-2113 commit traceability..."
+if ! pmat comply check --checks CB-2113 </dev/null; then
+    echo ""
+    echo "CB-2113 failed: CI will refuse these commits (see above)."
+    echo "Each commit needs a 'Pmat-Ticket: <id>' trailer in its last paragraph."
+    exit 1
+fi
+
 # Check probar GUI coverage if available (PROBAR-SPEC-009)
 if command -v probador >/dev/null 2>&1; then
     echo "Checking probar GUI coverage..."
