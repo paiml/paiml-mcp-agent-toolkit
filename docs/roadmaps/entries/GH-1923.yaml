@@ -2,7 +2,7 @@
   github_issue: 1923
   item_type: task
   title: 'fix(ci): clear main andon (coverage, orphan ledger, feature-gate)'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-11-24T00:00:00Z
