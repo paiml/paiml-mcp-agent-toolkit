@@ -8181,11 +8181,11 @@ roadmap:
   github_issue: 1528
   item_type: task
   title: 'EMR-001: EMR-1 read-only verifier (emr1-verify.sh)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-10-24T16:31:29.561530032+00:00
-  updated: 2026-10-29T15:30:59.778230555+00:00
+  updated: 2026-11-26T22:14:34+00:00
   spec: null
   acceptance_criteria: []
   phases: []
