@@ -676,7 +676,6 @@ mod dependency_policy_tests;
 // reason as the modules above: `autotests = false` means an unregistered test file never
 // compiles. `cargo test --lib -- emr1_verify`.
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod emr1_verify_tests;
 
 // PMAT-1365: `make gate` is declared, and its table cannot quietly stop covering the
