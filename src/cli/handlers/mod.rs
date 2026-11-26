@@ -37,7 +37,10 @@ pub mod configuration_handlers;
 pub mod coverage_improve_handler;
 pub mod cuda_tdg_handlers; // CUDA-SIMD TDG: 100-point Popper falsification scoring
 pub mod dead_code_handlers; // Dead code analysis extracted for file health (CB-040)
-pub mod debug_handlers; // Sprint 74: Time-travel debugging CLI handlers
+pub mod debug_handlers;
+pub mod parity_handlers; // GH-1947: pmat parity record/replay/gate
+                         // Sprint 74: Time-travel debugging CLI handlers
+
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_handlers;
 pub mod defect_prediction_handler;
