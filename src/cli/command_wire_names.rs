@@ -220,6 +220,7 @@ pub fn classify_command(command: &Commands) -> (CommandCategory, &'static str) {
         Commands::Context { .. } => (System, "context"),
         Commands::Diagnose(_) => (System, "diagnose"),
         Commands::Debug { .. } => (System, "debug"),
+        Commands::Parity { .. } => (System, "parity"),
         Commands::Query { .. } => (System, "query"),
         Commands::Explain { .. } => (System, "explain"),
         Commands::Mcp(_) => (System, "mcp"),

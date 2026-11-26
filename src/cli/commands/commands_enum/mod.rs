@@ -51,8 +51,8 @@ use super::init_commands::{InitFormat, InitTarget};
 use super::mcp_commands::McpCommands;
 use super::misc_commands::{
     ComplyCommands, CudaTdgCommand, CudaTdgOutputFormat, DebugCommands, KaizenOutputFormat,
-    MaintainCommands, OracleCommands, PerfectionScoreOutputFormat, ProjectDiagOutputFormat,
-    QualityGatesCommand, SpecCommands, StackCommands, TdgCommand,
+    MaintainCommands, OracleCommands, ParityCommands, PerfectionScoreOutputFormat,
+    ProjectDiagOutputFormat, QualityGatesCommand, SpecCommands, StackCommands, TdgCommand,
 };
 use super::org_prompt::{OrgCommands, PromptCommands};
 use super::quality_commands::{EnforceCommands, QddCommands};
