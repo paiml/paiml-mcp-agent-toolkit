@@ -71,22 +71,25 @@ fn parse_derived_decl(raw: &str) -> Result<Vec<DerivedArtifact>, String> {
     Ok(decl.artifact)
 }
 
+/// The declared artifacts, or the row that ends the check: Skip when there is no
+/// declaration, Fail when it cannot be read.
+fn load_derived_decl(project_path: &Path) -> Result<Vec<DerivedArtifact>, ComplianceCheck> {
+    let unreadable = |e: String| derived_row(CheckStatus::Fail, format!("{DERIVED_FILE}: {e}"));
+    match std::fs::read_to_string(project_path.join(DERIVED_FILE)) {
+        Ok(raw) => parse_derived_decl(&raw).map_err(unreadable),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(derived_row(
+            CheckStatus::Skip,
+            format!("no {DERIVED_FILE} — no derived artifact is declared"),
+        )),
+        Err(e) => Err(unreadable(e.to_string())),
+    }
+}
+
 /// CB-2120: does every declared derived file equal what its generator prints?
 pub(crate) fn check_derived_fresh(project_path: &Path, selected: &[String]) -> ComplianceCheck {
-    let file = project_path.join(DERIVED_FILE);
-    let raw = match std::fs::read_to_string(&file) {
-        Ok(raw) => raw,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            return derived_row(
-                CheckStatus::Skip,
-                format!("no {DERIVED_FILE} — no derived artifact is declared"),
-            )
-        }
-        Err(e) => return derived_row(CheckStatus::Fail, format!("{DERIVED_FILE}: {e}")),
-    };
-    let artifacts = match parse_derived_decl(&raw) {
+    let artifacts = match load_derived_decl(project_path) {
         Ok(artifacts) => artifacts,
-        Err(e) => return derived_row(CheckStatus::Fail, format!("{DERIVED_FILE}: {e}")),
+        Err(row) => return row,
     };
     if !selected.iter().any(|s| s.eq_ignore_ascii_case("cb-2120")) {
         return derived_row(
