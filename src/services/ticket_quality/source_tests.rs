@@ -116,9 +116,7 @@ fn ticket_quality_source_gone_is_absent_at_head_and_present_in_history() {
     assert!(seen[1].contains("defaultBranchRef{target{... on Commit{p0:history(first:1,path:\"src/gone.rs\"){nodes{oid}} p1:history(first:1,path:\"src/new.rs\")"), "{}", seen[1]);
 
     let none = Fake::new(vec![]);
-    let (gone, _) = gone_paths(&none, "o/r", &[rec(5, "Add x")])
-        .map(|(g, n)| (g, n))
-        .unwrap_or_default();
+    let (gone, _) = gone_paths(&none, "o/r", &[rec(5, "Add x")]).unwrap_or_default();
     assert!(
         gone.is_empty(),
         "a ticket whose files exist asks one question and gets none gone"
