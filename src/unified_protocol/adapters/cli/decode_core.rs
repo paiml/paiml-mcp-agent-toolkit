@@ -109,6 +109,7 @@ impl CliAdapter {
             | Commands::DebugFiveWhys { .. } // Five Whys root cause analysis (CLI-only)
             | Commands::Localize { .. } // GH-103: Tarantula fault localization (CLI-only)
             | Commands::Oracle { .. } // PMAT Oracle - PDCA loop (CLI-only)
+            | Commands::Parity { .. } // GH-1954: parity record/replay/gate (CLI-only)
             | Commands::ShowMetrics { .. } // Phase 3.1: O(1) Quality Gates CLI (CLI-only)
             | Commands::PredictQuality { .. } // Phase 4.1: Predictive Quality Gates CLI (CLI-only)
             | Commands::RecordMetric { .. } // Phase 3.4: O(1) Quality Gates CI/CD (CLI-only)

@@ -1367,6 +1367,12 @@ pub enum Commands {
         command: DebugCommands,
     },
 
+    /// Parity: record the original, replay, gate (GH-1947)
+    Parity {
+        #[command(subcommand)]
+        command: ParityCommands,
+    },
+
     /// Unified GitHub/YAML workflow management
     #[command(visible_aliases = &["w"])]
     Work {

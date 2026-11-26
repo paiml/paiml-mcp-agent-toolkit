@@ -1332,6 +1332,14 @@ Aliases: `organization`
 pmat org --help
 ```
 
+### `parity`
+
+Parity: record the original, replay, gate (GH-1947)
+
+```bash
+pmat parity --help
+```
+
 ### `perfection-score`
 
 Unified 200-point Perfection Score (master-plan-pmat-work-system.md) Aggregates TDG, Repo Score, Rust Score, Coverage, Mutation, Docs, Performance

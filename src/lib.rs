@@ -131,6 +131,10 @@ pub mod ast; // Unified AST module for all language parsing
 pub mod cli;
 pub mod cli_exit;
 
+/// Parity recording of an original program's behaviour (GH-1947).
+#[cfg(feature = "standard-deps")]
+pub mod parity;
+
 /// Sovereign `pmat update` + daily check (pmat#1425).
 pub mod self_update;
 
@@ -672,7 +676,6 @@ mod dependency_policy_tests;
 // reason as the modules above: `autotests = false` means an unregistered test file never
 // compiles. `cargo test --lib -- emr1_verify`.
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod emr1_verify_tests;
 
 // PMAT-1365: `make gate` is declared, and its table cannot quietly stop covering the
