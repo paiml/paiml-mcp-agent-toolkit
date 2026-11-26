@@ -55,3 +55,6 @@ mod tests;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod falsification_tests;
+
+#[cfg(test)]
+mod enforce_hooks_tests;
