@@ -6,7 +6,7 @@
   priority: high
   assigned_to: null
   created: 2026-11-17T00:00:00+00:00
-  updated: 2026-11-17T00:00:00+00:00
+  updated: 2026-11-26T18:05:28.524044821+00:00
   spec: null
   acceptance_criteria: []
   phases: []
@@ -15,4 +15,5 @@
   labels:
   - kind:code
   notes: null
+  release: 3.45.1
   epic: 1645

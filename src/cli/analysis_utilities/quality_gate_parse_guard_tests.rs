@@ -56,3 +56,29 @@ fn an_unreadable_path_is_left_for_the_caller_to_report() {
     let p = std::env::temp_dir().join("pmat-qg-guard-does-not-exist.rs");
     crate::tdg::ensure_parseable(&p).expect("missing file is not this guard's error");
 }
+
+/// GH-1937: a single-file run reported `files_examined: 0` and `checks_run: []`
+/// although its checks ran.
+#[tokio::test]
+async fn single_file_run_reports_files_examined_and_checks_run() {
+    use crate::cli::QualityCheckType;
+    let p = write_temp("scope.rs", "pub fn f(x: i32) -> i32 { x }\n");
+    let project = p.parent().expect("parent").to_path_buf();
+    let mut violations = Vec::new();
+    let mut results = super::QualityGateResults::default();
+    super::run_single_file_checks(
+        &project,
+        &p,
+        &[QualityCheckType::All],
+        20,
+        &mut violations,
+        &mut results,
+    )
+    .await
+    .expect("checks run");
+    assert_eq!(results.files_examined, 1);
+    assert_eq!(
+        results.checks_run,
+        vec!["Complexity", "DeadCode", "Satd", "Security"]
+    );
+}

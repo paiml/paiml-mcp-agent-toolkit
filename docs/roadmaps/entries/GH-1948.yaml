@@ -1,0 +1,17 @@
+- id: GH-1948
+  github_issue: 1948
+  item_type: task
+  title: 'parity: P1 record (pmat parity record) for #1947'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-26T18:05:28.524044821+00:00
+  updated: 2026-11-26T18:05:28.524044821+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.48.0
