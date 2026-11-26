@@ -1,6 +1,6 @@
 //! The reader against a fake GitHub: what it asks, what it refuses.
 
-use super::findings::PrState;
+use super::findings::{PrState, TicketRec};
 use super::source::*;
 use super::test_support::{node, page, rate, rec, Fake};
 use serde_json::{json, Value};
@@ -25,11 +25,13 @@ fn ticket_quality_source_reads_every_open_ticket_in_one_paged_read() {
 
 #[test]
 fn ticket_quality_source_refuses_a_bad_repo_a_low_budget_and_a_broken_page() {
-    assert!(fetch_tickets(&Fake::new(vec![]), "nope").is_err());
+    let why = |r: anyhow::Result<(usize, Vec<TicketRec>)>| r.unwrap_err().to_string();
+    assert!(why(fetch_tickets(&Fake::new(vec![]), "nope")).contains("owner/name"));
     assert!(fetch_ticket(&Fake::new(vec![]), "o/r/x", 1).is_err());
     assert!(gone_paths(&Fake::new(vec![]), "/r", &[]).is_err());
-    assert!(fetch_tickets(&Fake::new(vec![rate(10)]), "o/r").is_err());
-    assert!(fetch_tickets(&Fake::new(vec![rate(5000), Err("boom".into())]), "o/r").is_err());
+    assert!(why(fetch_tickets(&Fake::new(vec![rate(10)]), "o/r")).contains("budget is 10"));
+    let broken = Fake::new(vec![rate(5000), Err("boom".into())]);
+    assert!(why(fetch_tickets(&broken, "o/r")).contains("boom"));
     let no_total = Ok(json!({"data":{"repository":{"issues":{
         "pageInfo":{"hasNextPage":false},"nodes":[]}}}}));
     assert!(fetch_tickets(&Fake::new(vec![rate(5000), no_total]), "o/r").is_err());
@@ -91,7 +93,8 @@ fn ticket_quality_source_reads_one_ticket_for_the_rubric() {
     let err = fetch_ticket(&none, "o/r", 12).unwrap_err().to_string();
     assert!(err.contains("o/r#12: no such issue"), "{err}");
     assert!(fetch_ticket(&Fake::new(vec![rate(5000)]), "o/r", 12).is_err());
-    assert!(fetch_ticket(&Fake::new(vec![rate(1)]), "o/r", 12).is_err());
+    let poor = fetch_ticket(&Fake::new(vec![rate(1)]), "o/r", 12).unwrap_err();
+    assert!(poor.to_string().contains("budget is 1 "), "{poor}");
 }
 
 #[test]
@@ -221,4 +224,11 @@ fn ticket_quality_source_a_cut_off_list_is_an_error_never_a_short_list() {
         asked.contains("includeClosedPrs:true){totalCount "),
         "{asked}"
     );
+}
+
+#[test]
+fn ticket_quality_source_a_reply_without_the_labels_key_is_not_measured() {
+    let reply = ok(json!({"issue":{"title":"Add x","body":"b","milestone":null,"parent":null}}));
+    let err = fetch_ticket(&Fake::new(vec![rate(5000), reply]), "o/r", 12).unwrap_err();
+    assert!(err.to_string().contains("no labels"), "{err}");
 }

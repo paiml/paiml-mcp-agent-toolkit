@@ -27,7 +27,7 @@ trap cleanup EXIT
 # ── the stub GitHub ─────────────────────────────────────────────────────────
 mkdir -p "$T/bin" "$T/gh/issues" "$T/gh/subs"
 : > "$T/gh/calls.log"                          # exists from the start, so posts() always prints a count
-BODY='## Observed\nthe add fails\n## Expected\nthe add files in src/a.rs\n## Acceptance\n- [ ] `make gate` is green\n'   # scores 80 of 100 or more: only the milestone and a bare title are missing
+BODY='## Observed\nthe add fails\n## Expected\nthe add files in src/a.rs\n## Acceptance\n- [ ] `make gate` is green\n'   # scores 70, the pass mark: milestone, title form and a kind: label are missing
 issue() { printf '{"id":%s,"number":%s,"state":"%s","labels":[%s],"title":"","body":"%s"}\n' "$2" "$1" "$3" "$4" "${5-$BODY}" > "$T/gh/issues/$1.json"; }
 issue 10 9010 open '{"name":"epic"}'          # the epic
 issue 11 9011 closed '{"name":"epic"}'        # a closed epic

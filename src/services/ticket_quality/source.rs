@@ -115,10 +115,9 @@ labels(first:100){{totalCount nodes{{name}}}}}}}}}}"
         .as_str()
         .with_context(|| format!("{repo}#{number}: no such issue in the reply; not measured"))?;
     // A null connection is an issue without labels; anything else must be whole.
-    let labels: &[Value] = if node["labels"].is_null() {
-        &[]
-    } else {
-        whole(node, "labels", number)?
+    let labels: &[Value] = match node.get("labels") {
+        Some(Value::Null) => &[],
+        _ => whole(node, "labels", number)?,
     };
     Ok(Ticket {
         title: title.to_string(),

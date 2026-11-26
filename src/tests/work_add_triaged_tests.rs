@@ -7,8 +7,8 @@
 //! stub `gh` on PATH, are `scripts/work-add-triaged-audit.sh`.
 
 use super::work_add_triage::{
-    ensure_linked, gate, parse_issue, resolve_kind, tags_with_kind, EpicLinks, IssueFacts, Triaged,
-    WorkAddTriage,
+    ensure_linked, gate, parse_issue, resolve_kind, rubric_ticket, tags_with_kind, EpicLinks,
+    IssueFacts, Triaged, WorkAddTriage,
 };
 use crate::cli::commands::{WorkKind, WorkPriority};
 use std::cell::RefCell;
@@ -477,4 +477,14 @@ fn work_add_opens_a_section_only_on_a_heading_or_a_key() {
     assert!(derive_from_body("Acceptance tests run.\nx\n")
         .acceptance
         .is_empty());
+}
+
+/// The filing gate and `work score --issue` read the same labels. `--kind` is not a
+/// label on the ticket: counted at filing, it files at 70 a ticket that scores 60.
+#[test]
+fn work_add_triaged_filing_score_reads_only_the_tickets_own_labels() {
+    for labels in [&["bug"][..], &["kind:code"][..]] {
+        let ticket = rubric_ticket(&facts(9_021, true, labels), "Add x");
+        assert_eq!(ticket.labels, labels);
+    }
 }

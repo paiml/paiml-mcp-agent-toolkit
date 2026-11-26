@@ -345,15 +345,13 @@ fn derive_acceptance(body: &str) -> Vec<String> {
 }
 
 /// What the ticket rubric reads at filing (FLOW-OWNER-001 D5). The gate has already
-/// found the epic open and the link under it is about to be made, so the parent counts;
-/// the kind the operator passed counts as the ticket's `kind:` label.
+/// found the epic open and the link under it is about to be made, so the parent counts.
+/// The labels are the issue's own, as `work score --issue` reads them: `--kind` goes
+/// on the roadmap row, not on the ticket, so it earns no points.
 pub fn rubric_ticket(
     facts: &IssueFacts,
     fallback_title: &str,
-    kind: WorkKind,
 ) -> crate::services::ticket_quality::rubric::Ticket {
-    let mut labels = facts.labels.clone();
-    labels.push(format!("kind:{}", kind.as_str()));
     let title = if facts.title.trim().is_empty() {
         fallback_title
     } else {
@@ -362,7 +360,7 @@ pub fn rubric_ticket(
     crate::services::ticket_quality::rubric::Ticket {
         title: title.to_string(),
         body: facts.body.clone(),
-        labels,
+        labels: facts.labels.clone(),
         parent_open: true,
         has_milestone: facts.has_milestone,
     }

@@ -58,6 +58,18 @@ impl TicketRec {
     }
 }
 
+/// The most days `--stale-ticket-days` takes: a century, far inside what a duration holds.
+pub const MAX_STALE_DAYS: i64 = 36_500;
+
+/// A `--duplicate-threshold`: a number from 0 to 1. Outside it (or NaN) V2 would
+/// silently report nothing or everything.
+pub fn parse_similarity(text: &str) -> Result<f64, String> {
+    text.parse::<f64>()
+        .ok()
+        .filter(|v| (0.0..=1.0).contains(v))
+        .ok_or_else(|| "expected a number from 0.0 to 1.0".to_string())
+}
+
 /// The policy numbers the findings use.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Settings {

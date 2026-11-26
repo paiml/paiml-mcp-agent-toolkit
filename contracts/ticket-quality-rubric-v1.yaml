@@ -42,6 +42,7 @@ equations:
     codomain: bool
     invariants:
       - "no clock, no network and no random source is read by score"
+      - "the filing gate scores the labels the ticket carries on GitHub; the --kind argument of work add is not one of them"
       - "the same ticket scored twice gives the same total, items and missing list"
     preconditions: []
   pass_mark:

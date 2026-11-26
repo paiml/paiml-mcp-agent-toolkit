@@ -615,11 +615,19 @@ pub enum WorkCommands {
         pass_mark: u32,
 
         /// Days without activity after which a ticket needs revalidation (V4)
-        #[arg(long, default_value_t = 30)]
+        #[arg(
+            long,
+            default_value_t = 30,
+            value_parser = clap::value_parser!(i64).range(0..=crate::services::ticket_quality::findings::MAX_STALE_DAYS)
+        )]
         stale_ticket_days: i64,
 
         /// Title similarity (0.0-1.0) at or above which a ticket duplicates an older one (V2)
-        #[arg(long, default_value_t = 0.8)]
+        #[arg(
+            long,
+            default_value_t = 0.8,
+            value_parser = crate::services::ticket_quality::findings::parse_similarity
+        )]
         duplicate_threshold: f64,
 
         /// Open tickets the repository may hold (P4)

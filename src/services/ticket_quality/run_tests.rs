@@ -86,9 +86,12 @@ fn ticket_quality_run_findings_reads_once_and_writes_nothing() {
 
 #[test]
 fn ticket_quality_run_findings_is_not_measured_when_a_read_fails() {
-    for replies in [
-        vec![rate(3)],
-        vec![rate(5000), page(1, vec![node(5)]), Err("boom".into())],
+    for (replies, why) in [
+        (vec![rate(3)], "budget is 3"),
+        (
+            vec![rate(5000), page(1, vec![node(5)]), Err("boom".into())],
+            "boom",
+        ),
     ] {
         let (text, code) = run_findings(
             &Fake::new(replies),
@@ -98,7 +101,10 @@ fn ticket_quality_run_findings_is_not_measured_when_a_read_fails() {
             now(),
         );
         assert_eq!(code, EXIT_NOT_MEASURED);
-        assert!(text.starts_with("not_measured: o/r:"), "{text}");
+        assert!(
+            text.starts_with("not_measured: o/r:") && text.contains(why),
+            "{text}"
+        );
     }
 }
 
