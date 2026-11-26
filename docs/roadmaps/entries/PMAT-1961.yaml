@@ -1,0 +1,20 @@
+- id: PMAT-1961
+  github_issue: 1961
+  item_type: task
+  title: 'docs: trim CLAUDE.md to 4.0 KB, move history to docs/agent-rules-history.md'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-26T17:10:33Z
+  updated: 2026-11-26T17:10:33Z
+  spec: null
+  acceptance_criteria:
+  - 'Re-cut of PR #1940, which named no ticket and fails CB-2113. CLAUDE.md goes from 23841 to 4017 bytes; every rule is kept and history moves to docs/agent-rules-history.md.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:docs
+  notes: null
+  epic: 1644
+  release: 3.46.0
