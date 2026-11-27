@@ -582,6 +582,7 @@ const GROUP_IDS_EVIDENCE: &[RuleDecl] = &[
 ];
 const GROUP_IDS_GATE_EFFECT: &[RuleDecl] = &[("cb-2100", "Comply Gate Effect")];
 const GROUP_IDS_RATCHET: &[RuleDecl] = &[("cb-2102", "Ratchet Baselines")];
+const GROUP_IDS_DERIVED_FRESH: &[RuleDecl] = &[("cb-2120", "Derived Artifacts Fresh")];
 const GROUP_IDS_GATE_SMELLS: &[RuleDecl] = &[
     ("GS-01", "Network Fetch In PR Gate"),
     ("GS-02", "Floating Version"),
@@ -616,7 +617,7 @@ const GROUP_IDS_TICKET_RELEASE: &[RuleDecl] = &[
 ];
 const GROUP_IDS_SPEC_EPICS: &[RuleDecl] = &[("cb-2110", "Spec Epics")];
 const GROUP_IDS_SPEC_REVIEWS: &[RuleDecl] = &[("cb-2111", "Spec Reviews")];
-// 195 distinct ids across 24 groups; declared in more than one group: none
+// 196 distinct ids across 25 groups; declared in more than one group: none
 
 /// A named compliance-check group, the rule ids it can emit, and the thunk that
 /// produces its checks. The ids are known before the group runs (PMAT-1296), so
@@ -777,6 +778,13 @@ fn compliance_check_groups<'a>(
             "ratchet",
             GROUP_IDS_RATCHET,
             Box::new(move || build_ratchet_checks(project_path, comply_config)),
+        ),
+        (
+            "derived-fresh",
+            GROUP_IDS_DERIVED_FRESH,
+            Box::new(move || {
+                build_derived_fresh_checks(project_path, comply_config, &overrides.selected)
+            }),
         ),
         (
             "gate-smells",
@@ -1978,6 +1986,8 @@ include!("check_gate_effect.rs");
 include!("check_builders_gate_effect.rs");
 include!("check_metrics_ratchet.rs");
 include!("check_builders_ratchet.rs");
+include!("check_derived_fresh.rs");
+include!("check_builders_derived_fresh.rs");
 include!("check_gate_smells.rs");
 include!("check_gate_smells_wave2.rs");
 include!("check_builders_gate_smells.rs");
@@ -2003,6 +2013,7 @@ include!("check_pv_lint_verdict_tests.rs");
 include!("check_armed_gates_tests.rs");
 include!("check_gate_smells_tests.rs");
 include!("check_runner_smells_tests.rs");
+include!("check_derived_fresh_tests.rs");
 
 include!("check_path_guard_tests.rs");
 include!("check_empty_project_guard_tests.rs");
