@@ -80,6 +80,11 @@ pub fn install_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
             // Already installed, current
             return Ok(());
         }
+        // The strict CB-2113 hook (`comply enforce`, `hooks install --strict`) asks
+        // for more than this one does: `work init` must not replace it.
+        if existing.contains("auto-managed by PMAT") && existing.contains("\nSTRICT=1\n") {
+            return Ok(());
+        }
         // Ours from an older pmat is rewritten in place, so it gains the current lint.
         if !existing.contains("PMAT Workflow Commit Message Hook") {
             // Backup existing hook

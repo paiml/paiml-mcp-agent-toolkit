@@ -37,43 +37,90 @@ fn make_hook_executable(_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn print_enforce_result(format: &ComplyOutputFormat, hooks_dir: &Path) -> Result<()> {
-    use crate::cli::colors as c;
-    match format {
-        ComplyOutputFormat::Text => {
-            println!("\n{}", c::pass("PMAT enforcement hooks installed!"));
-            println!(
-                "   {} {}",
-                c::label("Pre-commit hook:"),
-                c::path(&hooks_dir.join("pre-commit").display().to_string())
-            );
-            println!(
-                "   {} {}",
-                c::label("Pre-push hook:  "),
-                c::path(&hooks_dir.join("pre-push").display().to_string())
-            );
-            println!("\nCommits will now require an active work ticket.");
-            println!("Pushes will validate ComputeBrick compliance.");
-            println!(
-                "Use '{}' to remove hooks.",
-                c::label("pmat comply enforce --disable")
-            );
+/// CB-2113 at commit time: the strict `commit-msg` hook that
+/// `pmat hooks install --strict` writes. A hook pmat did not write is left
+/// alone. Returns whether pmat's hook is in place.
+fn install_enforced_commit_msg_hook(project_path: &Path, hooks_dir: &Path) -> Result<bool> {
+    let hook_path = hooks_dir.join("commit-msg");
+    // A dangling symlink is the user's too: writing would go through it.
+    if hook_path.symlink_metadata().is_ok() {
+        let bytes = fs::read(&hook_path).unwrap_or_default();
+        let existing = String::from_utf8_lossy(&bytes);
+        let ours = ["auto-managed by PMAT", "PMAT Workflow Commit Message Hook"];
+        if !ours.iter().any(|marker| existing.contains(marker)) {
+            return Ok(false);
         }
+    }
+    crate::cli::handlers::hooks_command_handlers::HooksCommand::new(
+        hooks_dir.to_path_buf(),
+        project_path.join("pmat.toml"),
+    )
+    .install_commit_msg_hook(true)?;
+    Ok(true)
+}
+
+fn print_enforce_text(hooks_dir: &Path, commit_msg: bool) {
+    use crate::cli::colors as c;
+    let mut rows = vec![
+        ("Pre-commit hook:", "pre-commit"),
+        ("Pre-push hook:  ", "pre-push"),
+    ];
+    if commit_msg {
+        rows.push(("Commit-msg hook:", "commit-msg"));
+    }
+    println!("\n{}", c::pass("PMAT enforcement hooks installed!"));
+    for (title, hook) in rows {
+        println!(
+            "   {} {}",
+            c::label(title),
+            c::path(&hooks_dir.join(hook).display().to_string())
+        );
+    }
+    println!("\nCommits will now require an active work ticket.");
+    println!("Pushes will validate CB-2113 commit traceability and ComputeBrick compliance.");
+    println!(
+        "Use '{}' to remove hooks.",
+        c::label("pmat comply enforce --disable")
+    );
+}
+
+fn print_enforce_markdown(installed: &[&str]) {
+    println!("# PMAT Enforcement Hooks Installed\n");
+    println!("| Hook | Status |");
+    println!("|------|--------|");
+    for hook in installed {
+        println!("| {hook} | Installed |");
+    }
+}
+
+fn print_enforce_result(
+    format: &ComplyOutputFormat,
+    hooks_dir: &Path,
+    commit_msg: bool,
+) -> Result<()> {
+    use crate::cli::colors as c;
+    let mut installed = vec!["pre-commit", "pre-push"];
+    if commit_msg {
+        installed.push("commit-msg");
+    } else {
+        eprintln!(
+            "{}",
+            c::warn(
+                "commit-msg hook exists but is not PMAT - kept; CB-2113 is not checked at commit time"
+            )
+        );
+    }
+    match format {
+        ComplyOutputFormat::Text => print_enforce_text(hooks_dir, commit_msg),
         ComplyOutputFormat::Json | ComplyOutputFormat::Sarif => {
             let result = serde_json::json!({
                 "status": "success",
-                "hooks_installed": ["pre-commit", "pre-push"],
+                "hooks_installed": installed,
                 "path": hooks_dir.display().to_string(),
             });
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
-        ComplyOutputFormat::Markdown => {
-            println!("# PMAT Enforcement Hooks Installed\n");
-            println!("| Hook | Status |");
-            println!("|------|--------|");
-            println!("| pre-commit | Installed |");
-            println!("| pre-push | Installed |");
-        }
+        ComplyOutputFormat::Markdown => print_enforce_markdown(&installed),
     }
     Ok(())
 }
@@ -97,6 +144,11 @@ async fn handle_enforce(
             &["PMAT", "ComputeBrick"],
             "pre-push",
         )?;
+        remove_pmat_hook(
+            &hooks_dir.join("commit-msg"),
+            &["auto-managed by PMAT"],
+            "commit-msg",
+        )?;
         return Ok(());
     }
 
@@ -108,8 +160,12 @@ async fn handle_enforce(
             c::label("pre-commit")
         );
         crate::status_println!(
-            "  - {}: Validate spec compliance before push",
+            "  - {}: Validate CB-2113 and spec compliance before push",
             c::label("pre-push")
+        );
+        crate::status_println!(
+            "  - {}: Refuse non-merge commits CB-2113 would refuse (Pmat-Ticket trailer)",
+            c::label("commit-msg")
         );
         crate::status_println!("\nProceed? [y/N] ");
         crate::status_println!(
@@ -130,7 +186,9 @@ async fn handle_enforce(
     make_hook_executable(&pre_commit_path)?;
     make_hook_executable(&pre_push_path)?;
 
-    print_enforce_result(&format, &hooks_dir)?;
+    let commit_msg = install_enforced_commit_msg_hook(project_path, &hooks_dir)?;
+
+    print_enforce_result(&format, &hooks_dir, commit_msg)?;
     Ok(())
 }
 
