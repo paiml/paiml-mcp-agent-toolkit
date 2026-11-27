@@ -7,6 +7,7 @@ use super::deny_refresh::{
 };
 use super::types::CachedMetric;
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult};
+use crate::cli::handlers::work_quality_handlers::gate_output;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -243,16 +244,28 @@ pub(crate) async fn test_examples_compile(project_path: &Path) -> Result<Falsifi
     )
 }
 
+/// The failed verdict for a book check that overran its budget.
+fn timed_out(what: &str, e: &std::io::Error) -> FalsificationResult {
+    FalsificationResult::failed(format!("'{what}' {e}"), EvidenceType::BooleanCheck(false))
+}
+
 /// Run `make validate-book` and return the result.
 ///
 /// Returns `Some(result)` if the command executed (pass or fail),
 /// or `None` if `make` was not available.
 fn try_make_validate_book(project_path: &Path) -> Option<FalsificationResult> {
-    let output = Command::new("make")
-        .args(["validate-book"])
-        .current_dir(project_path)
-        .output()
-        .ok()?;
+    let output = match gate_output(
+        Command::new("make")
+            .args(["validate-book"])
+            .current_dir(project_path),
+    ) {
+        Ok(output) => output,
+        // #1267: a hung validation fails here; `None` would fall through to a pass.
+        Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+            return Some(timed_out("make validate-book", &e))
+        }
+        Err(_) => return None,
+    };
 
     if output.status.success() {
         Some(FalsificationResult::passed(
@@ -279,11 +292,17 @@ fn try_book_chapter_tests(book_path: &Path) -> Option<FalsificationResult> {
         return None;
     }
 
-    let output = Command::new("bash")
-        .arg(&test_script)
-        .current_dir(book_path)
-        .output()
-        .ok()?;
+    let output = match gate_output(
+        Command::new("bash")
+            .arg(&test_script)
+            .current_dir(book_path),
+    ) {
+        Ok(output) => output,
+        Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+            return Some(timed_out("pmat-book chapter tests", &e))
+        }
+        Err(_) => return None,
+    };
 
     if output.status.success() {
         Some(FalsificationResult::passed(
@@ -377,15 +396,12 @@ pub(crate) async fn test_cross_crate_parity(project_path: &Path) -> Result<Falsi
         let parts: Vec<&str> = test_cmd.split_whitespace().collect();
         let (program, args) = parts.split_first().unwrap_or((&"cargo", &[]));
 
-        let output = Command::new(program)
-            .args(args)
-            .current_dir(&full_path)
-            .output();
+        let output = gate_output(Command::new(program).args(args).current_dir(&full_path));
 
         match output {
             Ok(out) if out.status.success() => passed_count += 1,
             Ok(_) => failures.push(path.to_string()),
-            Err(_) => failures.push(format!("{} (command failed)", path)),
+            Err(e) => failures.push(format!("{path} (command failed: {e})")),
         }
     }
 
@@ -498,5 +514,71 @@ pub(crate) fn test_meta_falsification(project_path: &Path) -> Result<Falsificati
                 details: "Dummy #[cfg(not(coverage))] was ignored by detector".into(),
             },
         ))
+    }
+}
+
+#[cfg(test)]
+mod gate_budget_tests {
+    use super::*;
+
+    /// Restores `PMAT_WORK_GATE_TIMEOUT_SECS` on drop, panic included.
+    struct Budget(Option<std::ffi::OsString>);
+
+    impl Budget {
+        fn secs(n: u64) -> Self {
+            let old = std::env::var_os("PMAT_WORK_GATE_TIMEOUT_SECS");
+            std::env::set_var("PMAT_WORK_GATE_TIMEOUT_SECS", n.to_string());
+            Self(old)
+        }
+    }
+
+    impl Drop for Budget {
+        fn drop(&mut self) {
+            match self.0.take() {
+                Some(v) => std::env::set_var("PMAT_WORK_GATE_TIMEOUT_SECS", v),
+                None => std::env::remove_var("PMAT_WORK_GATE_TIMEOUT_SECS"),
+            }
+        }
+    }
+
+    /// #1267: a sibling test command that hangs is killed and fails the claim.
+    #[cfg(unix)]
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn a_hung_cross_crate_command_fails_the_claim_within_budget() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join(".pmat-work")).expect("mkdir");
+        std::fs::write(
+            dir.path().join(".pmat-work/cross-crate.json"),
+            r#"{"projects":[{"path":".","test_command":"sleep 20"}]}"#,
+        )
+        .expect("config");
+        let _budget = Budget::secs(1);
+
+        let started = std::time::Instant::now();
+        let result = test_cross_crate_parity(dir.path()).await.expect("runs");
+
+        assert!(started.elapsed().as_secs() < 10, "{:?}", started.elapsed());
+        assert!(result.falsified, "{result:?}");
+    }
+
+    /// #1267: a hung `make validate-book` fails; it must not fall through to the
+    /// "pmat-book not found" pass.
+    #[cfg(unix)]
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn a_hung_book_validation_fails_the_claim_within_budget() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let project = root.path().join("project");
+        std::fs::create_dir_all(&project).expect("mkdir");
+        std::fs::create_dir_all(root.path().join("pmat-book")).expect("mkdir");
+        std::fs::write(project.join("Makefile"), "validate-book:\n\tsleep 20\n").expect("make");
+        let _budget = Budget::secs(1);
+
+        let started = std::time::Instant::now();
+        let result = test_book_validation(&project).await.expect("runs");
+
+        assert!(started.elapsed().as_secs() < 10, "{:?}", started.elapsed());
+        assert!(result.falsified, "{result:?}");
     }
 }
