@@ -7,6 +7,7 @@ use super::coverage_source;
 pub(crate) use super::formal_checks::test_formal_proof_verification;
 use super::lint_refresh::{refresh_lint_cache, LintRefresh, LINT_STATUS_PATH};
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult};
+use crate::cli::handlers::work_quality_handlers::gate_output;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -24,16 +25,14 @@ pub(crate) async fn test_satd_detection(
     print!("Detecting SATD markers... ");
 
     // Run pmat analyze satd
-    let output = Command::new("pmat")
-        .args([
-            "analyze",
-            "satd",
-            "--format",
-            "json",
-            "--path",
-            &project_path.to_string_lossy(),
-        ])
-        .output();
+    let output = gate_output(Command::new("pmat").args([
+        "analyze",
+        "satd",
+        "--format",
+        "json",
+        "--path",
+        &project_path.to_string_lossy(),
+    ]));
 
     match output {
         Ok(output) if output.status.success() => {
@@ -76,6 +75,11 @@ pub(crate) async fn test_satd_detection(
                 ))
             }
         }
+        // #1267: a killed analyzer checked nothing; a hang is never a pass.
+        Err(e) if e.kind() == std::io::ErrorKind::TimedOut => Ok(FalsificationResult::failed(
+            format!("'pmat analyze satd' {e}, so SATD was not checked"),
+            EvidenceType::BooleanCheck(false),
+        )),
         _ => Ok(FalsificationResult::passed(
             "SATD analyzer not available".to_string(),
         )),
@@ -173,16 +177,14 @@ pub(crate) async fn test_dead_code_detection(
     print!("Detecting dead code... ");
 
     // Run pmat analyze dead-code
-    let output = Command::new("pmat")
-        .args([
-            "analyze",
-            "dead-code",
-            "--format",
-            "json",
-            "--path",
-            &project_path.to_string_lossy(),
-        ])
-        .output();
+    let output = gate_output(Command::new("pmat").args([
+        "analyze",
+        "dead-code",
+        "--format",
+        "json",
+        "--path",
+        &project_path.to_string_lossy(),
+    ]));
 
     match output {
         Ok(output) if output.status.success() => {

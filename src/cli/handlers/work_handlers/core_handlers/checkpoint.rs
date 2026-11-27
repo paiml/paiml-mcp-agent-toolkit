@@ -4,6 +4,8 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
+use crate::cli::handlers::work_quality_handlers::gate_output;
+
 use crate::cli::handlers::work_contract::{
     compute_drift_metrics, record_trend_snapshot, score_contract, CheckpointRecord, ClauseKind,
     ContractClause, FalsificationMethod, InvariantResult, WorkContract,
@@ -170,12 +172,11 @@ fn check_lint_invariant(project_path: &Path, clause: &ContractClause) -> Invaria
         return pass_result(&clause.id, "Not a Rust project, lint skipped");
     }
 
-    let output = std::process::Command::new("cargo")
-        .args(["clippy", "--quiet", "--message-format=short"])
-        .current_dir(project_path)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output();
+    let output = gate_output(
+        std::process::Command::new("cargo")
+            .args(["clippy", "--quiet", "--message-format=short"])
+            .current_dir(project_path),
+    );
 
     match output {
         Ok(o) if o.status.success() => InvariantResult {
@@ -203,12 +204,11 @@ fn check_lint_invariant(project_path: &Path, clause: &ContractClause) -> Invaria
 /// Check invariant.compiles: project builds successfully.
 fn check_compiles_invariant(project_path: &Path, clause: &ContractClause) -> InvariantResult {
     if project_path.join("Cargo.toml").exists() {
-        let output = std::process::Command::new("cargo")
-            .args(["check", "--quiet"])
-            .current_dir(project_path)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .output();
+        let output = gate_output(
+            std::process::Command::new("cargo")
+                .args(["check", "--quiet"])
+                .current_dir(project_path),
+        );
 
         match output {
             Ok(o) if o.status.success() => InvariantResult {

@@ -6,6 +6,7 @@ use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult, Fil
 use crate::cli::handlers::work_falsification::pre_run_tree::{
     dirty_file_paths, has_upstream, parse_ahead_count, pre_run_status, read_porcelain_status,
 };
+use crate::cli::handlers::work_quality_handlers::gate_output;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -304,20 +305,18 @@ pub(crate) fn test_complexity_regression(
     // this repo it exposes 409 of 39900 functions and hides the worst offender.
     // violations[] is not truncated.
     let max_str = max_complexity.to_string();
-    let output = Command::new("pmat")
-        .args([
-            "analyze",
-            "complexity",
-            "--format",
-            "json",
-            "--path",
-            &project_path.to_string_lossy(),
-            "--max-cyclomatic",
-            &max_str,
-            "--max-cognitive",
-            &max_str,
-        ])
-        .output();
+    let output = gate_output(Command::new("pmat").args([
+        "analyze",
+        "complexity",
+        "--format",
+        "json",
+        "--path",
+        &project_path.to_string_lossy(),
+        "--max-cyclomatic",
+        &max_str,
+        "--max-cognitive",
+        &max_str,
+    ]));
 
     match output {
         Ok(output) if output.status.success() => {
@@ -554,10 +553,11 @@ pub(crate) fn test_spec_quality(
     }
 
     // Run pmat spec score
-    let output = Command::new("pmat")
-        .args(["spec", "score", &spec_path.to_string_lossy()])
-        .current_dir(project_path)
-        .output();
+    let output = gate_output(
+        Command::new("pmat")
+            .args(["spec", "score", &spec_path.to_string_lossy()])
+            .current_dir(project_path),
+    );
 
     // EXIT CODE 1 IS THE SCORER'S "SPEC FAILED" SIGNAL, NOT "SCORER MISSING".
     // handle_spec_score exits 1 iff score < threshold, and it prints the score
@@ -581,6 +581,11 @@ pub(crate) fn test_spec_quality(
                 ))),
             }
         }
+        // #1267: a hung scorer fails the claim.
+        Err(e) if e.kind() == std::io::ErrorKind::TimedOut => Ok(FalsificationResult::failed(
+            format!("spec scorer {e} for {}", spec_path.display()),
+            EvidenceType::BooleanCheck(false),
+        )),
         Err(e) => Ok(FalsificationResult::unmeasured(format!(
             "could not run spec scorer for {}: {e}",
             spec_path.display()

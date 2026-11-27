@@ -78,6 +78,27 @@ fn gate_step(cmd: &mut std::process::Command, what: &str) -> Result<bool> {
     gate_step_with(cmd, what, gate_budget())
 }
 
+/// Capture a child's output within the step budget (#1267). A child that
+/// overruns is killed with its process group and reported as a `TimedOut`
+/// error, so no caller can read a hang as success.
+pub(crate) fn gate_output(
+    cmd: &mut std::process::Command,
+) -> std::io::Result<std::process::Output> {
+    let Some(budget) = gate_budget() else {
+        return cmd.output();
+    };
+    crate::cli::handlers::work_falsification::deny_refresh::run_with_timeout(cmd, budget)?
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                format!(
+                    "exceeded budget of {}s (PMAT_WORK_GATE_TIMEOUT_SECS, 0 = unbounded)",
+                    budget.as_secs()
+                ),
+            )
+        })
+}
+
 /// Run git-aware tests for changed modules.
 /// Returns true if tests passed or were skipped.
 fn run_changed_module_tests(project_path: &PathBuf) -> Result<bool> {
@@ -158,11 +179,20 @@ fn run_rust_project_checks(project_path: &PathBuf) -> Result<bool> {
 
     // Capture rust-project-score
     println!("      {}", c::dim("Capturing rust-project-score..."));
-    if let Ok(output) = Command::new("pmat")
-        .args(["rust-project-score", "--format", "json"])
-        .current_dir(project_path)
-        .output()
-    {
+    let score_run = gate_output(
+        Command::new("pmat")
+            .args(["rust-project-score", "--format", "json"])
+            .current_dir(project_path),
+    );
+    if let Err(e) = &score_run {
+        println!(
+            "      {}",
+            c::warn(&format!(
+                "Rust Project Score NOT MEASURED: {e} (continuing)"
+            ))
+        );
+    }
+    if let Ok(output) = score_run {
         if output.status.success() {
             if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
                 if let Some(score) = json.get("total_earned").and_then(|v| v.as_f64()) {

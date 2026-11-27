@@ -7,6 +7,7 @@ use super::deny_refresh::{
 };
 use super::types::CachedMetric;
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult};
+use crate::cli::handlers::work_quality_handlers::gate_output;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -243,16 +244,28 @@ pub(crate) async fn test_examples_compile(project_path: &Path) -> Result<Falsifi
     )
 }
 
+/// The failed verdict for a book check that overran its budget.
+fn timed_out(what: &str, e: &std::io::Error) -> FalsificationResult {
+    FalsificationResult::failed(format!("'{what}' {e}"), EvidenceType::BooleanCheck(false))
+}
+
 /// Run `make validate-book` and return the result.
 ///
 /// Returns `Some(result)` if the command executed (pass or fail),
 /// or `None` if `make` was not available.
 fn try_make_validate_book(project_path: &Path) -> Option<FalsificationResult> {
-    let output = Command::new("make")
-        .args(["validate-book"])
-        .current_dir(project_path)
-        .output()
-        .ok()?;
+    let output = match gate_output(
+        Command::new("make")
+            .args(["validate-book"])
+            .current_dir(project_path),
+    ) {
+        Ok(output) => output,
+        // #1267: a hung validation fails here; `None` would fall through to a pass.
+        Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+            return Some(timed_out("make validate-book", &e))
+        }
+        Err(_) => return None,
+    };
 
     if output.status.success() {
         Some(FalsificationResult::passed(
@@ -279,11 +292,17 @@ fn try_book_chapter_tests(book_path: &Path) -> Option<FalsificationResult> {
         return None;
     }
 
-    let output = Command::new("bash")
-        .arg(&test_script)
-        .current_dir(book_path)
-        .output()
-        .ok()?;
+    let output = match gate_output(
+        Command::new("bash")
+            .arg(&test_script)
+            .current_dir(book_path),
+    ) {
+        Ok(output) => output,
+        Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+            return Some(timed_out("pmat-book chapter tests", &e))
+        }
+        Err(_) => return None,
+    };
 
     if output.status.success() {
         Some(FalsificationResult::passed(
@@ -377,15 +396,12 @@ pub(crate) async fn test_cross_crate_parity(project_path: &Path) -> Result<Falsi
         let parts: Vec<&str> = test_cmd.split_whitespace().collect();
         let (program, args) = parts.split_first().unwrap_or((&"cargo", &[]));
 
-        let output = Command::new(program)
-            .args(args)
-            .current_dir(&full_path)
-            .output();
+        let output = gate_output(Command::new(program).args(args).current_dir(&full_path));
 
         match output {
             Ok(out) if out.status.success() => passed_count += 1,
             Ok(_) => failures.push(path.to_string()),
-            Err(_) => failures.push(format!("{} (command failed)", path)),
+            Err(e) => failures.push(format!("{path} (command failed: {e})")),
         }
     }
 
