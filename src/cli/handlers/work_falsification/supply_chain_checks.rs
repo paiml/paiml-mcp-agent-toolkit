@@ -500,3 +500,69 @@ pub(crate) fn test_meta_falsification(project_path: &Path) -> Result<Falsificati
         ))
     }
 }
+
+#[cfg(test)]
+mod gate_budget_tests {
+    use super::*;
+
+    /// Restores `PMAT_WORK_GATE_TIMEOUT_SECS` on drop, panic included.
+    struct Budget(Option<std::ffi::OsString>);
+
+    impl Budget {
+        fn secs(n: u64) -> Self {
+            let old = std::env::var_os("PMAT_WORK_GATE_TIMEOUT_SECS");
+            std::env::set_var("PMAT_WORK_GATE_TIMEOUT_SECS", n.to_string());
+            Self(old)
+        }
+    }
+
+    impl Drop for Budget {
+        fn drop(&mut self) {
+            match self.0.take() {
+                Some(v) => std::env::set_var("PMAT_WORK_GATE_TIMEOUT_SECS", v),
+                None => std::env::remove_var("PMAT_WORK_GATE_TIMEOUT_SECS"),
+            }
+        }
+    }
+
+    /// #1267: a sibling test command that hangs is killed and fails the claim.
+    #[cfg(unix)]
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn a_hung_cross_crate_command_fails_the_claim_within_budget() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join(".pmat-work")).expect("mkdir");
+        std::fs::write(
+            dir.path().join(".pmat-work/cross-crate.json"),
+            r#"{"projects":[{"path":".","test_command":"sleep 20"}]}"#,
+        )
+        .expect("config");
+        let _budget = Budget::secs(1);
+
+        let started = std::time::Instant::now();
+        let result = test_cross_crate_parity(dir.path()).await.expect("runs");
+
+        assert!(started.elapsed().as_secs() < 10, "{:?}", started.elapsed());
+        assert!(result.falsified, "{result:?}");
+    }
+
+    /// #1267: a hung `make validate-book` fails; it must not fall through to the
+    /// "pmat-book not found" pass.
+    #[cfg(unix)]
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn a_hung_book_validation_fails_the_claim_within_budget() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let project = root.path().join("project");
+        std::fs::create_dir_all(&project).expect("mkdir");
+        std::fs::create_dir_all(root.path().join("pmat-book")).expect("mkdir");
+        std::fs::write(project.join("Makefile"), "validate-book:\n\tsleep 20\n").expect("make");
+        let _budget = Budget::secs(1);
+
+        let started = std::time::Instant::now();
+        let result = test_book_validation(&project).await.expect("runs");
+
+        assert!(started.elapsed().as_secs() < 10, "{:?}", started.elapsed());
+        assert!(result.falsified, "{result:?}");
+    }
+}
