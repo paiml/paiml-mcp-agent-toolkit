@@ -11,11 +11,13 @@
 use regex::Regex;
 use std::path::Path;
 
-/// Where the grants are written on a host that has the valve. There is deliberately no
-/// environment or config override: whoever is capped cannot point the cap at its own file.
-pub const GRANT_FILE: &str = "/mnt/nvme-raid0/cop-inbox/handoff/arbiter-cop/CAP-GRANTS.md";
+/// Where the grants are read on a host that has the valve. The host provides this path
+/// (a link to wherever its grants are written), so no machine layout is in the source.
+/// There is deliberately no environment or config override: whoever is capped cannot point
+/// the cap at its own file.
+pub const GRANT_FILE: &str = "/etc/pmat/cap-grants.md";
 /// Where a capped session asks for a grant.
-pub const INBOX: &str = "/mnt/nvme-raid0/cop-inbox/inbox.md";
+pub const INBOX: &str = "/etc/pmat/cap-requests.md";
 /// A grant is fresh for this many seconds.
 pub const TTL_SECS: i64 = 7200;
 /// How far ahead of this clock a grant may be stamped.
