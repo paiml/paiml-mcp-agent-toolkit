@@ -119,6 +119,14 @@ pub(crate) fn check_derived_fresh(project_path: &Path, selected: &[String]) -> C
             ),
         );
     }
+    // The export and the generator sandbox are verified on Unix only. Elsewhere the
+    // check refuses rather than judge with an unverified sandbox.
+    if !cfg!(unix) {
+        return derived_row(
+            CheckStatus::Fail,
+            "CB-2120 runs on Unix only: its export and generator sandbox are verified there and nowhere else".into(),
+        );
+    }
     let findings: Vec<String> = artifacts
         .iter()
         .filter_map(|a| derived_finding(project_path, a).err())
@@ -283,24 +291,6 @@ fn refuse_unfingerprintable(artifact: &Path, path: &str) -> Result<(), String> {
     }
 }
 
-/// Drops the verbatim `\\?\` prefix that `canonicalize` adds on Windows; a UNC
-/// share keeps it. Git's ceiling comparison and the generator's shell want plain paths.
-fn strip_verbatim(path: &str) -> &str {
-    match path.strip_prefix(r"\\?\") {
-        Some(rest) if !rest.starts_with(r"UNC\") => rest,
-        _ => path,
-    }
-}
-
-/// `canonicalize`, with the Windows verbatim prefix removed.
-fn canonical_plain(dir: &Path) -> Result<std::path::PathBuf, String> {
-    let canonical = std::fs::canonicalize(dir).map_err(|e| format!("could not make export dir: {e}"))?;
-    match canonical.to_str() {
-        Some(s) => Ok(std::path::PathBuf::from(strip_verbatim(s))),
-        None => Ok(canonical),
-    }
-}
-
 /// Anchors a temp base at the working directory when it is relative.
 fn absolute_base(base: std::path::PathBuf) -> Result<std::path::PathBuf, String> {
     if base.is_absolute() {
@@ -319,7 +309,8 @@ fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
         .tempdir_in(&base)
         .map_err(|e| format!("could not make export dir: {e}"))?;
     // Canonical, so PWD and TMPDIR carry no `.` or `..` segments.
-    let canonical = canonical_plain(dir.path())?;
+    let canonical = std::fs::canonicalize(dir.path())
+        .map_err(|e| format!("could not make export dir: {e}"))?;
     let tree = canonical.join("tree");
     std::fs::create_dir(&tree).map_err(|e| format!("could not make export dir: {e}"))?;
     // A subproject's prefix ends in `/`: strip it, or `tree.join` keeps it and
@@ -349,11 +340,8 @@ fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
     let scratch = canonical;
     // GIT_CEILING_DIRECTORIES is colon-separated: a colon would split it and
     // unbound the ceiling. Fail closed rather than judge outside the export.
-    // GIT_CEILING_DIRECTORIES is split on `:` (Unix) or `;` (Windows, where `:` is
-    // the drive separator and always present in a canonical path).
-    let sep = if cfg!(windows) { ';' } else { ':' };
-    if scratch.to_string_lossy().contains(sep) {
-        return Err(format!("the temp directory path contains '{sep}'; set TMPDIR to a path without one"));
+    if scratch.to_string_lossy().contains(':') {
+        return Err("the temp directory path contains ':'; set TMPDIR to a path without one".into());
     }
     let tmp = scratch.join("tmp");
     std::fs::create_dir(&tmp).map_err(|e| format!("could not make export tmp: {e}"))?;

@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod derived_fresh_tests {
     //! CB-2120 (GH-1641): a declared committed derived file that is stale vs the
     //! tree turns the rule red before the push does.
@@ -285,10 +285,18 @@ generate = ['sh', '-c', 'printf "%s\n" "${PWD##*/}"']
     }
 
     #[test]
-    fn a_verbatim_windows_prefix_is_dropped_but_a_unc_share_is_kept() {
-        assert_eq!(strip_verbatim(r"\\?\C:\repo\tmp"), r"C:\repo\tmp");
-        assert_eq!(strip_verbatim(r"\\?\UNC\srv\share\x"), r"\\?\UNC\srv\share\x");
-        assert_eq!(strip_verbatim("/tmp/x"), "/tmp/x");
+    fn a_missing_export_artifact_is_refused_before_any_generator_runs() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let err = refuse_unfingerprintable(&dir.path().join("missing"), "out.txt").expect_err("missing");
+        assert!(err.contains("missing from the HEAD export"), "{err}");
+    }
+
+    #[test]
+    fn a_symlink_export_artifact_is_refused() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::os::unix::fs::symlink("x", dir.path().join("out.txt")).expect("link");
+        let err = refuse_unfingerprintable(&dir.path().join("out.txt"), "out.txt").expect_err("symlink");
+        assert!(err.contains("is a symlink"), "{err}");
     }
 
     #[test]
