@@ -213,7 +213,8 @@ mod derived_fresh_tests {
         assert!(check.message.contains("stale"), "{}", check.message);
     }
 
-    /// A link replaced by a new link to the same target is still a rewrite.
+    /// A symlink artifact is refused before the generator runs: the generator
+    /// could replace the link within one clock tick, which the stamp cannot see.
     #[cfg(unix)]
     #[test]
     fn a_symlink_artifact_fails_closed_and_never_runs_the_generator() {
@@ -236,9 +237,6 @@ mod derived_fresh_tests {
         assert!(!sentinel.exists(), "the generator ran for a symlink artifact");
     }
 
-    /// The generator's TMPDIR is strictly below the git ceiling (a sub-path of
-    /// it, never equal), so `git -C "$TMPDIR"` cannot climb into the enclosing
-    /// repository. An unset or empty ceiling fails the generator.
     #[cfg(unix)]
     #[test]
     fn a_root_generator_sees_a_pwd_with_no_trailing_slash() {
@@ -252,6 +250,22 @@ generate = ['sh', '-c', 'case "$PWD" in */) exit 1;; *) printf ok;; esac']
     }
 
     #[cfg(unix)]
+    #[cfg(unix)]
+    #[test]
+    fn a_subproject_whose_name_ends_in_a_newline_keeps_its_prefix() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let sub = dir.path().join("sub\n");
+        std::fs::create_dir(&sub).expect("sub");
+        std::fs::write(sub.join("out.txt"), "ok").expect("out");
+        let decl = "[[artifact]]\npath = \"out.txt\"\ngenerate = ['sh', '-c', 'printf ok']\n";
+        std::fs::write(sub.join(DERIVED_FILE), decl).expect("decl");
+        git(dir.path(), &["init", "-q"]);
+        git(dir.path(), &["add", "-A"]);
+        git(dir.path(), &["commit", "-qm", "base"]);
+        let check = check_derived_fresh(&sub, &selected());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
     #[test]
     fn a_subproject_generator_sees_a_pwd_with_no_trailing_slash() {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -270,6 +284,23 @@ generate = ['sh', '-c', 'printf "%s\n" "${PWD##*/}"']
         assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
     }
 
+    #[test]
+    fn a_relative_tmpdir_base_resolves_against_the_working_directory() {
+        let base = absolute_base(std::path::PathBuf::from("relative-tmp")).expect("base");
+        let cwd = std::env::current_dir().expect("cwd");
+        assert_eq!(base, cwd.join("relative-tmp"));
+        assert!(base.is_absolute());
+    }
+
+    #[test]
+    fn an_absolute_tmpdir_base_is_kept_as_given() {
+        let abs = std::env::temp_dir();
+        assert_eq!(absolute_base(abs.clone()).expect("base"), abs);
+    }
+
+    /// The generator's TMPDIR is strictly below the git ceiling (a sub-path of
+    /// it, never equal), so `git -C "$TMPDIR"` cannot climb into the enclosing
+    /// repository. An unset or empty ceiling fails the generator.
     #[cfg(unix)]
     #[test]
     fn the_generator_tmpdir_is_strictly_below_the_git_ceiling() {

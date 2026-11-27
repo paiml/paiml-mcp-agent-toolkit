@@ -143,11 +143,7 @@ fn derived_finding(root: &Path, a: &DerivedArtifact) -> Result<(), String> {
     let committed = committed_bytes(root, path)?;
     let export = head_export(root, path).map_err(|e| format!("{path}: {e}"))?;
     let artifact = export.cwd.join(path);
-    // A link cannot be fingerprinted for a rewrite within one clock tick (no std
-    // API sets a link's own mtime), so a symlink artifact is refused outright.
-    if stamp(&artifact).is_some_and(|s| s.symlink) {
-        return Err(format!("{path}: is a symlink in HEAD; a derived artifact must be a regular file"));
-    }
+    refuse_unfingerprintable(&artifact, path)?;
     let before = (read_artifact(&artifact), stamp(&artifact));
     let generated = run_generator(&export.cwd, a, &export.tmp, &export.scratch)
         .map_err(|e| format!("{path}: generator {e}"))?;
@@ -273,16 +269,33 @@ struct HeadExport {
     cwd: std::path::PathBuf,
 }
 
+/// Refuses an artifact the generator must never run against. A link cannot be
+/// fingerprinted for a rewrite within one clock tick (no std API sets a link's own
+/// mtime), so a symlink is refused outright. An artifact missing from the export
+/// means the export does not hold what HEAD names: fail closed.
+fn refuse_unfingerprintable(artifact: &Path, path: &str) -> Result<(), String> {
+    match stamp(artifact) {
+        None => Err(format!("{path}: is missing from the HEAD export")),
+        Some(s) if s.symlink => {
+            Err(format!("{path}: is a symlink in HEAD; a derived artifact must be a regular file"))
+        }
+        Some(_) => Ok(()),
+    }
+}
+
+/// Anchors a temp base at the working directory when it is relative.
+fn absolute_base(base: std::path::PathBuf) -> Result<std::path::PathBuf, String> {
+    if base.is_absolute() {
+        return Ok(base);
+    }
+    std::env::current_dir()
+        .map(|cwd| cwd.join(&base))
+        .map_err(|e| format!("could not make export dir: {e}"))
+}
+
 fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
     // A relative TMPDIR would resolve against `root` in git and inside the repo.
-    let base = std::env::temp_dir();
-    let base = if base.is_absolute() {
-        base
-    } else {
-        std::env::current_dir()
-            .map_err(|e| format!("could not make export dir: {e}"))?
-            .join(base)
-    };
+    let base = absolute_base(std::env::temp_dir())?;
     let dir = tempfile::Builder::new()
         .prefix("cb2120-")
         .tempdir_in(&base)
@@ -295,7 +308,12 @@ fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
     // A subproject's prefix ends in `/`: strip it, or `tree.join` keeps it and
     // PWD gains a trailing slash, which breaks `${PWD##*/}` in the generator.
     let mut prefix_bytes = git_bytes(root, &["rev-parse", "--show-prefix"])?;
-    while matches!(prefix_bytes.last(), Some(b'\n') | Some(b'/')) {
+    // git prints the prefix (ending in `/`, empty at the root) then a newline. Strip
+    // exactly those two, never more, so a directory whose name ends in `\n` survives.
+    if prefix_bytes.last() == Some(&b'\n') {
+        prefix_bytes.pop();
+    }
+    if prefix_bytes.last() == Some(&b'/') {
         prefix_bytes.pop();
     }
     let prefix = path_from_bytes(&prefix_bytes)?;
@@ -314,8 +332,11 @@ fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
     let scratch = canonical;
     // GIT_CEILING_DIRECTORIES is colon-separated: a colon would split it and
     // unbound the ceiling. Fail closed rather than judge outside the export.
-    if scratch.to_string_lossy().contains(':') {
-        return Err("the temp directory path contains ':'; set TMPDIR to a path without one".into());
+    // GIT_CEILING_DIRECTORIES is split on `:` (Unix) or `;` (Windows, where `:` is
+    // the drive separator and always present in a canonical path).
+    let sep = if cfg!(windows) { ';' } else { ':' };
+    if scratch.to_string_lossy().contains(sep) {
+        return Err(format!("the temp directory path contains '{sep}'; set TMPDIR to a path without one"));
     }
     let tmp = scratch.join("tmp");
     std::fs::create_dir(&tmp).map_err(|e| format!("could not make export tmp: {e}"))?;
@@ -440,6 +461,17 @@ fn write_entry(dest: &Path, mode: &str, content: &[u8], pin: bool) -> std::io::R
         if mode == "120000" {
             use std::os::unix::ffi::OsStrExt;
             return std::os::unix::fs::symlink(std::ffi::OsStr::from_bytes(content), dest);
+        }
+    }
+    // Off Unix a symlink cannot be materialised, and a file in its place would let
+    // the generator run against a link that the fingerprint cannot see: refuse it.
+    #[cfg(not(unix))]
+    {
+        if mode == "120000" {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "a symlink in HEAD cannot be exported on this platform",
+            ));
         }
     }
     let mut file = std::fs::File::create(dest)?;
