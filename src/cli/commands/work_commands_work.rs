@@ -563,11 +563,26 @@ pub enum WorkCommands {
     #[command(visible_aliases = &["values", "statuses"])]
     ListStatuses,
 
-    /// Score a work contract (DBC spec 5-dimension quality + lint)
+    /// Score a work contract (DBC spec 5-dimension quality + lint), or with
+    /// `--issue N` the text of a GitHub ticket against the fixed 0-100 rubric
+    /// (FLOW-OWNER-001: exit 0 at 70 or more, 1 under 70, 2 when GitHub was not read)
     #[command(visible_aliases = &["sc", "quality-score"])]
     Score {
-        /// Work item ID
-        id: String,
+        /// Work item ID (omit with --issue)
+        #[arg(required_unless_present = "issue")]
+        id: Option<String>,
+
+        /// Score GitHub issue N against the ticket rubric instead of a work contract
+        #[arg(long, conflicts_with = "id")]
+        issue: Option<u64>,
+
+        /// With --issue: the repository (owner/name; default: the checkout's own)
+        #[arg(long, requires = "issue")]
+        repo: Option<String>,
+
+        /// With --issue: print the score as JSON
+        #[arg(long, requires = "issue")]
+        json: bool,
 
         /// Minimum score threshold (0.0-1.0, default: 0.0)
         #[arg(long, default_value = "0.0")]
@@ -580,6 +595,40 @@ pub enum WorkCommands {
         /// Output format (text, json, or sarif)
         #[arg(short, long, default_value = "text")]
         format: String,
+    },
+
+    /// List ticket findings for a repository (FLOW-OWNER-001): score under the pass
+    /// mark, already fixed, duplicate, stale path, idle, unparented, finished epic,
+    /// oversized master, over the cap. One paged GraphQL read; writes nothing.
+    /// Exit 0 when the repository was read, 2 when it was not.
+    Findings {
+        /// The repository (owner/name; default: the checkout's own)
+        #[arg(long)]
+        repo: Option<String>,
+
+        /// Print the report as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Score under which a ticket needs a rewrite (Q1)
+        #[arg(long, default_value_t = 70)]
+        pass_mark: u32,
+
+        /// Days without activity after which a ticket needs revalidation (V4)
+        #[arg(long, default_value_t = 30)]
+        stale_ticket_days: i64,
+
+        /// Title similarity (0.0-1.0) at or above which a ticket duplicates an older one (V2)
+        #[arg(long, default_value_t = 0.8)]
+        duplicate_threshold: f64,
+
+        /// Open tickets the repository may hold (P4)
+        #[arg(long, default_value_t = 50)]
+        ticket_cap: usize,
+
+        /// Project path, used to name the repository when --repo is absent
+        #[arg(short, long)]
+        path: Option<PathBuf>,
     },
 
     /// Aggregate quality score across all work contracts (DBC spec §14.6)

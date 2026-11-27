@@ -322,3 +322,60 @@ mod score_gate_tests {
         );
     }
 }
+
+/// `owner/name`: the `--repo` given, else the repository `path` is a checkout of.
+fn ticket_repo(repo: Option<String>, path: Option<PathBuf>) -> Result<String> {
+    match repo {
+        Some(r) => Ok(r),
+        None => crate::services::github_comply::source::current_repo(
+            &path.unwrap_or_else(|| PathBuf::from(".")),
+        ),
+    }
+}
+
+/// Print a ticket-quality run and leave with its exit code.
+fn finish_ticket_run((text, code): (String, i32)) -> Result<()> {
+    print!("{text}");
+    if code != 0 {
+        std::process::exit(code);
+    }
+    Ok(())
+}
+
+/// `pmat work score --issue N` (FLOW-OWNER-001 §3): the fixed rubric over one ticket.
+pub fn handle_ticket_score(
+    issue: u64,
+    repo: Option<String>,
+    json: bool,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    use crate::services::github_comply::source::GhGraphql;
+    use crate::services::ticket_quality::{rubric::PASS_MARK, run};
+    let repo = match ticket_repo(repo, path) {
+        Ok(repo) => repo,
+        Err(e) => return finish_ticket_run((format!("not_measured: {e:#}\n"), 2)),
+    };
+    finish_ticket_run(run::run_score(&GhGraphql, &repo, issue, PASS_MARK, json))
+}
+
+/// `pmat work findings` (FLOW-OWNER-001 §4): one paged read, no writes.
+pub fn handle_ticket_findings(
+    repo: Option<String>,
+    json: bool,
+    settings: crate::services::ticket_quality::findings::Settings,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    use crate::services::github_comply::source::GhGraphql;
+    use crate::services::ticket_quality::run;
+    let repo = match ticket_repo(repo, path) {
+        Ok(repo) => repo,
+        Err(e) => return finish_ticket_run((format!("not_measured: {e:#}\n"), 2)),
+    };
+    finish_ticket_run(run::run_findings(
+        &GhGraphql,
+        &repo,
+        &settings,
+        json,
+        chrono::Utc::now(),
+    ))
+}

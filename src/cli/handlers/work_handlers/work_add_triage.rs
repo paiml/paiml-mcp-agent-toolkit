@@ -42,6 +42,9 @@ pub struct IssueFacts {
     pub open: bool,
     pub is_pull_request: bool,
     pub labels: Vec<String>,
+    /// The issue title, and whether a milestone is set (the ticket rubric reads both).
+    pub title: String,
+    pub has_milestone: bool,
     /// The issue body (empty when GitHub sends none): slice 2 (#1831) will derive
     /// the ticket `spec:` and `acceptance_criteria:` from it.
     pub body: String,
@@ -249,6 +252,8 @@ pub fn parse_issue(body: &str) -> Result<IssueFacts> {
         open: state.eq_ignore_ascii_case("open"),
         is_pull_request: v.get("pull_request").is_some_and(|p| !p.is_null()),
         labels,
+        title: v["title"].as_str().unwrap_or_default().to_string(),
+        has_milestone: v["milestone"].is_object(),
         body: v["body"].as_str().unwrap_or_default().to_string(),
     })
 }
@@ -337,4 +342,28 @@ fn derive_acceptance(body: &str) -> Vec<String> {
         }
     }
     acceptance
+}
+
+/// What the ticket rubric reads at filing (FLOW-OWNER-001 D5). The gate has already
+/// found the epic open and the link under it is about to be made, so the parent counts;
+/// the kind the operator passed counts as the ticket's `kind:` label.
+pub fn rubric_ticket(
+    facts: &IssueFacts,
+    fallback_title: &str,
+) -> crate::services::ticket_quality::rubric::Ticket {
+    // The labels are the issue's own: `work add` does not write a kind label to GitHub,
+    // so a kind the flag names is not a point the ticket has.
+    let labels = facts.labels.clone();
+    let title = if facts.title.trim().is_empty() {
+        fallback_title
+    } else {
+        &facts.title
+    };
+    crate::services::ticket_quality::rubric::Ticket {
+        title: title.to_string(),
+        body: facts.body.clone(),
+        labels,
+        parent_open: true,
+        has_milestone: facts.has_milestone,
+    }
 }
