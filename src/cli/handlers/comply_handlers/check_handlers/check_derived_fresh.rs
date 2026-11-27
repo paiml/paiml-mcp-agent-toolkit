@@ -276,10 +276,15 @@ fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
         .prefix("cb2120-")
         .tempdir_in(&base)
         .map_err(|e| format!("could not make export dir: {e}"))?;
-    let tree = dir.path().join("tree");
+    // Canonical, so PWD and TMPDIR carry no `.` or `..` segments.
+    let canonical = std::fs::canonicalize(dir.path())
+        .map_err(|e| format!("could not make export dir: {e}"))?;
+    let tree = canonical.join("tree");
     std::fs::create_dir(&tree).map_err(|e| format!("could not make export dir: {e}"))?;
+    // A subproject's prefix ends in `/`: strip it, or `tree.join` keeps it and
+    // PWD gains a trailing slash, which breaks `${PWD##*/}` in the generator.
     let mut prefix_bytes = git_bytes(root, &["rev-parse", "--show-prefix"])?;
-    while prefix_bytes.last() == Some(&b'\n') {
+    while matches!(prefix_bytes.last(), Some(b'\n') | Some(b'/')) {
         prefix_bytes.pop();
     }
     let prefix = path_from_bytes(&prefix_bytes)?;
@@ -290,7 +295,7 @@ fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
     write_blobs(root, &entries, &tree, &pin)?;
     let cwd = tree.join(&prefix);
     std::fs::create_dir_all(&cwd).map_err(|e| format!("could not make export dir: {e}"))?;
-    let scratch = dir.path().to_path_buf();
+    let scratch = canonical;
     // GIT_CEILING_DIRECTORIES is colon-separated: a colon would split it and
     // unbound the ceiling. Fail closed rather than judge outside the export.
     if scratch.to_string_lossy().contains(':') {

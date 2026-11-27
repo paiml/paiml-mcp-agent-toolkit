@@ -241,6 +241,25 @@ mod derived_fresh_tests {
     /// repository. An unset or empty ceiling fails the generator.
     #[cfg(unix)]
     #[test]
+    fn a_subproject_generator_sees_a_pwd_with_no_trailing_slash() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let sub = dir.path().join("sub");
+        std::fs::create_dir(&sub).expect("sub");
+        std::fs::write(sub.join("out.txt"), "sub\n").expect("out");
+        let decl = r#"[[artifact]]
+path = "out.txt"
+generate = ['sh', '-c', 'printf "%s\n" "${PWD##*/}"']
+"#;
+        std::fs::write(sub.join(DERIVED_FILE), decl).expect("decl");
+        git(dir.path(), &["init", "-q"]);
+        git(dir.path(), &["add", "-A"]);
+        git(dir.path(), &["commit", "-qm", "base"]);
+        let check = check_derived_fresh(&sub, &selected());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn the_generator_tmpdir_is_strictly_below_the_git_ceiling() {
         let decl = r#"[[artifact]]
 path = "out.txt"
