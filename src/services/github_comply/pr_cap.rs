@@ -78,12 +78,16 @@ fn measure_pr_cap(
 
 /// Read `repo` through `g` and judge it against `policy.max_open_prs`.
 pub fn guard_pr_cap(g: &dyn Graphql, repo: &str, policy: &Policy) -> Result<()> {
-    let now = Utc::now().timestamp();
-    guard_pr_cap_valve(g, repo, policy, Path::new(GRANT_FILE), now)
+    // A test build never reads the host's real grant file.
+    #[cfg(test)]
+    let file = tests::grant_file();
+    #[cfg(not(test))]
+    let file = std::path::PathBuf::from(GRANT_FILE);
+    guard_pr_cap_valve(g, repo, policy, &file, Utc::now().timestamp())
 }
 
 /// [`guard_pr_cap`] with the CAP-VALVE grant file and the clock (Unix time) as arguments.
-pub fn guard_pr_cap_valve(
+fn guard_pr_cap_valve(
     g: &dyn Graphql,
     repo: &str,
     policy: &Policy,
@@ -395,11 +399,12 @@ mod tests {
     }
 
     #[test]
-    fn valve_is_not_read_under_the_cap() -> Result<()> {
+    fn valve_under_the_cap_admits_with_no_note() -> Result<()> {
         let dir = tempfile::tempdir()?;
-        let file = dir.path().join("absent");
-        let r = guard_pr_cap_valve(&Fake(prs(3, 0)), "o/r", &policy(4), &file, T0);
-        assert!(r.is_ok(), "{r:?}");
+        // A covering grant is present: under the cap it is neither used nor announced.
+        let file = grant(dir.path(), "o/r", 4, T0, 60)?;
+        let (r, note) = judge_with_valve("o/r", &prs(3, 0), 4, &file, T0);
+        assert!(r.is_ok() && note.is_none(), "{r:?} {note:?}");
         Ok(())
     }
 
@@ -410,6 +415,8 @@ mod tests {
         let file = grant(dir.path(), "o/r", cap, Utc::now().timestamp(), 60)?;
         GRANTS.with(|c| *c.borrow_mut() = Some(file));
         inject(Fake(prs(cap as u64, 0)));
+        // The guard itself admits; the handlers may still fail later on the empty project.
+        guard_pr_cap_at(dir.path())?;
         for r in [start(dir.path()).await, delegate(dir.path()).await] {
             let msg = r.err().map(|e| e.to_string()).unwrap_or_default();
             assert!(!msg.contains("open PRs"), "{msg}");
