@@ -17,7 +17,7 @@ Source: .github/required-status-checks.txt
 
 | Required context | Reaches a rule invocation |
 |---|---|
-| `ci / gate` | **unknown** — resolves into `paiml/.github/.github/workflows/sovereign-ci.yml@main`, whose steps this repository cannot read. A HOLE, not a measured zero: no rule can be shown to run through it, and none can be shown not to |
+| `ci / gate` | **unknown** — resolves into `paiml/.github/.github/workflows/sovereign-ci.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0`, whose steps this repository cannot read. A HOLE, not a measured zero: no rule can be shown to run through it, and none can be shown not to |
 | `feature-gate` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `docs build (docs.rs environment)` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `pmat score` | **no** — this required check was read in full and gates nothing in the CB roster |
@@ -26,16 +26,16 @@ Source: .github/required-status-checks.txt
 
 ## Summary
 
-- rules: 164
+- rules: 165
 - ENFORCED: 2
-- NEUTERED: 162
+- NEUTERED: 163
 - UNREACHABLE: 0
 
 ## Holes
 
 Things that could not be measured. Each one is a failure, not a blank.
 
-- required context `ci / gate` resolves into `paiml/.github/.github/workflows/sovereign-ci.yml@main` (called by job `ci` in .github/workflows/ci.yml), whose steps are not readable from this repository, so no rule can be *shown* to run through it
+- required context `ci / gate` resolves into `paiml/.github/.github/workflows/sovereign-ci.yml@fbee3788a0ed92d09974ac21ea9bc97d373af6f0` (called by job `ci` in .github/workflows/ci.yml), whose steps are not readable from this repository, so no rule can be *shown* to run through it
 
 ## Rules
 
@@ -201,7 +201,8 @@ Things that could not be measured. Each one is a failure, not a blank.
 | CB-2110 | Spec Epics | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_spec_epics.rs:25` |
 | CB-2111 | Spec Reviews | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_spec_reviews.rs:25` |
 | CB-2112 | Ticket Linkage | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_ticket_linkage.rs:18` |
-| CB-2113 | Commit Traceability | error | ENFORCED | .github/workflows/ci.yml:traceability step `the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)` (run; selected by --checks CB-2113,CB-2115) | `src/cli/handlers/comply_handlers/check_handlers/check_traceability.rs:25` |
+| CB-2113 | Commit Traceability | error | ENFORCED | .github/workflows/ci.yml:traceability step `the closed loop holds (CB-2113, offline - git and the roadmap file)` (run; selected by --checks CB-2113) | `src/cli/handlers/comply_handlers/check_handlers/check_traceability.rs:25` |
 | CB-2114 | Release Binding | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_release_binding.rs:20` |
-| CB-2115 | Roadmap Coherence | error | ENFORCED | .github/workflows/ci.yml:traceability step `the closed loop holds (CB-2113) and the roadmap and GitHub agree (CB-2115)` (run; selected by --checks CB-2113,CB-2115) | `src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs:14` |
+| CB-2115 | Roadmap Coherence | error | ENFORCED | .github/workflows/ci.yml:traceability step `the roadmap and GitHub agree (CB-2115, push or roadmap-touching change)` (run; selected by --checks CB-2115) | `src/cli/handlers/comply_handlers/check_handlers/check_roadmap_coherence.rs:14` |
 | CB-2118 | contracts-armed-gates-monotone | error | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_armed_gates.rs:23` |
+| CB-2120 | Derived Artifacts Fresh | warning | NEUTERED | .github/workflows/quality-gate.yml:provable-ladder step `Ladder gate — pmat comply` — step `Ladder gate — pmat comply` carries continue-on-error, so its failure never fails the job | `src/cli/handlers/comply_handlers/check_handlers/check_derived_fresh.rs:21` |

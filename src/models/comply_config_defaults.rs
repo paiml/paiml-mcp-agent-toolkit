@@ -412,6 +412,23 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-2120: Derived Artifacts Fresh — a pre-push check, run by naming it in
+    // `--checks`; a repository opts in with `.pmat-derived.toml`. Severity
+    // Warning does NOT make a stale artifact pass: a run that names CB-2120 and
+    // finds one exits 1 (`is_compliant` counts any Fail). It stays Warning so the
+    // gate-effect ledger keeps it out of the error-severity gates, and no CI leg
+    // passes `--checks CB-2120`: a CI run validates the declaration but never
+    // runs a generator.
+    checks.insert(
+        "cb-2120".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Warning,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     // CB-2104: Numeric Claims — numbers the repository writes down about
     // itself and then contradicts. Declared **Warning**, and that is not an
     // oversight: this rule is advisory by contract and must never fail a
