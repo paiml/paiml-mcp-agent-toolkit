@@ -22,13 +22,17 @@ pub async fn handle_work_add(
     let triaged = work_add_triage::gate(&triage, tags.as_deref(), github_issue, &links)?;
     refuse_taken_id(&project_path, triaged.child)?;
     guard_ghc_001(&project_path, &title, &triaged)?;
+    // FLOW-OWNER-001 D5: a ticket under the pass mark is refused before the link or the row.
+    let facts = work_add_triage::EpicLinks::issue(&links, triaged.child)?;
+    crate::services::ticket_quality::rubric::refuse_low_score(
+        &work_add_triage::rubric_ticket(&facts, &title, triaged.kind),
+        crate::services::ticket_quality::rubric::PASS_MARK,
+    )?;
     if work_add_triage::ensure_linked(&triaged, &links)? {
         println!("linked #{} under epic #{}", triaged.child, triaged.epic);
     }
     let tags = work_add_triage::tags_with_kind(tags.as_deref(), triaged.kind);
-    let derived = work_add_triage::derive_from_body(
-        &work_add_triage::EpicLinks::issue(&links, triaged.child)?.body,
-    );
+    let derived = work_add_triage::derive_from_body(&facts.body);
     for (field, missing) in [
         ("spec", derived.spec.is_none()),
         ("acceptance_criteria", derived.acceptance.is_empty()),
