@@ -76,16 +76,23 @@ impl Item {
 
     /// Does `t` pass the item?
     pub fn passes(self, t: &Ticket) -> bool {
-        match self {
-            Item::Acceptance => !checklist(&t.body).is_empty(),
-            Item::Falsifiable => has_falsifiable_check(&t.body),
-            Item::ParentMilestone => t.parent_open && t.has_milestone,
-            Item::Scope => has_scope(t),
-            Item::Problem => has_problem_sections(&t.body),
-            Item::Size => size_ok(t),
-            Item::Title => title_is_well_formed(&t.title),
-        }
+        CHECKS[self as usize](t)
     }
+}
+
+/// The pass check of each item, in `Item::ALL` order.
+const CHECKS: [fn(&Ticket) -> bool; 7] = [
+    acceptance_ok,
+    |t| has_falsifiable_check(&t.body),
+    |t| t.parent_open && t.has_milestone,
+    has_scope,
+    |t| has_problem_sections(&t.body),
+    size_ok,
+    |t| title_is_well_formed(&t.title),
+];
+
+fn acceptance_ok(t: &Ticket) -> bool {
+    !checklist(&t.body).is_empty()
 }
 
 /// The id and the missing-item text of each item, in `Item::ALL` order.
