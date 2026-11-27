@@ -77,18 +77,29 @@ fn parse_derived_decl(raw: &str) -> Result<Vec<DerivedArtifact>, String> {
 fn load_derived_decl(project_path: &Path) -> Result<Vec<DerivedArtifact>, ComplianceCheck> {
     let unreadable = |e: String| derived_row(CheckStatus::Fail, format!("{DERIVED_FILE}: {e}"));
     match head_blob(project_path, DERIVED_FILE) {
-        Ok(Some(raw)) => match String::from_utf8(raw) {
-            Ok(text) => parse_derived_decl(&text).map_err(unreadable),
-            Err(e) => Err(unreadable(e.to_string())),
-        },
-        Ok(None) if project_path.join(DERIVED_FILE).exists() => {
-            Err(unreadable("not in HEAD; commit the declaration".to_string()))
-        }
-        Ok(None) => Err(derived_row(
+        Ok(Some(raw)) => decode_head_decl(raw).map_err(unreadable),
+        Ok(None) => Err(absent_decl(project_path)),
+        Err(e) => Err(unreadable(e)),
+    }
+}
+
+fn decode_head_decl(raw: Vec<u8>) -> Result<Vec<DerivedArtifact>, String> {
+    let text = String::from_utf8(raw).map_err(|e| e.to_string())?;
+    parse_derived_decl(&text)
+}
+
+/// Not in HEAD: a working-tree copy that was never committed is a Fail; no file at all is a Skip.
+fn absent_decl(project_path: &Path) -> ComplianceCheck {
+    if project_path.join(DERIVED_FILE).exists() {
+        derived_row(
+            CheckStatus::Fail,
+            format!("{DERIVED_FILE}: not in HEAD; commit the declaration"),
+        )
+    } else {
+        derived_row(
             CheckStatus::Skip,
             format!("no {DERIVED_FILE} — no derived artifact is declared"),
-        )),
-        Err(e) => Err(unreadable(e)),
+        )
     }
 }
 
