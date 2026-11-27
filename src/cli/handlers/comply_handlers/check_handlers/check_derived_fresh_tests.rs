@@ -250,7 +250,6 @@ generate = ['sh', '-c', 'case "$PWD" in */) exit 1;; *) printf ok;; esac']
     }
 
     #[cfg(unix)]
-    #[cfg(unix)]
     #[test]
     fn a_subproject_whose_name_ends_in_a_newline_keeps_its_prefix() {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -266,6 +265,7 @@ generate = ['sh', '-c', 'case "$PWD" in */) exit 1;; *) printf ok;; esac']
         assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
     }
 
+    #[cfg(unix)]
     #[test]
     fn a_subproject_generator_sees_a_pwd_with_no_trailing_slash() {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -285,6 +285,13 @@ generate = ['sh', '-c', 'printf "%s\n" "${PWD##*/}"']
     }
 
     #[test]
+    fn a_verbatim_windows_prefix_is_dropped_but_a_unc_share_is_kept() {
+        assert_eq!(strip_verbatim(r"\\?\C:\repo\tmp"), r"C:\repo\tmp");
+        assert_eq!(strip_verbatim(r"\\?\UNC\srv\share\x"), r"\\?\UNC\srv\share\x");
+        assert_eq!(strip_verbatim("/tmp/x"), "/tmp/x");
+    }
+
+    #[test]
     fn a_relative_tmpdir_base_resolves_against_the_working_directory() {
         let base = absolute_base(std::path::PathBuf::from("relative-tmp")).expect("base");
         let cwd = std::env::current_dir().expect("cwd");
@@ -294,8 +301,22 @@ generate = ['sh', '-c', 'printf "%s\n" "${PWD##*/}"']
 
     #[test]
     fn an_absolute_tmpdir_base_is_kept_as_given() {
-        let abs = std::env::temp_dir();
+        let abs = std::env::current_dir().expect("cwd").join("abs-tmp");
         assert_eq!(absolute_base(abs.clone()).expect("base"), abs);
+    }
+
+    /// TMP and TEMP are read by many tools (and by Windows APIs) in place of
+    /// TMPDIR, so the generator's TMP and TEMP are also strictly below the ceiling.
+    #[cfg(unix)]
+    #[test]
+    fn the_generator_temp_vars_are_strictly_below_the_git_ceiling() {
+        let decl = r#"[[artifact]]
+path = "out.txt"
+generate = ['sh', '-c', 'case "$TMP:$TEMP" in "$GIT_CEILING_DIRECTORIES"/*:"$GIT_CEILING_DIRECTORIES"/*) printf ok;; *) exit 1;; esac']
+"#;
+        let dir = repo("ok", "ok", decl);
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
     }
 
     /// The generator's TMPDIR is strictly below the git ceiling (a sub-path of

@@ -283,6 +283,24 @@ fn refuse_unfingerprintable(artifact: &Path, path: &str) -> Result<(), String> {
     }
 }
 
+/// Drops the verbatim `\\?\` prefix that `canonicalize` adds on Windows; a UNC
+/// share keeps it. Git's ceiling comparison and the generator's shell want plain paths.
+fn strip_verbatim(path: &str) -> &str {
+    match path.strip_prefix(r"\\?\") {
+        Some(rest) if !rest.starts_with(r"UNC\") => rest,
+        _ => path,
+    }
+}
+
+/// `canonicalize`, with the Windows verbatim prefix removed.
+fn canonical_plain(dir: &Path) -> Result<std::path::PathBuf, String> {
+    let canonical = std::fs::canonicalize(dir).map_err(|e| format!("could not make export dir: {e}"))?;
+    match canonical.to_str() {
+        Some(s) => Ok(std::path::PathBuf::from(strip_verbatim(s))),
+        None => Ok(canonical),
+    }
+}
+
 /// Anchors a temp base at the working directory when it is relative.
 fn absolute_base(base: std::path::PathBuf) -> Result<std::path::PathBuf, String> {
     if base.is_absolute() {
@@ -301,8 +319,7 @@ fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
         .tempdir_in(&base)
         .map_err(|e| format!("could not make export dir: {e}"))?;
     // Canonical, so PWD and TMPDIR carry no `.` or `..` segments.
-    let canonical = std::fs::canonicalize(dir.path())
-        .map_err(|e| format!("could not make export dir: {e}"))?;
+    let canonical = canonical_plain(dir.path())?;
     let tree = canonical.join("tree");
     std::fs::create_dir(&tree).map_err(|e| format!("could not make export dir: {e}"))?;
     // A subproject's prefix ends in `/`: strip it, or `tree.join` keeps it and
@@ -517,6 +534,8 @@ fn run_generator(
     // that reads it must see the export, the directory it actually runs in.
     command
         .env("TMPDIR", tmp)
+        .env("TMP", tmp)
+        .env("TEMP", tmp)
         .env("PWD", root)
         .env("GIT_CEILING_DIRECTORIES", scratch);
     #[cfg(unix)]
