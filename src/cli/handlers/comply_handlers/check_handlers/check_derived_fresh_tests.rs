@@ -217,7 +217,12 @@ mod derived_fresh_tests {
     #[cfg(unix)]
     #[test]
     fn a_symlink_artifact_fails_closed_and_never_runs_the_generator() {
-        let decl = "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"sh\", \"-c\", \"ln -sfn src.txt out.txt && printf src.txt\"]\n";
+        let sentinel_dir = tempfile::tempdir().expect("sentinel dir");
+        let sentinel = sentinel_dir.path().join("ran");
+        let decl = format!(
+            "[[artifact]]\npath = \"out.txt\"\ngenerate = ['sh', '-c', 'touch {0}; ln -sfn src.txt out.txt && printf src.txt']\n",
+            sentinel.display()
+        );
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::write(dir.path().join("src.txt"), "src.txt").expect("src");
         std::os::unix::fs::symlink("src.txt", dir.path().join("out.txt")).expect("link");
@@ -228,14 +233,19 @@ mod derived_fresh_tests {
         let check = check_derived_fresh(dir.path(), &selected());
         assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
         assert!(check.message.contains("is a symlink"), "{}", check.message);
+        assert!(!sentinel.exists(), "the generator ran for a symlink artifact");
     }
 
-    /// The generator's TMPDIR is below the git ceiling, not the ceiling itself,
-    /// so `git -C "$TMPDIR"` cannot climb into the enclosing repository.
+    /// The generator's TMPDIR is strictly below the git ceiling (a sub-path of
+    /// it, never equal), so `git -C "$TMPDIR"` cannot climb into the enclosing
+    /// repository. An unset or empty ceiling fails the generator.
     #[cfg(unix)]
     #[test]
     fn the_generator_tmpdir_is_strictly_below_the_git_ceiling() {
-        let decl = "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"sh\", \"-c\", \"test \\\"$TMPDIR\\\" != \\\"$GIT_CEILING_DIRECTORIES\\\" && printf ok\"]\n";
+        let decl = r#"[[artifact]]
+path = "out.txt"
+generate = ['sh', '-c', 'test -n "$GIT_CEILING_DIRECTORIES" && case "$TMPDIR" in "$GIT_CEILING_DIRECTORIES"/*) printf ok;; *) exit 1;; esac']
+"#;
         let dir = repo("ok", "ok", decl);
         let check = check_derived_fresh(dir.path(), &selected());
         assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
