@@ -40,10 +40,8 @@ pub(super) fn rate(remaining: u64) -> Result<Value, String> {
     Ok(json!({"data":{"rateLimit":{"remaining":remaining,"resetAt":"2026-11-26T13:00:00Z"}}}))
 }
 
-/// The seven rubric items as switches; `ticket_from` builds a ticket passing exactly
-/// the items whose bit is set (bit order = `Item::ALL`).
-pub(super) fn ticket_from(mask: u8) -> Ticket {
-    let on = |bit: u8| mask & (1 << bit) != 0;
+/// The body the enabled bits ask for: a problem section, scope, acceptance and proof lines.
+fn body_for(on: &dyn Fn(u8) -> bool) -> String {
     let mut body = String::new();
     if on(4) {
         body.push_str("## Observed\nit breaks\n\n## Expected\nit works\n\n");
@@ -60,6 +58,14 @@ pub(super) fn ticket_from(mask: u8) -> Ticket {
     if on(1) {
         body.push_str("- proved by `cargo test --lib ticket_quality`\n");
     }
+    body
+}
+
+/// The seven rubric items as switches; `ticket_from` builds a ticket passing exactly
+/// the items whose bit is set (bit order = `Item::ALL`).
+pub(super) fn ticket_from(mask: u8) -> Ticket {
+    let on = |bit: u8| mask & (1 << bit) != 0;
+    let body = body_for(&on);
     Ticket {
         title: if on(6) {
             "Add a ticket score"

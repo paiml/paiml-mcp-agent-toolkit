@@ -66,36 +66,12 @@ impl Item {
 
     /// The stable id used in JSON and in comments.
     pub fn id(self) -> &'static str {
-        match self {
-            Item::Acceptance => "acceptance",
-            Item::Falsifiable => "falsifiable",
-            Item::ParentMilestone => "parent-milestone",
-            Item::Scope => "scope",
-            Item::Problem => "problem",
-            Item::Size => "size",
-            Item::Title => "title",
-        }
+        TEXT[self as usize].0
     }
 
     /// What to add to a ticket that fails the item.
     pub fn missing(self) -> &'static str {
-        match self {
-            Item::Acceptance => {
-                "acceptance criteria: a `- [ ]` checklist under an `## Acceptance` heading"
-            }
-            Item::Falsifiable => {
-                "falsifiable check: a command, test name or file in a code span inside the acceptance section"
-            }
-            Item::ParentMilestone => {
-                "parent and milestone: make it a sub-issue of an open epic or master, and set a milestone"
-            }
-            Item::Scope => "scope: name at least one repo-relative file path, or a `Scope:` line",
-            Item::Problem => "problem statement: an `Observed` and an `Expected` section or line label",
-            Item::Size => "size: at most 8 acceptance items, and a `kind:` label",
-            Item::Title => {
-                "title form: at most 80 characters, starting with a verb or a `kind(scope):` prefix"
-            }
-        }
+        TEXT[self as usize].1
     }
 
     /// Does `t` pass the item?
@@ -105,14 +81,51 @@ impl Item {
             Item::Falsifiable => has_falsifiable_check(&t.body),
             Item::ParentMilestone => t.parent_open && t.has_milestone,
             Item::Scope => has_scope(t),
-            Item::Problem => {
-                has_label_or_heading(&t.body, "observed")
-                    && has_label_or_heading(&t.body, "expected")
-            }
-            Item::Size => checklist(&t.body).len() <= MAX_ACCEPTANCE_ITEMS && has_kind(&t.labels),
+            Item::Problem => has_problem_sections(&t.body),
+            Item::Size => size_ok(t),
             Item::Title => title_is_well_formed(&t.title),
         }
     }
+}
+
+/// The id and the missing-item text of each item, in `Item::ALL` order.
+const TEXT: [(&str, &str); 7] = [
+    (
+        "acceptance",
+        "acceptance criteria: a `- [ ]` checklist under an `## Acceptance` heading",
+    ),
+    (
+        "falsifiable",
+        "falsifiable check: a command, test name or file in a code span inside the acceptance section",
+    ),
+    (
+        "parent-milestone",
+        "parent and milestone: make it a sub-issue of an open epic or master, and set a milestone",
+    ),
+    (
+        "scope",
+        "scope: name at least one repo-relative file path, or a `Scope:` line",
+    ),
+    (
+        "problem",
+        "problem statement: an `Observed` and an `Expected` section or line label",
+    ),
+    (
+        "size",
+        "size: at most 8 acceptance items, and a `kind:` label",
+    ),
+    (
+        "title",
+        "title form: at most 80 characters, starting with a verb or a `kind(scope):` prefix",
+    ),
+];
+
+fn has_problem_sections(body: &str) -> bool {
+    has_label_or_heading(body, "observed") && has_label_or_heading(body, "expected")
+}
+
+fn size_ok(t: &Ticket) -> bool {
+    checklist(&t.body).len() <= MAX_ACCEPTANCE_ITEMS && has_kind(&t.labels)
 }
 
 /// The points one item earned.
