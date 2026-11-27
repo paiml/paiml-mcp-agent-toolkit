@@ -160,20 +160,22 @@ impl fmt::Display for TicketScore {
 }
 
 /// Score `t` against the rubric; `pass_mark` only decides `passed`.
+fn item_score(item: Item, t: &Ticket) -> (ItemScore, Option<String>) {
+    let ok = item.passes(t);
+    let score = ItemScore {
+        item: item.id(),
+        points: if ok { item.points() } else { 0 },
+        max: item.points(),
+    };
+    (score, (!ok).then(|| item.missing().to_string()))
+}
+
 pub fn score(t: &Ticket, pass_mark: u32) -> TicketScore {
-    let mut items = Vec::new();
-    let mut missing = Vec::new();
-    for item in Item::ALL {
-        let ok = item.passes(t);
-        items.push(ItemScore {
-            item: item.id(),
-            points: if ok { item.points() } else { 0 },
-            max: item.points(),
-        });
-        if !ok {
-            missing.push(item.missing().to_string());
-        }
-    }
+    let (items, missing): (Vec<ItemScore>, Vec<Option<String>>) = Item::ALL
+        .into_iter()
+        .map(|item| item_score(item, t))
+        .unzip();
+    let missing: Vec<String> = missing.into_iter().flatten().collect();
     let total = items.iter().map(|i| i.points).sum();
     TicketScore {
         total,
@@ -444,15 +446,20 @@ const VERBS: &[&str] = &[
     "style",
 ];
 
-fn title_is_well_formed(title: &str) -> bool {
-    let title = title.trim();
-    if title.is_empty() || title.chars().count() > MAX_TITLE_CHARS {
-        return false;
-    }
-    let first = title
+fn title_fits(title: &str) -> bool {
+    !title.is_empty() && title.chars().count() <= MAX_TITLE_CHARS
+}
+
+fn first_word(title: &str) -> String {
+    title
         .split(|c: char| !c.is_ascii_alphabetic())
         .next()
         .unwrap_or_default()
-        .to_ascii_lowercase();
-    SCOPED_PREFIX.is_match(title) || VERBS.contains(&first.as_str())
+        .to_ascii_lowercase()
+}
+
+fn title_is_well_formed(title: &str) -> bool {
+    let title = title.trim();
+    title_fits(title)
+        && (SCOPED_PREFIX.is_match(title) || VERBS.contains(&first_word(title).as_str()))
 }

@@ -150,14 +150,21 @@ impl FindingsReport {
         for (id, n) in &self.counts {
             out.push_str(&format!("  {id}: {n}\n"));
         }
-        for f in &self.findings {
-            let at = f.issue.map(|n| format!(" #{n}")).unwrap_or_default();
-            out.push_str(&format!("  {}{at}: {}\n", f.id, f.message));
-        }
+        out.push_str(&self.render_findings());
         for m in &self.not_measured {
             out.push_str(&format!("  NOT MEASURED: {m}\n"));
         }
         out
+    }
+
+    fn render_findings(&self) -> String {
+        self.findings
+            .iter()
+            .map(|f| {
+                let at = f.issue.map(|n| format!(" #{n}")).unwrap_or_default();
+                format!("  {}{at}: {}\n", f.id, f.message)
+            })
+            .collect()
     }
 }
 
