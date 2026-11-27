@@ -293,7 +293,12 @@ fn head_export(root: &Path, artifact: &str) -> Result<HeadExport, String> {
     // The artifact is pinned to the epoch so any write by the generator shows.
     let pin = prefix.join(artifact);
     write_blobs(root, &entries, &tree, &pin)?;
-    let cwd = tree.join(&prefix);
+    // `join("")` appends a `/`: the repository root must use `tree` itself.
+    let cwd = if prefix.as_os_str().is_empty() {
+        tree.clone()
+    } else {
+        tree.join(&prefix)
+    };
     std::fs::create_dir_all(&cwd).map_err(|e| format!("could not make export dir: {e}"))?;
     let scratch = canonical;
     // GIT_CEILING_DIRECTORIES is colon-separated: a colon would split it and

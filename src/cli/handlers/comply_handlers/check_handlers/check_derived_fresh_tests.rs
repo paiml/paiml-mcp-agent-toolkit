@@ -241,6 +241,18 @@ mod derived_fresh_tests {
     /// repository. An unset or empty ceiling fails the generator.
     #[cfg(unix)]
     #[test]
+    fn a_root_generator_sees_a_pwd_with_no_trailing_slash() {
+        let decl = r#"[[artifact]]
+path = "out.txt"
+generate = ['sh', '-c', 'case "$PWD" in */) exit 1;; *) printf ok;; esac']
+"#;
+        let dir = repo("ok", "ok", decl);
+        let check = check_derived_fresh(dir.path(), &selected());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn a_subproject_generator_sees_a_pwd_with_no_trailing_slash() {
         let dir = tempfile::tempdir().expect("tempdir");
         let sub = dir.path().join("sub");
