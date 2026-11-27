@@ -460,8 +460,11 @@ fn run_generator(
     scrub_git_env(&mut command);
     // A relative or in-repo TMPDIR would resolve against the child's cwd, and git
     // would find the enclosing repository: the export directory bounds both.
+    // PWD is inherited from the caller, usually the live working tree; a generator
+    // that reads it must see the export, the directory it actually runs in.
     command
         .env("TMPDIR", tmp)
+        .env("PWD", root)
         .env("GIT_CEILING_DIRECTORIES", scratch);
     #[cfg(unix)]
     {
@@ -482,13 +485,14 @@ fn run_generator(
         if started.elapsed() > limit {
             // The child leads its own process group: kill the generator's
             // subprocesses too, so none outlives the timeout.
-            // POSIX `kill -s KILL -- -PGID` signals the group; the child leads it
-            // (process_group above). Output is silenced: a child that just exited
-            // makes the group gone, which is not an error here.
+            // The shell's kill builtin signals the group; the child leads it
+            // (process_group above). The external /usr/bin/kill rejects low PGIDs
+            // on procps, so the builtin is used. Output is silenced: a child that
+            // just exited makes the group gone, which is not an error here.
             #[cfg(unix)]
             {
-                let _ = std::process::Command::new("kill")
-                    .args(["-s", "KILL", "--", &format!("-{}", child.id())])
+                let _ = std::process::Command::new("sh")
+                    .args(["-c", "kill -s KILL -- \"$1\"", "_", &format!("-{}", child.id())])
                     .stdout(std::process::Stdio::null())
                     .stderr(std::process::Stdio::null())
                     .status();
