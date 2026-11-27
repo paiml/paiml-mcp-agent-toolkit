@@ -283,6 +283,7 @@ pub struct Report {
 }
 
 pub mod backfill;
+pub mod cap_grant;
 pub mod org;
 pub mod pr_cap;
 mod rules;

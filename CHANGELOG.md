@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **work (CAP-VALVE, GH-1650, paiml/infra#5489)**: `pmat work start` and `pmat work delegate` honour a fresh PR CAP-GRANT at the open-PR cap, and on a host with the grant file the refusal names the CAP-ESCALATE line.
+
 ## [3.47.0] - 2026-11-24
 
 ### Changed
