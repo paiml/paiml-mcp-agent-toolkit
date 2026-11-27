@@ -11,8 +11,8 @@ set -uo pipefail
 # require RED; a checker that passes on a no-op binary checks nothing.
 if [ "${1:-}" = "--self-test" ]; then
   S=$(mktemp -d); printf '#!/bin/sh\nexit 0\n' > "$S/pmat"; chmod +x "$S/pmat"
-  if PMAT="$S/pmat" bash "$0" >/dev/null 2>&1; then echo "self-test FAILED: the audit passed against a pmat that does nothing"; rm -rf "$S"; exit 1; fi
-  rm -rf "$S"; echo "self-test OK: the audit is RED against a pmat that does nothing"; exit 0
+  if PMAT="$S/pmat" bash "$0" >/dev/null 2>&1; then echo "self-test FAILED: the audit passed against a pmat that does nothing"; rm -rf "${S:?}"; exit 1; fi
+  rm -rf "${S:?}"; echo "self-test OK: the audit is RED against a pmat that does nothing"; exit 0
 fi
 PMAT=${PMAT:-}
 if [ -z "$PMAT" ] || ! command -v "$PMAT" >/dev/null 2>&1; then echo "PMAT='$PMAT' is not an executable" >&2; exit 2; fi
@@ -27,11 +27,13 @@ trap cleanup EXIT
 # ── the stub GitHub ─────────────────────────────────────────────────────────
 mkdir -p "$T/bin" "$T/gh/issues" "$T/gh/subs"
 : > "$T/gh/calls.log"                          # exists from the start, so posts() always prints a count
-issue() { printf '{"id":%s,"number":%s,"state":"%s","labels":[%s]}\n' "$2" "$1" "$3" "$4" > "$T/gh/issues/$1.json"; }
+BODY='## Observed\nthe add fails\n## Expected\nthe add files in src/a.rs\n## Acceptance\n- [ ] `make gate` is green\n'   # scores 80 of 100 or more: only the milestone and a bare title are missing
+issue() { printf '{"id":%s,"number":%s,"state":"%s","labels":[%s],"title":"","body":"%s"}\n' "$2" "$1" "$3" "$4" "${5-$BODY}" > "$T/gh/issues/$1.json"; }
 issue 10 9010 open '{"name":"epic"}'          # the epic
 issue 11 9011 closed '{"name":"epic"}'        # a closed epic
 issue 12 9012 open '{"name":"kind:code"}'     # an open issue that is not an epic
 for n in 20 21 22 23 24 25 26 27; do issue "$n" "90$n" open ''; done
+issue 28 9028 open '' 'fix it'             # a ticket the rubric refuses (FLOW-OWNER-001 D5)
 echo 21 > "$T/gh/subs/10"                     # #21 is already under #10
 cat > "$T/bin/gh" <<'STUB'
 #!/usr/bin/env bash
@@ -136,6 +138,9 @@ echo 1 > "$T/gh/total"
 add "widget parser rewrite" --github-issue 27 -p P1 --kind code --epic 10; rc=$?
 [ "$rc" = 0 ] && grep -qF "warning (R5, advisory)" "$T/out"
 arm "15 R5: a matching title warns on stderr and still files (exit $rc)" $?
+
+# 16 (FLOW-OWNER-001 D5): a ticket under the pass mark is refused at filing, before the link and the row.
+refused "16 D5: a ticket scoring under 70 is refused at filing" "under the pass mark" "t16" --github-issue 28 -p P1 --kind code --epic 10
 
 [ "$red" = 0 ] && echo "work-add-triaged-audit: all arms green" || echo "work-add-triaged-audit: RED"
 exit "$red"

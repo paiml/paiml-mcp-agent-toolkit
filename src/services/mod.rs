@@ -258,6 +258,7 @@ pub mod tdg_baseline; // CB-200's ratchet baseline, re-derived not transcribed
 pub mod tdg_calculator;
 pub mod template_service;
 pub mod test_env_hygiene; // tests must not inherit env that changes what the binary does
+pub mod ticket_quality; // FLOW-OWNER-001: the 0-100 ticket rubric and the ticket findings
 pub mod ttg; // TTG: token-tree base measures (T, D, N) — line-invariant complexity
 pub mod unified_ast_engine; // Stub for backward compatibility
 #[cfg(feature = "shell-ast")]

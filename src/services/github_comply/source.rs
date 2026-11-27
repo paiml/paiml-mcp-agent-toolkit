@@ -252,7 +252,13 @@ fn nodes(page: &Value) -> Result<&Vec<Value>> {
 }
 
 /// Follow `pageInfo` to the end of one connection, at most [`MAX_PAGES`] pages.
-fn pages(g: &dyn Graphql, query: &str, owner: &str, name: &str, field: &str) -> Result<Vec<Value>> {
+pub(crate) fn pages(
+    g: &dyn Graphql,
+    query: &str,
+    owner: &str,
+    name: &str,
+    field: &str,
+) -> Result<Vec<Value>> {
     let mut out = Vec::new();
     let mut after: Option<String> = None;
     for _ in 0..MAX_PAGES {
