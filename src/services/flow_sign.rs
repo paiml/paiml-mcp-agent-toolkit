@@ -121,7 +121,14 @@ pub fn check(
             pr_head: pr_head.into(),
         });
     }
-    if commit.lanes.iter().filter(|l| !is_seat(l)).count() != 3 {
+    // Quorum lanes must be three distinct names: a repeated lane name is one lane.
+    let quorum_names: std::collections::BTreeSet<&str> = commit
+        .lanes
+        .iter()
+        .filter(|l| !is_seat(l))
+        .map(|l| l.name.as_str())
+        .collect();
+    if quorum_names.len() != 3 || commit.lanes.iter().filter(|l| !is_seat(l)).count() != 3 {
         return Err(Refusal::QuorumNotThreeOfThree(p.into()));
     }
     let models: std::collections::BTreeSet<&str> =
@@ -132,7 +139,7 @@ pub fn check(
     commit
         .lanes
         .iter()
-        .try_for_each(|lane| check_lane(lane, p, author_models))
+        .try_for_each(|lane| check_lane(lane, p, author_models, head))
 }
 
 fn is_seat(lane: &Lane) -> bool {
@@ -153,9 +160,15 @@ fn check_seat(lane: &Lane, p: &str) -> Result<(), Refusal> {
     Ok(())
 }
 
+/// Model identity for the author check: surrounding whitespace and letter case
+/// do not make a different model.
+fn same_model(a: &str, b: &str) -> bool {
+    a.trim().eq_ignore_ascii_case(b.trim())
+}
+
 /// A lane may not run on a model that authored the commit.
 fn check_author(lane: &Lane, p: &str, author_models: &[String]) -> Result<(), Refusal> {
-    if author_models.iter().any(|a| a == &lane.model) {
+    if author_models.iter().any(|a| same_model(a, &lane.model)) {
         return Err(Refusal::AuthorModel {
             patch_id: p.into(),
             model: lane.model.clone(),
@@ -165,7 +178,8 @@ fn check_author(lane: &Lane, p: &str, author_models: &[String]) -> Result<(), Re
 }
 
 /// Judge one lane: seat identity, author model, control, reruns, final verdict.
-fn check_lane(lane: &Lane, p: &str, author_models: &[String]) -> Result<(), Refusal> {
+/// The last attempt must be a pass on the commit's `head`.
+fn check_lane(lane: &Lane, p: &str, author_models: &[String], head: &str) -> Result<(), Refusal> {
     check_seat(lane, p)?;
     check_author(lane, p, author_models)?;
     if !lane.control_caught {
@@ -175,7 +189,7 @@ fn check_lane(lane: &Lane, p: &str, author_models: &[String]) -> Result<(), Refu
         return Err(Refusal::RerunAsPass(p.into()));
     }
     match lane.attempts.last() {
-        Some(last) if is_pass(&last.verdict) => Ok(()),
+        Some(last) if is_pass(&last.verdict) && last.head == head => Ok(()),
         _ => Err(Refusal::NotGreen(p.into())),
     }
 }
@@ -398,7 +412,9 @@ mod tests {
             check(&c, &authors(), "h1", "h1"),
             Err(Refusal::RerunAsPass(_))
         ));
-        c.lanes[0].attempts[1].head = "h0".into();
+        // A red at an earlier head, then a green at the commit head (a new diff), passes.
+        c.lanes[0].attempts[0].head = "h0".into();
+        c.lanes[0].attempts[1].head = "h1".into();
         assert_eq!(check(&c, &authors(), "h1", "h1"), Ok(()));
     }
 
@@ -412,6 +428,36 @@ mod tests {
         assert!(matches!(
             check(&c, &authors(), "h1", "h1"),
             Err(Refusal::NotGreen(_))
+        ));
+    }
+
+    #[test]
+    fn repeated_lane_name_is_one_lane() {
+        let mut c = green_commit();
+        c.lanes[2].name = "q1".into();
+        assert!(matches!(
+            check(&c, &authors(), "h1", "h1"),
+            Err(Refusal::QuorumNotThreeOfThree(_))
+        ));
+    }
+
+    #[test]
+    fn last_attempt_must_bind_to_head() {
+        let mut c = green_commit();
+        c.lanes[0].attempts[0].head = "h0".into();
+        assert!(matches!(
+            check(&c, &authors(), "h1", "h1"),
+            Err(Refusal::NotGreen(_))
+        ));
+    }
+
+    #[test]
+    fn author_model_match_ignores_case_and_space() {
+        let mut c = green_commit();
+        c.lanes[0].model = " Haiku ".into();
+        assert!(matches!(
+            check(&c, &authors(), "h1", "h1"),
+            Err(Refusal::AuthorModel { .. })
         ));
     }
 
