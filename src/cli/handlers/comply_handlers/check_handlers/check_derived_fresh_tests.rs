@@ -34,7 +34,7 @@ mod derived_fresh_tests {
     const CAT: &str = "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"cat\", \"src.txt\"]\n";
 
     fn selected() -> Vec<String> {
-        vec!["cb-2120".to_string()]
+        vec!["CB-2120".to_string()]
     }
 
     #[test]
@@ -45,6 +45,20 @@ mod derived_fresh_tests {
         for want in ["out.txt", "stale", "line 2", "cat src.txt"] {
             assert!(check.message.contains(want), "{want}: {}", check.message);
         }
+    }
+
+    #[test]
+    fn a_lowercase_rule_id_runs_no_generator() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let marker = root.path().join("ran");
+        let decl = format!(
+            "[[artifact]]\npath = \"out.txt\"\ngenerate = [\"touch\", \"{}\"]\n",
+            marker.display()
+        );
+        let dir = repo("a\n", "a\n", &decl);
+        let check = check_derived_fresh(dir.path(), &["cb-2120".to_string()]);
+        assert_eq!(check.status, CheckStatus::Skip, "{}", check.message);
+        assert!(!marker.exists(), "a lowercase id must not run the generator");
     }
 
     #[test]

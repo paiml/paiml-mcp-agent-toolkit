@@ -109,7 +109,7 @@ pub(crate) fn check_derived_fresh(project_path: &Path, selected: &[String]) -> C
         Ok(artifacts) => artifacts,
         Err(row) => return row,
     };
-    if !selected.iter().any(|s| s.eq_ignore_ascii_case("cb-2120")) {
+    if !selected.iter().any(|s| s == "CB-2120") {
         return derived_row(
             CheckStatus::Skip,
             format!(

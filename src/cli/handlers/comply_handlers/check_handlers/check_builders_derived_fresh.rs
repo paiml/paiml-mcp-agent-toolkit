@@ -7,6 +7,9 @@ fn build_derived_fresh_checks(
     comply_config: &crate::models::comply_config::ComplyConfig,
     selected: &[String],
 ) -> Vec<ComplianceCheck> {
+    // A disabled rule runs no generator: an empty selection returns Skip before any
+    // runs, and filter_check_by_config then reports the disable.
+    let selected: &[String] = if comply_config.is_check_enabled("cb-2120") { selected } else { &[] };
     vec![filter_check_by_config(
         check_derived_fresh(project_path, selected),
         "cb-2120",
