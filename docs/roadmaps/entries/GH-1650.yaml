@@ -2,16 +2,22 @@
   github_issue: 1650
   item_type: task
   title: 'TRAIN H (3.44.0): pmat work and comply CLI correctness (re-serialise roadmap, CB-1305, work start stdin, report flags, PR cap)'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-11-09T12:40:20.197348363+00:00
-  updated: 2026-11-09T12:40:20.197348363+00:00
+  updated: 2026-11-27T07:32:08.239709254+00:00
   spec: null
-  acceptance_criteria: []
+  acceptance_criteria:
+  - '[ ] #1290 goal-mode step 6 flip: create one epic per active spec, add the tickets'' issues as its sub-issues, fill epic: in the front-matter, classify the historical and superseded specs, then run --checks CB-2110 in the traceability job'
+  - '[ ] #1306 comply: pmat''s own generated work contracts fail CB-1305, and pre-#357 stubs are never flagged stale'
+  - '[ ] #1500 pmat comply on a small Rust demo crate: CB-200/1204/1308/2100 fail with no applicable fix path'
+  - '[ ] CAP-VALVE (paiml/infra#5489): `pmat work start` / `work delegate` honour a fresh PR CAP-GRANT; the open-PR cap refusal names the CAP-ESCALATE line'
   phases: []
   subtasks: []
   estimated_effort: null
-  labels: []
+  labels:
+  - P2
+  - triaged
   notes: null
-  release: 3.47.0
+  release: 3.48.0
