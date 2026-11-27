@@ -350,10 +350,10 @@ fn derive_acceptance(body: &str) -> Vec<String> {
 pub fn rubric_ticket(
     facts: &IssueFacts,
     fallback_title: &str,
-    kind: WorkKind,
 ) -> crate::services::ticket_quality::rubric::Ticket {
-    let mut labels = facts.labels.clone();
-    labels.push(format!("kind:{}", kind.as_str()));
+    // The labels are the issue's own: `work add` does not write a kind label to GitHub,
+    // so a kind the flag names is not a point the ticket has.
+    let labels = facts.labels.clone();
     let title = if facts.title.trim().is_empty() {
         fallback_title
     } else {

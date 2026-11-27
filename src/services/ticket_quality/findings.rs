@@ -294,21 +294,27 @@ fn v3(t: &TicketRec, gone: &BTreeSet<String>) -> Vec<Finding> {
         .collect()
 }
 
+/// The largest stale limit V4 will compute with; far past any real ticket age.
+const MAX_STALE_DAYS: i64 = 100_000;
+
 /// V4: no activity for `stale_ticket_days` and no open linked pull request.
 fn v4(t: &TicketRec, now: DateTime<Utc>, s: &Settings) -> Option<Finding> {
     let idle = now - t.updated_at;
     let open_pr = t.linked_prs.iter().any(|(_, st)| *st == PrState::Open);
-    if open_pr || idle <= Duration::days(s.stale_ticket_days) {
+    // Duration::days panics past about 2.5e14 days; a larger limit means no stale ticket.
+    let limit = s.stale_ticket_days.clamp(-MAX_STALE_DAYS, MAX_STALE_DAYS);
+    if open_pr || idle <= Duration::days(limit) {
         return None;
     }
     let mut f = finding(
         "V4",
         t.rec.number,
         Action::Label,
+        // Rounded up: 30 days and one hour idle reads as 31, never as the limit it exceeds.
         format!(
             "no activity for {} days (limit {}) and no open linked PR",
-            idle.num_days(),
-            s.stale_ticket_days
+            (idle.num_seconds() + 86_399) / 86_400,
+            limit
         ),
     );
     f.label = Some("needs-revalidate");

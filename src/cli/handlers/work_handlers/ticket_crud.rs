@@ -25,7 +25,7 @@ pub async fn handle_work_add(
     // FLOW-OWNER-001 D5: a ticket under the pass mark is refused before the link or the row.
     let facts = work_add_triage::EpicLinks::issue(&links, triaged.child)?;
     crate::services::ticket_quality::rubric::refuse_low_score(
-        &work_add_triage::rubric_ticket(&facts, &title, triaged.kind),
+        &work_add_triage::rubric_ticket(&facts, &title),
         crate::services::ticket_quality::rubric::PASS_MARK,
     )?;
     if work_add_triage::ensure_linked(&triaged, &links)? {

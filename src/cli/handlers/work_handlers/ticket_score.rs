@@ -351,7 +351,10 @@ pub fn handle_ticket_score(
 ) -> Result<()> {
     use crate::services::github_comply::source::GhGraphql;
     use crate::services::ticket_quality::{rubric::PASS_MARK, run};
-    let repo = ticket_repo(repo, path)?;
+    let repo = match ticket_repo(repo, path) {
+        Ok(repo) => repo,
+        Err(e) => return finish_ticket_run((format!("not_measured: {e:#}\n"), 2)),
+    };
     finish_ticket_run(run::run_score(&GhGraphql, &repo, issue, PASS_MARK, json))
 }
 
@@ -364,7 +367,10 @@ pub fn handle_ticket_findings(
 ) -> Result<()> {
     use crate::services::github_comply::source::GhGraphql;
     use crate::services::ticket_quality::run;
-    let repo = ticket_repo(repo, path)?;
+    let repo = match ticket_repo(repo, path) {
+        Ok(repo) => repo,
+        Err(e) => return finish_ticket_run((format!("not_measured: {e:#}\n"), 2)),
+    };
     finish_ticket_run(run::run_findings(
         &GhGraphql,
         &repo,
