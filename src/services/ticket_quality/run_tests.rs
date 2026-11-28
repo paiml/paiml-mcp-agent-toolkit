@@ -36,13 +36,13 @@ fn ticket_quality_run_score_exits_0_at_the_mark_1_under_it_and_2_unread() {
         true,
     );
     assert_eq!(code, 1, "{text}");
-    let v: Value = serde_json::from_str(&text).unwrap();
+    let v: Value = serde_json::from_str(&text).expect("run fixture JSON parses");
     assert_eq!(
         (v["total"].as_u64(), v["passed"].as_bool()),
         (Some(30), Some(false))
     );
-    assert_eq!(v["items"].as_array().unwrap().len(), 7);
-    assert_eq!(v["missing"].as_array().unwrap().len(), 4);
+    assert_eq!(v["items"].as_array().expect("items is an array").len(), 7);
+    assert_eq!(v["missing"].as_array().expect("items is an array").len(), 4);
 
     let (text, code) = run_score(&Fake::new(vec![Err("offline".into())]), "o/r", 3, 70, true);
     assert_eq!(code, EXIT_NOT_MEASURED);
@@ -60,7 +60,7 @@ fn ticket_quality_run_findings_reads_once_and_writes_nothing() {
     let g = Fake::new(vec![rate(5000), page(1, vec![node(5)]), paths, history]);
     let (text, code) = run_findings(&g, "o/r", &Settings::default(), true, now());
     assert_eq!(code, 0, "{text}");
-    let v: Value = serde_json::from_str(&text).unwrap();
+    let v: Value = serde_json::from_str(&text).expect("run fixture JSON parses");
     assert_eq!(v["schema"], "pmat-work-findings/v1");
     assert_eq!(
         (

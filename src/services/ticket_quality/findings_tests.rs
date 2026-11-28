@@ -182,7 +182,7 @@ fn ticket_quality_findings_p1_links_to_a_stated_open_epic_else_labels() {
         r.findings
             .iter()
             .find(|f| f.issue == Some(14) && f.id == "P1")
-            .unwrap()
+            .expect("finding P1 is present for issue 14")
             .label,
         Some("needs-parent")
     );
@@ -271,7 +271,7 @@ fn ticket_quality_findings_are_ordered_by_id_then_issue_and_render() {
     );
     assert!(text.contains("  P4: 60 open tickets"), "{text}");
     assert!(text.contains("NOT MEASURED: V3: a note"), "{text}");
-    let json = serde_json::to_value(&r).unwrap();
+    let json = serde_json::to_value(&r).expect("serialises a findings report");
     assert_eq!(json["findings"][0]["action"], "label-comment");
     assert!(json["findings"][3].get("issue").is_none());
 }
