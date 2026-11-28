@@ -2,11 +2,11 @@
   github_issue: 1960
   item_type: task
   title: 'feat(work): score ticket text 0-100 and list ticket findings (work score --issue, work findings)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-26T16:14:27Z
-  updated: 2026-11-26T16:14:27Z
+  updated: 2026-11-28T13:49:43.308362967+00:00
   spec: null
   acceptance_criteria:
   - '[ ] `pmat work score --issue N [--repo OWNER/NAME] [--json]` prints the score, the points per rubric item and the missing items; exit 0 at 70 or more, 1 under 70, 2 on a read fault'
@@ -21,4 +21,5 @@
   labels:
   - kind:code
   notes: null
+  release: 3.46.0
   epic: 1642
