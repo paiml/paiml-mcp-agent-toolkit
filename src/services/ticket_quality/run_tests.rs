@@ -42,7 +42,10 @@ fn ticket_quality_run_score_exits_0_at_the_mark_1_under_it_and_2_unread() {
         (Some(30), Some(false))
     );
     assert_eq!(v["items"].as_array().expect("items is an array").len(), 7);
-    assert_eq!(v["missing"].as_array().expect("items is an array").len(), 4);
+    assert_eq!(
+        v["missing"].as_array().expect("missing is an array").len(),
+        4
+    );
 
     let (text, code) = run_score(&Fake::new(vec![Err("offline".into())]), "o/r", 3, 70, true);
     assert_eq!(code, EXIT_NOT_MEASURED);

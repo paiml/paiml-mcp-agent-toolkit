@@ -12,7 +12,8 @@ fn ok(v: Value) -> Result<Value, String> {
 #[test]
 fn ticket_quality_source_reads_every_open_ticket_in_one_paged_read() {
     let g = Fake::new(vec![rate(5000), page(2, vec![node(5), node(6)])]);
-    let (total, tickets) = fetch_tickets(&g, "o/r").expect("source fixture reads");
+    let (total, tickets) =
+        fetch_tickets(&g, "o/r").expect("paged read returns the open-ticket page");
     assert_eq!((total, tickets.len()), (2, 2));
     let t = &tickets[0];
     assert_eq!((t.rec.number, t.parent_open), (5, Some(true)));
@@ -61,7 +62,7 @@ fn ticket_quality_source_a_malformed_ticket_is_an_error_never_skipped() {
     n["parent"] = json!(null);
     n["closedByPullRequestsReferences"]["nodes"] =
         json!([{"number":1,"state":"OPEN"},{"number":2,"state":"CLOSED"}]);
-    let t = parse_ticket(&n).expect("source fixture reads");
+    let t = parse_ticket(&n).expect("in-memory ticket node parses without a read");
     assert_eq!(t.parent_open, None);
     assert_eq!(t.linked_prs, [(1, PrState::Open), (2, PrState::Closed)]);
 }
@@ -73,7 +74,7 @@ fn ticket_quality_source_reads_one_ticket_for_the_rubric() {
         "parent":{"number":1,"state":"OPEN"},"labels":{"nodes":[{"name":"kind:code"}]}}}),
     );
     let g = Fake::new(vec![rate(5000), reply]);
-    let t = fetch_ticket(&g, "o/r", 12).expect("source fixture reads");
+    let t = fetch_ticket(&g, "o/r", 12).expect("populated issue is read by number");
     assert_eq!((t.title.as_str(), t.body.as_str()), ("Add x", "b"));
     assert_eq!(t.labels, ["kind:code"]);
     assert!(t.parent_open && t.has_milestone);
@@ -83,8 +84,8 @@ fn ticket_quality_source_reads_one_ticket_for_the_rubric() {
         json!({"issue":{"title":"Add x","body":null,"milestone":null,
         "parent":{"number":1,"state":"CLOSED"},"labels":null}}),
     );
-    let t =
-        fetch_ticket(&Fake::new(vec![rate(5000), bare]), "o/r", 12).expect("source fixture reads");
+    let t = fetch_ticket(&Fake::new(vec![rate(5000), bare]), "o/r", 12)
+        .expect("bare issue with null body, milestone and labels is read");
     assert_eq!((t.body.as_str(), t.labels.len()), ("", 0));
     assert!(!t.parent_open && !t.has_milestone);
 
@@ -105,7 +106,8 @@ fn ticket_quality_source_gone_is_absent_at_head_and_present_in_history() {
         ok(json!({"defaultBranchRef":{"target":{
             "p0":{"nodes":[{"oid":"abc"}]},"p1":{"nodes":[]}}}})),
     ]);
-    let (gone, notes) = gone_paths(&g, "o/r", &[t.clone()]).expect("source fixture reads");
+    let (gone, notes) =
+        gone_paths(&g, "o/r", &[t.clone()]).expect("gone-path head and history probes both answer");
     assert_eq!(gone.into_iter().collect::<Vec<_>>(), ["src/gone.rs"]);
     assert!(notes.is_empty());
     let seen = g.seen.borrow();
@@ -117,7 +119,8 @@ fn ticket_quality_source_gone_is_absent_at_head_and_present_in_history() {
     assert!(seen[1].contains("defaultBranchRef{target{... on Commit{p0:history(first:1,path:\"src/gone.rs\"){nodes{oid}} p1:history(first:1,path:\"src/new.rs\")"), "{}", seen[1]);
 
     let one = Fake::new(vec![ok(json!({"p0":{"__typename":"Blob"}}))]);
-    let (gone, _) = gone_paths(&one, "o/r", &[rec(5, "Add x")]).expect("source fixture reads");
+    let (gone, _) = gone_paths(&one, "o/r", &[rec(5, "Add x")])
+        .expect("single existing blob is reported present, not gone");
     assert!(
         gone.is_empty(),
         "a ticket whose files exist asks one question and gets none gone"
@@ -167,7 +170,7 @@ fn ticket_quality_source_caps_the_paths_it_asks_about_and_says_so() {
         .map(|_| present(PATHS_PER_QUERY))
         .collect();
     let g = Fake::new(replies);
-    let (gone, notes) = gone_paths(&g, "o/r", &[t]).expect("source fixture reads");
+    let (gone, notes) = gone_paths(&g, "o/r", &[t]).expect("path cap query reads every page");
     assert!(gone.is_empty());
     assert_eq!(
         notes,

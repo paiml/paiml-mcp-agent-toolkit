@@ -111,7 +111,7 @@ fn ticket_quality_filing_gate_refuses_under_the_mark_and_names_what_is_missing()
     assert!(!err.contains(Item::Acceptance.missing()), "{err}");
     assert_eq!(
         refuse_low_score(&ticket_from(0b111_1111), PASS_MARK)
-            .expect("a score refusal is produced under the mark")
+            .expect("a full ticket at the mark is accepted, not refused")
             .total,
         100
     );
