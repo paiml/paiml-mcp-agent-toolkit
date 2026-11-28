@@ -2,9 +2,20 @@
 
 use super::*;
 
-/// One `git log` line (`%H \x1f %s \x1f trailers`) → (hash, subject, ticket ids).
+/// GitHub app accounts author commits as `<id>+<app>[bot]@users.noreply.github.com`.
+/// A commit by one of them cannot carry a trailer (dependabot writes its own
+/// message), so a missing trailer is exempted for it, and reported as such.
+pub(super) fn is_bot_author(email: &str) -> bool {
+    email
+        .trim()
+        .to_ascii_lowercase()
+        .ends_with("[bot]@users.noreply.github.com")
+}
+
+/// One `git log` line (`%H \x1f %s \x1f trailers \x1f %ae`) →
+/// (hash, subject, ticket ids, author email).
 /// `None` for a line with fewer than two fields, as before the extraction.
-pub(super) fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>)> {
+pub(super) fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>, String)> {
     let parts: Vec<&str> = line.split('\x1f').collect();
     if parts.len() < 2 {
         return None;
@@ -14,12 +25,16 @@ pub(super) fn parse_log_line(line: &str) -> Option<(String, String, Vec<&str>)> 
     } else {
         ""
     };
+    let email = parts
+        .get(3)
+        .map(|e| e.trim().to_string())
+        .unwrap_or_default();
     let ids = tr
         .split(',')
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
         .collect();
-    Some((parts[0].to_string(), parts[1].to_string(), ids))
+    Some((parts[0].to_string(), parts[1].to_string(), ids, email))
 }
 
 /// The violation, if any, that one trailer id commits against the roadmap.
@@ -70,21 +85,25 @@ pub(super) fn judge_ids(
 }
 
 /// Judge every commit line of `git log`: count them, count the trailered ones,
-/// and collect the findings.
+/// count the untrailered bot-authored ones (exempt, not findings), and collect
+/// the findings.
 pub(super) fn judge_log(
     log: &str,
     roadmap: &std::collections::HashMap<String, crate::models::roadmap::ItemStatus>,
     open_at_base: &std::collections::HashSet<String>,
-) -> (usize, usize, Vec<Finding>) {
+) -> (usize, usize, usize, Vec<Finding>) {
     let mut commits = 0;
     let mut trailered = 0;
+    let mut bot_exempt = 0;
     let mut findings = vec![];
     for line in log.split('\n').filter(|l| !l.trim().is_empty()) {
         commits += 1;
-        let Some((hash, subject, ids)) = parse_log_line(line) else {
+        let Some((hash, subject, ids, email)) = parse_log_line(line) else {
             continue;
         };
-        if ids.is_empty() {
+        if ids.is_empty() && is_bot_author(&email) {
+            bot_exempt += 1;
+        } else if ids.is_empty() {
             findings.push(Finding {
                 hash,
                 subject,
@@ -95,5 +114,5 @@ pub(super) fn judge_log(
             trailered += 1;
         }
     }
-    (commits, trailered, findings)
+    (commits, trailered, bot_exempt, findings)
 }

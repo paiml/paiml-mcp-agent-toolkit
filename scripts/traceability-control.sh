@@ -14,6 +14,8 @@
 #   arm 3  RED   trailer naming PMAT-999, absent from the roadmap    exit 1, Fail, names PMAT-999
 #   arm 4  RED   trailer naming PMAT-002, a completed item           exit 1, Fail, names PMAT-002
 #   arm 5  N/A   HEAD on master                                      exit 0, Pass, message says not_applicable
+#   arm 6  GREEN a bot-authored commit with no trailer               exit 0, Pass, names the 1 bot exemption
+#   arm 7  RED   the same range plus a human commit with no trailer  exit 1, Fail, names the human commit only
 #
 # Each arm asserts BOTH the process exit code and the CB-2113 entry in the JSON
 # report: the exit code is what CI acts on, the entry is what proves the verdict
@@ -46,7 +48,7 @@ report="$work/report.json"
 # pipeline's GITHUB_BASE_REF must not decide which arm is on which branch.
 fgit() {
   GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
-  GIT_AUTHOR_NAME=cb2113 GIT_AUTHOR_EMAIL=cb2113@example.invalid \
+  GIT_AUTHOR_NAME=cb2113 GIT_AUTHOR_EMAIL="${AUTHOR_EMAIL:-cb2113@example.invalid}" \
   GIT_COMMITTER_NAME=cb2113 GIT_COMMITTER_EMAIL=cb2113@example.invalid \
     git -C "$repo" -c commit.gpgsign=false "$@"
 }
@@ -140,4 +142,24 @@ run_gate
 case "$MESSAGE" in "not_applicable:"*) ;; *) fail_arm 5 "the message must start with not_applicable and name the reason";; esac
 echo "traceability-control: arm 5 N/A   — default branch reported not_applicable (exit 0)"
 
-echo "traceability-control: all 5 arms behaved — CB-2113 can fail, and can pass"
+# ── arm 6: GREEN — a bot-authored commit with no trailer is exempt, and named ─
+fgit switch -q -c bot-feature master
+AUTHOR_EMAIL="49699333+dependabot[bot]@users.noreply.github.com" \
+  fgit commit -q --allow-empty -m "deps(deps): bump pollster"
+run_gate
+[ "$RC" -eq 0 ] || fail_arm 6 "a bot-authored commit with no trailer must exit 0"
+[ "$STATUS" = "Pass" ] || fail_arm 6 "CB-2113 must be Pass when the only untrailered commit is bot-authored"
+case "$MESSAGE" in *"carry a Pmat-Ticket trailer; 1 authored by a bot (exempt)"*) ;; *) fail_arm 6 "the pass message must name the 1 bot exemption";; esac
+echo "traceability-control: arm 6 GREEN — bot-authored untrailered commit exempt and named (exit 0)"
+
+# ── arm 7: RED — same range, a human commit with no trailer is still refused ─
+fgit commit -q --allow-empty -m "feat: human, no trailer"
+human=$(fgit rev-parse --short=7 HEAD)
+run_gate
+[ "$RC" -eq 1 ] || fail_arm 7 "a human untrailered commit beside a bot commit must exit 1"
+[ "$STATUS" = "Fail" ] || fail_arm 7 "CB-2113 must be Fail on the human commit"
+case "$MESSAGE" in *"1 of 2 non-merge commit(s)"*) ;; *) fail_arm 7 "exactly 1 of 2 commits must be a finding (the bot commit is exempt)";; esac
+case "$MESSAGE" in *"$human"*"no Pmat-Ticket"*) ;; *) fail_arm 7 "the message must name the human commit $human";; esac
+echo "traceability-control: arm 7 RED   — human commit $human refused beside the exempt bot commit (exit 1)"
+
+echo "traceability-control: all 7 arms behaved — CB-2113 can fail, can pass, and the bot exemption cannot widen into 'nothing is judged'"

@@ -62,7 +62,7 @@ pub(crate) fn check_commit_traceability(project_path: &Path) -> ComplianceCheck 
                         since.unwrap_or_else(|| "the root commit".to_string())
                     ),
                 },
-                Range::PullRequest { base, merge_base } => pull_request_verdict(m.commits, &m.findings, &base, &merge_base),
+                Range::PullRequest { base, merge_base } => pull_request_verdict(m.commits, m.trailered, m.bot_exempt, &m.findings, &base, &merge_base),
             }
         }
     }
@@ -103,6 +103,8 @@ fn finding_line(f: &crate::services::commit_traceability::Finding) -> String {
 /// The PullRequest-range verdict: nothing to judge, all traced, or the findings.
 fn pull_request_verdict(
     commits: usize,
+    trailered: usize,
+    bot_exempt: usize,
     findings: &[crate::services::commit_traceability::Finding],
     base: &str,
     merge_base: &str,
@@ -116,7 +118,10 @@ fn pull_request_verdict(
         return traceability_check(CheckStatus::Pass, false, message);
     }
     if findings.is_empty() {
-        let message = format!("all {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer naming a roadmap row that is open at HEAD, or that was open at the merge-base", commits, mb7, base);
+        let message = format!(
+            "{} of {} non-merge commit(s) in {}..HEAD (base {}) carry a Pmat-Ticket trailer; {} authored by a bot (exempt)",
+            trailered, commits, mb7, base, bot_exempt
+        );
         return traceability_check(CheckStatus::Pass, false, message);
     }
     let mut joined = findings

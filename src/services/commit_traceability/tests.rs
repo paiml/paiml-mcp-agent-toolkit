@@ -558,3 +558,87 @@ fn a_row_the_pr_adds_and_completes_is_still_a_finding() {
     let m = measure_against(dir.path(), None).expect("measured");
     assert_eq!(violations(&m), terminal("PMAT-007", "completed"), "{m:?}");
 }
+
+// ── bot-authored commits (dependabot cannot write a trailer) ────────────────
+
+const DEPENDABOT: &str = "49699333+dependabot[bot]@users.noreply.github.com";
+
+/// An empty commit authored as `author_email` (the committer stays cb2113).
+fn commit_as(dir: &Path, author_email: &str, subject: &str, body: Option<&str>) -> String {
+    let mut args = vec!["commit", "-q", "--allow-empty", "-m", subject];
+    if let Some(b) = body {
+        args.extend(["-m", b]);
+    }
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(["-c", "commit.gpgsign=false"])
+        .args(&args)
+        .env("GIT_AUTHOR_NAME", "dependabot[bot]")
+        .env("GIT_AUTHOR_EMAIL", author_email)
+        .env("GIT_COMMITTER_NAME", "cb2113")
+        .env("GIT_COMMITTER_EMAIL", "cb2113@example.invalid")
+        .env("LC_ALL", "C")
+        .output()
+        .expect("git runs");
+    assert!(
+        out.status.success(),
+        "git commit failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    git(dir, &["rev-parse", "HEAD"])
+}
+
+#[test]
+fn a_bot_authored_commit_with_no_trailer_is_exempt_and_counted() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(dir.path(), DEPENDABOT, "deps(deps): bump pollster", None);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.commits, m.trailered, m.bot_exempt), (1, 0, 1), "{m:?}");
+    assert!(m.findings.is_empty(), "{:?}", m.findings);
+    assert!(m.clean());
+}
+
+#[test]
+fn a_human_commit_with_no_trailer_is_still_a_finding_beside_a_bot_commit() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(dir.path(), DEPENDABOT, "deps(deps): bump pollster", None);
+    let human = commit(dir.path(), "feat: human, no trailer", None);
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!((m.commits, m.bot_exempt), (2, 1), "{m:?}");
+    assert_eq!(m.findings.len(), 1, "{:?}", m.findings);
+    assert_eq!(m.findings[0].hash, human);
+    assert_eq!(m.findings[0].violation, Violation::NoTrailer);
+}
+
+#[test]
+fn the_exemption_covers_only_the_missing_trailer_not_a_bad_one() {
+    let dir = repo();
+    on_feature(dir.path());
+    commit_as(
+        dir.path(),
+        DEPENDABOT,
+        "deps(deps): bump x",
+        Some("Pmat-Ticket: PMAT-999"),
+    );
+    let m = measure_against(dir.path(), None).expect("measured");
+    assert_eq!(m.bot_exempt, 0, "{m:?}");
+    assert_eq!(
+        violations(&m),
+        vec![Violation::UnknownTicket("PMAT-999".into())]
+    );
+}
+
+#[test]
+fn only_a_github_app_account_is_a_bot() {
+    use super::judge::is_bot_author;
+    assert!(is_bot_author(DEPENDABOT));
+    assert!(is_bot_author(
+        "41898282+GitHub-Actions[bot]@users.noreply.github.com"
+    ));
+    assert!(!is_bot_author("cb2113@example.invalid"));
+    assert!(!is_bot_author("dependabot@example.com"));
+    assert!(!is_bot_author("github-actions@users.noreply.github.com"));
+}

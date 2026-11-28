@@ -15,6 +15,10 @@
 //! cannot be held to a property its merge method does not preserve. That
 //! verdict is `not_applicable`, printed with the count, never a silent pass.
 //!
+//! A commit authored by a GitHub app account (`[bot]@users.noreply.github.com`)
+//! that carries no trailer is exempt (dependabot cannot write one), and the
+//! pass message counts the exemption.
+//!
 //! Offline by construction (goal-mode.md doctrine 4): `git` and the roadmap
 //! file, nothing else.
 //!
@@ -113,6 +117,10 @@ pub struct Measurement {
     pub commits: usize,
     /// Of those, how many carry at least one `Pmat-Ticket:` trailer.
     pub trailered: usize,
+    /// Of the untrailered ones, how many are authored by a GitHub app account
+    /// (`[bot]@users.noreply.github.com`) and so exempt from the missing-trailer
+    /// finding. Named in the pass message, never silent.
+    pub bot_exempt: usize,
     pub findings: Vec<Finding>,
 }
 
@@ -238,6 +246,7 @@ fn default_branch_mode(project_path: &Path) -> Result<Measurement, String> {
         range: Range::DefaultBranch { since },
         commits,
         trailered,
+        bot_exempt: 0,
         findings: vec![],
     })
 }
@@ -286,7 +295,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         &[
             "log",
             "--no-merges",
-            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)",
+            "--format=%H%x1f%s%x1f%(trailers:key=Pmat-Ticket,valueonly,separator=%x2c)%x1f%ae",
             &format!("{merge_base}..HEAD"),
         ],
     )?;
@@ -302,7 +311,8 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         .collect();
     let open_at_base = open_ids_at(project_path, &merge_base);
 
-    let (commits, trailered, findings) = judge_log(&commits_out, &roadmap_map, &open_at_base);
+    let (commits, trailered, bot_exempt, findings) =
+        judge_log(&commits_out, &roadmap_map, &open_at_base);
 
     Ok(Measurement {
         range: Range::PullRequest {
@@ -311,6 +321,7 @@ fn pr_mode(project_path: &Path, resolved_base: String) -> Result<Measurement, St
         },
         commits,
         trailered,
+        bot_exempt,
         findings,
     })
 }
