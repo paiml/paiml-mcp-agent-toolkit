@@ -1,0 +1,21 @@
+- id: PMAT-1978
+  github_issue: 1978
+  item_type: task
+  title: 'pmat query on a missing index: rebuild does not finish in 10 min, hint names a subcommand that does not exist, a killed rebuild leaves 900 MB of temp files'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-28T00:00:00Z
+  updated: 2026-11-28T00:00:00Z
+  spec: null
+  acceptance_criteria:
+  - '[ ] `pmat query` on a missing index finishes its rebuild or reports a bounded failure within 10 minutes'
+  - '[ ] the rebuild hint names only subcommands that exist'
+  - '[ ] a killed rebuild leaves no temp files behind'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:code
+  notes: null
+  epic: 1090

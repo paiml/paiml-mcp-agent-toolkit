@@ -2,7 +2,7 @@
   github_issue: 1960
   item_type: task
   title: 'feat(work): score ticket text 0-100 and list ticket findings (work score --issue, work findings)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-11-26T16:14:27Z

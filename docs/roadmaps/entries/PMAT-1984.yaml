@@ -1,0 +1,21 @@
+- id: PMAT-1984
+  github_issue: 1984
+  item_type: task
+  title: 'CB-2115 master red: GH-1960 vs PMAT-1960 COLLISION and #1978 ORPHAN-GITHUB'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-11-28T09:41:00Z
+  updated: 2026-11-28T09:41:00Z
+  spec: null
+  acceptance_criteria:
+  - '[ ] exactly one roadmap entry names #1960'
+  - '[ ] a roadmap row names #1978 with the exact GitHub title'
+  - '[ ] pmat comply check --checks CB-2115 exits 0 on the PR head'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kind:triage
+  notes: null
+  epic: 1090

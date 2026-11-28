@@ -5426,7 +5426,7 @@ roadmap:
   github_issue: 1074
   item_type: task
   title: cargo deny reports 'advisories ok' on a tree with an open moderate vulnerability — GHSA-only advisories are invisible to the only blocking security gate
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-10T18:18:21.932438877+00:00
