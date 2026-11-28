@@ -1,0 +1,16 @@
+- id: GH-1984
+  github_issue: 1984
+  item_type: task
+  title: 'CB-2115 master red: GH-1960 vs PMAT-1960 COLLISION and #1978 ORPHAN-GITHUB'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-11-28T13:49:43.308362967+00:00
+  updated: 2026-11-28T13:49:43.308362967+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

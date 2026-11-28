@@ -1,0 +1,17 @@
+- id: GH-1074
+  github_issue: 1074
+  item_type: task
+  title: cargo deny reports 'advisories ok' on a tree with an open moderate vulnerability — GHSA-only advisories are invisible to the only blocking security gate
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-09-10T18:18:21.932438877+00:00
+  updated: 2026-11-28T13:49:43.308362967+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+  release: 3.45.1
