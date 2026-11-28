@@ -33,7 +33,9 @@ impl Graphql for Fake {
 }
 
 pub(super) fn now() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 11, 26, 12, 0, 0).unwrap()
+    Utc.with_ymd_and_hms(2026, 11, 26, 12, 0, 0)
+        .single()
+        .expect("finding fixture time is a valid UTC instant")
 }
 
 pub(super) fn rate(remaining: u64) -> Result<Value, String> {
